@@ -59,7 +59,7 @@ that claims to be done is worse than none.
 | How a desktop page looks | `docs/design/pages.html` (open it in a browser and inspect it) |
 | How a phone screen looks | `docs/design/screens.html` + `docs/design/FRONTEND_SPEC.md` |
 | Colours, type, spacing, motion | `docs/design/tokens.css`, `components.css`, `web.css` |
-| The full visual guides (PDF) | The `design-v1.0` release on GitHub |
+| The full visual guides (PDF) | The `design-pdfs` branch (kept off `main` so clones stay small) |
 
 - Build **what** the spec describes; choose **how** to build it yourself.
 - Colours come from tokens, never hard-coded hex. Customer screens are green (Leaf/Lime), tradie screens orange
