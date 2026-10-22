@@ -1,0 +1,160 @@
+/* ==========================================================================
+   Trade Marketplace — web app layer v1.0 (desktop + effects + motion)
+   Sits on top of tokens.css + components.css. Every desktop mockup in the
+   Web App Design Spec is rendered from these three files.
+   Animation names (M01…M27) match the Motion catalogue in the spec.
+   ========================================================================== */
+
+/* ---------- Layout ---------------------------------------------------------- */
+.w-page { background: var(--trade-surface); min-height: 100%; }
+.w-page--soft { background: #f6f7f6; }
+.w-wrap { max-width: var(--trade-content-max); margin: 0 auto; padding: 0 24px; }
+.w-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 24px; }
+.w-pagehead { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; padding: 32px 0 20px; }
+.w-crumbs { display: flex; gap: 8px; align-items: center; font-size: var(--trade-fs-small); color: var(--trade-text-2); }
+.w-crumbs a { color: var(--trade-text-2); text-decoration: none; } .w-crumbs a:hover { color: var(--trade-link); text-decoration: underline; }
+
+/* Small uppercase label above headings */
+.w-eyebrow { font-size: 13px; letter-spacing: .12em; text-transform: uppercase; font-weight: 800; font-variation-settings: 'wdth' 125; color: var(--trade-success); }
+.w-dark-sec .w-eyebrow { color: var(--trade-signature); }
+
+/* ---------- Site & app navigation -------------------------------------------- */
+.w-sitenav { height: 76px; display: flex; align-items: center; gap: 32px; padding: 0 48px; position: relative; z-index: 10; }
+.w-sitenav a { color: #fff; font-weight: 600; font-size: 15px; text-decoration: none; opacity: .88; }
+.w-sitenav a:hover { opacity: 1; text-decoration: underline; text-underline-offset: 6px; }
+.w-sitenav--solid { background: var(--trade-forest); box-shadow: var(--trade-shadow-header); }  /* after scrolling past hero (M06) */
+.w-appnav { height: 68px; background: var(--trade-forest); display: flex; align-items: center; gap: 8px; padding: 0 32px; color: #fff; position: sticky; top: 0; z-index: var(--trade-z-nav); }
+.w-appnav__links { display: flex; gap: 4px; margin-left: 28px; }
+.w-appnav__links a { height: 40px; display: flex; align-items: center; gap: 8px; padding: 0 14px; border-radius: 10px; color: rgb(255 255 255 / 78%); font-weight: 600; font-size: 14.5px; text-decoration: none; position: relative; transition: background var(--trade-dur-fast); }
+.w-appnav__links a:hover { background: rgb(255 255 255 / 8%); color: #fff; }
+.w-appnav__links a[aria-current="page"] { color: #fff; background: rgb(255 255 255 / 10%); }
+.w-appnav__links a[aria-current="page"]::after { content: ''; position: absolute; left: 14px; right: 14px; bottom: -14px; height: 3px; border-radius: 3px 3px 0 0; background: var(--trade-signature); } /* slides between tabs: M16 */
+.w-appnav__right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+.w-appnav .w-search { width: 320px; height: 40px; border-radius: 10px; background: rgb(255 255 255 / 10%); color: rgb(255 255 255 / 75%); display: flex; align-items: center; gap: 8px; padding: 0 12px; font-size: 14px; box-shadow: inset 0 0 0 1px rgb(255 255 255 / 12%); }
+.w-appnav .w-search kbd { margin-left: auto; font: 600 11px var(--trade-font-body); border: 1px solid rgb(255 255 255 / 30%); border-radius: 4px; padding: 1px 5px; }
+.w-navbtn { width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; color: #fff; position: relative; }
+.w-navbtn:hover { background: rgb(255 255 255 / 8%); }
+.w-navbtn .tm-count { position: absolute; top: 4px; right: 2px; }
+.w-modeflag { height: 24px; padding: 0 9px; border-radius: 6px; background: var(--trade-signature); color: var(--trade-on-signature); font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; display: inline-flex; align-items: center; }
+.w-sidenav { display: grid; gap: 2px; align-content: start; }
+.w-sidenav a { height: 42px; display: flex; align-items: center; gap: 12px; padding: 0 12px; border-radius: 10px; color: var(--trade-text-2); font-weight: 600; font-size: 14.5px; text-decoration: none; }
+.w-sidenav a:hover { background: #f1f3f2; color: var(--trade-text); }
+.w-sidenav a[aria-current="page"] { background: var(--trade-tint); color: var(--trade-text); box-shadow: inset 3px 0 0 var(--trade-action); }
+
+/* ---------- Footer -------------------------------------------------------------- */
+.w-footer { background: var(--trade-forest); color: rgb(255 255 255 / 75%); padding: 56px 48px 32px; font-size: 14px; position: relative; overflow: hidden; }
+.w-footer h4 { color: #fff; font-size: 14px; margin: 0 0 12px; }
+.w-footer a { display: block; color: rgb(255 255 255 / 75%); text-decoration: none; line-height: 2; }
+
+/* ---------- Interactive states (effects) ----------------------------------------- */
+/* M03 hover lift — cards, tiles, rows that are links */
+.w-lift { transition: transform 160ms var(--trade-ease-out), box-shadow 160ms var(--trade-ease-out); cursor: pointer; }
+.w-lift:hover, .w-lift.is-hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgb(12 37 29 / 18%); }
+.w-zoom { overflow: hidden; } .w-zoom > .w-zoom__img { transition: transform 400ms var(--trade-ease-out); height: 100%; background: center/cover; }
+.w-zoom:hover > .w-zoom__img, .w-zoom.is-hover > .w-zoom__img { transform: scale(1.04); }
+.tm-btn--primary.is-hover, .tm-btn--primary:hover { filter: brightness(1.06); }
+.tm-btn--secondary.is-hover, .tm-btn--secondary:hover { background: var(--trade-tint); }
+.tm-btn--hero.is-hover, .tm-btn--hero:hover { box-shadow: 0 8px 18px rgb(12 37 29 / 22%); transform: translateY(-1px); }
+.is-focus { outline: 2px solid var(--trade-focus) !important; outline-offset: 2px; }
+.is-press { transform: scale(.98) !important; }
+.w-row { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: 10px; transition: background var(--trade-dur-fast); }
+.w-row:hover, .w-row.is-hover { background: #f4f6f5; }
+.w-link-u { color: var(--trade-link); font-weight: 700; text-decoration: none; } .w-link-u:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+/* ---------- Overlays: dialog, drawer, menu, tooltip -------------------------------- */
+.w-scrim { position: absolute; inset: 0; background: rgb(12 37 29 / 50%); z-index: var(--trade-z-modal); }
+.w-dialog { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 520px; background: #fff; border-radius: 16px; padding: 28px; box-shadow: 0 24px 64px rgb(12 37 29 / 30%); z-index: calc(var(--trade-z-modal) + 1); }
+.w-dialog__x { position: absolute; top: 14px; right: 14px; }
+.w-dialog__actions { display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px; }
+.w-dialog__actions .tm-btn { width: auto; min-width: 140px; }
+.w-drawer { position: absolute; top: 0; right: 0; bottom: 0; width: 480px; background: #fff; box-shadow: -16px 0 40px rgb(12 37 29 / 18%); z-index: calc(var(--trade-z-modal) + 1); display: flex; flex-direction: column; }
+.w-drawer__head { padding: 22px 24px 16px; border-bottom: 1px solid var(--trade-line); display: flex; align-items: center; gap: 12px; }
+.w-drawer__body { padding: 20px 24px; flex: 1; display: grid; gap: 16px; align-content: start; }
+.w-drawer__foot { padding: 16px 24px; border-top: 1px solid var(--trade-line); display: flex; gap: 12px; }
+.w-menu { position: absolute; background: #fff; border-radius: 12px; box-shadow: var(--trade-shadow-pop), 0 0 0 1px rgb(12 37 29 / 6%); padding: 6px; min-width: 220px; z-index: var(--trade-z-modal); }
+.w-menu a { display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 12px; border-radius: 8px; font-size: 14px; color: var(--trade-text); text-decoration: none; }
+.w-menu a:hover, .w-menu a.is-hover { background: #f1f3f2; }
+.w-menu hr { border: 0; border-top: 1px solid var(--trade-line); margin: 6px 0; }
+.w-tip { position: absolute; background: var(--trade-forest); color: #fff; font-size: 12.5px; padding: 6px 10px; border-radius: 7px; white-space: nowrap; box-shadow: var(--trade-shadow-pop); z-index: var(--trade-z-toast); }
+.w-tip::after { content: ''; position: absolute; left: 50%; bottom: -5px; width: 10px; height: 10px; background: var(--trade-forest); transform: translateX(-50%) rotate(45deg); border-radius: 2px; }
+.w-toast { position: absolute; right: 24px; bottom: 24px; width: 360px; background: var(--trade-forest); color: #fff; border-radius: 12px; padding: 14px 16px; display: flex; gap: 12px; align-items: center; box-shadow: var(--trade-shadow-pop); font-size: 14px; overflow: hidden; z-index: var(--trade-z-toast); }
+.w-toast::after { content: ''; position: absolute; left: 0; bottom: 0; height: 3px; width: 62%; background: var(--trade-signature); } /* time-left hairline, M14 */
+
+/* ---------- Data display -------------------------------------------------------- */
+.w-table { width: 100%; border-collapse: collapse; background: #fff; font-size: 14px; }
+.w-table th { text-align: left; font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--trade-text-2); font-weight: 700; padding: 12px 14px; border-bottom: 1px solid var(--trade-line); background: #fafbfa; white-space: nowrap; }
+.w-table td { padding: 13px 14px; border-bottom: 1px solid var(--trade-line); vertical-align: middle; }
+.w-table tr:hover td, .w-table tr.is-hover td { background: #f6f8f7; }
+.w-table tr.is-selected td { background: var(--trade-tint); }
+.w-tablecard { border: 1px solid var(--trade-line); border-radius: 12px; overflow: hidden; background: #fff; }
+.w-pager { display: flex; gap: 6px; align-items: center; justify-content: space-between; padding: 12px 14px; font-size: 13px; color: var(--trade-text-2); background: #fff; }
+.w-pager b { color: var(--trade-text); }
+.w-kpi { background: #fff; border: 1px solid var(--trade-line); border-radius: 12px; padding: 18px; }
+.w-kpi__n { font-family: var(--trade-font-heading); font-weight: 900; font-variation-settings: var(--trade-display-axes); font-size: 30px; margin-top: 6px; } /* counts up on first view: M17 */
+.w-bars { display: flex; align-items: flex-end; gap: 10px; height: 140px; }
+.w-bars span { flex: 1; border-radius: 6px 6px 0 0; background: var(--trade-tint-strong); position: relative; }
+.w-bars span.on { background: var(--trade-action); }
+.w-filter { display: grid; gap: 10px; }
+.w-filter h4 { margin: 0; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--trade-text-2); }
+.w-check { display: flex; gap: 10px; align-items: center; font-size: 14px; }
+
+/* ---------- Wizard ---------------------------------------------------------------- */
+.w-steps { display: grid; gap: 4px; }
+.w-steps div { display: flex; gap: 12px; align-items: center; height: 48px; padding: 0 12px; border-radius: 10px; font-weight: 600; font-size: 14.5px; color: var(--trade-text-3); }
+.w-steps .n { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--trade-line-strong); display: grid; place-items: center; font-size: 13px; font-weight: 800; }
+.w-steps .done { color: var(--trade-text); } .w-steps .done .n { background: var(--trade-action); border-color: var(--trade-action); color: var(--trade-on-action); }
+.w-steps .now { color: var(--trade-text); background: var(--trade-tint); } .w-steps .now .n { border-color: var(--trade-action); color: var(--trade-text); }
+.w-drop { border: 2px dashed var(--trade-field-border); border-radius: 14px; padding: 36px; text-align: center; color: var(--trade-text-2); background: #fafbfa; transition: background 120ms, border-color 120ms; }
+.w-drop.is-over { border-style: solid; border-color: var(--trade-action); background: var(--trade-tint); } /* M26 */
+
+/* ---------- Board (kanban, read-only) ---------------------------------------------- */
+.w-cols { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; align-items: start; }
+.w-col { background: #f1f3f2; border-radius: 14px; padding: 12px; display: grid; gap: 10px; }
+.w-col h3 { margin: 4px 4px 2px; font-size: 14px; display: flex; justify-content: space-between; }
+
+/* ---------- Map (illustrative) ------------------------------------------------------ */
+.w-map { position: relative; background: #e8efe9; overflow: hidden; }
+.w-map svg.roads { position: absolute; inset: 0; width: 100%; height: 100%; }
+.w-pin { position: absolute; transform: translate(-50%, -100%); background: var(--trade-forest); color: #fff; font-weight: 800; font-size: 12.5px; padding: 6px 10px; border-radius: 999px; box-shadow: 0 4px 10px rgb(12 37 29 / 30%); white-space: nowrap; }
+.w-pin::after { content: ''; position: absolute; left: 50%; bottom: -5px; width: 10px; height: 10px; background: inherit; transform: translateX(-50%) rotate(45deg); }
+.w-pin { display: inline-flex; align-items: center; gap: 4px; }
+.w-pin--claim { background: var(--trade-forest); color: #fff; }                                  /* ready to claim: what you earn */
+.w-pin--est { background: #fff; color: var(--trade-text); }                                        /* needs an estimate (photos)   */
+.w-pin--visit { background: var(--trade-action); color: var(--trade-on-action); }                /* needs a site visit (in person) */
+.w-pin--bounty { background: var(--trade-gold); color: var(--trade-on-gold); box-shadow: 0 0 0 2px #fff, 0 4px 12px rgb(245 192 48 / 55%); } /* quote bounty: shimmer M27 */
+.w-pin--bounty::after { background: var(--trade-gold); }
+.tm-status--bounty { background: var(--trade-gold); color: var(--trade-on-gold); }
+.tm-status--bounty::before { display: none; }
+.w-timer { display: inline-flex; align-items: center; gap: 6px; font-weight: 800; font-size: 13px; font-variant-numeric: tabular-nums; }
+.w-ring { width: 44px; height: 44px; border-radius: 50%; background: conic-gradient(var(--trade-gold) var(--p, 74%), #eef0ef 0); display: grid; place-items: center; }
+.w-ring > span { width: 34px; height: 34px; border-radius: 50%; background: #fff; display: grid; place-items: center; font-size: 11px; font-weight: 800; }
+@keyframes tm-shimmer-gold { 0%, 80%, 100% { filter: none; } 88% { filter: brightness(1.18) drop-shadow(0 0 6px rgb(245 192 48 / 80%)); } } /* M27 */
+.w-pin--hot { transform: translate(-50%, -100%) scale(1.15); box-shadow: 0 0 0 3px var(--trade-signature), 0 6px 14px rgb(12 37 29 / 35%); z-index: 2; } /* M21 */
+
+/* ---------- Brand effects ------------------------------------------------------------- */
+.w-glow { position: absolute; border-radius: 50%; background: radial-gradient(circle, var(--trade-signature) 0%, transparent 70%); opacity: .35; pointer-events: none; }
+.w-sparks { position: absolute; inset: -18px; pointer-events: none; }
+.w-sparks i { position: absolute; left: 50%; top: 50%; width: 4px; height: 14px; border-radius: 2px; background: var(--trade-signature); transform-origin: 50% 70px; }
+.w-dark-sec { background: var(--trade-forest); color: #fff; position: relative; overflow: hidden; }
+
+/* ---------- Motion catalogue (keyframes) ------------------------------------------------
+   Use via the utility classes; all are disabled by prefers-reduced-motion in tokens.css. */
+@keyframes tm-rise   { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }          /* M01 */
+@keyframes tm-reveal { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }         /* M07 */
+@keyframes tm-pop    { 0% { transform: scale(.6); opacity: 0; } 60% { transform: scale(1.08); opacity: 1; } 100% { transform: scale(1); } } /* M10 */
+@keyframes tm-spark  { from { opacity: 1; transform: rotate(var(--a)) translateY(0) scaleY(1); } to { opacity: 0; transform: rotate(var(--a)) translateY(-26px) scaleY(.4); } } /* M10 */
+@keyframes tm-glow   { 0%, 100% { opacity: 0; } 40% { opacity: .4; } }                                                  /* M10 */
+@keyframes tm-wipe   { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }                        /* M09 */
+@keyframes tm-drawer { from { transform: translateX(100%); } to { transform: none; } }                                  /* M12 */
+@keyframes tm-dialog { from { opacity: 0; transform: translate(-50%, -48%) scale(.96); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } } /* M13 */
+@keyframes tm-toast  { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }          /* M14 */
+@keyframes tm-badge  { 0% { transform: scale(0); } 70% { transform: scale(1.15); } 100% { transform: scale(1); } }     /* M20 */
+@keyframes tm-drop   { from { opacity: 0; transform: translate(-50%, -130%); } to { opacity: 1; transform: translate(-50%, -100%); } } /* M21 */
+@keyframes tm-fill   { from { transform: scaleY(0); } to { transform: scaleY(1); } }                                    /* M11 */
+.tm-anim-rise   { animation: tm-rise 200ms var(--trade-ease-out) both; }
+.tm-anim-reveal { animation: tm-reveal 500ms var(--trade-ease-out) both; }
+.tm-anim-pop    { animation: tm-pop 400ms cubic-bezier(.34, 1.56, .64, 1) both; }
+.tm-anim-wipe   { animation: tm-wipe 300ms var(--trade-ease-out) both; }
+.tm-anim-drawer { animation: tm-drawer 320ms var(--trade-ease-out) both; }
+.tm-anim-dialog { animation: tm-dialog 200ms var(--trade-ease-out) both; }
+.tm-anim-toast  { animation: tm-toast 200ms var(--trade-ease-out) both; }

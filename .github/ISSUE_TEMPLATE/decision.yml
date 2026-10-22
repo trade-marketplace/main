@@ -1,0 +1,24 @@
+name: Decision needed
+description: A business or technical question a founder must answer before work can continue.
+labels: ["decision"]
+body:
+  - type: textarea
+    id: question
+    attributes:
+      label: The question
+    validations:
+      required: true
+  - type: textarea
+    id: options
+    attributes:
+      label: Options and trade-offs
+  - type: textarea
+    id: blocks
+    attributes:
+      label: What it blocks
+      description: Issues that can't finish until this is decided.
+  - type: textarea
+    id: answer
+    attributes:
+      label: Decision
+      description: Filled in by a founder. Then add it to DECISIONS.md and close this issue.

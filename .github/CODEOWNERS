@@ -1,0 +1,24 @@
+# Who reviews what. Enforced automatically once the org is on GitHub Team; until then it's the rule anyway.
+# Later rules win over earlier ones.
+
+# Default: either founder
+*                       @willimobro @mlarsen084
+
+# Engineering: William (schema, money, auth, server logic, tooling)
+/prisma/                @willimobro
+/src/server/            @willimobro
+/src/lib/               @willimobro
+/scripts/               @willimobro
+/package.json           @willimobro
+/package-lock.json      @willimobro
+
+# Design and brand: Matt
+/docs/design/           @mlarsen084
+/src/styles/            @mlarsen084
+/public/brand/          @mlarsen084
+
+# Rules, decisions and CI: both
+/AGENTS.md              @willimobro @mlarsen084
+/DECISIONS.md           @willimobro @mlarsen084
+/BUSINESS_PLAN.md       @willimobro @mlarsen084
+/.github/               @willimobro @mlarsen084

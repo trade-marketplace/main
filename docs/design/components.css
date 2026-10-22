@@ -1,0 +1,247 @@
+/* ==========================================================================
+   Trade Marketplace — reference components v1.0
+   Every mockup in the Front-End Build Guide is rendered from THIS file.
+   Port each block into its React component / CSS module; keep the values.
+   Requires tokens.css.
+   ========================================================================== */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+/* ---------- Type helpers ------------------------------------------------- */
+.tm-display, .tm-title, .tm-heading, .tm-price, .tm-subheading, .tm-section, .tm-label {
+  font-family: var(--trade-font-heading); font-weight: 900; font-variation-settings: var(--trade-display-axes);
+  color: var(--trade-text); letter-spacing: 0; margin: 0;
+}
+.tm-display    { font-size: var(--trade-fs-display);    line-height: var(--trade-lh-display); }
+.tm-title      { font-size: var(--trade-fs-title);      line-height: var(--trade-lh-title); }
+.tm-price      { font-size: var(--trade-fs-price);      line-height: var(--trade-lh-price); font-variant-numeric: tabular-nums; }
+.tm-heading    { font-size: var(--trade-fs-heading);    line-height: var(--trade-lh-heading); }
+.tm-subheading { font-size: var(--trade-fs-subheading); line-height: var(--trade-lh-subheading); }
+.tm-section    { font-size: var(--trade-fs-section);    line-height: var(--trade-lh-section); }
+.tm-label      { font-size: var(--trade-fs-label);      line-height: var(--trade-lh-label); }
+.tm-body  { font-size: var(--trade-fs-body);  line-height: var(--trade-lh-body); }
+.tm-small { font-size: var(--trade-fs-small); line-height: var(--trade-lh-small); color: var(--trade-text-2); }
+.tm-caption { font-size: var(--trade-fs-caption); line-height: var(--trade-lh-caption); color: var(--trade-text-2); }
+.tm-on-dark { color: var(--trade-text-on-dark) !important; }
+.tm-link { color: var(--trade-link); font-weight: 700; font-size: var(--trade-fs-small); text-decoration: none; }
+.tm-link:hover { text-decoration: underline; }
+
+/* ---------- Icons (Material Symbols Rounded) ------------------------------ */
+.tm-icon { font-family: 'Material Symbols Rounded'; font-weight: 400; font-style: normal; font-size: 24px; line-height: 1;
+  letter-spacing: normal; white-space: nowrap; display: inline-block; font-feature-settings: 'liga';
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; user-select: none; }
+.tm-icon--fill { font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+.tm-icon--sm { font-size: 20px; } .tm-icon--lg { font-size: 28px; }
+
+/* ---------- Buttons -------------------------------------------------------- */
+.tm-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%;
+  height: var(--trade-btn-h); padding: 0 20px; border-radius: var(--trade-radius-action); border: 0;
+  font-family: var(--trade-font-body); font-weight: 700; font-size: var(--trade-fs-button); line-height: 1;
+  cursor: pointer; text-decoration: none; transition: transform var(--trade-dur-fast) var(--trade-ease-out), filter var(--trade-dur-fast); }
+.tm-btn:active { transform: scale(.98); }
+.tm-btn--primary   { background: var(--trade-action); color: var(--trade-on-action); }
+.tm-btn--primary:hover { filter: brightness(1.05); }
+.tm-btn--secondary { background: var(--trade-surface); color: var(--trade-ink); box-shadow: inset 0 0 0 2px var(--trade-action); }
+.tm-btn--hero { height: var(--trade-btn-h-hero); background: var(--trade-signature); color: var(--trade-on-signature);
+  font-family: var(--trade-font-heading); font-weight: 900; font-variation-settings: var(--trade-display-axes);
+  font-size: 1.5rem; box-shadow: var(--trade-shadow-action); }
+.tm-btn--ghost  { background: transparent; color: var(--trade-link); height: var(--trade-tap); width: auto; padding: 0 8px; }
+.tm-btn--danger { background: var(--trade-surface); color: var(--trade-danger); box-shadow: inset 0 0 0 2px var(--trade-danger); }
+.tm-btn--dark   { background: var(--trade-forest); color: #fff; }
+.tm-btn--small  { height: var(--trade-btn-h-small); width: auto; padding: 0 16px; }
+.tm-btn--inline { width: auto; }
+.tm-btn[disabled], .tm-btn[aria-disabled="true"] { background: #e6e9e7; color: #6b7a72; box-shadow: none; cursor: not-allowed; filter: none; }
+.tm-btn--loading { color: transparent !important; position: relative; pointer-events: none; }
+.tm-btn--loading::after { content: ''; position: absolute; width: 20px; height: 20px; border-radius: 50%;
+  border: 2.5px solid var(--trade-on-action); border-right-color: transparent; animation: tm-spin .7s linear infinite; }
+@keyframes tm-spin { to { transform: rotate(360deg); } }
+.tm-or { display: flex; align-items: center; gap: 12px; color: var(--trade-text-2); font-size: var(--trade-fs-small); }
+.tm-or::before, .tm-or::after { content: ''; flex: 1; height: 1px; background: var(--trade-line-strong); }
+
+/* Round icon buttons: save (signature), header actions */
+.tm-iconbtn { width: var(--trade-tap); height: var(--trade-tap); border-radius: 50%; display: inline-flex; align-items: center;
+  justify-content: center; border: 0; background: transparent; color: inherit; cursor: pointer; }
+.tm-save { width: 50px; height: 50px; border-radius: var(--trade-radius-action); background: var(--trade-signature);
+  color: var(--trade-on-signature); display: inline-flex; align-items: center; justify-content: center; box-shadow: var(--trade-shadow-action); }
+
+/* ---------- Fields --------------------------------------------------------- */
+.tm-field { display: grid; gap: 6px; }
+.tm-field__label { font-size: var(--trade-fs-small); font-weight: 700; color: var(--trade-text); }
+.tm-field__hint  { font-size: var(--trade-fs-caption); color: var(--trade-text-2); }
+.tm-field__error { font-size: var(--trade-fs-caption); color: var(--trade-danger); font-weight: 600; display: flex; gap: 4px; align-items: center; }
+/* Underline field: auth + simple forms (source style) */
+.tm-input-line { display: flex; align-items: center; gap: 10px; height: var(--trade-field-h); border-bottom: 1px solid var(--trade-field-border);
+  color: var(--trade-text-2); font-size: var(--trade-fs-body); }
+.tm-input-line .tm-icon { font-size: 20px; color: var(--trade-text-2); }
+.tm-input-line .tm-valid { margin-left: auto; color: var(--trade-action); }
+.tm-input-line--focus { border-bottom: 2px solid var(--trade-focus); }
+.tm-input-line--error { border-bottom: 2px solid var(--trade-danger); }
+/* Box field: longer forms, textarea, money */
+.tm-input { display: flex; align-items: center; gap: 10px; min-height: var(--trade-field-h); padding: 0 14px;
+  border: 1px solid var(--trade-field-border); border-radius: var(--trade-radius-field); background: var(--trade-surface);
+  font-size: var(--trade-fs-body); color: var(--trade-text); }
+.tm-input--area { min-height: 112px; align-items: flex-start; padding: 12px 14px; line-height: 1.45; }
+.tm-input--placeholder { color: var(--trade-text-3); }
+.tm-input--focus { outline: 2px solid var(--trade-focus); outline-offset: 0; }
+.tm-input--error { border: 2px solid var(--trade-danger); }
+.tm-input__affix { color: var(--trade-text-2); font-weight: 700; }
+/* Search bar (on Forest header or white) */
+.tm-search { display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 12px; border-radius: var(--trade-radius-action);
+  background: var(--trade-surface); color: var(--trade-text-2); font-size: var(--trade-fs-small); flex: 1; }
+.tm-search--on-white { background: #f1f2f1; }
+/* Choice cards (radio/checkbox as big rows) */
+.tm-choice { display: flex; gap: 14px; align-items: center; padding: 16px; border-radius: var(--trade-radius-card);
+  border: 1px solid var(--trade-line-strong); background: var(--trade-surface); }
+.tm-choice--on { border: 2px solid var(--trade-action); background: var(--trade-tint); padding: 15px; }
+.tm-radio { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--trade-field-border); flex: none; }
+.tm-choice--on .tm-radio { border: 7px solid var(--trade-action); }
+.tm-check { width: 22px; height: 22px; border-radius: 5px; border: 2px solid var(--trade-field-border); flex: none; display: grid; place-items: center; }
+.tm-check--on { background: var(--trade-action); border-color: var(--trade-action); color: var(--trade-on-action); }
+/* Photo uploader */
+.tm-upload { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--trade-gap-photo); }
+.tm-upload__add { aspect-ratio: 1; border: 2px dashed var(--trade-field-border); border-radius: var(--trade-radius-job-tile);
+  display: grid; place-items: center; text-align: center; color: var(--trade-text-2); font-size: var(--trade-fs-caption); }
+.tm-upload__img { aspect-ratio: 1; border-radius: var(--trade-radius-job-tile); background-size: cover; background-position: center; position: relative; }
+.tm-upload__x { position: absolute; top: 4px; right: 4px; width: 26px; height: 26px; border-radius: 50%; background: rgb(12 37 29 / 80%);
+  color: #fff; display: grid; place-items: center; }
+/* Stepper (form progress) */
+.tm-progress { display: flex; gap: 6px; }
+.tm-progress span { flex: 1; height: 4px; border-radius: 4px; background: var(--trade-line-strong); }
+.tm-progress span.on { background: var(--trade-action); }
+
+/* ---------- Chips, pills, badges ------------------------------------------ */
+.tm-chip { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 14px; border-radius: var(--trade-radius-pill);
+  background: var(--trade-chip-bg); box-shadow: inset 0 0 0 1px var(--trade-chip-line); font-size: var(--trade-fs-small); color: var(--trade-ink); white-space: nowrap; }
+.tm-chip--on { background: var(--trade-action); color: var(--trade-on-action); box-shadow: none; font-weight: 700; }
+.tm-chip--on-dark { background: rgb(255 255 255 / 10%); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 35%); color: #fff; }
+.tm-pillbar { display: inline-flex; background: var(--trade-surface); border-radius: var(--trade-radius-pill); box-shadow: var(--trade-shadow-pop); overflow: hidden; }
+.tm-pillbar > * { display: inline-flex; align-items: center; gap: 6px; height: 44px; padding: 0 18px; font-weight: 700; font-size: var(--trade-fs-small); }
+.tm-pillbar > * + * { border-left: 1px solid var(--trade-line); }
+/* Status pill — one component, colour by meaning (see guide: Job states) */
+.tm-status { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: var(--trade-radius-pill);
+  font-size: var(--trade-fs-caption); font-weight: 700; white-space: nowrap; }
+.tm-status::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.tm-status--waiting { background: var(--trade-waiting-bg); color: var(--trade-waiting); }
+.tm-status--action  { background: var(--trade-signature); color: var(--trade-on-signature); }
+.tm-status--good    { background: var(--trade-success-bg); color: var(--trade-success); }
+.tm-status--done    { background: var(--trade-forest); color: #fff; }
+.tm-status--alert   { background: var(--trade-danger-bg); color: var(--trade-danger); }
+.tm-status--info    { background: var(--trade-info-bg); color: var(--trade-info); }
+.tm-verified { display: inline-flex; align-items: center; gap: 4px; height: 24px; padding: 0 8px; border-radius: var(--trade-radius-pill);
+  background: var(--trade-success-bg); color: var(--trade-success); font-size: var(--trade-fs-caption); font-weight: 700; }
+.tm-test { display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px; border-radius: 4px; background: #fff4d6; color: #6b4b00;
+  font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.tm-count { min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--trade-danger); color: #fff; font-size: 11px; font-weight: 800; display: inline-grid; place-items: center; }
+
+/* ---------- Avatar, rating -------------------------------------------------- */
+.tm-avatar { width: 44px; height: 44px; border-radius: 50%; background: var(--trade-forest); color: var(--trade-signature);
+  display: inline-grid; place-items: center; font-family: var(--trade-font-heading); font-weight: 900; font-variation-settings: var(--trade-display-axes); font-size: 18px; flex: none; background-size: cover; }
+.tm-avatar--lg { width: 72px; height: 72px; font-size: 28px; }
+.tm-stars { color: var(--trade-signature); letter-spacing: 1px; font-size: 16px; }
+.tm-stars .off { color: #d5dad7; }
+
+/* ---------- Cards & tiles ----------------------------------------------------- */
+.tm-card { background: var(--trade-surface); border-radius: var(--trade-radius-card); box-shadow: var(--trade-shadow-category); }
+.tm-card--flat { box-shadow: none; border: 1px solid var(--trade-line); }
+.tm-card--pad { padding: 16px; }
+/* Category tile 159×162 at 390 */
+.tm-cat { width: 159px; height: 162px; flex: none; background: var(--trade-surface); border-radius: var(--trade-radius-category);
+  box-shadow: var(--trade-shadow-category); display: flex; flex-direction: column; align-items: center; padding-top: 12px; position: relative; overflow: hidden; }
+.tm-cat__art { width: 110px; height: 96px; border-radius: 9px; display: grid; place-items: center; position: relative; }
+.tm-cat__art img { position: absolute; width: 118px; left: -4px; top: -10px; }
+.tm-cat__name { margin-top: 10px; font-weight: 800; font-size: 15px; color: var(--trade-text); font-variation-settings: 'wdth' 125; }
+.tm-cat__sub  { font-size: 12px; color: var(--trade-text-2); }
+/* Photo job tile (browse/grid) */
+.tm-tile { position: relative; border-radius: var(--trade-radius-job-tile); overflow: hidden; background: #ccc center/cover no-repeat; color: #fff; }
+.tm-tile::after { content: ''; position: absolute; inset: 0; background: linear-gradient(to top, rgb(0 0 0 / 65%), transparent 60%); }
+.tm-tile__text { position: absolute; left: 10px; right: 10px; bottom: 9px; z-index: 1; font-family: var(--trade-font-heading); font-weight: 900;
+  font-variation-settings: var(--trade-display-axes); font-size: 13px; line-height: 1.15; }
+.tm-tile__price { position: absolute; left: 10px; top: 10px; z-index: 1; height: 24px; padding: 0 8px; border-radius: 6px; background: var(--trade-signature);
+  color: var(--trade-on-signature); font-weight: 800; font-size: 12px; display: inline-flex; align-items: center; }
+.tm-tile__save { position: absolute; right: 6px; bottom: 6px; z-index: 1; }
+.tm-tile__flag { position: absolute; left: 8px; bottom: 8px; z-index: 1; display: inline-flex; align-items: center; gap: 4px; font-weight: 800; font-size: 13px; }
+/* List card: my jobs / open quotes */
+.tm-jobrow { display: flex; gap: 12px; padding: 12px; background: var(--trade-surface); border-radius: var(--trade-radius-card); box-shadow: var(--trade-shadow-category); align-items: center; }
+.tm-jobrow__img { width: 64px; height: 64px; border-radius: var(--trade-radius-job-tile); background: #ccc center/cover; flex: none; }
+.tm-jobrow__body { flex: 1; min-width: 0; }
+.tm-jobrow__cat { font-size: 12px; color: var(--trade-text-2); }
+.tm-jobrow__title { font-weight: 700; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Price block */
+.tm-pricebox { border-radius: var(--trade-radius-card); background: var(--trade-forest); color: #fff; padding: 20px; position: relative; overflow: hidden; }
+.tm-pricebox .tm-price { color: #fff; font-size: 2.5rem; }
+.tm-lines { display: grid; gap: 8px; font-size: var(--trade-fs-small); }
+.tm-lines div { display: flex; justify-content: space-between; gap: 12px; }
+.tm-lines .tm-lines__total { border-top: 1px solid var(--trade-line); padding-top: 10px; font-weight: 800; color: var(--trade-text); }
+
+/* ---------- Progress tracker (job timeline) ---------------------------------- */
+.tm-track { display: grid; gap: 0; }
+.tm-track__step { display: grid; grid-template-columns: 28px 1fr; gap: 12px; position: relative; padding-bottom: 18px; }
+.tm-track__step::before { content: ''; position: absolute; left: 13px; top: 26px; bottom: 0; width: 2px; background: var(--trade-line-strong); }
+.tm-track__step:last-child::before { display: none; }
+.tm-track__dot { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--trade-line-strong); background: #fff; display: grid; place-items: center; z-index: 1; }
+.tm-track__step--done .tm-track__dot { background: var(--trade-action); border-color: var(--trade-action); color: var(--trade-on-action); }
+.tm-track__step--done::before { background: var(--trade-action); }
+.tm-track__step--now .tm-track__dot { border: 8px solid var(--trade-signature); }
+.tm-track__t { font-weight: 700; font-size: 15px; line-height: 28px; }
+.tm-track__step--todo .tm-track__t { color: var(--trade-text-3); font-weight: 600; }
+
+/* ---------- Navigation --------------------------------------------------------- */
+.tm-header { background: var(--trade-forest); color: #fff; padding: 12px 16px; display: flex; align-items: center; gap: 10px; }
+.tm-appbar { height: var(--trade-header-h); display: flex; align-items: center; gap: 8px; padding: 0 8px; background: var(--trade-surface);
+  box-shadow: var(--trade-shadow-header); position: sticky; top: 0; z-index: var(--trade-z-sticky); }
+.tm-appbar__title { font-family: var(--trade-font-heading); font-weight: 900; font-variation-settings: var(--trade-display-axes); font-size: 18px; flex: 1; }
+.tm-nav { position: absolute; left: 0; right: 0; bottom: 0; height: var(--trade-nav-height); background: var(--trade-surface);
+  display: grid; grid-template-columns: repeat(5, 1fr); box-shadow: 0 -1px 0 var(--trade-line); z-index: var(--trade-z-nav); }
+.tm-nav a { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; color: var(--trade-forest);
+  font-size: 10px; font-weight: 600; text-decoration: none; position: relative; }
+.tm-nav a .tm-icon { font-size: 26px; }
+.tm-nav a[aria-current="page"] .tm-icon { font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24; }
+.tm-nav a[aria-current="page"]::before { content: ''; position: absolute; top: 0; width: 28px; height: 3px; border-radius: 0 0 3px 3px; background: var(--trade-action); }
+.tm-nav .tm-count { position: absolute; top: 9px; left: calc(50% + 6px); }
+.tm-topnav { height: 72px; display: flex; align-items: center; gap: 28px; padding: 0 40px; background: var(--trade-forest); color: #fff; }
+.tm-topnav a { color: rgb(255 255 255 / 80%); font-size: 14px; font-weight: 600; text-decoration: none; }
+.tm-topnav a[aria-current="page"] { color: #fff; box-shadow: inset 0 -3px 0 var(--trade-signature); padding: 25px 0; }
+.tm-tabs { display: flex; gap: 24px; border-bottom: 1px solid var(--trade-line); }
+.tm-tabs > * { height: 44px; display: flex; align-items: center; font-weight: 700; font-size: var(--trade-fs-small); color: var(--trade-text-2); }
+.tm-tabs > [aria-selected="true"] { color: var(--trade-text); box-shadow: inset 0 -3px 0 var(--trade-action); }
+.tm-seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; background: #eef0ef; border-radius: var(--trade-radius-action); padding: 4px; }
+.tm-seg > * { height: 38px; display: grid; place-items: center; border-radius: 8px; font-weight: 700; font-size: var(--trade-fs-small); color: var(--trade-text-2); }
+.tm-seg > [aria-selected="true"] { background: #fff; color: var(--trade-text); box-shadow: 0 1px 3px rgb(0 0 0 / 12%); }
+
+/* ---------- Sheets, dialogs, banners, toasts ------------------------------------ */
+.tm-scrim { position: absolute; inset: 0; background: rgb(12 37 29 / 55%); z-index: var(--trade-z-sheet); }
+.tm-sheet { position: absolute; left: 0; right: 0; bottom: 0; background: var(--trade-surface); border-radius: var(--trade-radius-sheet) var(--trade-radius-sheet) 0 0;
+  box-shadow: var(--trade-shadow-sheet); padding: 10px 20px 28px; z-index: calc(var(--trade-z-sheet) + 1); }
+.tm-sheet__grab { width: 40px; height: 5px; border-radius: 3px; background: var(--trade-line-strong); margin: 0 auto 14px; }
+.tm-banner { display: flex; gap: 10px; padding: 12px 14px; border-radius: var(--trade-radius-card); font-size: var(--trade-fs-small); line-height: 1.4; }
+.tm-banner--info  { background: var(--trade-info-bg); color: var(--trade-info); }
+.tm-banner--good  { background: var(--trade-success-bg); color: var(--trade-success); }
+.tm-banner--alert { background: var(--trade-danger-bg); color: var(--trade-danger); }
+.tm-banner--brand { background: var(--trade-tint); color: var(--trade-text); }
+.tm-banner--test  { background: #fff4d6; color: #6b4b00; }
+.tm-toast { position: absolute; left: 16px; right: 16px; bottom: calc(var(--trade-nav-height) + 12px); background: var(--trade-forest); color: #fff;
+  border-radius: var(--trade-radius-card); padding: 14px 16px; display: flex; gap: 10px; align-items: center; box-shadow: var(--trade-shadow-pop); font-size: var(--trade-fs-small); z-index: var(--trade-z-toast); }
+.tm-toast .tm-icon { color: var(--trade-signature); }
+
+/* ---------- Messages --------------------------------------------------------------- */
+.tm-bubble { max-width: 78%; padding: 10px 14px; border-radius: 18px; font-size: 15px; line-height: 1.4; }
+.tm-bubble--them { background: #eef0ef; color: var(--trade-text); border-bottom-left-radius: 4px; }
+.tm-bubble--me { background: var(--trade-forest); color: #fff; border-bottom-right-radius: 4px; margin-left: auto; }
+.tm-bubble--system { max-width: 100%; background: transparent; color: var(--trade-text-2); text-align: center; font-size: 12px; }
+.tm-composer { display: flex; gap: 8px; align-items: center; padding: 8px 12px; border-top: 1px solid var(--trade-line); background: #fff; }
+
+/* ---------- Empty, skeleton -------------------------------------------------------- */
+.tm-empty { text-align: center; padding: 32px 24px; display: grid; justify-items: center; gap: 10px; }
+.tm-empty img { width: 140px; }
+.tm-skel { background: linear-gradient(90deg, #eceeed 0%, #f6f7f6 50%, #eceeed 100%); background-size: 200% 100%; animation: tm-shimmer 1.2s linear infinite; border-radius: 6px; }
+@keyframes tm-shimmer { to { background-position: -200% 0; } }
+
+/* ---------- Brand device: the bolt behind hero areas ------------------------------- */
+.tm-bolt { position: absolute; fill: var(--trade-signature); opacity: .2; pointer-events: none; }
+.tm-band { background: var(--trade-forest); color: #fff; position: relative; overflow: hidden; }
+
+/* ---------- Rails & grids ------------------------------------------------------------ */
+.tm-rail { display: flex; gap: var(--trade-gap-tile); overflow-x: auto; scroll-snap-type: x mandatory; padding: 4px var(--trade-inset-browse) 12px; scrollbar-width: none; }
+.tm-rail > * { scroll-snap-align: start; }
+.tm-grid-photo { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--trade-gap-photo); }
+.tm-sechead { display: flex; align-items: baseline; justify-content: space-between; padding: 0 var(--trade-inset-browse); }

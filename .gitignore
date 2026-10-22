@@ -1,0 +1,35 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.*
+
+# builds
+.next/
+out/
+build/
+dist/
+*.tsbuildinfo
+next-env.d.ts
+
+# env and secrets
+.env
+.env.*
+!.env.example
+
+# local data
+*.db
+*.db-journal
+*.sqlite
+uploads/
+/prisma/dev.db*
+
+# test output
+coverage/
+playwright-report/
+test-results/
+screenshots/
+
+# misc
+.DS_Store
+*.log
+.vercel

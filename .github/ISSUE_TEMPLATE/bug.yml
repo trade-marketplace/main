@@ -1,0 +1,25 @@
+name: Bug
+description: Something is broken or doesn't match the design.
+type: Bug
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What's wrong
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: How to see it
+      description: Steps, page/route, which role (customer / tradie / office), screen size.
+  - type: textarea
+    id: expected
+    attributes:
+      label: What should happen
+      description: Link the mockup or spec section if it's a design mismatch.
+  - type: textarea
+    id: shots
+    attributes:
+      label: Screenshots

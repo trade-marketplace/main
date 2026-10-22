@@ -1,0 +1,19 @@
+name: Idea
+description: Something we might build later. Ideas are not worked on until a founder moves them to Ready.
+labels: ["idea"]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: The idea
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why it might be worth it
+  - type: textarea
+    id: found
+    attributes:
+      label: Where it came from
+      description: The issue or PR you were working on when you thought of it.

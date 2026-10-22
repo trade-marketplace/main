@@ -1,0 +1,2602 @@
+{
+ "product": "Trade Marketplace web app — customers post any job free, accept one fixed price, someone local sorts it. Tradies/workers claim priced jobs, estimate from photos, or quote in person.",
+ "version": "1.0 (October 2026)",
+ "sources_of_truth": [
+  "Trade Marketplace Brand Guidelines.pdf",
+  "Trade Marketplace Front-End Build Guide.pdf (tokens, components, 390px mobile screens)",
+  "Trade Marketplace Web App Design Spec.pdf (this kit: desktop pages, inventory, effects, motion)",
+  "BUSINESS_PLAN.md (how a job works)"
+ ],
+ "modes": {
+  "customer": {
+   "attr": "data-mode=\"customer\"",
+   "colours": "Leaf/Lime",
+   "role": "CUSTOMER"
+  },
+  "trade": {
+   "attr": "data-mode=\"trade\"",
+   "colours": "Hi-Vis/Amber",
+   "role": "TRADIE"
+  },
+  "office": {
+   "attr": "data-mode=\"office\"",
+   "colours": "Forest/Mint",
+   "role": "ADMIN"
+  }
+ },
+ "categories": {
+  "main": [
+   "Electrical",
+   "Plumbing",
+   "Gas fitting",
+   "Construction"
+  ],
+  "catch_all": "Other",
+  "other_means": "Any kind of labour not in the main list (moving, cleaning, gardening, handyman, assembly, rubbish removal, anything). “Not sure” also goes to Other. Anyone can take Other jobs."
+ },
+ "job_kinds_for_tradies": {
+  "ready_to_claim": "Priced + paid; shows what the tradie earns; first in gets it",
+  "needs_estimate": "Blind estimate from photos (hours + materials), private",
+  "quote_bounty": "Gold $30 bounty, 24h: go and quote in person, send a fixed price; AI checks it; first dibs if accepted + fair (new status QUOTE_BOUNTY)"
+ },
+ "navigation": {
+  "customer": [
+   "Home /",
+   "My jobs /dashboard",
+   "Messages /messages",
+   "+ Post a job /jobs/new"
+  ],
+  "trade": [
+   "Find work /jobs (grid | map)",
+   "My work /dashboard",
+   "Earnings /earnings",
+   "Messages /messages"
+  ],
+  "office": [
+   "Queues /admin",
+   "All jobs /admin/jobs",
+   "Tradies /admin/tradies",
+   "Customers /admin/customers",
+   "Payouts /admin/payouts",
+   "Payments /admin/payments",
+   "Reviews /admin/reviews",
+   "Support /admin/support",
+   "Settings /admin/settings"
+  ]
+ },
+ "job_statuses": [
+  {
+   "server": "REVIEW",
+   "customer_label": "Getting your price",
+   "tradie_label": "Needs an estimate",
+   "office_queue": "To price"
+  },
+  {
+   "server": "QUOTE_BOUNTY (new)",
+   "customer_label": "Needs a quick look",
+   "tradie_label": "Quote bounty (gold)",
+   "office_queue": "AI pricing review"
+  },
+  {
+   "server": "PRICED",
+   "customer_label": "Price ready",
+   "tradie_label": "(hidden)",
+   "office_queue": "Waiting on customer"
+  },
+  {
+   "server": "BOOKABLE",
+   "customer_label": "Booked",
+   "tradie_label": "Ready to claim",
+   "office_queue": "Unclaimed (alert > 48h)"
+  },
+  {
+   "server": "ASSIGNED",
+   "customer_label": "Tradie confirmed",
+   "tradie_label": "On now / Message customer",
+   "office_queue": "In progress"
+  },
+  {
+   "server": "ASSIGNED + variation",
+   "customer_label": "Needs your OK",
+   "tradie_label": "Waiting on approval",
+   "office_queue": "Price extra work"
+  },
+  {
+   "server": "SUBMITTED",
+   "customer_label": "Please check",
+   "tradie_label": "Waiting sign-off",
+   "office_queue": "Sign-off (auto 48h)"
+  },
+  {
+   "server": "COMPLETED",
+   "customer_label": "Sorted",
+   "tradie_label": "Done · Queued / Paid",
+   "office_queue": "Payroll"
+  },
+  {
+   "server": "CANCEL_REVIEW",
+   "customer_label": "Cancel requested",
+   "tradie_label": "On hold",
+   "office_queue": "Cancellation"
+  },
+  {
+   "server": "CANCELLED",
+   "customer_label": "Cancelled",
+   "tradie_label": "(hidden)",
+   "office_queue": "Closed"
+  }
+ ],
+ "pages": [
+  {
+   "code": "A01",
+   "area": "Public site",
+   "mode": "customer",
+   "name": "Home / landing",
+   "route": "/",
+   "what": "Hero + “What needs doing?” search, how it works (3 steps), categories, popular jobs, why us (fixed price, checked tradies, no surprise bills), reviews, For tradies band, FAQ teaser, final CTA, footer",
+   "states": "Signed-out · signed-in redirects to app home · region not covered",
+   "priority": "P1",
+   "mockup": "Home / landing",
+   "mockup_key": "w-landing",
+   "notes": [
+    "Transparent site nav over the hero. After scrolling past the hero it turns solid Forest with a shadow (M06). “For tradies” in Amber.",
+    "Hero: 92px Display headline (M07 reveal), one search bar = the main action. Typing + Enter or “Get a price” opens Post a job with the text filled in. Location defaults from the browser (ask once) or IP; editable.",
+    "Example chips pre-fill the search. Trust row: three facts, no numbers we can’t back up yet.",
+    "Floating “price ready” card shows the product in one glance. Slight 2° tilt, floats 6px up/down slowly (3s loop, off with reduced motion).",
+    "How it works: 3 cards, lift on hover (M03). Copy never mentions estimates.",
+    "Categories: the main trades + “Other”, which means any kind of labour (moving, cleaning, gardening, handyman, assembly, rubbish…). Every tile starts Post a job with that type picked.",
+    "Why us: 3 promises + photo collage (photos zoom on hover, M03).",
+    "Reviews: real reviews only, pulled from the database once we have them. Until then, hide this section.",
+    "For tradies band in trade colours (Amber bolt) → /for-tradies.",
+    "FAQ accordion (M24) + repeat of the search box before the footer. Footer: 4 link columns, NZBN, socials."
+   ],
+   "motion": [
+    "M06",
+    "M07",
+    "M08",
+    "M03",
+    "M24",
+    "M01"
+   ]
+  },
+  {
+   "code": "A02",
+   "area": "Public site",
+   "mode": "customer",
+   "name": "How it works",
+   "route": "/how-it-works",
+   "what": "The 3 steps in detail for customers (no pricing machinery), what’s included, guarantees, FAQ, CTA",
+   "states": "Default",
+   "priority": "P1",
+   "mockup": "How it works",
+   "mockup_key": "w-how",
+   "notes": [
+    "Short Forest header (no search). Same site nav (active page underlined).",
+    "Each step: giant outlined number, short copy, a mini piece of real UI on the right. Rows rise in as they scroll into view (M01, once).",
+    "Customer-facing: no estimates, margins or pricing maths. Link to Help for the curious.",
+    "Ends with the same CTA band as the landing (not shown)."
+   ],
+   "motion": [
+    "M01",
+    "M03"
+   ]
+  },
+  {
+   "code": "A03",
+   "area": "Public site",
+   "mode": "customer",
+   "name": "For tradies",
+   "route": "/for-tradies",
+   "what": "Pitch to workers: jobs already priced, no lead fees, we do the paperwork. How it works for tradies, what you earn, requirements per trade, sign-up CTA, tradie FAQ",
+   "states": "Default (trade colours)",
+   "priority": "P1",
+   "mockup": "For tradies",
+   "mockup_key": "w-fortradies",
+   "notes": [
+    "Whole page in trade mode: Hi-Vis/Amber accents, Amber bolt. Hero CTA “Join as a tradie” → /signup/tradie.",
+    "Right side: floating job cards showing “You earn” + an “It’s yours” toast. Cards float gently (3s loop); headline reveals with M07.",
+    "Four reasons in plain tradie talk. Icons in trade tint.",
+    "Requirements box: the honest list. Licensed trades need their licence; “Other” work (any labour) needs ID only. Pull from the trade config.",
+    "Below (not shown): earnings example, FAQ for tradies, testimonials from tradies once real, final CTA, footer."
+   ],
+   "motion": [
+    "M07",
+    "M06",
+    "M03"
+   ]
+  },
+  {
+   "code": "A04",
+   "area": "Public site",
+   "mode": "customer",
+   "name": "Service pages (per trade)",
+   "route": "/services/[trade]",
+   "what": "SEO landing per trade incl. /services/other (“Anything else”): hero, common jobs, how it works, reviews, CTA",
+   "states": "Trade live · trade coming soon (waitlist)",
+   "priority": "P2",
+   "mockup": "Service page (template)",
+   "mockup_key": "w-service",
+   "notes": [
+    "One template for every trade, including /services/other (“Anything else”: moving, cleaning, gardening, assembly…), and later trade × city (A05). Content from the trade config + CMS.",
+    "Crumbs + H1 with trade and city for SEO. Same hero search, type pre-set to the trade.",
+    "Popular jobs grid: each tile starts Post a job with that job pre-filled.",
+    "If the trade isn’t live yet: hero says “Coming soon” and the search becomes a waitlist form (A07)."
+   ],
+   "motion": [
+    "M03",
+    "M08"
+   ]
+  },
+  {
+   "code": "A05",
+   "area": "Public site",
+   "mode": "customer",
+   "name": "Location pages (per city)",
+   "route": "/[trade]/[city]",
+   "what": "SEO: “Electricians in Invercargill”, local stats, suburbs covered, CTA. Same template as A04",
+   "states": "Covered · not covered",
+   "priority": "P3",
+   "mockup": null,
+   "mockup_key": null,
+   "notes": [],
+   "motion": []
+  },
+  {
+   "code": "A06",
+   "area": "Public site",
+   "mode": "customer",
+   "name": "Trust & safety",
+   "route": "/trust",
+   "what": "How tradies are checked, licences, CoC, insurance, payments held securely, what happens if something goes wrong, contact",
+   "states": "Default",
+   "priority": "P1",
+   "mockup": "Trust & safety",
+   "mockup_key": "w-trust",
+   "notes": [
+    "Plain-language trust page. Every claim must be true on launch day (check with Matt).",
+    "Bolt-flash illustration (M10 plays once on load).",
+    "Six promises as cards. Link each to its help article."
+   ],
+   "motion": [
+    "M10",
+    "M01"
+   ]
+  },
+  {
+   "code": "A07",
+   "area": "Public site",
+   "mode": "customer",
+   "name": "Not in your area yet",
+   "route": "/coming-soon",
+   "what": "Shown when an address is outside coverage: friendly message, waitlist email + suburb, share link",
+   "states": "Joined · already on list",
+   "priority": "P1",
+   "mockup": "Not in your area yet",
+   "mockup_key": "w-waitlist",
+   "notes": [
+    "Shown when an entered address is outside coverage (on landing, post a job step 3, or a service page). Never let them post a job we can’t do.",
+    "Suburb comes from the address they typed. Email + suburb saved to a waitlist table.",
+    "Success replaces nothing: a success banner appears under the form (M01) with a share link.",
+    "List of live areas from coverage settings (F14)."
+   ],
+   "motion": [
+    "M01",
+    "M14"
+   ]
+  },
+  {
+   "code": "A08",
+   "area": "Public site",
+   "mode": "customer",
+   "name": "About us",
+   "route": "/about",
+   "what": "Founders’ story (started 4 years ago), mission, team photos, press",
+   "states": "Default",
+   "priority": "P2",
+   "mockup": "About & contact",
+   "mockup_key": "w-about",
+   "notes": [
+    "About and Contact can be separate pages; same layout pattern. Real founder photos replace initials.",
+    "Contact form: topic select routes to the office support inbox (F13). Sending / sent / error states.",
+    "Signed-in users get pointed to their job thread so context isn’t lost."
+   ],
+   "motion": [
+    "M01"
+   ]
+  },
+  {
+   "code": "A09",
+   "area": "Public site",
+   "mode": "customer",
+   "name": "Contact",
+   "route": "/contact",
+   "what": "Form (topic, email, message), help-centre links, response time, business details (NZBN, address)",
+   "states": "Sending · sent · error",
+   "priority": "P1",
+   "mockup": "About & contact",
+   "mockup_key": "w-about",
+   "notes": [
+    "About and Contact can be separate pages; same layout pattern. Real founder photos replace initials.",
+    "Contact form: topic select routes to the office support inbox (F13). Sending / sent / error states.",
+    "Signed-in users get pointed to their job thread so context isn’t lost."
+   ],
+   "motion": [
+    "M01"
+   ]
+  },
+  {
+   "code": "A10",
+   "area": "Public site",
+   "mode": "customer",
+   "name": "Help centre home",
+   "route": "/help",
+   "what": "Search, topic cards (Customers, Tradies, Payments, Account), popular articles, contact",
+   "states": "Search results · no results",
+   "priority": "P1",
+   "mockup": "Help centre + article",
+   "mockup_key": "w-help",
+   "notes": [
+    "Help home (not shown) = big search + topic cards (Customers, Tradies, Payments, Account) + popular articles.",
+    "Article layout: left topic nav, readable column (max 680px, 17px/1.65), right “Still stuck?” + related.",
+    "Search suggests articles as you type (M08). No results → “Message us”.",
+    "“Was this helpful?” records a vote; No opens a one-line “What were you looking for?”.",
+    "This is where pricing is explained to the curious (“How is my price worked out?”), never in the main flow."
+   ],
+   "motion": [
+    "M08",
+    "M24"
+   ]
+  },
+  {
+   "code": "A11",
+   "area": "Public site",
+   "mode": "customer",
+   "name": "Help article",
+   "route": "/help/[slug]",
+   "what": "Breadcrumbs, article, “Was this helpful?” yes/no, related articles, contact",
+   "states": "Helpful voted",
+   "priority": "P1",
+   "mockup": "Help centre + article",
+   "mockup_key": "w-help",
+   "notes": [
+    "Help home (not shown) = big search + topic cards (Customers, Tradies, Payments, Account) + popular articles.",
+    "Article layout: left topic nav, readable column (max 680px, 17px/1.65), right “Still stuck?” + related.",
+    "Search suggests articles as you type (M08). No results → “Message us”.",
+    "“Was this helpful?” records a vote; No opens a one-line “What were you looking for?”.",
+    "This is where pricing is explained to the curious (“How is my price worked out?”), never in the main flow."
+   ],
+   "motion": [
+    "M08",
+    "M24"
+   ]
+  },
+  {
+   "code": "A12",
+   "area": "Public site",
+   "mode": "customer",
+   "name": "Public tradie profile",
+   "route": "/tradies/[id]",
+   "what": "Photo, first name, trade(s), region, verified badges, rating, jobs done, reviews",
+   "states": "No reviews · paused tradie (404)",
+   "priority": "P2",
+   "mockup": "Public tradie profile",
+   "mockup_key": "w-profile-public",
+   "notes": [
+    "First name + initial publicly. No phone, email or exact location.",
+    "Badges must match what the office actually checked, per trade.",
+    "Reviews newest first, 10 per page. Paused or removed tradies → 404."
+   ],
+   "motion": [
+    "M01"
+   ]
+  },
+  {
+   "code": "A13",
+   "area": "Public site",
+   "mode": "customer",
+   "name": "Terms of use (customers)",
+   "route": "/legal/terms",
+   "what": "Long-form legal template: sticky contents, sections, last updated",
+   "states": "—",
+   "priority": "P1",
+   "mockup": "Legal pages + cookie banner",
+   "mockup_key": "w-legal",
+   "notes": [
+    "One template for Terms, Tradie terms, Privacy, Cookies. Sticky contents on the left highlights the section in view.",
+    "“Short version” banner at the top of each, in plain English. Lawyer-approved text below.",
+    "Cookie banner: bottom-left card on first visit (rises in, M14). “Only essential” is as easy as “Accept all”. Settings opens a dialog with toggles.",
+    "Last-updated date + PDF download. Footer links to all legal pages."
+   ],
+   "motion": [
+    "M14",
+    "M13"
+   ]
+  },
+  {
+   "code": "A14",
+   "area": "Public site",
+   "mode": "customer",
+   "name": "Tradie terms",
+   "route": "/legal/tradie-terms",
+   "what": "Same template",
+   "states": "—",
+   "priority": "P1",
+   "mockup": "Legal pages + cookie banner",
+   "mockup_key": "w-legal",
+   "notes": [
+    "One template for Terms, Tradie terms, Privacy, Cookies. Sticky contents on the left highlights the section in view.",
+    "“Short version” banner at the top of each, in plain English. Lawyer-approved text below.",
+    "Cookie banner: bottom-left card on first visit (rises in, M14). “Only essential” is as easy as “Accept all”. Settings opens a dialog with toggles.",
+    "Last-updated date + PDF download. Footer links to all legal pages."
+   ],
+   "motion": [
+    "M14",
+    "M13"
+   ]
+  },
+  {
+   "code": "A15",
+   "area": "Public site",
+   "mode": "customer",
+   "name": "Privacy policy",
+   "route": "/legal/privacy",
+   "what": "Same template",
+   "states": "—",
+   "priority": "P1",
+   "mockup": "Legal pages + cookie banner",
+   "mockup_key": "w-legal",
+   "notes": [
+    "One template for Terms, Tradie terms, Privacy, Cookies. Sticky contents on the left highlights the section in view.",
+    "“Short version” banner at the top of each, in plain English. Lawyer-approved text below.",
+    "Cookie banner: bottom-left card on first visit (rises in, M14). “Only essential” is as easy as “Accept all”. Settings opens a dialog with toggles.",
+    "Last-updated date + PDF download. Footer links to all legal pages."
+   ],
+   "motion": [
+    "M14",
+    "M13"
+   ]
+  },
+  {
+   "code": "A16",
+   "area": "Public site",
+   "mode": "customer",
+   "name": "Cookie notice + banner",
+   "route": "/legal/cookies",
+   "what": "Banner on first visit: Accept / Only essential / Settings; settings dialog",
+   "states": "First visit · choices saved",
+   "priority": "P1",
+   "mockup": "Legal pages + cookie banner",
+   "mockup_key": "w-legal",
+   "notes": [
+    "One template for Terms, Tradie terms, Privacy, Cookies. Sticky contents on the left highlights the section in view.",
+    "“Short version” banner at the top of each, in plain English. Lawyer-approved text below.",
+    "Cookie banner: bottom-left card on first visit (rises in, M14). “Only essential” is as easy as “Accept all”. Settings opens a dialog with toggles.",
+    "Last-updated date + PDF download. Footer links to all legal pages."
+   ],
+   "motion": [
+    "M14",
+    "M13"
+   ]
+  },
+  {
+   "code": "B01",
+   "area": "Sign up & log in",
+   "mode": "customer",
+   "name": "Log in",
+   "route": "/login",
+   "what": "Split layout: brand panel left, form right (email, password, show/hide, forgot, log in, sign up link)",
+   "states": "Error · locked (too many tries) · loading",
+   "priority": "P1",
+   "mockup": "Log in",
+   "mockup_key": "w-login",
+   "notes": [
+    "Split layout ≥1024: Forest brand panel (bolt, illustration, line) left; form centred in the right half, max 440px. Under 1024: the mobile log-in screen.",
+    "Underline fields (original style). Error shown under the fields after submit, keeps the email, clears the password. After 5 tries: “Too many tries. Wait 10 minutes or reset your password.”",
+    "“Keep me logged in” = 30-day session, else browser session.",
+    "Log in button shown in its hover state (brightness 1.06, M04). Enter submits.",
+    "After log-in: back to the page they came from (?next=), else their home. Mode set from role."
+   ],
+   "motion": [
+    "M04",
+    "M01"
+   ]
+  },
+  {
+   "code": "B02",
+   "area": "Sign up & log in",
+   "mode": "customer",
+   "name": "Sign up · choose",
+   "route": "/signup",
+   "what": "“I need a job done” / “I’m a tradie” cards",
+   "states": "—",
+   "priority": "P1",
+   "mockup": "Sign up · choose + details",
+   "mockup_key": "w-signup",
+   "notes": [
+    "Desktop puts the role choice and the details on one screen. Choosing “I’m a tradie” swaps the right side to the tradie form and the page to trade colours (cross-fade 200ms).",
+    "Choice cards: hover = light fill (shown on the tradie card). Selected = action border + tint.",
+    "Password strength bar (4 segments) + plain hint. No rules list unless they fail one.",
+    "Email already used → inline error with “Log in instead?” link.",
+    "On success → Verify email (B05). If they came from “Post it”, the job posts right after verifying."
+   ],
+   "motion": [
+    "M04",
+    "M01"
+   ]
+  },
+  {
+   "code": "B03",
+   "area": "Sign up & log in",
+   "mode": "customer",
+   "name": "Sign up · customer details",
+   "route": "/signup/customer",
+   "what": "Name, email, mobile, password, terms",
+   "states": "Email taken · weak password",
+   "priority": "P1",
+   "mockup": "Sign up · choose + details",
+   "mockup_key": "w-signup",
+   "notes": [
+    "Desktop puts the role choice and the details on one screen. Choosing “I’m a tradie” swaps the right side to the tradie form and the page to trade colours (cross-fade 200ms).",
+    "Choice cards: hover = light fill (shown on the tradie card). Selected = action border + tint.",
+    "Password strength bar (4 segments) + plain hint. No rules list unless they fail one.",
+    "Email already used → inline error with “Log in instead?” link.",
+    "On success → Verify email (B05). If they came from “Post it”, the job posts right after verifying."
+   ],
+   "motion": [
+    "M04",
+    "M01"
+   ]
+  },
+  {
+   "code": "B04",
+   "area": "Sign up & log in",
+   "mode": "customer",
+   "name": "Sign up · tradie details",
+   "route": "/signup/tradie",
+   "what": "Name, email, mobile, password, trades (multi, incl. Other / general labour), licence numbers for licensed trades, work area",
+   "states": "Licence format error",
+   "priority": "P1",
+   "mockup": "Sign up · tradie details",
+   "mockup_key": "w-signup-trade",
+   "notes": [
+    "Trade mode: Hi-Vis buttons, Amber signature, #9E4A00 links, Amber bolt on the left.",
+    "One licence field appears per licensed trade picked (label + format from trade config). “Other / general labour” needs no licence: we check photo ID instead.",
+    "Area: suburb autocomplete + radius (10/25/50 km).",
+    "Honest about verification: can browse now, claim after checking.",
+    "Next: Verify email → Setup checklist (D01)."
+   ],
+   "motion": [
+    "M01"
+   ]
+  },
+  {
+   "code": "B05",
+   "area": "Sign up & log in",
+   "mode": "customer",
+   "name": "Verify email",
+   "route": "/verify",
+   "what": "Check your inbox (resend with cooldown) → verified ✓ → continue",
+   "states": "Expired link · already verified",
+   "priority": "P1",
+   "mockup": "Verify email · reset password",
+   "mockup_key": "w-verify",
+   "notes": [
+    "Left: verify-email holding page. Resend button disabled with a live countdown (60s). Once verified (link clicked in any tab), this page moves on by itself (poll every 5s).",
+    "Right: reset password (from /recovery link). Two fields, match check on blur.",
+    "Expired/invalid link state shown as a banner with a one-tap fix.",
+    "Both pages are simple centred cards on white with no app nav (the user isn’t fully in yet)."
+   ],
+   "motion": [
+    "M01"
+   ]
+  },
+  {
+   "code": "B06",
+   "area": "Sign up & log in",
+   "mode": "customer",
+   "name": "Forgot / reset password",
+   "route": "/recovery",
+   "what": "Request → sent → new password → done",
+   "states": "Expired · invalid link",
+   "priority": "P1",
+   "mockup": "Verify email · reset password",
+   "mockup_key": "w-verify",
+   "notes": [
+    "Left: verify-email holding page. Resend button disabled with a live countdown (60s). Once verified (link clicked in any tab), this page moves on by itself (poll every 5s).",
+    "Right: reset password (from /recovery link). Two fields, match check on blur.",
+    "Expired/invalid link state shown as a banner with a one-tap fix.",
+    "Both pages are simple centred cards on white with no app nav (the user isn’t fully in yet)."
+   ],
+   "motion": [
+    "M01"
+   ]
+  },
+  {
+   "code": "B07",
+   "area": "Sign up & log in",
+   "mode": "customer",
+   "name": "Session expired",
+   "route": "(dialog)",
+   "what": "Dialog over the page: “You’ve been logged out” → log in again, keeps the page and any draft",
+   "states": "—",
+   "priority": "P1",
+   "mockup": "Dialogs",
+   "mockup_key": "w-modals",
+   "notes": [
+    "Decline price (C09): reasons optional, primary is the decline itself. “Saying no is free.”",
+    "Cancel job (C17): before payment = simple confirm, free. After payment = request with reason (Danger button), office reviews.",
+    "Session expired (B07): dialog over the page; logging in returns to the same page; drafts kept.",
+    "All dialogs: 16px radius, scrim 50%, M13 animation, focus trapped, Esc closes (except session expired), focus returns to the trigger. Max one dialog at a time."
+   ],
+   "motion": [
+    "M13"
+   ]
+  },
+  {
+   "code": "B08",
+   "area": "Sign up & log in",
+   "mode": "customer",
+   "name": "Two-step verification",
+   "route": "/login/2fa",
+   "what": "Code from SMS/app. Office accounts required, others optional",
+   "states": "Wrong code · resend",
+   "priority": "P3",
+   "mockup": null,
+   "mockup_key": null,
+   "notes": [],
+   "motion": []
+  },
+  {
+   "code": "C01",
+   "area": "Customer app",
+   "mode": "customer",
+   "name": "Customer home",
+   "route": "/ (signed in)",
+   "what": "Big “What needs doing?” box, jobs needing you (action cards), active jobs, categories, recent",
+   "states": "New user (empty) · has jobs",
+   "priority": "P1",
+   "mockup": "Customer home",
+   "mockup_key": "w-c-home",
+   "notes": [
+    "App nav (Forest, 68px): Home · My jobs · Messages, search (press / to focus), “Post a job” button, bell, avatar menu. Active tab has a Lime bar that slides (M16).",
+    "Greeting + one big “What needs doing?” box. Enter → Post a job with text.",
+    "Category tiles straddle the band edge (brand device). Hover lift (M03).",
+    "“Needs you” = only jobs waiting on the customer (price ready, please check, extra work). Card shown in hover state. Hidden when empty.",
+    "“In progress” = everything else active. New users see an empty state with the 3 steps instead.",
+    "Right column: popular job chips (pre-fill search) and a trust card."
+   ],
+   "motion": [
+    "M16",
+    "M03",
+    "M01",
+    "M15"
+   ]
+  },
+  {
+   "code": "C02",
+   "area": "Customer app",
+   "mode": "customer",
+   "name": "Post a job · describe",
+   "route": "/jobs/new",
+   "what": "Wizard: steps rail left, form centre, live summary card right. Description + type: main trades + Other (any labour: moving, cleaning, gardening, assembly…)",
+   "states": "Draft restored",
+   "priority": "P1",
+   "mockup": "Post a job · describe",
+   "mockup_key": "w-c-post1",
+   "notes": [
+    "Full-page wizard, focused: slim nav with “Draft saved” + Save & exit. No main nav while posting.",
+    "Steps rail: done = action tick, now = tint. Clicking a done step jumps back.",
+    "Type guessed from the words typed (simple keyword match), always editable. Main trades + Other: Other covers any labour, and “not sure” goes there too (the office re-types it if needed).",
+    "Live summary on the right fills in as they go. Free-to-post reassurance.",
+    "Draft autosaves (sessionStorage now, server draft when signed in)."
+   ],
+   "motion": [
+    "M01",
+    "M11"
+   ]
+  },
+  {
+   "code": "C03",
+   "area": "Customer app",
+   "mode": "customer",
+   "name": "Post a job · photos",
+   "route": "/jobs/new?step=photos",
+   "what": "Drag-and-drop zone + grid, 1–6 photos, safety tip",
+   "states": "Uploading · failed · too big",
+   "priority": "P1",
+   "mockup": "Post a job · photos",
+   "mockup_key": "w-c-post2",
+   "notes": [
+    "Drop zone shown in its drag-over state (M26): solid action border + tint.",
+    "Each photo uploads straight away: progress ring (M18), × to remove (with Undo toast), failed = red outline + Retry.",
+    "Photos can be reordered by drag; the first is the cover.",
+    "Next waits for uploads to finish (button shows “Uploading 1…”)."
+   ],
+   "motion": [
+    "M26",
+    "M18",
+    "M14"
+   ]
+  },
+  {
+   "code": "C04",
+   "area": "Customer app",
+   "mode": "customer",
+   "name": "Post a job · where & when",
+   "route": "/jobs/new?step=where",
+   "what": "Address autocomplete (coverage area only) + time windows grid (next 7 days × morning/afternoon/evening), Any time, ASAP, access notes",
+   "states": "Outside coverage → A07",
+   "priority": "P1",
+   "mockup": "Post a job · where & when (time windows)",
+   "mockup_key": "w-c-post3",
+   "notes": [
+    "Customers give time windows instead of messaging back and forth (decision: avoid direct messages where possible).",
+    "Grid of the next 7 days × morning / afternoon / evening. Tap to toggle; “Any time” fills all; “ASAP” flags urgency (raises the job in tradie pings).",
+    "Tradies then book one window (phone screen “Pick a time”). Customers can change windows from the job page until booked.",
+    "Address autocomplete is limited to the coverage area (Invercargill at launch); outside → waitlist page."
+   ],
+   "motion": [
+    "M01",
+    "M04"
+   ]
+  },
+  {
+   "code": "C05",
+   "area": "Customer app",
+   "mode": "customer",
+   "name": "Post a job · check & post",
+   "route": "/jobs/new?step=review",
+   "what": "Summary with edit links, hero “Post it”; signed-out → sign-up dialog",
+   "states": "Posting · error",
+   "priority": "P1",
+   "mockup": "Post a job · check & post (+ sign-up gate)",
+   "mockup_key": "w-c-post4",
+   "notes": [
+    "Review: every section with Edit (jumps to that step, keeps everything).",
+    "“Post it” is the hero CTA (signature colour, Display type). Shown in hover state: lifts 1px + shadow (M04).",
+    "Signed out? “Post it” opens the sign-up dialog (same fields as B03, plus “Log in instead”). After sign-up + verify, the job posts automatically.",
+    "Posting: button spinner, page locked. Error: banner at top, nothing lost."
+   ],
+   "motion": [
+    "M04",
+    "M13"
+   ]
+  },
+  {
+   "code": "C06",
+   "area": "Customer app",
+   "mode": "customer",
+   "name": "Posted (success)",
+   "route": "/jobs/[id]?posted=1",
+   "what": "Bolt-flash success, tracker, “we’ll let you know”, notification opt-in",
+   "states": "—",
+   "priority": "P1",
+   "mockup": "Posted (success)",
+   "mockup_key": "w-c-posted",
+   "notes": [
+    "The bolt flash (M10): circle pops, tick draws, sparks burst, glow pulses. Once only.",
+    "“Posted.” in Display. Then the tracker (step 2 is “now”).",
+    "Ask for browser notification permission here, once, with our own card first (never the raw browser prompt on page load).",
+    "Also sends a confirmation email (G05)."
+   ],
+   "motion": [
+    "M10",
+    "M11"
+   ]
+  },
+  {
+   "code": "C07",
+   "area": "Customer app",
+   "mode": "customer",
+   "name": "Job · getting your price",
+   "route": "/jobs/[id]",
+   "what": "Gallery + details left, sticky status card right (tracker, edit, cancel free)",
+   "states": "Taking > 24h banner",
+   "priority": "P1",
+   "mockup": "Job · getting your price",
+   "mockup_key": "w-c-waiting",
+   "notes": [
+    "Desktop job page: left = gallery (click opens full-screen viewer, arrow keys), job details, info cards. Right = sticky status card (420px).",
+    "Status card: pill, one line of what’s happening, actions, tracker. Same card in every state; only its middle changes.",
+    "Editing is allowed until priced. Cancel is free here (simple confirm).",
+    "Gallery photo zooms slightly on hover (M03)."
+   ],
+   "motion": [
+    "M02",
+    "M03",
+    "M25"
+   ]
+  },
+  {
+   "code": "C08",
+   "area": "Customer app",
+   "mode": "customer",
+   "name": "Job · price ready",
+   "route": "/jobs/[id]",
+   "what": "Price reveal card: big price, inclusions, Accept & pay, No thanks",
+   "states": "—",
+   "priority": "P1",
+   "mockup": "Job · price ready",
+   "mockup_key": "w-c-price",
+   "notes": [
+    "The most important screen. Price reveal (M09): Forest block wipes in, $0 → $372.00 counts up, Lime underline draws, ticks appear one by one. Once per job.",
+    "Price is 52px Display, tabular numbers, “incl. GST” always.",
+    "3 reassurance ticks (wording per trade).",
+    "Hero “Accept & pay” → Checkout. “No thanks” → decline dialog (C09).",
+    "Also announced: email + push “Your price for Sub wiring is ready.”"
+   ],
+   "motion": [
+    "M09",
+    "M04"
+   ]
+  },
+  {
+   "code": "C09",
+   "area": "Customer app",
+   "mode": "customer",
+   "name": "Decline price dialog",
+   "route": "(dialog)",
+   "what": "Optional reasons, confirm “No thanks”, job closed free",
+   "states": "—",
+   "priority": "P1",
+   "mockup": "Dialogs",
+   "mockup_key": "w-modals",
+   "notes": [
+    "Decline price (C09): reasons optional, primary is the decline itself. “Saying no is free.”",
+    "Cancel job (C17): before payment = simple confirm, free. After payment = request with reason (Danger button), office reviews.",
+    "Session expired (B07): dialog over the page; logging in returns to the same page; drafts kept.",
+    "All dialogs: 16px radius, scrim 50%, M13 animation, focus trapped, Esc closes (except session expired), focus returns to the trigger. Max one dialog at a time."
+   ],
+   "motion": [
+    "M13"
+   ]
+  },
+  {
+   "code": "C10",
+   "area": "Customer app",
+   "mode": "customer",
+   "name": "Checkout",
+   "route": "/pay/[paymentId]",
+   "what": "Order summary, payment method, card fields (provider), pay button, TEST banner",
+   "states": "Declined · 3-D Secure · processing",
+   "priority": "P1",
+   "mockup": "Checkout",
+   "mockup_key": "w-c-checkout",
+   "notes": [
+    "Focused checkout: slim nav, no distractions. TEST banner until real payments are switched on by both founders.",
+    "Card fields are the payment provider’s hosted fields (Stripe/Windcave), styled with our field tokens. Apple Pay / Google Pay buttons where supported.",
+    "Order summary sticky on the right. Pay button repeats the total.",
+    "States: processing (button spinner, page locked), 3-D Secure (provider dialog), declined (alert banner at top, keep method)."
+   ],
+   "motion": [
+    "M04"
+   ]
+  },
+  {
+   "code": "C11",
+   "area": "Customer app",
+   "mode": "customer",
+   "name": "Payment success",
+   "route": "/pay/[id]/done",
+   "what": "Bolt flash, “Paid. You’re booked.”, receipt link, what happens next",
+   "states": "Failed → back to checkout",
+   "priority": "P1",
+   "mockup": "Payment success",
+   "mockup_key": "w-c-paid",
+   "notes": [
+    "Bolt flash (M10) + plain message. Receipt also emailed (toast confirms, M14).",
+    "If payment fails we never show this page: back to checkout with the error.",
+    "Job page now shows “Booked · finding someone local”."
+   ],
+   "motion": [
+    "M10",
+    "M14"
+   ]
+  },
+  {
+   "code": "C12",
+   "area": "Customer app",
+   "mode": "customer",
+   "name": "Job · booked / tradie confirmed",
+   "route": "/jobs/[id]",
+   "what": "Tradie card, message, tracker, receipt",
+   "states": "Finding someone · confirmed",
+   "priority": "P1",
+   "mockup": "Job · tradie confirmed",
+   "mockup_key": "w-c-assigned",
+   "notes": [
+    "Tradie card links to their public profile. “Licensed electrician” only when checked for that trade.",
+    "Messages preview inline on the job page (latest 3). Full thread in Messages.",
+    "Tracker collapses to 3 steps once paid. Status pill change animates (M25), tracker fills (M11).",
+    "⋯ menu (top of card, not shown): Request to cancel, Report a problem, Download receipt."
+   ],
+   "motion": [
+    "M25",
+    "M11",
+    "M19"
+   ]
+  },
+  {
+   "code": "C13",
+   "area": "Customer app",
+   "mode": "customer",
+   "name": "Extra work approval",
+   "route": "(dialog + page state)",
+   "what": "Photos, description, extra cost, Approve & pay / Decline",
+   "states": "Approved · declined",
+   "priority": "P1",
+   "mockup": "Extra work approval",
+   "mockup_key": "w-c-extra",
+   "notes": [
+    "Opens automatically when they land on the job (from email/push) and from the “Needs your OK” card.",
+    "Photos are required from the tradie; click to enlarge.",
+    "Approve → same checkout for the extra amount. Decline → small confirm, tradie notified.",
+    "Dialog M13. Focus starts on the heading, not the Approve button (no accidental Enter)."
+   ],
+   "motion": [
+    "M13"
+   ]
+  },
+  {
+   "code": "C14",
+   "area": "Customer app",
+   "mode": "customer",
+   "name": "Job · please check (sign-off)",
+   "route": "/jobs/[id]",
+   "what": "Evidence (CoC/photos), “Yes, all sorted” / “Something’s not right”, 48h note",
+   "states": "Auto-completed",
+   "priority": "P1",
+   "mockup": "Please check + review",
+   "mockup_key": "w-c-signoff",
+   "notes": [
+    "Evidence first: CoC (electrical) or photos (other trades). View opens the PDF in a new tab.",
+    "Rating inline: stars (signature colour) + quick tags; a comment box appears after choosing stars.",
+    "“Yes, all sorted” → bolt flash “Sorted.” + review saved. “Something’s not right” → report form (C16), pauses auto-release.",
+    "Countdown is real: show “46h left” when under 48h."
+   ],
+   "motion": [
+    "M10",
+    "M23"
+   ]
+  },
+  {
+   "code": "C15",
+   "area": "Customer app",
+   "mode": "customer",
+   "name": "Leave a review",
+   "route": "(dialog)",
+   "what": "Stars, quick tags, comment, post",
+   "states": "Posted · edit within 7 days",
+   "priority": "P1",
+   "mockup": "Please check + review",
+   "mockup_key": "w-c-signoff",
+   "notes": [
+    "Evidence first: CoC (electrical) or photos (other trades). View opens the PDF in a new tab.",
+    "Rating inline: stars (signature colour) + quick tags; a comment box appears after choosing stars.",
+    "“Yes, all sorted” → bolt flash “Sorted.” + review saved. “Something’s not right” → report form (C16), pauses auto-release.",
+    "Countdown is real: show “46h left” when under 48h."
+   ],
+   "motion": [
+    "M10",
+    "M23"
+   ]
+  },
+  {
+   "code": "C16",
+   "area": "Customer app",
+   "mode": "customer",
+   "name": "Report a problem",
+   "route": "/jobs/[id]/problem",
+   "what": "Topic, details, photos; pauses auto-release",
+   "states": "Sent",
+   "priority": "P1",
+   "mockup": null,
+   "mockup_key": null,
+   "notes": [],
+   "motion": []
+  },
+  {
+   "code": "C17",
+   "area": "Customer app",
+   "mode": "customer",
+   "name": "Cancel job dialog",
+   "route": "(dialog)",
+   "what": "Before payment: free cancel. After: request (office reviews)",
+   "states": "Requested",
+   "priority": "P1",
+   "mockup": "Dialogs",
+   "mockup_key": "w-modals",
+   "notes": [
+    "Decline price (C09): reasons optional, primary is the decline itself. “Saying no is free.”",
+    "Cancel job (C17): before payment = simple confirm, free. After payment = request with reason (Danger button), office reviews.",
+    "Session expired (B07): dialog over the page; logging in returns to the same page; drafts kept.",
+    "All dialogs: 16px radius, scrim 50%, M13 animation, focus trapped, Esc closes (except session expired), focus returns to the trigger. Max one dialog at a time."
+   ],
+   "motion": [
+    "M13"
+   ]
+  },
+  {
+   "code": "C18",
+   "area": "Customer app",
+   "mode": "customer",
+   "name": "My jobs",
+   "route": "/dashboard",
+   "what": "Tabs Active/Done/Cancelled, search, list/cards, status pills",
+   "states": "Empty",
+   "priority": "P1",
+   "mockup": "My jobs",
+   "mockup_key": "w-c-myjobs",
+   "notes": [
+    "Desktop = table; mobile = cards. Rows sorted: needs you first, then newest.",
+    "Tabs Active / Done / Cancelled (M16) + search (title, job number).",
+    "Row hover tint (shown on row 1). Whole row clicks through; the button is the main next step.",
+    "Empty states per tab (e.g. Done: “Nothing finished yet.”)."
+   ],
+   "motion": [
+    "M16",
+    "M15",
+    "M01"
+   ]
+  },
+  {
+   "code": "C19",
+   "area": "Customer app",
+   "mode": "customer",
+   "name": "Payments & receipts",
+   "route": "/profile/payments",
+   "what": "Table of payments/refunds, download invoice",
+   "states": "Empty",
+   "priority": "P1",
+   "mockup": "Payments & invoice",
+   "mockup_key": "w-c-receipts",
+   "notes": [
+    "Payments list (Account → Payments): every payment and refund. Selected row shows its invoice on the right (desktop); separate page on mobile.",
+    "GST-compliant tax invoice: our GST number, date, description, GST amount.",
+    "Print uses a print stylesheet: white background, no nav, A4. PDF download matches.",
+    "Refunds: negative amount + Refunded pill."
+   ],
+   "motion": [
+    "M01"
+   ]
+  },
+  {
+   "code": "C20",
+   "area": "Customer app",
+   "mode": "customer",
+   "name": "Invoice / receipt",
+   "route": "/receipts/[jobId]",
+   "what": "Printable tax invoice, download PDF, print styles",
+   "states": "—",
+   "priority": "P1",
+   "mockup": "Payments & invoice",
+   "mockup_key": "w-c-receipts",
+   "notes": [
+    "Payments list (Account → Payments): every payment and refund. Selected row shows its invoice on the right (desktop); separate page on mobile.",
+    "GST-compliant tax invoice: our GST number, date, description, GST amount.",
+    "Print uses a print stylesheet: white background, no nav, A4. PDF download matches.",
+    "Refunds: negative amount + Refunded pill."
+   ],
+   "motion": [
+    "M01"
+   ]
+  },
+  {
+   "code": "C22",
+   "area": "Customer app",
+   "mode": "customer",
+   "name": "Job · needs a $30 quick look",
+   "route": "/jobs/[id] · QUOTE_BOUNTY",
+   "what": "AI can’t price from photos/estimates: book a $30 quick look (comes off the price if they go ahead), pick windows, then normal price flow. New status QUOTE_BOUNTY",
+   "states": "Booked · visited → price ready · declined",
+   "priority": "P2",
+   "mockup": "Job · needs a $30 quick look",
+   "mockup_key": "w-c-sitevisit",
+   "notes": [
+    "Shown when the Trade Marketplace AI can’t settle a price from the photos and estimates. New status needed in the code (QUOTE_BOUNTY).",
+    "Plain words, no machinery: “hard to price from photos… pop round… one fixed price”.",
+    "Customer picks times that suit; the tradie books one of them (tradie map, site visit job).",
+    "Decided: $30, paid by the customer, comes off the final price if they go ahead. On the tradie side it appears as a gold quote bounty for 24h.",
+    "After the visit the flow carries on as normal: price ready → accept & pay → sorted."
+   ],
+   "motion": [
+    "M25",
+    "M11"
+   ]
+  },
+  {
+   "code": "C21",
+   "area": "Customer app",
+   "mode": "customer",
+   "name": "Saved addresses",
+   "route": "/profile/addresses",
+   "what": "List, add/edit dialog, default",
+   "states": "Empty",
+   "priority": "P2",
+   "mockup": null,
+   "mockup_key": null,
+   "notes": [],
+   "motion": []
+  },
+  {
+   "code": "D01",
+   "area": "Tradie app",
+   "mode": "trade",
+   "name": "Tradie home · setup checklist",
+   "route": "/jobs (first visit)",
+   "what": "New tradies: checklist (verify email, licence, photo, bank & IRD, work area, alerts) + progress; then becomes the job board",
+   "states": "Pending verification",
+   "priority": "P1",
+   "mockup": "Tradie home · setup checklist",
+   "mockup_key": "w-t-onboard",
+   "notes": [
+    "First visits land here until setup is complete; then /jobs becomes the job board. A slim “Finish setup (4/6)” banner stays on the board until done.",
+    "Progress bar + checklist. Done items struck through; “Checking” pill while the office verifies.",
+    "Each “Add” opens the relevant settings page and returns here.",
+    "Right: honest “while you wait” (estimates allowed before verification) + 4-step explainer."
+   ],
+   "motion": [
+    "M11",
+    "M03",
+    "M01"
+   ]
+  },
+  {
+   "code": "D02",
+   "area": "Tradie app",
+   "mode": "trade",
+   "name": "Job board · list",
+   "route": "/jobs",
+   "what": "Filters sidebar, tabs Ready to claim / Needs estimate, photo grid, sort",
+   "states": "Empty area · not verified",
+   "priority": "P1",
+   "mockup": "Job board · list",
+   "mockup_key": "w-t-board",
+   "notes": [
+    "App nav in trade mode: “Tradie” flag, Find work · My work · Earnings · Messages. Amber active bar.",
+    "Filters sidebar (240px). Trades not verified are shown but disabled with the reason. Filters live in the URL.",
+    "Grid/Map toggle (segmented, M16). Sort: Nearest, Newest, Highest pay.",
+    "Photo tiles keep the source look; Amber tag shows what they earn; white “Needs estimate” tag otherwise. Hover lift + photo zoom (M03), saved = filled bookmark (M23).",
+    "Pagination: infinite scroll with skeleton tiles (M15). New jobs while browsing: “3 new jobs” pill at the top, click to load."
+   ],
+   "motion": [
+    "M03",
+    "M15",
+    "M16",
+    "M23"
+   ]
+  },
+  {
+   "code": "D03",
+   "area": "Tradie app",
+   "mode": "trade",
+   "name": "Job board · map (desktop)",
+   "route": "/jobs?view=map",
+   "what": "Uber-style: list left, map right. 3 pin kinds: ready to claim (what you earn), needs an estimate (photos), needs a site visit (in person). Filter chips with counts, legend, hover row↔pin",
+   "states": "No location permission · nothing in view",
+   "priority": "P1",
+   "mockup": "Job board · map (desktop)",
+   "mockup_key": "w-t-map",
+   "notes": [
+    "Uber-style map of every job near you, three kinds: Forest “$259” = ready to claim (what you earn); white “Estimate” + camera = quote from photos; GOLD “$30 · 17h” = quote bounty (go and quote in person).",
+    "Quick filter chips with live counts. The Bounty chip is gold too. Same filters as the grid; state in the URL.",
+    "Hover a row → its pin grows with a signature ring (and the reverse). Click a pin → preview card; click card → job page (M21).",
+    "Legend card bottom-left so the pin types are obvious on first use. Dismissible; remembered per user.",
+    "Bounty card: gold outline, countdown ring (bounties expire 24h after they’re created), $30 for an in-person quote, “Claim bounty”. Gold pins shimmer every few seconds (M27): it should feel like a game.",
+    "“Other” jobs (any labour) appear like any other trade, labelled Other. Anyone can take Other jobs."
+   ],
+   "motion": [
+    "M21",
+    "M27",
+    "M16"
+   ]
+  },
+  {
+   "code": "D18",
+   "area": "Tradie app",
+   "mode": "trade",
+   "name": "Job map (phone)",
+   "route": "/jobs?view=map",
+   "what": "Full-screen map, “You’re available” switch, floating chips (All · Claim · Bounty · Estimate), gold bounty pins, bottom sheet with swipeable job cards",
+   "states": "Available on/off · no jobs in view",
+   "priority": "P1",
+   "mockup": "Map · nearby jobs",
+   "mockup_key": "m-map",
+   "notes": [
+    "Full-screen map, like Uber. Blue dot = you. Pins: Forest “$259” = ready to claim (what you earn); white + camera = quote from photos; GOLD “$30 · 17h” = quote bounty.",
+    "Gold = easy money. Bounties shimmer (M27), sort first in the sheet, and have their own chip. It should feel like a game.",
+    "“You’re available” switch: on = pinged about new jobs and bounties nearby. Off = browse quietly.",
+    "Bottom sheet peeks with swipeable job cards. Swiping centres the pin; tapping a pin scrolls to its card (M21). Drag up for the full list."
+   ],
+   "motion": [
+    "M21",
+    "M14"
+   ]
+  },
+  {
+   "code": "D19",
+   "area": "Tradie app",
+   "mode": "trade",
+   "name": "Quote bounty (quote in person)",
+   "route": "/jobs/[id] · QUOTE_BOUNTY",
+   "what": "Gold $30 bounty, 24h countdown, Claim bounty → pick a customer window → visit → send fixed price; AI checks it; first dibs if accepted + fair, ignored if way off",
+   "states": "Claimed · expired · price sent · ignored",
+   "priority": "P2",
+   "mockup": "Quote bounty (sheet up)",
+   "mockup_key": "m-bounty",
+   "notes": [
+    "Triggered when the Trade Marketplace AI can’t settle a price from the photos and estimates: a $30 bounty appears on the map for 24h.",
+    "Anyone good can claim it; one person at a time. After claiming, pick one of the customer’s windows to visit (no messaging needed).",
+    "After the visit, send a fixed price. The AI checks it against the other estimates and its own prediction.",
+    "If the price is accepted and fair, the quoter gets first dibs on the job. Way off (e.g. $1,200 on a $300 job): it’s ignored and the job opens to everyone.",
+    "Countdown ring shrinks to 0 (M27). Expired → the office decides."
+   ],
+   "motion": [
+    "M21",
+    "M14"
+   ]
+  },
+  {
+   "code": "D20",
+   "area": "Tradie app",
+   "mode": "trade",
+   "name": "New job & bounty ping (when available)",
+   "route": "(in-app + push)",
+   "what": "Card over the map: distance, what you earn, time left (bounties gold), See / Skip. Quiet hours",
+   "states": "Queued pings",
+   "priority": "P2",
+   "mockup": "New job ping (available)",
+   "mockup_key": "m-ping",
+   "notes": [
+    "When “available” is on, new jobs and bounties near you pop in as a card (M14/M20) and as a push when the app is closed.",
+    "Shows what you earn, how far and the time left. Bounty pings are gold.",
+    "Skip hides it from your pings (not from the map). One ping at a time; quiet hours default 9pm–7am."
+   ],
+   "motion": [
+    "M21",
+    "M14"
+   ]
+  },
+  {
+   "code": "D21",
+   "area": "Tradie app",
+   "mode": "trade",
+   "name": "Lead adds a crew",
+   "route": "/jobs/[id] (lead)",
+   "what": "Crew panel on the workspace + drawer: pick from your crew or any worker, their part, share % / $ (adds to 100%), send invite",
+   "states": "Invited · joined · declined",
+   "priority": "P2",
+   "mockup": "Lead adds a crew (team job)",
+   "mockup_key": "w-t-crew",
+   "notes": [
+    "Team jobs (decision 6a): the lead claims the job and adds crew with a split they set. Shares must add to 100%; the lead’s share updates live.",
+    "“Your crew” = people you’ve worked with or added (like friends). You can also search any worker.",
+    "Invite → the crew member gets the “Join the crew” card (phone) and accepts or declines. Status shows Invited / Joined / Declined.",
+    "The customer only sees the lead. Payroll pays each person their share.",
+    "Later (P3): “Need a hand?” lets a solo lead request a specialist (e.g. a plumber on a bathroom reno) without making a new job."
+   ],
+   "motion": [
+    "M12",
+    "M14"
+   ]
+  },
+  {
+   "code": "D22",
+   "area": "Tradie app",
+   "mode": "trade",
+   "name": "Crew invite (accept/decline)",
+   "route": "(push + in-app)",
+   "what": "Who’s asking, the job, your part, when, your share in $ and %",
+   "states": "Accepted · declined · expired",
+   "priority": "P2",
+   "mockup": "Crew invite",
+   "mockup_key": "m-crew",
+   "notes": [
+    "Team jobs: the lead claims the job, then invites people from their crew (or any worker) with a set split.",
+    "The invite shows the job, their part, when, and their share in dollars and %. Accept or decline.",
+    "Each crew member is paid their share directly through payroll. The lead is responsible for the job, the customer and the evidence.",
+    "The customer only ever sees the lead. Nothing changes for them."
+   ],
+   "motion": [
+    "M21",
+    "M14"
+   ]
+  },
+  {
+   "code": "D23",
+   "area": "Tradie app",
+   "mode": "trade",
+   "name": "My crew",
+   "route": "/profile/crew",
+   "what": "People you work with (like friends): add, remove, trades, ratings",
+   "states": "Empty",
+   "priority": "P2",
+   "mockup": "Lead adds a crew (team job)",
+   "mockup_key": "w-t-crew",
+   "notes": [
+    "Team jobs (decision 6a): the lead claims the job and adds crew with a split they set. Shares must add to 100%; the lead’s share updates live.",
+    "“Your crew” = people you’ve worked with or added (like friends). You can also search any worker.",
+    "Invite → the crew member gets the “Join the crew” card (phone) and accepts or declines. Status shows Invited / Joined / Declined.",
+    "The customer only sees the lead. Payroll pays each person their share.",
+    "Later (P3): “Need a hand?” lets a solo lead request a specialist (e.g. a plumber on a bathroom reno) without making a new job."
+   ],
+   "motion": [
+    "M12",
+    "M14"
+   ]
+  },
+  {
+   "code": "D24",
+   "area": "Tradie app",
+   "mode": "trade",
+   "name": "Need a hand? (request a specialist)",
+   "route": "/jobs/[id]/help",
+   "what": "Solo lead asks for a specialist (e.g. plumber on a bathroom reno) inside the same job, no new job",
+   "states": "—",
+   "priority": "P3",
+   "mockup": null,
+   "mockup_key": null,
+   "notes": [],
+   "motion": []
+  },
+  {
+   "code": "D25",
+   "area": "Tradie app",
+   "mode": "trade",
+   "name": "Verified quoter dashboard",
+   "route": "/quoting",
+   "what": "Accuracy, bounties, 2% earnings, weekly bonus, quote history vs final price, how you earn",
+   "states": "Not a quoter → hidden",
+   "priority": "P3",
+   "mockup": "Verified quoter dashboard",
+   "mockup_key": "w-t-quoter",
+   "notes": [
+    "Verified quoter: invite only, with tougher screening (decision 7). Someone who knows the trades can earn without picking up tools.",
+    "Scorecard: accuracy, bounties, 2% earnings, weekly bonus progress (KPIs tick up, M17).",
+    "History shows each quote vs the final price and the outcome. Way-off quotes are marked “Ignored · unfair”.",
+    "The earning rules are spelt out. The 2% only counts when the price is accepted, fair and the job finishes clean, so quoting high never pays.",
+    "Exact thresholds (what counts as “fair”, bonus size) live in office Settings and can change."
+   ],
+   "motion": [
+    "M17",
+    "M27"
+   ]
+  },
+  {
+   "code": "D26",
+   "area": "Tradie app",
+   "mode": "trade",
+   "name": "Become a verified quoter",
+   "route": "/quoting/apply",
+   "what": "Invite-only application + screening steps",
+   "states": "Invited · screening · approved · declined",
+   "priority": "P3",
+   "mockup": null,
+   "mockup_key": null,
+   "notes": [],
+   "motion": []
+  },
+  {
+   "code": "D27",
+   "area": "Tradie app",
+   "mode": "trade",
+   "name": "Book a time window",
+   "route": "/jobs/[id]/book",
+   "what": "Pick one of the customer’s windows; preset updates (On my way, Running late, Reschedule) instead of chat",
+   "states": "Booked · rescheduled",
+   "priority": "P1",
+   "mockup": "Book a time window",
+   "mockup_key": "m-book",
+   "notes": [
+    "Replaces direct messages for booking. The customer sets windows when posting; the tradie picks one.",
+    "Preset updates instead of chat: “I’m on my way”, “Running late (15/30/60 min)”, “Need to reschedule” (→ pick a new window).",
+    "Messages still exist for problems, routed through Trade Marketplace if needed. Keep them out of the happy path.",
+    "Customer sees: “Jack’s booked in Thu 8–10am” + add to calendar."
+   ],
+   "motion": [
+    "M21",
+    "M14"
+   ]
+  },
+  {
+   "code": "D04",
+   "area": "Tradie app",
+   "mode": "trade",
+   "name": "Job · needs estimate",
+   "route": "/jobs/[id]",
+   "what": "Gallery, details, “Estimate now” opens drawer",
+   "states": "Already estimated · not eligible",
+   "priority": "P1",
+   "mockup": "Job · estimate (drawer)",
+   "mockup_key": "w-t-estimate",
+   "notes": [
+    "Job page (trade): gallery, details, customer first name + suburb only. Right card: social proof + hero “Estimate now”.",
+    "Estimate opens in a right drawer (M12) so the photos stay visible behind. Esc closes; unsent values kept if reopened.",
+    "Private banner. Hours stepper (keyboard: arrows ±0.5), materials, note, site-visit tick.",
+    "Send → drawer closes → bolt flash “Sent.” toast-style (M10 small) and the card switches to “Your estimate: 3.5 h · $85 · Edit”.",
+    "Not eligible (wrong trade/unverified): hero replaced by a banner explaining why."
+   ],
+   "motion": [
+    "M12",
+    "M10"
+   ]
+  },
+  {
+   "code": "D05",
+   "area": "Tradie app",
+   "mode": "trade",
+   "name": "Estimate drawer",
+   "route": "(drawer)",
+   "what": "Hours stepper, materials, note, site visit; private banner",
+   "states": "Saved · edit",
+   "priority": "P1",
+   "mockup": "Job · estimate (drawer)",
+   "mockup_key": "w-t-estimate",
+   "notes": [
+    "Job page (trade): gallery, details, customer first name + suburb only. Right card: social proof + hero “Estimate now”.",
+    "Estimate opens in a right drawer (M12) so the photos stay visible behind. Esc closes; unsent values kept if reopened.",
+    "Private banner. Hours stepper (keyboard: arrows ±0.5), materials, note, site-visit tick.",
+    "Send → drawer closes → bolt flash “Sent.” toast-style (M10 small) and the card switches to “Your estimate: 3.5 h · $85 · Edit”.",
+    "Not eligible (wrong trade/unverified): hero replaced by a banner explaining why."
+   ],
+   "motion": [
+    "M12",
+    "M10"
+   ]
+  },
+  {
+   "code": "D06",
+   "area": "Tradie app",
+   "mode": "trade",
+   "name": "Job · ready to claim",
+   "route": "/jobs/[id]",
+   "what": "You earn card, materials budget, needs, Claim job",
+   "states": "—",
+   "priority": "P1",
+   "mockup": "Job · claim (+ result)",
+   "mockup_key": "w-t-claim",
+   "notes": [
+    "Claimable job: what you earn (M09 reveal, tradie version), budget, needs, timing. Never the customer price.",
+    "Claim → small confirm dialog first (“Take this job?” with the same numbers, Yes it’s mine / Not now). Shown here: the result.",
+    "Success dialog: bolt mark in a signature circle with sparks (M10), “It’s yours.”, three next steps, two actions.",
+    "Lost the race: the card greys out and a banner says “Too slow. Someone else got this one.” + “See similar jobs” (M22)."
+   ],
+   "motion": [
+    "M09",
+    "M13",
+    "M10",
+    "M22"
+   ]
+  },
+  {
+   "code": "D07",
+   "area": "Tradie app",
+   "mode": "trade",
+   "name": "Claim confirm + result",
+   "route": "(dialog)",
+   "what": "Confirm → It’s yours (bolt flash) / Too slow",
+   "states": "Lost race",
+   "priority": "P1",
+   "mockup": "Job · claim (+ result)",
+   "mockup_key": "w-t-claim",
+   "notes": [
+    "Claimable job: what you earn (M09 reveal, tradie version), budget, needs, timing. Never the customer price.",
+    "Claim → small confirm dialog first (“Take this job?” with the same numbers, Yes it’s mine / Not now). Shown here: the result.",
+    "Success dialog: bolt mark in a signature circle with sparks (M10), “It’s yours.”, three next steps, two actions.",
+    "Lost the race: the card greys out and a banner says “Too slow. Someone else got this one.” + “See similar jobs” (M22)."
+   ],
+   "motion": [
+    "M09",
+    "M13",
+    "M10",
+    "M22"
+   ]
+  },
+  {
+   "code": "D08",
+   "area": "Tradie app",
+   "mode": "trade",
+   "name": "My work",
+   "route": "/dashboard",
+   "what": "Columns: To book · On now · Waiting sign-off · Paid (read-only board), estimates tab",
+   "states": "Empty",
+   "priority": "P1",
+   "mockup": "My work",
+   "mockup_key": "w-t-mywork",
+   "notes": [
+    "Read-only board grouped by the tradie’s next move (no dragging; status comes from the server).",
+    "Card pills = the next action (“Message Sarah”), not database words. Click → job workspace.",
+    "Estimates tab: table of estimates with outcome (Priced · Taken by you · Not taken).",
+    "On mobile this becomes the segmented list from the first guide."
+   ],
+   "motion": [
+    "M03",
+    "M25"
+   ]
+  },
+  {
+   "code": "D09",
+   "area": "Tradie app",
+   "mode": "trade",
+   "name": "Job workspace",
+   "route": "/jobs/[id]",
+   "what": "Customer + address + map, Telfer no., tracker, messages inline, Extra work / Finish job",
+   "states": "Waiting on extra approval",
+   "priority": "P1",
+   "mockup": "Job workspace (+ extra work drawer)",
+   "mockup_key": "w-t-workspace",
+   "notes": [
+    "Everything for the job on one screen: customer + map + call/directions, Telfer number (click to copy, tooltip “Copied”), live messages, tracker.",
+    "Two main actions top right: Extra work (opens drawer, D10) and Finish job (D11).",
+    "Messages live (M19): typing dots, new bubbles rise in. Photos can be sent.",
+    "Tracker shows what’s next, including the 48h sign-off window.",
+    "Extra work drawer (not shown): same pattern as the estimate drawer: what, required photos, hours, materials, Send for pricing. Status then shows on the tracker."
+   ],
+   "motion": [
+    "M19",
+    "M12",
+    "M11",
+    "M14"
+   ]
+  },
+  {
+   "code": "D10",
+   "area": "Tradie app",
+   "mode": "trade",
+   "name": "Request extra work",
+   "route": "(drawer)",
+   "what": "What, photos (req), hours, materials, send for pricing",
+   "states": "Sent · priced · approved · declined",
+   "priority": "P1",
+   "mockup": "Job workspace (+ extra work drawer)",
+   "mockup_key": "w-t-workspace",
+   "notes": [
+    "Everything for the job on one screen: customer + map + call/directions, Telfer number (click to copy, tooltip “Copied”), live messages, tracker.",
+    "Two main actions top right: Extra work (opens drawer, D10) and Finish job (D11).",
+    "Messages live (M19): typing dots, new bubbles rise in. Photos can be sent.",
+    "Tracker shows what’s next, including the 48h sign-off window.",
+    "Extra work drawer (not shown): same pattern as the estimate drawer: what, required photos, hours, materials, Send for pricing. Status then shows on the tracker."
+   ],
+   "motion": [
+    "M19",
+    "M12",
+    "M11",
+    "M14"
+   ]
+  },
+  {
+   "code": "D11",
+   "area": "Tradie app",
+   "mode": "trade",
+   "name": "Finish job",
+   "route": "/jobs/[id]/complete",
+   "what": "Evidence photos, CoC number + PDF (electrical), declaration, send for sign-off",
+   "states": "Upload failed · trade not configured",
+   "priority": "P1",
+   "mockup": "Finish job",
+   "mockup_key": "w-t-finish",
+   "notes": [
+    "Focused single-column form (max 760px). Evidence fields come from the trade’s config: electrical = CoC number + PDF/photo (required, existing server rule).",
+    "Uploads follow M18; a green tick confirms each file.",
+    "Declaration tick required. “Save for later” keeps a draft.",
+    "Send → bolt flash “Sent for sign-off” + tracker moves (M11)."
+   ],
+   "motion": [
+    "M18",
+    "M10",
+    "M11"
+   ]
+  },
+  {
+   "code": "D12",
+   "area": "Tradie app",
+   "mode": "trade",
+   "name": "Earnings",
+   "route": "/earnings",
+   "what": "Month total, chart, next payroll, payouts table, payroll detail",
+   "states": "Empty",
+   "priority": "P1",
+   "mockup": "Earnings",
+   "mockup_key": "w-t-earnings",
+   "notes": [
+    "KPIs count up on first view (M17). Wording is exact: Queued vs Paid. Never say money moved before payroll runs.",
+    "Simple 8-week bar chart (current week in Hi-Vis). Hover a bar → tooltip with the amount.",
+    "Payroll table → click a row for the per-job breakdown (hours, rate, holiday pay).",
+    "Statement download = PDF for their records/tax."
+   ],
+   "motion": [
+    "M17",
+    "M01"
+   ]
+  },
+  {
+   "code": "D13",
+   "area": "Tradie app",
+   "mode": "trade",
+   "name": "Estimates history",
+   "route": "/earnings/estimates",
+   "what": "Table: job, your estimate, final price, outcome",
+   "states": "Empty",
+   "priority": "P2",
+   "mockup": null,
+   "mockup_key": null,
+   "notes": [],
+   "motion": []
+  },
+  {
+   "code": "D14",
+   "area": "Tradie app",
+   "mode": "trade",
+   "name": "Trades & licences",
+   "route": "/profile/trades",
+   "what": "Per trade: status (checked/pending/rejected), licence no., expiry, upload, add trade",
+   "states": "Pending · rejected with reason",
+   "priority": "P1",
+   "mockup": "Account · trades & licences + bank",
+   "mockup_key": "w-t-licences",
+   "notes": [
+    "Account settings layout: left nav (240px), content max 760. Same pattern for every settings page.",
+    "One row per trade with its own status: Checked (expiry shown) · Checking · Rejected (with the reason + Try again).",
+    "Expiring within 30 days: Amber banner + email reminder.",
+    "Bank & IRD masked after saving; editing asks for the password again. Missing bank details block payouts (banner on Earnings)."
+   ],
+   "motion": [
+    "M01",
+    "M25"
+   ]
+  },
+  {
+   "code": "D15",
+   "area": "Tradie app",
+   "mode": "trade",
+   "name": "Bank & tax",
+   "route": "/profile/payroll",
+   "what": "Bank account, IRD number, tax code, KiwiSaver; masked after save, re-auth to edit",
+   "states": "Missing → blocks payout",
+   "priority": "P1",
+   "mockup": "Account · trades & licences + bank",
+   "mockup_key": "w-t-licences",
+   "notes": [
+    "Account settings layout: left nav (240px), content max 760. Same pattern for every settings page.",
+    "One row per trade with its own status: Checked (expiry shown) · Checking · Rejected (with the reason + Try again).",
+    "Expiring within 30 days: Amber banner + email reminder.",
+    "Bank & IRD masked after saving; editing asks for the password again. Missing bank details block payouts (banner on Earnings)."
+   ],
+   "motion": [
+    "M01",
+    "M25"
+   ]
+  },
+  {
+   "code": "D16",
+   "area": "Tradie app",
+   "mode": "trade",
+   "name": "Work area & job alerts",
+   "route": "/profile/area",
+   "what": "Base suburb + radius map, trades, alert channels",
+   "states": "—",
+   "priority": "P1",
+   "mockup": null,
+   "mockup_key": null,
+   "notes": [],
+   "motion": []
+  },
+  {
+   "code": "D17",
+   "area": "Tradie app",
+   "mode": "trade",
+   "name": "Public profile editor",
+   "route": "/profile/public",
+   "what": "Photo, bio, preview of public profile",
+   "states": "—",
+   "priority": "P2",
+   "mockup": null,
+   "mockup_key": null,
+   "notes": [],
+   "motion": []
+  },
+  {
+   "code": "E01",
+   "area": "Shared (customer + tradie)",
+   "mode": "customer",
+   "name": "Messages",
+   "route": "/messages",
+   "what": "3 panes: threads · conversation · job context. Kept for problems; booking windows + preset updates replace most chat",
+   "states": "No threads · offline",
+   "priority": "P1",
+   "mockup": "Messages",
+   "mockup_key": "w-messages",
+   "notes": [
+    "Three panes ≥1200px: threads · conversation · job context. 1024–1199: context pane hides behind an (i) button. Mobile: one pane at a time.",
+    "One thread per job. Office messages show as “Trade Marketplace” with the bolt avatar.",
+    "Job events appear as action cards inside the thread (extra work, finished, paid).",
+    "Typing indicator + new bubbles animate (M19). Read receipts on the last message only.",
+    "Enter sends, Shift+Enter new line. Photos by drag-and-drop or the photo button. Unsent text kept per thread."
+   ],
+   "motion": [
+    "M19",
+    "M20"
+   ]
+  },
+  {
+   "code": "E02",
+   "area": "Shared (customer + tradie)",
+   "mode": "customer",
+   "name": "Notifications dropdown",
+   "route": "(header)",
+   "what": "Bell → panel: latest 8, mark all read, see all",
+   "states": "Empty",
+   "priority": "P1",
+   "mockup": "Notifications dropdown + avatar menu",
+   "mockup_key": "w-notifs",
+   "notes": [
+    "Bell → dropdown panel (400px), latest 8, unread tinted with a red dot. Opens with M08; badge pops when the count goes up (M20).",
+    "Each row deep-links to the exact job/thread/receipt and marks itself read.",
+    "Avatar → menu: Account, Payments, Notification settings, Help, Log out (Danger). Shown in a separate spot here so both are visible.",
+    "Tooltips on icon-only buttons after 500ms hover (shown on search). Tooltips also show keyboard shortcuts."
+   ],
+   "motion": [
+    "M08",
+    "M20"
+   ]
+  },
+  {
+   "code": "E03",
+   "area": "Shared (customer + tradie)",
+   "mode": "customer",
+   "name": "Notifications page",
+   "route": "/notifications",
+   "what": "Full list, filters (all/unread), grouped by day",
+   "states": "Empty",
+   "priority": "P1",
+   "mockup": null,
+   "mockup_key": null,
+   "notes": [],
+   "motion": []
+  },
+  {
+   "code": "E04",
+   "area": "Shared (customer + tradie)",
+   "mode": "customer",
+   "name": "Account · profile",
+   "route": "/profile",
+   "what": "Settings layout with left nav: Profile, Security, Notifications, Addresses/Payroll, Delete account",
+   "states": "Saving · saved",
+   "priority": "P1",
+   "mockup": "Account settings",
+   "mockup_key": "w-account",
+   "notes": [
+    "Settings layout shared by every account page: left nav (240), content max 820. Pages: Profile, Security (email, password, log out other devices), Notifications, Addresses, Payments, Delete account.",
+    "Notification matrix: event × channel. Must-have messages are locked on (dimmed tick + reason).",
+    "Toggles save straight away with an Undo toast (M14). Text-heavy forms (Profile) use an explicit Save button instead.",
+    "Delete account: explains what’s kept (invoices, by law), blocked while a job is active, type DELETE to confirm."
+   ],
+   "motion": [
+    "M14",
+    "M16"
+   ]
+  },
+  {
+   "code": "E05",
+   "area": "Shared (customer + tradie)",
+   "mode": "customer",
+   "name": "Account · security",
+   "route": "/profile/security",
+   "what": "Change email/password, sessions (log out other devices)",
+   "states": "Wrong current password",
+   "priority": "P1",
+   "mockup": null,
+   "mockup_key": null,
+   "notes": [],
+   "motion": []
+  },
+  {
+   "code": "E06",
+   "area": "Shared (customer + tradie)",
+   "mode": "customer",
+   "name": "Account · notification preferences",
+   "route": "/profile/notifications",
+   "what": "Matrix: event × email/SMS/push",
+   "states": "—",
+   "priority": "P1",
+   "mockup": "Account settings",
+   "mockup_key": "w-account",
+   "notes": [
+    "Settings layout shared by every account page: left nav (240), content max 820. Pages: Profile, Security (email, password, log out other devices), Notifications, Addresses, Payments, Delete account.",
+    "Notification matrix: event × channel. Must-have messages are locked on (dimmed tick + reason).",
+    "Toggles save straight away with an Undo toast (M14). Text-heavy forms (Profile) use an explicit Save button instead.",
+    "Delete account: explains what’s kept (invoices, by law), blocked while a job is active, type DELETE to confirm."
+   ],
+   "motion": [
+    "M14",
+    "M16"
+   ]
+  },
+  {
+   "code": "E07",
+   "area": "Shared (customer + tradie)",
+   "mode": "customer",
+   "name": "Delete account / export data",
+   "route": "/profile/delete",
+   "what": "Explain what happens, blocked while jobs active, type to confirm",
+   "states": "Blocked",
+   "priority": "P2",
+   "mockup": null,
+   "mockup_key": null,
+   "notes": [],
+   "motion": []
+  },
+  {
+   "code": "E08",
+   "area": "Shared (customer + tradie)",
+   "mode": "customer",
+   "name": "Help (in app) + support thread",
+   "route": "/help + /support",
+   "what": "Same help centre, plus “Message us” thread with the office",
+   "states": "Replied",
+   "priority": "P1",
+   "mockup": null,
+   "mockup_key": null,
+   "notes": [],
+   "motion": []
+  },
+  {
+   "code": "E09",
+   "area": "Shared (customer + tradie)",
+   "mode": "customer",
+   "name": "Global search",
+   "route": "(header)",
+   "what": "Customers: jobs + help; tradies: jobs + help; suggestions dropdown",
+   "states": "No results",
+   "priority": "P2",
+   "mockup": null,
+   "mockup_key": null,
+   "notes": [],
+   "motion": []
+  },
+  {
+   "code": "F01",
+   "area": "Office (admin)",
+   "mode": "office",
+   "name": "Queues",
+   "route": "/admin",
+   "what": "KPI cards + tabbed queues: To price, Extra work, Cancellations, Sign-off, Unclaimed",
+   "states": "All clear",
+   "priority": "P1",
+   "mockup": "Office · queues",
+   "mockup_key": "w-o-queues",
+   "notes": [
+    "Office mode: Forest sidebar with Mint, counts per section. Desktop-first; usable on a tablet; on a phone tables become cards.",
+    "KPI cards = queues; red top edge + red text when anything is overdue (e.g. > 24h). Click a card = open that tab. Numbers tick up on load (M17).",
+    "Each queue is a table, oldest/most urgent first, one action per row. Row hover tint.",
+    "Global search (/): job number, customer, tradie, email, phone."
+   ],
+   "motion": [
+    "M17",
+    "M16",
+    "M03"
+   ]
+  },
+  {
+   "code": "F02",
+   "area": "Office (admin)",
+   "mode": "office",
+   "name": "Price a job",
+   "route": "/admin/jobs/[id]/price",
+   "what": "Job, blind estimates, trimmed average, price builder, send",
+   "states": "Site visit needed",
+   "priority": "P1",
+   "mockup": "Office · price a job",
+   "mockup_key": "w-o-price",
+   "notes": [
+    "Pricing workspace: job + photos, blind estimates with each tradie’s track record, suggested trimmed average.",
+    "Price builder: office enters hours/materials; the server returns the breakdown (customer pays, tradie earns, budget). UI never calculates.",
+    "“Send price to customer” → confirm dialog showing exactly what the customer will see → queue count drops (M17).",
+    "“Needs a site visit” sends the customer a message + books a paid visit (future).",
+    "Price extra work (F03) uses the same layout with the tradie’s photos and request."
+   ],
+   "motion": [
+    "M13",
+    "M17"
+   ]
+  },
+  {
+   "code": "F03",
+   "area": "Office (admin)",
+   "mode": "office",
+   "name": "Price extra work",
+   "route": "/admin/variations/[id]",
+   "what": "Photos, tradie request, builder, send to customer",
+   "states": "—",
+   "priority": "P1",
+   "mockup": null,
+   "mockup_key": null,
+   "notes": [],
+   "motion": []
+  },
+  {
+   "code": "F04",
+   "area": "Office (admin)",
+   "mode": "office",
+   "name": "All jobs",
+   "route": "/admin/jobs",
+   "what": "Table with filters (status, trade, region, date), search, export",
+   "states": "Empty filter",
+   "priority": "P1",
+   "mockup": "Office · all jobs",
+   "mockup_key": "w-o-jobs",
+   "notes": [
+    "Every job, filterable (status, trade, region, date) and searchable. Filters are chips with dropdowns; state in the URL.",
+    "Office status labels (not customer words). Selected row tint shows the one open in the detail view.",
+    "Pagination 25 per page. Export CSV respects filters.",
+    "Click → Job admin view (F05)."
+   ],
+   "motion": [
+    "M15"
+   ]
+  },
+  {
+   "code": "F05",
+   "area": "Office (admin)",
+   "mode": "office",
+   "name": "Job admin view",
+   "route": "/admin/jobs/[id]",
+   "what": "Everything + timeline (audit), payments, messages, override actions (reassign, refund, cancel)",
+   "states": "—",
+   "priority": "P1",
+   "mockup": "Office · job admin view",
+   "mockup_key": "w-o-job",
+   "notes": [
+    "Everything about one job: money, messages (office can message both sides), full timeline (audit log: who did what, when).",
+    "Actions menu: reassign, refund, edit price, cancel. Each opens a confirm dialog with a required note (stored in the timeline).",
+    "Refund dialog asks full/partial + reason; shows it’s a record until real payments are on.",
+    "Timeline newest first; colour dots by actor (customer, tradie, office, system)."
+   ],
+   "motion": [
+    "M13",
+    "M01"
+   ]
+  },
+  {
+   "code": "F06",
+   "area": "Office (admin)",
+   "mode": "office",
+   "name": "Cancellations & disputes",
+   "route": "/admin/disputes",
+   "what": "Case view: both sides, evidence, decision + refund",
+   "states": "Resolved",
+   "priority": "P1",
+   "mockup": null,
+   "mockup_key": null,
+   "notes": [],
+   "motion": []
+  },
+  {
+   "code": "F07",
+   "area": "Office (admin)",
+   "mode": "office",
+   "name": "Sign-off / CoC review",
+   "route": "/admin/signoff",
+   "what": "Evidence check, approve/flag",
+   "states": "—",
+   "priority": "P1",
+   "mockup": null,
+   "mockup_key": null,
+   "notes": [],
+   "motion": []
+  },
+  {
+   "code": "F08",
+   "area": "Office (admin)",
+   "mode": "office",
+   "name": "Tradies",
+   "route": "/admin/tradies",
+   "what": "Table + detail panel: per-trade checks, register link, approve/reject, pause",
+   "states": "To check · paused",
+   "priority": "P1",
+   "mockup": "Office · tradies",
+   "mockup_key": "w-o-tradies",
+   "notes": [
+    "Per-trade checks: each trade a person claims is reviewed separately, with its own register link.",
+    "Decision needs a note; rejection needs a reason the tradie will see. Both go to the audit timeline.",
+    "Verified tab: search, expiry dates (sort by expiring soon), pause/un-pause with reason.",
+    "Customers (F09) uses the same table + detail-panel pattern."
+   ],
+   "motion": [
+    "M13",
+    "M14"
+   ]
+  },
+  {
+   "code": "F09",
+   "area": "Office (admin)",
+   "mode": "office",
+   "name": "Customers",
+   "route": "/admin/customers",
+   "what": "Table + detail: jobs, payments, notes",
+   "states": "—",
+   "priority": "P2",
+   "mockup": null,
+   "mockup_key": null,
+   "notes": [],
+   "motion": []
+  },
+  {
+   "code": "F10",
+   "area": "Office (admin)",
+   "mode": "office",
+   "name": "Payouts",
+   "route": "/admin/payouts",
+   "what": "Batches, export CSV, mark paid",
+   "states": "Nothing queued",
+   "priority": "P1",
+   "mockup": "Office · payouts",
+   "mockup_key": "w-o-payouts",
+   "notes": [
+    "Existing payroll export + reconciliation, restyled. Honest banner: records, not transfers.",
+    "KPIs for the current batch + blockers (missing bank details).",
+    "“Mark batch paid” → confirm dialog naming the total and count."
+   ],
+   "motion": [
+    "M17",
+    "M13"
+   ]
+  },
+  {
+   "code": "F11",
+   "area": "Office (admin)",
+   "mode": "office",
+   "name": "Payments & refunds",
+   "route": "/admin/payments",
+   "what": "Ledger, refund dialog",
+   "states": "—",
+   "priority": "P1",
+   "mockup": null,
+   "mockup_key": null,
+   "notes": [],
+   "motion": []
+  },
+  {
+   "code": "F12",
+   "area": "Office (admin)",
+   "mode": "office",
+   "name": "Reviews",
+   "route": "/admin/reviews",
+   "what": "Moderate, hide with reason",
+   "states": "—",
+   "priority": "P2",
+   "mockup": null,
+   "mockup_key": null,
+   "notes": [],
+   "motion": []
+  },
+  {
+   "code": "F13",
+   "area": "Office (admin)",
+   "mode": "office",
+   "name": "Support inbox",
+   "route": "/admin/support",
+   "what": "Threads from Help → Message us",
+   "states": "—",
+   "priority": "P1",
+   "mockup": null,
+   "mockup_key": null,
+   "notes": [],
+   "motion": []
+  },
+  {
+   "code": "F15",
+   "area": "Office (admin)",
+   "mode": "office",
+   "name": "AI pricing review",
+   "route": "/admin/pricing",
+   "what": "Jobs the AI couldn’t price: AI price, confidence, estimates, bounty quote, why; send / edit / post another bounty",
+   "states": "All clear · bounty expired",
+   "priority": "P2",
+   "mockup": "Office · AI pricing review",
+   "mockup_key": "w-o-ai",
+   "notes": [
+    "The Trade Marketplace AI prices most jobs on its own (“Auto-priced today”). Only unsure ones reach a human.",
+    "Each row shows the AI price, its confidence, the spread of estimates, any in-person bounty quote, and why it’s here.",
+    "The trigger rule is written down and editable in Settings (confidence and spread thresholds).",
+    "Detail panel: everything side by side, a suggested price, one-click send. Who gets first dibs is shown so the office can overrule it.",
+    "Expired bounties with no quote land here too (repost, raise the bounty, or price by hand)."
+   ],
+   "motion": [
+    "M17",
+    "M13"
+   ]
+  },
+  {
+   "code": "F16",
+   "area": "Office (admin)",
+   "mode": "office",
+   "name": "Verified quoters",
+   "route": "/admin/quoters",
+   "what": "Invite, screening checklist, accuracy, bonus payouts, remove",
+   "states": "—",
+   "priority": "P3",
+   "mockup": null,
+   "mockup_key": null,
+   "notes": [],
+   "motion": []
+  },
+  {
+   "code": "F14",
+   "area": "Office (admin)",
+   "mode": "office",
+   "name": "Settings",
+   "route": "/admin/settings",
+   "what": "Rates (shared + Other at launch, per trade later), margin, AI pricing thresholds, bounty amount + expiry, quoter %/bonus, coverage (Invercargill), trades on/off, email templates",
+   "states": "Saving",
+   "priority": "P1",
+   "mockup": "Office · settings",
+   "mockup_key": "w-o-settings",
+   "notes": [
+    "Tabs: Rates (per trade), Trades (switch trades on/off, licence + evidence rules), Coverage (live suburbs → waitlist), Emails (edit templates), Team (office users, roles).",
+    "Per-trade rate cards (new: today there’s one shared rate). Live example price from the server.",
+    "Save shows a confirm listing what changed; changes logged with who/when.",
+    "Figures are placeholders: use the real settings."
+   ],
+   "motion": [
+    "M16",
+    "M13"
+   ]
+  },
+  {
+   "code": "G01",
+   "area": "System, emails & extras",
+   "mode": "customer",
+   "name": "404 not found",
+   "route": "(any)",
+   "what": "Friendly message, search, go home",
+   "states": "—",
+   "priority": "P1",
+   "mockup": "404 · 500 · maintenance · offline",
+   "mockup_key": "w-errors",
+   "notes": [
+    "404: Forest, big Lime “404”, plain words, Go home + Help. Also used for jobs you can’t see (never reveal they exist).",
+    "500: our fault, say so. Show an error reference for support; log the details. Drafts are kept.",
+    "Maintenance: scheduled downtime page with the exact window. A banner warns 24h before.",
+    "Offline: persistent top banner, skeletons stay, actions queue or disable with a reason. Auto-retry with backoff."
+   ],
+   "motion": [
+    "M15",
+    "M01"
+   ]
+  },
+  {
+   "code": "G02",
+   "area": "System, emails & extras",
+   "mode": "customer",
+   "name": "500 / something broke",
+   "route": "(any)",
+   "what": "Apology, try again, status link",
+   "states": "—",
+   "priority": "P1",
+   "mockup": "404 · 500 · maintenance · offline",
+   "mockup_key": "w-errors",
+   "notes": [
+    "404: Forest, big Lime “404”, plain words, Go home + Help. Also used for jobs you can’t see (never reveal they exist).",
+    "500: our fault, say so. Show an error reference for support; log the details. Drafts are kept.",
+    "Maintenance: scheduled downtime page with the exact window. A banner warns 24h before.",
+    "Offline: persistent top banner, skeletons stay, actions queue or disable with a reason. Auto-retry with backoff."
+   ],
+   "motion": [
+    "M15",
+    "M01"
+   ]
+  },
+  {
+   "code": "G03",
+   "area": "System, emails & extras",
+   "mode": "customer",
+   "name": "Maintenance",
+   "route": "(any)",
+   "what": "Planned downtime message with time",
+   "states": "—",
+   "priority": "P2",
+   "mockup": "404 · 500 · maintenance · offline",
+   "mockup_key": "w-errors",
+   "notes": [
+    "404: Forest, big Lime “404”, plain words, Go home + Help. Also used for jobs you can’t see (never reveal they exist).",
+    "500: our fault, say so. Show an error reference for support; log the details. Drafts are kept.",
+    "Maintenance: scheduled downtime page with the exact window. A banner warns 24h before.",
+    "Offline: persistent top banner, skeletons stay, actions queue or disable with a reason. Auto-retry with backoff."
+   ],
+   "motion": [
+    "M15",
+    "M01"
+   ]
+  },
+  {
+   "code": "G04",
+   "area": "System, emails & extras",
+   "mode": "customer",
+   "name": "Offline banner",
+   "route": "(any)",
+   "what": "Persistent top banner + retry; drafts kept",
+   "states": "—",
+   "priority": "P1",
+   "mockup": "404 · 500 · maintenance · offline",
+   "mockup_key": "w-errors",
+   "notes": [
+    "404: Forest, big Lime “404”, plain words, Go home + Help. Also used for jobs you can’t see (never reveal they exist).",
+    "500: our fault, say so. Show an error reference for support; log the details. Drafts are kept.",
+    "Maintenance: scheduled downtime page with the exact window. A banner warns 24h before.",
+    "Offline: persistent top banner, skeletons stay, actions queue or disable with a reason. Auto-retry with backoff."
+   ],
+   "motion": [
+    "M15",
+    "M01"
+   ]
+  },
+  {
+   "code": "G05",
+   "area": "System, emails & extras",
+   "mode": "customer",
+   "name": "Emails (transactional)",
+   "route": "—",
+   "what": "Welcome, verify, price ready, receipt, tradie confirmed, extra work, please check, review request, password reset; tradie: new job near you, claim confirmed, licence checked, paid",
+   "states": "Light + dark mail clients",
+   "priority": "P1",
+   "mockup": "Emails & texts",
+   "mockup_key": "w-emails",
+   "notes": [
+    "One email template: Cream background, white card, Forest header with logo + small bolt, one heading, short body, one hero button, footer with settings link. Built as HTML email (table layout), with plain-text versions.",
+    "Customer emails use Lime buttons; tradie emails Amber. Same voice as the app. One job per email.",
+    "Full list to build: welcome, verify, password reset, price ready, receipt, tradie confirmed, new message (digest), extra work, please check, review request, cancellation outcome; tradie: new job near you, estimate request, claimed, sign-off, paid, licence checked/rejected/expiring.",
+    "Texts: under 160 characters, short link, sender “TradeMkt”. Push: same text, deep link.",
+    "Test in Gmail, Outlook, Apple Mail, light + dark mode."
+   ],
+   "motion": []
+  },
+  {
+   "code": "G06",
+   "area": "System, emails & extras",
+   "mode": "customer",
+   "name": "SMS & push copy",
+   "route": "—",
+   "what": "Short versions of key emails",
+   "states": "—",
+   "priority": "P1",
+   "mockup": "Emails & texts",
+   "mockup_key": "w-emails",
+   "notes": [
+    "One email template: Cream background, white card, Forest header with logo + small bolt, one heading, short body, one hero button, footer with settings link. Built as HTML email (table layout), with plain-text versions.",
+    "Customer emails use Lime buttons; tradie emails Amber. Same voice as the app. One job per email.",
+    "Full list to build: welcome, verify, password reset, price ready, receipt, tradie confirmed, new message (digest), extra work, please check, review request, cancellation outcome; tradie: new job near you, estimate request, claimed, sign-off, paid, licence checked/rejected/expiring.",
+    "Texts: under 160 characters, short link, sender “TradeMkt”. Push: same text, deep link.",
+    "Test in Gmail, Outlook, Apple Mail, light + dark mode."
+   ],
+   "motion": []
+  },
+  {
+   "code": "G07",
+   "area": "System, emails & extras",
+   "mode": "customer",
+   "name": "Favicon, app icon, social share image",
+   "route": "—",
+   "what": "Bolt favicon (svg + png), apple-touch-icon, OG 1200×630 per page type",
+   "states": "—",
+   "priority": "P1",
+   "mockup": "Icons, share images & install",
+   "mockup_key": "w-meta",
+   "notes": [
+    "Favicon = bolt mark on Forest (SVG + 32px PNG), apple-touch-icon 180, PWA icons 192/512 with a maskable version.",
+    "Page titles follow one pattern; unread count shows in the tab title.",
+    "Install prompt: our own card, offered once at a good moment (never on first load).",
+    "Share images per page type, in both modes. Private pages (jobs, account, office) are noindex with no share image."
+   ],
+   "motion": []
+  },
+  {
+   "code": "G08",
+   "area": "System, emails & extras",
+   "mode": "customer",
+   "name": "Install as app (PWA)",
+   "route": "—",
+   "what": "Manifest, theme colour Forest, splash, “Add to home screen” hint once",
+   "states": "—",
+   "priority": "P2",
+   "mockup": "Icons, share images & install",
+   "mockup_key": "w-meta",
+   "notes": [
+    "Favicon = bolt mark on Forest (SVG + 32px PNG), apple-touch-icon 180, PWA icons 192/512 with a maskable version.",
+    "Page titles follow one pattern; unread count shows in the tab title.",
+    "Install prompt: our own card, offered once at a good moment (never on first load).",
+    "Share images per page type, in both modes. Private pages (jobs, account, office) are noindex with no share image."
+   ],
+   "motion": []
+  },
+  {
+   "code": "G09",
+   "area": "System, emails & extras",
+   "mode": "customer",
+   "name": "Print styles",
+   "route": "—",
+   "what": "Receipts and invoices print clean A4",
+   "states": "—",
+   "priority": "P1",
+   "mockup": null,
+   "mockup_key": null,
+   "notes": [],
+   "motion": []
+  }
+ ],
+ "motion": [
+  {
+   "id": "M01",
+   "name": "Page enter",
+   "what": "Main content fades in + rises 8px. Cards stagger 40ms (max 6, then all at once).",
+   "timing": "200ms · ease-out",
+   "where": "Every page load / route change"
+  },
+  {
+   "id": "M02",
+   "name": "Route transition",
+   "what": "Cross-fade between pages (View Transitions API). A job photo morphs from its tile into the job page header.",
+   "timing": "180ms fade · 320ms morph",
+   "where": "List → job page, board → job"
+  },
+  {
+   "id": "M03",
+   "name": "Hover lift",
+   "what": "Card rises 2px, shadow deepens to 0 10 24 / 18%. Photo inside zooms 1.04 (400ms).",
+   "timing": "160ms · ease-out",
+   "where": "Job tiles, category tiles, job rows, cards that link"
+  },
+  {
+   "id": "M04",
+   "name": "Button press",
+   "what": "Scale to .98 on press. Hover: brightness 1.06 (primary), tint fill (secondary), lift 1px + shadow (hero).",
+   "timing": "120ms",
+   "where": "All buttons"
+  },
+  {
+   "id": "M05",
+   "name": "Focus ring",
+   "what": "No animation. 2px #2163C6 ring, 2px offset, appears instantly.",
+   "timing": "0ms",
+   "where": "Anything focusable"
+  },
+  {
+   "id": "M06",
+   "name": "Hero bolt parallax + nav fill",
+   "what": "Bolt in the Forest band moves at 0.3× scroll (max 60px). Transparent site nav turns solid Forest with shadow after the hero.",
+   "timing": "Scroll-linked · nav 200ms",
+   "where": "Landing, For tradies, service pages"
+  },
+  {
+   "id": "M07",
+   "name": "Headline reveal",
+   "what": "Hero headline lines rise 16px + fade, 70ms apart. Then sub-copy, then search bar. Runs once per visit.",
+   "timing": "500ms · ease-out",
+   "where": "Landing, For tradies hero"
+  },
+  {
+   "id": "M08",
+   "name": "Search suggestions",
+   "what": "Dropdown fades in and scales .98→1 from the top edge. Results update as you type (debounce 150ms).",
+   "timing": "160ms",
+   "where": "Hero search, header search, address field"
+  },
+  {
+   "id": "M09",
+   "name": "Price reveal",
+   "what": "Forest price block wipes in left→right (300ms), the number counts up from $0 (700ms, ease-out), then reassurance ticks appear one by one (60ms apart). Once per job.",
+   "timing": "~1.1s total",
+   "where": "Job · price ready (customer); You earn (tradie)"
+  },
+  {
+   "id": "M10",
+   "name": "Bolt flash",
+   "what": "Signature circle pops (0.6→1.08→1, spring), the tick/bolt draws in, 8 sparks burst out 26px and fade, and a soft signature glow pulses behind. The brand’s celebration.",
+   "timing": "600ms",
+   "where": "Posted, Paid, It’s yours, Sorted, Estimate sent. Big wins only."
+  },
+  {
+   "id": "M11",
+   "name": "Tracker progress",
+   "what": "Line fills down to the next step (400ms), then the new dot pops (200ms) and its label fades in.",
+   "timing": "600ms",
+   "where": "Job trackers when status changes"
+  },
+  {
+   "id": "M12",
+   "name": "Drawer",
+   "what": "Slides in from the right, scrim fades to 50%. Out: 200ms. Focus moves to the drawer title.",
+   "timing": "320ms in · 200ms out",
+   "where": "Estimate, extra work, filters on narrow screens"
+  },
+  {
+   "id": "M13",
+   "name": "Dialog",
+   "what": "Fades in and scales .96→1 from slightly below centre; scrim fades. Out: 150ms.",
+   "timing": "200ms",
+   "where": "Confirms, sign-up gate, decline, claim"
+  },
+  {
+   "id": "M14",
+   "name": "Toast",
+   "what": "Rises 12px + fades in at bottom right; a signature hairline shrinks to show time left (4s). Pauses on hover/focus.",
+   "timing": "200ms in · 4s · 200ms out",
+   "where": "Saved, sent, copied, undo"
+  },
+  {
+   "id": "M15",
+   "name": "Skeleton → content",
+   "what": "Skeletons shimmer (1.2s loop) after a 300ms delay; real content cross-fades in.",
+   "timing": "150ms cross-fade",
+   "where": "Any data list or card"
+  },
+  {
+   "id": "M16",
+   "name": "Tab underline",
+   "what": "Active indicator slides and resizes to the new tab.",
+   "timing": "200ms · ease-in-out",
+   "where": "App nav, tabs, segmented controls"
+  },
+  {
+   "id": "M17",
+   "name": "Number ticker",
+   "what": "KPIs and money count up from 0 the first time they enter view.",
+   "timing": "600ms · ease-out",
+   "where": "Earnings, office KPIs, landing stats"
+  },
+  {
+   "id": "M18",
+   "name": "Upload",
+   "what": "Thumbnail appears (scale .9→1), progress ring fills, a tick pops when done. Failed: red ring + Retry.",
+   "timing": "200ms + upload time",
+   "where": "Photo and document uploads"
+  },
+  {
+   "id": "M19",
+   "name": "Live message",
+   "what": "New bubble rises 8px + fades. Typing indicator: 3 dots bounce. Thread auto-scrolls only if already at the bottom.",
+   "timing": "160ms",
+   "where": "Messages"
+  },
+  {
+   "id": "M20",
+   "name": "Badge pop",
+   "what": "Count badge pops (0→1.15→1) when the number goes up. No animation when it goes down.",
+   "timing": "240ms",
+   "where": "Nav badges, bell"
+  },
+  {
+   "id": "M21",
+   "name": "Map pins",
+   "what": "Pins drop in 12px + fade, staggered 30ms. Hovering a list row grows its pin 1.15× in the action colour, and vice versa.",
+   "timing": "200ms",
+   "where": "Tradie map view"
+  },
+  {
+   "id": "M22",
+   "name": "Claim lost",
+   "what": "Card desaturates to grey (200ms) and a banner slides down: “Too slow. Someone else got this one.” No shaking.",
+   "timing": "200ms",
+   "where": "Claim race"
+  },
+  {
+   "id": "M23",
+   "name": "Save",
+   "what": "Bookmark fills and pops 1.2× once.",
+   "timing": "160ms",
+   "where": "Save job"
+  },
+  {
+   "id": "M24",
+   "name": "Accordion",
+   "what": "Height animates to content; chevron rotates 180°.",
+   "timing": "200ms",
+   "where": "FAQ, help, filters"
+  },
+  {
+   "id": "M25",
+   "name": "Status change",
+   "what": "Pill colour cross-fades and pulses once (scale 1.05).",
+   "timing": "200ms",
+   "where": "Status pills when a job moves on"
+  },
+  {
+   "id": "M26",
+   "name": "Drop zone",
+   "what": "Dashed border turns solid action colour and the tint fills while a file is dragged over.",
+   "timing": "120ms",
+   "where": "Photo/document upload areas"
+  },
+  {
+   "id": "M27",
+   "name": "Bounty shimmer + countdown",
+   "what": "Gold bounty pins and cards glint every 4s (brightness + soft gold glow). Countdown rings tick down; under 2h the ring pulses gently. It should feel like a game.",
+   "timing": "300ms every 4s",
+   "where": "Quote bounties: map pins, cards, pings, quoter dashboard"
+  }
+ ],
+ "rules": {
+  "web": [
+   "Same components, wider layouts: Desktop rearranges the mobile components. It doesn’t invent new styles. Anything new goes into web.css with a name.",
+   "Content max 1200px, centred: 12 columns, 24px gutters. Reading text max 680px. Forms max 560–760px, one column.",
+   "One main action per view: One primary or hero button per screen or card. Everything else is secondary, ghost or a link.",
+   "Sticky where it helps: App nav sticky. On job pages the status card sticks to the right as you scroll. Wizard summary sticks.",
+   "Everything clickable shows it: Pointer cursor, a hover state and a focus ring. Cards lift (M03), rows tint, links underline.",
+   "Hover never hides information: Nothing important only appears on hover (touch screens and keyboards can’t hover). Hover only adds polish.",
+   "Keyboard first-class: / focuses search, Esc closes overlays, Enter submits, arrows move in galleries and steppers. Tab order follows reading order.",
+   "Drawers for side tasks, dialogs for decisions: Estimate and extra work open in a right drawer (keep context). Confirms and money decisions use a dialog.",
+   "Brand device on every big moment: Forest band + bolt at 20% on heroes, headers and success screens. Bolt flash (M10) only for real wins.",
+   "Same URL, every device: Every page works from 320px to 2560px. Same routes; layout adapts."
+  ],
+  "motion": [
+   "Motion confirms something happened. It never makes people wait: nothing over 400ms blocks input.",
+   "Use the tokens: --trade-dur-fast 120, --trade-dur-base 200, --trade-dur-slow 320, --trade-ease-out, --trade-ease-in-out.",
+   "Only animate transform and opacity (plus clip-path for M09). Never width, height, top or left (except M24).",
+   "Big celebrations (M09 price reveal, M10 bolt flash) run once per event, never on revisits or refreshes.",
+   "prefers-reduced-motion: everything becomes an instant change, except the skeleton (static grey, no shimmer).",
+   "No bouncing logos, spinning loaders on full pages, auto-playing carousels or confetti. The bolt flash is our one flourish."
+  ]
+ },
+ "decisions": {
+  "decided_2026_10_23": [
+   {
+    "topic": "Who can take jobs",
+    "decision": "Anyone can take Other jobs and unrestricted work. Checks are loose at the start; checked workers get a verified badge. Restricted work (electrical, plumbing, gasfitting, drainlaying, restricted building work) still needs a licence on file before claiming."
+   },
+   {
+    "topic": "Quote bounties",
+    "decision": "When the Trade Marketplace AI can’t settle a price from photos + estimates, a $30 quote bounty appears (gold on the map, 24h). Anyone good can claim it, visit in a customer window, and send a fixed price. The AI checks it against the estimates and its own prediction."
+   },
+   {
+    "topic": "Who pays the $30",
+    "decision": "The customer books a $30 quick look; it comes off the final price if they go ahead."
+   },
+   {
+    "topic": "First dibs",
+    "decision": "The quoter gets first dibs only if their price is accepted and the AI deems it fair. Way-off quotes are ignored and the job opens to everyone."
+   },
+   {
+    "topic": "Team jobs",
+    "decision": "One lead per job. The lead sets each person’s split and invites crew (accept/decline). Everyone is paid their share through payroll. The customer only sees the lead. Later: request a specialist inside a job."
+   },
+   {
+    "topic": "Verified quoters",
+    "decision": "Invite only, tougher screening. Earn $30 per quote + 2% of jobs where their price is accepted, fair and the job finishes without a dispute + a weekly bonus for accurate quotes."
+   },
+   {
+    "topic": "Payments",
+    "decision": "Stripe, with Apple Pay. Real payments switch on last, after lots of testing."
+   },
+   {
+    "topic": "Map",
+    "decision": "Mapbox for now."
+   },
+   {
+    "topic": "Rates",
+    "decision": "One shared rate + an Other rate at launch; per-trade rates possible later (configurable in Settings)."
+   },
+   {
+    "topic": "Scheduling",
+    "decision": "Customers give time windows; workers book one. Preset updates (on my way, running late, reschedule) instead of chat where possible."
+   },
+   {
+    "topic": "Phone numbers",
+    "decision": "Hidden until a job is claimed, then both sides can see them."
+   },
+   {
+    "topic": "Launch area",
+    "decision": "Invercargill."
+   }
+  ],
+  "still_open": [
+   "Email/SMS provider and sender names",
+   "Legal check: restricted work rules + platform liability (lawyer)",
+   "AI pricing thresholds and what counts as a “fair” quote",
+   "What the 2% is a share of (labour, or the whole job?) and the weekly bonus amount",
+   "What happens when a bounty expires or the customer says no to the $30 look",
+   "Who builds the AI pricing model, and when"
+  ]
+ },
+ "launch_area": "Invercargill",
+ "figures_are_examples": true
+}
