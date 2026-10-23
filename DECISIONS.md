@@ -15,9 +15,14 @@ Decided by Matt (Co-Founder/CEO) on 23 October 2026. These override older wordin
 11. **Phone numbers.** Hidden until a job is claimed, then both sides can see them.
 12. **Launch area.** Invercargill.
 
+## Decided since (closed decision issues)
+
+- **Domain** (#209, Matt): primary **trademarketplace.nz**; **trademarketplace.co.nz** redirects to it. Both still need buying.
+- **Email, push and SMS** (#63, Matt): **Resend** for email from **hello@trademarketplace.nz**; **Firebase** web push for job alerts and pings. **No SMS at launch** (cost); revisit with more users.
+- **Analytics and cookies** (#234, Matt): privacy-friendly analytics (**Plausible or Fathom**), so the cookie banner informs only, no consent choices.
+
 ## Still to decide
 
-- [ ] Email/SMS provider and sender names
 - [ ] Legal check: restricted work rules + platform liability (lawyer)
 - [ ] AI pricing thresholds and what counts as a “fair” quote
 - [ ] What the 2% is a share of (labour, or the whole job?) and the weekly bonus amount
