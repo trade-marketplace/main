@@ -12,6 +12,7 @@ Launching in Invercargill.
 3. **[BUSINESS_PLAN.md](BUSINESS_PLAN.md)**: how the business and the money work.
 4. **[docs/design/](docs/design/)**: the full design spec: every page, every state, tokens, components, motion.
 5. **[docs/PLANNING.md](docs/PLANNING.md)**: how the work is broken into issues and how to pick one up.
+6. **[docs/SERVICES.md](docs/SERVICES.md)**: the Supabase project, hosting and other services (no secrets).
 
 The visual PDF guides (Brand Guidelines, Front-End Build Guide, Web App Design Spec) live on the
 [`design-pdfs`](../../tree/design-pdfs) branch, so code clones stay small.

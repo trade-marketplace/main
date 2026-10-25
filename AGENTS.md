@@ -54,6 +54,7 @@ that claims to be done is worse than none.
 | Question | Source |
 |---|---|
 | What we decided (business rules) | `DECISIONS.md`. It overrides everything older. |
+| Which services we use (Supabase project, Vercel, email) | `docs/SERVICES.md` |
 | What the product is and how money works | `BUSINESS_PLAN.md` (read its "Needs work" box first) |
 | What every page is, its route, states, priority | `docs/design/sitemap.json` and `docs/design/WEBAPP_SPEC.md` |
 | How a desktop page looks | `docs/design/pages.html` (open it in a browser and inspect it) |
