@@ -1,0 +1,11 @@
+// Database schema. Supabase Postgres (Sydney), see DECISIONS.md (#58).
+// Models start in "Schema 1" (#86). Schema changes need William's review (AGENTS.md §4).
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}

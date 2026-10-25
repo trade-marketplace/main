@@ -34,3 +34,6 @@ screenshots/
 *.log
 .vercel
 __pycache__/
+
+# generated Prisma client (rebuilt by `npm install` / `npm run build`)
+src/generated/
