@@ -16,6 +16,17 @@ Launching in Invercargill.
 The visual PDF guides (Brand Guidelines, Front-End Build Guide, Web App Design Spec) live on the
 [`design-pdfs`](../../tree/design-pdfs) branch, so code clones stay small.
 
+## Run it locally
+
+1. Use Node 22: `nvm use` (reads `.nvmrc`). npm refuses to install on another version.
+2. Install: `npm install`.
+3. Optional, to connect the database: `cp .env.example .env.local` and fill in the two Supabase URLs.
+   Without them the app runs with the database off.
+4. Start it: `npm run dev`, then open http://localhost:3000.
+
+Before a PR: `npm run lint`, `npm run typecheck`, `npm test` and `npm run build`. How the code is laid out:
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
 ## Who's who
 
 | | |
