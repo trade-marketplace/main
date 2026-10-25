@@ -1,0 +1,39 @@
+{
+  "name": "trade-marketplace",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.12 <23"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "prisma generate && next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "prisma generate && next typegen && tsc --noEmit",
+    "test": "vitest run",
+    "db:migrate": "node --env-file-if-exists=.env.local --env-file-if-exists=.env scripts/require-db.mjs && prisma migrate dev",
+    "db:seed": "node --env-file-if-exists=.env.local --env-file-if-exists=.env scripts/require-db.mjs && prisma db seed",
+    "postinstall": "prisma generate"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "7.10.1",
+    "@prisma/client": "7.10.1",
+    "next": "16.4.3",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "server-only": "0.0.1",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.5",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "eslint": "9.39.5",
+    "eslint-config-next": "16.4.3",
+    "prisma": "7.10.1",
+    "typescript": "6.0.3",
+    "vitest": "5.0.5"
+  }
+}
