@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 // Server-side environment. Every variable is listed, with a comment, in .env.example.
-// The database is optional for now: with neither URL set the app runs with it off.
+// The database and Supabase are optional for now: with their variables unset the app runs with them off.
 
 const postgresUrl = z
   .string()
@@ -10,13 +10,23 @@ const postgresUrl = z
     message: "must be a postgres:// or postgresql:// connection string",
   });
 
+const httpsUrl = z
+  .string()
+  .trim()
+  .refine((value) => /^https?:\/\/[^/]+/.test(value), {
+    message: "must be the project URL, e.g. https://<project-ref>.supabase.co",
+  });
+
 const schema = z.object({
   DATABASE_URL: postgresUrl.optional(),
   DIRECT_URL: postgresUrl.optional(),
+  NEXT_PUBLIC_SUPABASE_URL: httpsUrl.optional(),
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().trim().optional(),
 });
 
 export type ServerEnv = {
   database: { enabled: false } | { enabled: true; url: string; directUrl: string };
+  supabase: { enabled: false } | { enabled: true; url: string; publishableKey: string };
 };
 
 export class EnvError extends Error {
@@ -45,9 +55,33 @@ export function parseEnv(raw: RawEnv): ServerEnv {
     throw new EnvError(result.error.issues.map((issue) => `${issue.path.join(".")} ${issue.message}`));
   }
 
-  const { DATABASE_URL, DIRECT_URL } = result.data;
-  if (!DATABASE_URL && !DIRECT_URL) return { database: { enabled: false } };
-  if (!DATABASE_URL) throw new EnvError(["DATABASE_URL is missing (DIRECT_URL is set; the app needs both)"]);
-  if (!DIRECT_URL) throw new EnvError(["DIRECT_URL is missing (DATABASE_URL is set; migrations need both)"]);
-  return { database: { enabled: true, url: DATABASE_URL, directUrl: DIRECT_URL } };
+  const env = result.data;
+  const problems = [
+    ...pairProblems("DATABASE_URL", env.DATABASE_URL, "DIRECT_URL", env.DIRECT_URL),
+    ...pairProblems(
+      "NEXT_PUBLIC_SUPABASE_URL",
+      env.NEXT_PUBLIC_SUPABASE_URL,
+      "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
+      env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+    ),
+  ];
+  if (problems.length > 0) throw new EnvError(problems);
+
+  return {
+    database:
+      env.DATABASE_URL && env.DIRECT_URL
+        ? { enabled: true, url: env.DATABASE_URL, directUrl: env.DIRECT_URL }
+        : { enabled: false },
+    supabase:
+      env.NEXT_PUBLIC_SUPABASE_URL && env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+        ? { enabled: true, url: env.NEXT_PUBLIC_SUPABASE_URL, publishableKey: env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }
+        : { enabled: false },
+  };
+}
+
+/** Some variables only work together: set both, or neither. */
+function pairProblems(nameA: string, a: string | undefined, nameB: string, b: string | undefined): string[] {
+  if (a && !b) return [`${nameB} is missing (${nameA} is set; set both or neither)`];
+  if (b && !a) return [`${nameA} is missing (${nameB} is set; set both or neither)`];
+  return [];
 }

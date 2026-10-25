@@ -30,6 +30,13 @@ Import from `src` with the `@/` alias, e.g. `import { getDb } from "@/server/db"
 - `DATABASE_URL` is Supabase's pooled connection (used by the app); `DIRECT_URL` is the direct one (used by
   `npm run db:migrate`).
 
-## Sign-in
+## Supabase client and sign-in
 
-Sign-in will use **Supabase Auth** (DECISIONS.md, #60). The prototype's jose/bcrypt sessions are not ported.
+Sign-in will use **Supabase Auth** (DECISIONS.md, #60); files go in **Supabase Storage** (#59). The prototype's
+jose/bcrypt sessions are not ported.
+
+- `createSupabaseServerClient()` (`src/server/supabase.ts`) is for Server Components, Server Actions and Route
+  Handlers. It acts as the signed-in visitor through their cookies.
+- `createSupabaseBrowserClient()` (`src/lib/supabase/browser.ts`) is for Client Components.
+- Both are optional like the database: until `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+  are set they throw an error that says how to connect. The session-refresh proxy arrives with sign-in (#101).
