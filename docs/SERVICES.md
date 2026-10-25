@@ -20,11 +20,9 @@ Used for (DECISIONS.md #58–#61):
 - **pg_cron**: every-minute timers (bounty expiry, 48h auto sign-off, reminders, unclaimed alerts).
 
 ### Rules for agents
-- Link the repo to the project with the Supabase CLI inside the repo (`supabase init` once, then
-  `supabase link --project-ref tlqyzgvlkdtiwizisfmp`). Commit the `supabase/` folder (migrations, config), never
-  `.env` files.
-- **Database changes are migrations** in `supabase/migrations/`, reviewed by William. Never edit the production
-  schema by hand in the dashboard.
+- **Database changes are Prisma migrations** in `prisma/migrations/` (set up in #67), reviewed by William.
+  Row-level security policies, pg_cron jobs and storage policies are plain SQL inside those migrations.
+  Never edit the production schema by hand in the dashboard. Never commit `.env` files.
 - **Previews and tests must not use this project's real data.** A second free project,
   `trade-marketplace-staging`, will hold demo data for preview links (to be created when previews are set up, #89).
 - Supabase row-level security works on **rows, not fields**. Fields a role must never see (customer price for
