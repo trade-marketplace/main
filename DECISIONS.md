@@ -24,6 +24,7 @@ Decided by Matt (Co-Founder/CEO) on 23 October 2026. These override older wordin
 - **File storage** (#59, William): **Supabase Storage**, private buckets, viewed only through signed URLs that expire. Access enforced by Storage policies tied to Supabase Auth. Photos resized before upload to stay inside the 1 GB free tier; Cloudflare R2 is the fallback if storage gets big.
 - **Sign-in** (#60, William): **Supabase Auth**, not a port of the prototype's jose/bcrypt sessions. Email + password at launch; magic links and Google/Apple later. Users live in our own Supabase Postgres; free to 50k monthly users. Auth emails go through Resend.
 - **Scheduled jobs** (#61, Matt): **Supabase pg_cron**, every minute (bounty expiry, 48h auto sign-off, reminders, unclaimed alerts). Vercel Cron's free plan only runs daily.
+- **Launch rates** (#62, Matt): starting point **$60/hr licensed trades, $35/hr Other**, 20% margin, 2-hour minimum (licensed) / 1-hour (Other). Editable in office Settings; priced jobs keep their rates. William may revise with his pricing structure.
 
 ## Still to decide
 
