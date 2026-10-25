@@ -21,6 +21,8 @@ Decided by Matt (Co-Founder/CEO) on 23 October 2026. These override older wordin
 - **Email, push and SMS** (#63, Matt): **Resend** for email from **hello@trademarketplace.nz**; **Firebase** web push for job alerts and pings. **No SMS at launch** (cost); revisit with more users.
 - **Analytics and cookies** (#234, Matt): privacy-friendly analytics (**Plausible or Fathom**), so the cookie banner informs only, no consent choices.
 - **Hosting and database** (#58, William): **Vercel** for the app + **Supabase Postgres**, both in the **Sydney** region. Free tiers until launch; at launch upgrade Supabase to Pro (daily backups, no inactivity pausing) and Vercel to Pro (Hobby is non-commercial only), ~US$45/mo. Supabase also covers auth, file storage and realtime.
+- **File storage** (#59, William): **Supabase Storage**, private buckets, viewed only through signed URLs that expire. Access enforced by Storage policies tied to Supabase Auth. Photos resized before upload to stay inside the 1 GB free tier; Cloudflare R2 is the fallback if storage gets big.
+- **Sign-in** (#60, William): **Supabase Auth**, not a port of the prototype's jose/bcrypt sessions. Email + password at launch; magic links and Google/Apple later. Users live in our own Supabase Postgres; free to 50k monthly users. Auth emails go through Resend.
 
 ## Still to decide
 
