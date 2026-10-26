@@ -83,6 +83,18 @@ model Profile {
   extraWorkPriced  Variation[]        @relation("VariationPricer")
   payouts          Payout[]
   settingsChanged  Settings[]
+  evidenceRules    TradeEvidenceRule[]
+  evidenceSent     CompletionEvidence[] @relation("EvidenceWorker")
+  evidenceChecked  CompletionEvidence[] @relation("EvidenceChecker")
+  reviewsWritten   Review[]           @relation("ReviewAuthor")
+  reviewsReceived  Review[]           @relation("ReviewWorker")
+  reviewsReported  Review[]           @relation("ReviewReporter")
+  reviewsHidden    Review[]           @relation("ReviewHider")
+  notifications    Notification[]
+  problemsReported ProblemReport[]    @relation("ProblemReporter")
+  problemsResolved ProblemReport[]    @relation("ProblemResolver")
+  supportThreads   SupportThread[]
+  supportMessages  SupportMessage[]
 
   @@map("profiles")
 }
@@ -320,6 +332,10 @@ model Job {
   variations    Variation[]
   payouts       Payout[]
   materials     JobMaterials?
+  evidence      CompletionEvidence?
+  review        Review?
+  problems      ProblemReport[]
+  support       SupportThread[]
 
   // Job board and office queues by status and trade; the map by status and location.
   @@index([status, category])
@@ -655,4 +671,278 @@ model Settings {
   updatedAt            DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   @@map("settings")
+}
+
+// ---------------------------------------------------------------- Schema 4 (#92): after the job
+
+// The office's check of a worker's evidence (F07). Empty until it's checked.
+enum EvidenceCheck {
+  APPROVED
+  // Something's missing or wrong: the note says what, and the worker sends it again.
+  FLAGGED
+
+  @@map("evidence_check")
+}
+
+enum ProblemStatus {
+  // Pauses the 48h auto sign-off while the office looks into it.
+  OPEN
+  RESOLVED
+
+  @@map("problem_status")
+}
+
+enum SupportThreadStatus {
+  OPEN
+  CLOSED
+
+  @@map("support_thread_status")
+}
+
+// Where a notification went besides the in-app list (every notification is a row, so it's always in the app).
+// No SMS at launch (DECISIONS.md, #63): add it here when that changes.
+enum NotificationChannel {
+  EMAIL
+  PUSH
+
+  @@map("notification_channel")
+}
+
+// What a worker has to send to finish a job in each trade (D11 reads it; the office edits it in Settings, F14).
+// One row per trade, made by the migration: electrical needs a CoC number and its PDF or photo; the other trades
+// need photos and notes. A trade with no row isn't configured, and its evidence can't be sent (checked by the
+// database), so the office can switch a trade's rules off without a deploy. Only the server reads this table.
+model TradeEvidenceRule {
+  trade           Trade    @id
+  // Certificate of Compliance number, and its file.
+  cocRequired     Boolean  @default(false) @map("coc_required")
+  cocFileRequired Boolean  @default(false) @map("coc_file_required")
+  minPhotos       Int      @default(0) @map("min_photos")
+  notesRequired   Boolean  @default(false) @map("notes_required")
+  updatedById     String?  @map("updated_by_id") @db.Uuid
+  updatedBy       Profile? @relation(fields: [updatedById], references: [id], onDelete: SetNull)
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("trade_evidence_rules")
+}
+
+// What the worker sends when they finish (D11) and the customer checks before signing off (C14). One per job,
+// from the job's worker (the lead on a crew job). A draft until `submittedAt` ("Save for later"); sending it checks
+// the trade's rules, the declaration and that materials spend is reported in `job_materials` (all by the
+// database). Once sent it can't change, unless the office flags it and it goes back to a draft. No money here:
+// materials spend lives in `job_materials`, which customers never see.
+model CompletionEvidence {
+  jobId       String         @id @map("job_id") @db.Uuid
+  job         Job            @relation(fields: [jobId], references: [id], onDelete: Restrict)
+  workerId    String         @map("worker_id") @db.Uuid
+  worker      Profile        @relation("EvidenceWorker", fields: [workerId], references: [id], onDelete: Restrict)
+  // Certificate of Compliance (electrical): its number and the PDF or photo in the private Storage bucket.
+  cocNumber   String?        @map("coc_number")
+  cocPath     String?        @map("coc_path")
+  notes       String?
+  // The exact words the worker ticked, and when. Both required to send.
+  declaration String?
+  declaredAt  DateTime?      @map("declared_at") @db.Timestamptz
+  submittedAt DateTime?      @map("submitted_at") @db.Timestamptz
+  // The office's check (F07). FLAGGED needs a note saying what's wrong.
+  officeCheck EvidenceCheck? @map("office_check")
+  checkNote   String?        @map("check_note")
+  checkedById String?        @map("checked_by_id") @db.Uuid
+  checkedBy   Profile?       @relation("EvidenceChecker", fields: [checkedById], references: [id], onDelete: SetNull)
+  checkedAt   DateTime?      @map("checked_at") @db.Timestamptz
+  createdAt   DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  photos CompletionEvidencePhoto[]
+
+  // Office queue: evidence waiting to be checked, oldest first.
+  @@index([officeCheck, submittedAt])
+  @@index([workerId, createdAt])
+  @@map("completion_evidence")
+}
+
+// Photos of the finished work, in the private Storage bucket. Can't be added or removed once the evidence is sent.
+model CompletionEvidencePhoto {
+  id        String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  jobId     String             @map("job_id") @db.Uuid
+  evidence  CompletionEvidence @relation(fields: [jobId], references: [jobId], onDelete: Cascade)
+  path      String
+  position  Int                @default(0)
+  createdAt DateTime           @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([jobId, position])
+  @@map("completion_evidence_photos")
+}
+
+// The customer's review of the worker (C15), one per job, left when they sign off. Editable for 7 days:
+// `editableUntil` is set by the database from `createdAt`, and the rating, tags and comment can't change after it
+// (checked by the database). A worker can report a review; the office hides it with a reason (F12) and it
+// disappears from public pages, but is kept.
+model Review {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  jobId         String    @unique @map("job_id") @db.Uuid
+  job           Job       @relation(fields: [jobId], references: [id], onDelete: Restrict)
+  // The job's customer and worker (checked by the database).
+  reviewerId    String    @map("reviewer_id") @db.Uuid
+  reviewer      Profile   @relation("ReviewAuthor", fields: [reviewerId], references: [id], onDelete: Restrict)
+  workerId      String    @map("worker_id") @db.Uuid
+  worker        Profile   @relation("ReviewWorker", fields: [workerId], references: [id], onDelete: Restrict)
+  // 1–5 stars.
+  rating        Int
+  // Quick tags picked under the stars, e.g. "On time", "Tidy".
+  tags          String[]  @default([])
+  comment       String?
+  editableUntil DateTime  @default(dbgenerated("(now() + '7 days'::interval)")) @map("editable_until") @db.Timestamptz
+  // Reported by the worker (or anyone the office acts for): why, and when.
+  reportedAt    DateTime? @map("reported_at") @db.Timestamptz
+  reportedById  String?   @map("reported_by_id") @db.Uuid
+  reportedBy    Profile?  @relation("ReviewReporter", fields: [reportedById], references: [id], onDelete: SetNull)
+  reportReason  String?   @map("report_reason")
+  // Office moderation: hidden from public pages, with a reason. Both or neither.
+  hiddenAt      DateTime? @map("hidden_at") @db.Timestamptz
+  hiddenReason  String?   @map("hidden_reason")
+  hiddenById    String?   @map("hidden_by_id") @db.Uuid
+  hiddenBy      Profile?  @relation("ReviewHider", fields: [hiddenById], references: [id], onDelete: SetNull)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  // A worker's public profile: their visible reviews, newest first.
+  @@index([workerId, createdAt])
+  @@map("reviews")
+}
+
+// Something we told someone (E02, E03). `type` names the event in dotted lower case ("job.priced",
+// "estimate.requested"); `payload` holds what the row shows and links to (job id, amounts the reader may see).
+// The server builds the payload for its reader, so a worker's never holds the customer's price (AGENTS.md §5).
+model Notification {
+  id           String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId       String                @map("user_id") @db.Uuid
+  user         Profile               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type         String
+  payload      Json                  @default("{}")
+  readAt       DateTime?             @map("read_at") @db.Timestamptz
+  // Where it was also sent, added as each one goes out.
+  channelsSent NotificationChannel[] @default([]) @map("channels_sent")
+  createdAt    DateTime              @default(now()) @map("created_at") @db.Timestamptz
+
+  // The bell and the notifications page: newest first. Unread counts use a partial index (migration SQL).
+  @@index([userId, createdAt])
+  @@map("notifications")
+}
+
+// "Something's not right" (C16): the customer or the worker on a job reports a problem. While one is OPEN the
+// job isn't signed off automatically (the 48h job checks). The office resolves it with a note (F06).
+model ProblemReport {
+  id           String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  jobId        String        @map("job_id") @db.Uuid
+  job          Job           @relation(fields: [jobId], references: [id], onDelete: Restrict)
+  // The job's customer or worker (checked by the database).
+  reportedById String        @map("reported_by_id") @db.Uuid
+  reportedBy   Profile       @relation("ProblemReporter", fields: [reportedById], references: [id], onDelete: Restrict)
+  // The topic picked on the form, e.g. "Work not finished". Free text until the list settles.
+  topic        String
+  details      String
+  status       ProblemStatus @default(OPEN)
+  // Required when RESOLVED, empty while OPEN.
+  resolution   String?
+  resolvedById String?       @map("resolved_by_id") @db.Uuid
+  resolvedBy   Profile?      @relation("ProblemResolver", fields: [resolvedById], references: [id], onDelete: SetNull)
+  resolvedAt   DateTime?     @map("resolved_at") @db.Timestamptz
+  createdAt    DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  photos        ProblemReportPhoto[]
+  supportThread SupportThread?
+
+  @@index([jobId, createdAt])
+  // Office queue: open problems, oldest first.
+  @@index([status, createdAt])
+  @@map("problem_reports")
+}
+
+// Photos sent with a problem report, in the private Storage bucket.
+model ProblemReportPhoto {
+  id        String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  reportId  String        @map("report_id") @db.Uuid
+  report    ProblemReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  path      String
+  position  Int           @default(0)
+  createdAt DateTime      @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([reportId, position])
+  @@map("problem_report_photos")
+}
+
+// A conversation between one person and the office (Help → "Message us", E08; the office inbox, F13).
+// Optionally about a job or a problem report. The person sees their thread and its messages, never the office's
+// internal notes.
+model SupportThread {
+  id              String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId          String              @map("user_id") @db.Uuid
+  user            Profile             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject         String
+  jobId           String?             @map("job_id") @db.Uuid
+  job             Job?                @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  // At most one thread per problem report.
+  problemReportId String?             @unique @map("problem_report_id") @db.Uuid
+  problemReport   ProblemReport?      @relation(fields: [problemReportId], references: [id], onDelete: SetNull)
+  status          SupportThreadStatus @default(OPEN)
+  // Required when CLOSED, empty while OPEN.
+  closedAt        DateTime?           @map("closed_at") @db.Timestamptz
+  // Moved forward by the database with each message, for sorting the inbox.
+  lastMessageAt   DateTime            @default(now()) @map("last_message_at") @db.Timestamptz
+  createdAt       DateTime            @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  messages SupportMessage[]
+
+  @@index([userId, lastMessageAt])
+  // Office inbox: open threads, latest first.
+  @@index([status, lastMessageAt])
+  @@map("support_threads")
+}
+
+// One message in a support thread: from the person or the office (`fromOffice`, set by the database from the
+// author's role). `internal` notes are office-only and need an office author (checked by the database).
+model SupportMessage {
+  id         String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  threadId   String        @map("thread_id") @db.Uuid
+  thread     SupportThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  // The thread's person or someone in the office (checked by the database). Empty if they've since been deleted.
+  authorId   String?       @map("author_id") @db.Uuid
+  author     Profile?      @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  fromOffice Boolean       @default(false) @map("from_office")
+  internal   Boolean       @default(false)
+  body       String
+  createdAt  DateTime      @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([threadId, createdAt])
+  @@map("support_messages")
+}
+
+// Who did what to which record, when (F05 timeline, F08 decisions, settings changes). Append-only: rows can't be
+// changed or deleted (checked by the database), and `createdAt` is always the time of the insert. The audit helper
+// (#100) writes it. `actorId` has no foreign key so the history outlives the person; empty means the system (a
+// scheduled job). `recordId` is text because some keys aren't uuids (settings is id 1). Only the server reads it.
+model AuditLog {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  actorId    String?  @map("actor_id") @db.Uuid
+  // Their role at the time.
+  actorRole  Role?    @map("actor_role")
+  // Dotted lower case, e.g. "licence.verified", "job.refunded".
+  action     String
+  // The table and the row's key, e.g. "licences" + its id.
+  recordType String   @map("record_type")
+  recordId   String   @map("record_id")
+  // The row (or just the changed fields) before and after. Empty for a create (before) or a delete (after).
+  before     Json?
+  after      Json?
+  reason     String?
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  // A record's timeline, someone's actions, and everything by time.
+  @@index([recordType, recordId, createdAt])
+  @@index([actorId, createdAt])
+  @@index([createdAt])
+  @@map("audit_log")
 }

@@ -166,6 +166,28 @@ checks, triggers) is hand-written SQL at the end of the same migration, under a 
   or piece of extra work; a variation payment is on its own job. Extra work follows its status order, with the
   ask frozen once priced and the price frozen once decided. A payout can't go backwards or change once exported.
   Jobs with payments or payouts can't be deleted. Settings can't be deleted or given a second row.
+- **After the job (Schema 4, #92).** `completion_evidence` is one per job from its worker: a CoC number and file
+  path, notes, the declaration (its words and when it was ticked), `completion_evidence_photos`, and the office's
+  check (APPROVED, or FLAGGED with a note). What each trade needs is in `trade_evidence_rules`, one row per trade
+  made by the migration (electrical: CoC number + file; the rest: at least one photo and notes) and edited by the
+  office; a trade with no row isn't configured. Materials spend stays in `job_materials.spent_cents`, which
+  customers never see. `reviews` are one per job (1–5 stars, tags, comment), editable for 7 days
+  (`editable_until`), reportable (`reported_at`, `report_reason`) and hidden by the office with a reason
+  (`hidden_at`, `hidden_reason`). `notifications` hold the person, a dotted `type`, a JSON `payload`, `read_at` and
+  `channels_sent` (EMAIL, PUSH; no SMS at launch). `problem_reports` (with photos) come from the job's customer or
+  worker and stay OPEN until the office resolves them with a note; an open one pauses the 48h auto sign-off.
+  `support_threads` and `support_messages` are a person's conversation with the office, optionally about a job or
+  a problem report; `internal` messages are office-only notes. `audit_log` records the actor (and their role),
+  action, record type and id, before/after JSON, reason and time; the helper that writes it is #100.
+- **After-the-job rules live in the database too.** Sending evidence (setting `submitted_at`) checks the trade's
+  rules, the declaration and that materials spend is reported ($0 counts), and stamps the time; sent evidence
+  and its photos are frozen and kept, and go back to a draft only when the office flags them. A review is by the
+  job's customer about its worker once the work is sent, and its rating, tags and comment can't change after
+  `editable_until` (7 days from posting); moderation works any time. Resolving a problem or closing a thread
+  stamps the time. A support message is from the thread's person or the office (`from_office` is set by the
+  database from the author's role), can't be edited, and moves its thread up the inbox. The audit log is
+  append-only: updates, deletes and truncates are refused, `created_at` is always the insert's time, and the actor
+  defaults to `app.actor_id` (as for job history). It has no foreign key to `profiles`, so it outlives the person.
 - **Auth link without a foreign key.** Prisma only manages `public`, and a foreign key into `auth.users` stops it
   reading the database, so triggers do that job: a profile needs an auth user, and deleting the auth user deletes the
   profile (and everything hanging off it).
@@ -175,7 +197,10 @@ checks, triggers) is hand-written SQL at the end of the same migration, under a 
   their own estimates. Customers never see estimates or `job_pricing`, and workers get no policy on `jobs` yet
   (it holds the customer's price). Customers read their own jobs' payments; workers read their own payouts; nobody
   else reads either. `variations` and `job_materials` mix worker pay or costs with the customer's price, so they have
-  no policy yet. `payroll_details`, `job_pricing` and `settings` have no policy at all. Wider rules come with
+  no policy yet. Workers read their own evidence; customers read it on their own jobs once it's sent. Customers
+  read the reviews they wrote, workers the visible (not hidden) reviews about them. Everyone reads their own
+  notifications, problem reports and support threads, but never the office's internal notes. `payroll_details`,
+  `job_pricing`, `settings`, `trade_evidence_rules` and `audit_log` have no policy at all. Wider rules come with
   who-sees-what (#95).
 - **Encrypted fields.** IRD numbers and bank accounts are encrypted by `encryptField()` (`src/server/crypto.ts`,
   AES-256-GCM, key in `FIELD_ENCRYPTION_KEY`) before they're saved, and bound to their row so a copied value won't
