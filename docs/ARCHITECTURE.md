@@ -183,6 +183,43 @@ checks, triggers) is hand-written SQL at the end of the same migration, under a 
 - **Plain Postgres works too.** The first migration creates stand-ins for Supabase's `auth.users` and `auth.uid()`
   when they don't exist (local Docker, CI, Prisma's shadow database). On Supabase it does nothing.
 
+## Pricing (#94)
+
+Server logic only; the office's Price a job screen (F02, #168) and Price extra work (F03, #169) call it.
+
+| Piece | Where | What it does |
+|---|---|---|
+| The maths | `src/server/pricing/calculate.ts` | `priceWork({ minutes, materialsCents }, rates)` returns the whole breakdown in integer cents. `ratesForTrade(trade, settings)` picks the shared (licensed) or Other rate and minimum. `perHour(rates)` gives one hour without the minimum, for the pitch and Settings. Pure. |
+| Freezing it onto a job | `src/server/pricing/price-job.ts` | `priceJob(db, { jobId, minutes, materialsCents, note, pricedById })`: in one transaction, reads `settings`, prices the job for its trade, writes `jobs.price_cents` and upserts `job_pricing` (every rate used plus the breakdown). REVIEW, QUOTE_BOUNTY and PRICED only; it doesn't change the status. |
+
+**Order of operations.** The price is built up from the worker's rate, so their pay is fixed first and TM's cut
+comes out of the margin only. Each money step is rounded to whole cents before the next one uses it:
+
+```
+billed minutes  = max(minutes, minimum for the trade)       2 h licensed, 1 h Other
+worker gross    = billed minutes × hourly rate ÷ 60         $70 licensed, $38 Other
+holiday pay     = worker gross × 8%
+on-costs        = worker gross × 12.5%                      holiday pay, KiwiSaver, ACC (holiday pay is inside it)
+labour cost     = worker gross + on-costs
+margin          = (labour cost + materials at cost) × 20%   labour only when there are no materials
+ex GST          = labour cost + materials + margin
+GST             = ex GST × 15%
+customer price  = ex GST + GST                              → jobs.price_cents
+worker earns    = worker gross + holiday pay                before PAYE
+```
+
+**Rounding** is half up (x.5 cents goes up) at each of the five rounded steps (gross, holiday pay, on-costs,
+margin, GST), in exact integer arithmetic: minutes, cents and basis points in, BigInt for the multiply-divide, so
+no float ever touches money. Inputs must be whole numbers (minutes ≥ 1, cents ≥ 0, basis points 0–10000), and a
+result that wouldn't fit a Postgres `integer` throws. Both are in `tests/unit/pricing-calculate.test.ts`.
+
+**The minimum** applies to the customer price and the worker's pay alike (the billed minutes are stored in
+`job_pricing.minutes`). `priceWork(…, { applyMinimum: false })` is for extra work on a job that already paid it.
+
+**Frozen rates.** Re-pricing before payment takes settings as they are then; after payment the database refuses any
+change to `price_cents` or `job_pricing`. Who sees what: customers get `price_cents` only, workers get what they earn
+only, never the customer price; the breakdown stays on the server (AGENTS.md §5).
+
 ## Addresses, coverage and distances (#97)
 
 Server logic only; the screens that use it (post a job C04, saved addresses C21, the waitlist A07, the job map D03/D18,
