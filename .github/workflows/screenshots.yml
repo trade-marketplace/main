@@ -1,0 +1,205 @@
+# Screenshots on every UI PR (#90). For a PR labelled `ui` or touching screens, builds the app, starts it against a
+# throwaway Postgres (migrated and seeded with the demo accounts and a job in every status, #88), signs in as the
+# right demo role, shoots every changed route at 1440 and 390 px with reduced motion on, and keeps ONE comment on
+# the PR with a table: route · 1440 · 390. That comment satisfies the PR gate's screenshots rule (docs/PR_GATE.md).
+# How it works and how to pick routes, roles and states: docs/TESTING.md ("Screenshots on UI PRs").
+#
+# Two jobs, so the job that runs the PR's app never holds a token that can write:
+# - capture: read-only. Builds, starts and shoots; uploads the images as an artifact (kept 7 days).
+# - publish: pushes the images to the `pr-screenshots` branch (never merged, pruned after 7 days), posts the
+#   comment and re-runs the PR gate. It doesn't install packages or run the app.
+name: Screenshots
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, edited]
+
+permissions: {}
+
+env:
+  NEXT_TELEMETRY_DISABLED: "1"
+
+jobs:
+  capture:
+    name: Take screenshots
+    # An edit only matters when the description changed (it may list routes); a label only when it's `ui`.
+    if: >-
+      (github.event.action != 'edited' || github.event.changes.body != null) &&
+      (github.event.action != 'labeled' || github.event.label.name == 'ui')
+    # A new push replaces the run that's now out of date. Per job, not per workflow, so a title edit (which skips
+    # this job) doesn't cancel a run that's still shooting.
+    concurrency:
+      group: screenshots-capture-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    outputs:
+      run: ${{ steps.plan.outputs.run }}
+      capture: ${{ steps.plan.outputs.capture }}
+    # A throwaway Postgres, as in ci.yml. Never the Supabase project.
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: tm_local
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/tm_local
+      DIRECT_URL: postgresql://postgres:postgres@localhost:5432/tm_local
+      # The app signs in through a stand-in Supabase Auth that the capture runs on this port
+      # (scripts/screenshots/auth-stub.ts). The key is a placeholder, not a secret.
+      NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_screenshots_stub
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+        with:
+          # GitHub's merge commit: its first parent is the base branch, so 2 commits show what the PR changes.
+          fetch-depth: 2
+          persist-credentials: false
+
+      - name: Set up Node (version from .nvmrc)
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      # Which routes to shoot: the description's `screenshots:` list, or the routes the changed files show up on.
+      - name: Plan
+        id: plan
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+        run: git diff --name-only --no-renames HEAD^1 HEAD | node scripts/ci/screenshots.mjs plan
+
+      - name: Install
+        if: steps.plan.outputs.capture == 'true'
+        run: npm ci
+
+      - name: Build
+        if: steps.plan.outputs.capture == 'true'
+        run: npm run build
+
+      - name: Migrate and seed the database
+        if: steps.plan.outputs.capture == 'true'
+        env:
+          ALLOW_SEED: "1"
+          # The seed would want a real Supabase Auth if it saw a Supabase URL; this database has the stand-in.
+          NEXT_PUBLIC_SUPABASE_URL: ""
+        run: |
+          npx prisma migrate deploy
+          npx prisma db seed
+
+      - name: Find Playwright version
+        id: playwright
+        if: steps.plan.outputs.capture == 'true'
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Playwright browser
+        id: browser-cache
+        if: steps.plan.outputs.capture == 'true'
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+
+      - name: Install Playwright browser
+        if: steps.plan.outputs.capture == 'true'
+        run: |
+          if [ "${{ steps.browser-cache.outputs.cache-hit }}" = "true" ]; then
+            npx playwright install-deps chromium
+          else
+            npx playwright install --with-deps chromium
+          fi
+
+      # Starts `next start` in the background. If it crashes or doesn't answer within a minute, this step fails
+      # and prints the end of the server log; the whole log is uploaded below.
+      - name: Start the app
+        if: steps.plan.outputs.capture == 'true'
+        run: node scripts/ci/screenshots.mjs start
+
+      - name: Take screenshots
+        if: steps.plan.outputs.capture == 'true'
+        run: npx playwright test -c scripts/screenshots/playwright.config.ts
+
+      - name: Write the comment
+        if: steps.plan.outputs.capture == 'true'
+        run: node scripts/ci/screenshots.mjs comment
+
+      - name: Upload screenshots
+        if: ${{ !cancelled() && steps.plan.outputs.run == 'true' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: screenshots
+          path: |
+            screenshots/
+            !screenshots/server.log
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Upload server log
+        if: ${{ failure() && steps.plan.outputs.capture == 'true' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: screenshots-server-log
+          path: screenshots/server.log
+          retention-days: 7
+          if-no-files-found: ignore
+
+  publish:
+    name: Post screenshots
+    needs: capture
+    # A PR from a fork gets a read-only token, so it can't push or comment: its images stay in the artifact.
+    if: >-
+      !cancelled() && needs.capture.outputs.run == 'true' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    concurrency:
+      group: screenshots-publish-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write # push to the pr-screenshots branch only
+      pull-requests: write # the one comment
+      actions: write # re-run the PR gate so it sees the comment
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+        with:
+          sparse-checkout: scripts/ci
+          # Left in the local git config for the push to pr-screenshots; never printed.
+          persist-credentials: true
+
+      - name: Set up Node (version from .nvmrc)
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+
+      - name: Download screenshots
+        uses: actions/download-artifact@v8
+        continue-on-error: true
+        with:
+          name: screenshots
+          path: screenshots
+
+      # No npm install needed: the script only uses Node built-ins.
+      - name: Publish
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          CAPTURE_RESULT: ${{ needs.capture.outputs.capture == 'true' && needs.capture.result || 'skipped' }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: node scripts/ci/screenshots.mjs publish

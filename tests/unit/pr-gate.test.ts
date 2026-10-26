@@ -6,11 +6,14 @@ import {
   COMMENT_MARKER,
   evaluate,
   findClosedIssues,
+  findScreenshotsComment,
   findUntickedBoxes,
   hasImage,
   isUiFile,
   renderComment,
   runGate,
+  SCREENSHOTS_MARKER,
+  screenshotsShaLine,
   visibleText,
 } from "../../scripts/ci/pr-gate.mjs";
 
@@ -199,9 +202,42 @@ describe("evaluate", () => {
     expect(result.failures.map((f) => f.rule)).toEqual(["closes", "checkboxes"]);
   });
 
+  it("lets the screenshot bot's comment stand in for screenshots in the description", () => {
+    expect(evaluate({ body: goodBody, files: ["src/app/page.tsx"], botScreenshots: true }).ok).toBe(true);
+    const result = evaluate({ body: "- [ ] x", labels: ["ui"], botScreenshots: true });
+    expect(result.failures.map((f) => f.rule)).toEqual(["closes", "checkboxes"]);
+  });
+
   it("is bypassed by the skip-gate label (founders merging anyway)", () => {
     const result = evaluate({ body: "", labels: ["skip-gate"], files: ["src/app/page.tsx"] });
     expect(result).toMatchObject({ ok: true, skipped: true, failures: [] });
+  });
+});
+
+describe("findScreenshotsComment", () => {
+  const sha = "abc1234def";
+  const body = `${SCREENSHOTS_MARKER}\n${screenshotsShaLine(sha)}\n| Route | 1440 | 390 |\n|---|---|---|\n| / | <img src="https://github.com/o/r/blob/pr-screenshots/pr-1/${sha}/home-1440.png?raw=true"> | — |`;
+  const bot = { login: "github-actions[bot]", type: "Bot" };
+
+  it("finds the bot's comment for the PR's latest commit", () => {
+    const comment = { body, user: bot };
+    expect(findScreenshotsComment([{ body: "hi", user: bot }, comment], sha)).toBe(comment);
+  });
+
+  it("ignores pictures of an older commit", () => {
+    expect(findScreenshotsComment([{ body, user: bot }], "newer")).toBeUndefined();
+    expect(findScreenshotsComment([{ body, user: bot }], undefined)).toBeUndefined();
+  });
+
+  it("can't be faked by a person or another bot copying the comment", () => {
+    expect(findScreenshotsComment([{ body, user: { login: "someone", type: "User" } }], sha)).toBeUndefined();
+    expect(findScreenshotsComment([{ body, user: { login: "github-actions[bot]", type: "User" } }], sha)).toBeUndefined();
+    expect(findScreenshotsComment([{ body, user: { login: "other-app[bot]", type: "Bot" } }], sha)).toBeUndefined();
+  });
+
+  it("doesn't count the bot's comment when it has no images (no routes found, or the app failed)", () => {
+    const notice = `${SCREENSHOTS_MARKER}\n${screenshotsShaLine(sha)}\n### Screenshots: failed`;
+    expect(findScreenshotsComment([{ body: notice, user: bot }], sha)).toBeUndefined();
   });
 });
 
@@ -240,15 +276,24 @@ describe("renderComment", () => {
 describe("runGate (GitHub API glue)", () => {
   type Call = { path: string; method: string; body?: { body: string } };
   type Comment = { id: number; body: string; user: { type: string } };
+  type BotComment = { id: number; body: string; user: { type: string; login: string } };
 
-  function fakeGitHub(pr: { body: string | null; labels?: string[]; files?: string[] }, comments: Comment[] = []) {
+  function fakeGitHub(
+    pr: { body: string | null; labels?: string[]; files?: string[]; sha?: string },
+    comments: (Comment | BotComment)[] = [],
+  ) {
     const calls: Call[] = [];
     const gh = async (path: string, init: { method?: string; body?: unknown } = {}) => {
       const method = init.method ?? "GET";
       calls.push({ path, method, body: init.body as Call["body"] });
       if (method !== "GET") return {};
       if (/\/pulls\/\d+$/.test(path)) {
-        return { body: pr.body, labels: (pr.labels ?? []).map((name) => ({ name })), base: { ref: "main" } };
+        return {
+          body: pr.body,
+          labels: (pr.labels ?? []).map((name) => ({ name })),
+          base: { ref: "main" },
+          head: { sha: pr.sha ?? "head-sha" },
+        };
       }
       if (path.includes("/files?")) {
         return path.endsWith("page=1") ? (pr.files ?? []).map((filename) => ({ filename })) : [];
@@ -302,6 +347,31 @@ describe("runGate (GitHub API glue)", () => {
     expect((await runGate({ ...opts, gh: github.gh })).result.failures.map((f) => f.rule)).toEqual(["screenshots"]);
     const labelled = fakeGitHub({ body: goodBody, labels: ["no-screens"], files: ["src/app/page.tsx"] });
     expect((await runGate({ ...opts, gh: labelled.gh })).result.ok).toBe(true);
+  });
+
+  it("counts the screenshot bot's comment for the latest commit as screenshots", async () => {
+    const shots = {
+      id: 60,
+      body: `${SCREENSHOTS_MARKER}\n${screenshotsShaLine("head-sha")}\n![/](https://github.com/o/r/blob/pr-screenshots/pr-7/head-sha/home-1440.png?raw=true)`,
+      user: { type: "Bot", login: "github-actions[bot]" },
+    };
+    const github = fakeGitHub({ body: goodBody, files: ["src/app/page.tsx"] }, [shots]);
+    expect((await runGate({ ...opts, gh: github.gh })).result.ok).toBe(true);
+    const stale = fakeGitHub({ body: goodBody, files: ["src/app/page.tsx"], sha: "new-sha" }, [shots]);
+    expect((await runGate({ ...opts, gh: stale.gh })).result.failures.map((f) => f.rule)).toEqual(["screenshots"]);
+  });
+
+  it("still checks the description when the comments can't be read", async () => {
+    const github = fakeGitHub({ body: goodBody, files: ["src/app/page.tsx"] });
+    const gh = async (path: string, init: { method?: string; body?: unknown } = {}) => {
+      if (path.includes("/comments?")) throw new Error("500");
+      return github.gh(path, init);
+    };
+    const warnings: string[] = [];
+    const { result, action } = await runGate({ ...opts, gh, log: (m) => warnings.push(m) });
+    expect(result.failures.map((f) => f.rule)).toEqual(["screenshots"]);
+    expect(action).toBe("failed");
+    expect(warnings[0]).toContain("500");
   });
 
   it("still returns the result when the comment can't be posted (read-only token)", async () => {
