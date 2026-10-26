@@ -109,7 +109,8 @@ jobs:
 
       # End-to-end and accessibility tests (#70, #287). They need the built app, so they only run when Build passed
       # (and so never on a docs-only PR). The browser is cached per Playwright version: a new version downloads a
-      # new browser, otherwise only the system libraries are installed.
+      # new browser. No apt: the runner image already has Chromium's libraries, and the slow Ubuntu mirror ran CI out
+      # of time (#328). If a library ever goes missing, Playwright fails at launch and names it.
       - name: Find Playwright version
         id: playwright
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
@@ -126,12 +127,8 @@ jobs:
       - name: Install Playwright browser
         id: browsers
         if: ${{ !cancelled() && steps.playwright.outcome == 'success' }}
-        run: |
-          if [ "${{ steps.browser-cache.outputs.cache-hit }}" = "true" ]; then
-            npx playwright install-deps chromium
-          else
-            npx playwright install --with-deps chromium
-          fi
+        timeout-minutes: 3
+        run: npx playwright install chromium
 
       # `npm run e2e` would build the app again, so run Playwright on the build from the step above.
       - name: End-to-end and accessibility
