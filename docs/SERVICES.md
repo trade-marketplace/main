@@ -7,8 +7,9 @@ Vercel's environment variables and the founders' password managers.
 
 | | |
 |---|---|
-| Project ref | `tlqyzgvlkdtiwizisfmp` |
-| Project URL | `https://tlqyzgvlkdtiwizisfmp.supabase.co` |
+| Project | Trade Marketplace Sydney |
+| Project ref | `bwbwbpnqfxjdkbompsvg` |
+| Project URL | `https://bwbwbpnqfxjdkbompsvg.supabase.co` |
 | Region | Sydney (`ap-southeast-2`) |
 | Plan | Free until launch, then Pro (see DECISIONS.md #58) |
 | Owners | Matt, William |
