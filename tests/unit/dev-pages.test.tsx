@@ -21,6 +21,7 @@ type DevPage = (props: {
 }) => Promise<unknown>;
 
 // Every /dev page, found and imported automatically, so a new preview page is covered without editing this file.
+// (If a page you just added shows up as missing locally, Vitest's cache is stale: delete node_modules/.vitest-cache.)
 const modules = import.meta.glob<{ default: DevPage }>("../../src/app/dev/**/page.tsx", { eager: true });
 const PAGES: Record<string, DevPage> = Object.fromEntries(
   Object.entries(modules).map(([file, module]) => [
