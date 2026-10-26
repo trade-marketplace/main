@@ -148,6 +148,24 @@ checks, triggers) is hand-written SQL at the end of the same migration, under a 
   server names the actor with `SET LOCAL app.actor_id`), set `edited_at` when the job's content or photos change
   and flag older estimates `made_before_edit` (cleared when the worker saves again), freeze `price_cents` and
   `job_pricing` once the job is paid, and only allow booking a window the customer offered.
+- **Money (Schema 3, #91).** A job can have several `payments` (`JOB`, `VARIATION` for extra work, `QUICK_LOOK`
+  for the $30 look), each with Stripe's ids, a unique idempotency key, `livemode` (false in test mode) and
+  `refunded_cents` for full and partial refunds. Extra work is `variations` (REQUESTED → PRICED → APPROVED |
+  DECLINED: the worker's ask, then the office's figures built like `job_pricing` with the job's frozen rates).
+  `payouts` are one per worker per job (crews later), QUEUED → EXPORTED → PAID, records for payroll rather than
+  transfers. `job_materials` holds the budget and actual spend, at cost ex GST.
+- **Settings.** `settings` has exactly one row (`id` = 1), made by the migration with the launch rates (#62):
+  `shared_rate_cents` 7000 (every licensed trade) and `other_rate_cents` 3800, `shared_min_minutes` 120 /
+  `other_min_minutes` 60, holiday pay 8%, on-costs 12.5%, margin 20%, GST 15% (basis points), `auto_release_hours`
+  48, `quick_look_price_cents` 3000, `bounty_expiry_hours` 24. **Coverage** is a circle:
+  `coverage_centre_lat` / `coverage_centre_lng` (Invercargill, -46.4132 / 168.3538) and `coverage_radius_km` (20);
+  a point is covered when it's within the radius of the centre (#97 reads these). Pricing copies the rates into
+  `job_pricing`, so editing settings never changes a priced job.
+- **Money rules live in the database too.** Refunds never exceed the amount and agree with the status; a paid
+  payment's amount can't change and it can't go back to unpaid; one live (not FAILED) payment per job, quick look
+  or piece of extra work; a variation payment is on its own job. Extra work follows its status order, with the
+  ask frozen once priced and the price frozen once decided. A payout can't go backwards or change once exported.
+  Jobs with payments or payouts can't be deleted. Settings can't be deleted or given a second row.
 - **Auth link without a foreign key.** Prisma only manages `public`, and a foreign key into `auth.users` stops it
   reading the database, so triggers do that job: a profile needs an auth user, and deleting the auth user deletes the
   profile (and everything hanging off it).
@@ -155,7 +173,9 @@ checks, triggers) is hand-written SQL at the end of the same migration, under a 
   by it; it protects the Supabase Data API that the browser can reach with the public key. There, people can read
   their own rows and write nothing. Customers also read their own jobs' photos, windows and history; workers read
   their own estimates. Customers never see estimates or `job_pricing`, and workers get no policy on `jobs` yet
-  (it holds the customer's price). `payroll_details` and `job_pricing` have no policy at all. Wider rules come with
+  (it holds the customer's price). Customers read their own jobs' payments; workers read their own payouts; nobody
+  else reads either. `variations` and `job_materials` mix worker pay or costs with the customer's price, so they have
+  no policy yet. `payroll_details`, `job_pricing` and `settings` have no policy at all. Wider rules come with
   who-sees-what (#95).
 - **Encrypted fields.** IRD numbers and bank accounts are encrypted by `encryptField()` (`src/server/crypto.ts`,
   AES-256-GCM, key in `FIELD_ENCRYPTION_KEY`) before they're saved, and bound to their row so a copied value won't

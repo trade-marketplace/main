@@ -79,6 +79,10 @@ model Profile {
   estimates        Estimate[]
   jobsPriced       JobPricing[]
   statusChanges    JobStatusHistory[]
+  extraWorkAsked   Variation[]        @relation("VariationRequester")
+  extraWorkPriced  Variation[]        @relation("VariationPricer")
+  payouts          Payout[]
+  settingsChanged  Settings[]
 
   @@map("profiles")
 }
@@ -277,6 +281,10 @@ model Job {
   estimates     Estimate[]
   pricing       JobPricing?
   statusHistory JobStatusHistory[]
+  payments      Payment[]
+  variations    Variation[]
+  payouts       Payout[]
+  materials     JobMaterials?
 
   // Job board and office queues by status and trade; the map by status and location.
   @@index([status, category])
@@ -388,4 +396,226 @@ model JobStatusHistory {
 
   @@index([jobId, createdAt])
   @@map("job_status_history")
+}
+
+// ---------------------------------------------------------------- Schema 3 (#91): money
+
+// What a payment is for. A job can have several: the job itself, each piece of extra work, and the $30 quick
+// look (DECISIONS.md 3). Quick looks and quote bounties may be replaced by #279 (DECISIONS.md "Still to decide").
+enum PaymentKind {
+  JOB
+  VARIATION
+  QUICK_LOOK
+
+  @@map("payment_kind")
+}
+
+enum PaymentStatus {
+  // Created with the provider, not paid yet.
+  PENDING
+  PAID
+  // Declined or abandoned. Trying again makes a new payment with a new idempotency key.
+  FAILED
+  // All of `amountCents` was given back.
+  REFUNDED
+  // Some of it was: `refundedCents` says how much.
+  PARTIALLY_REFUNDED
+
+  @@map("payment_status")
+}
+
+// Extra work found on the job: the worker asks, the office prices it, the customer says yes (and pays) or no.
+enum VariationStatus {
+  REQUESTED
+  PRICED
+  APPROVED
+  DECLINED
+
+  @@map("variation_status")
+}
+
+// Payouts are records for payroll, not bank transfers: they're exported to the payroll provider, which pays.
+enum PayoutStatus {
+  // Waiting for the next pay run.
+  QUEUED
+  // Sent to payroll in an export.
+  EXPORTED
+  // Payroll confirmed it was paid.
+  PAID
+
+  @@map("payout_status")
+}
+
+// Money the customer pays, through Stripe (DECISIONS.md 7), in test mode until both founders agree otherwise.
+// Customers read their own jobs' payments; workers never see them (they hold the customer's price, AGENTS.md §5).
+// Can't be deleted with the job: a job with payments has to stay. Once paid, what was paid can't change, and at
+// most one payment for the same thing (the job, a variation, the quick look) is live at once: a FAILED one can
+// be retried (all checked by the database).
+model Payment {
+  id                 String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  jobId              String        @map("job_id") @db.Uuid
+  job                Job           @relation(fields: [jobId], references: [id], onDelete: Restrict)
+  kind               PaymentKind
+  // The extra work being paid for: set for VARIATION, and only then. Must be extra work on the same job.
+  variationId        String?       @map("variation_id") @db.Uuid
+  variation          Variation?    @relation(fields: [variationId], references: [id], onDelete: Restrict)
+  // What the customer is charged, incl GST.
+  amountCents        Int           @map("amount_cents")
+  // Given back so far, for full and partial refunds. Never more than `amountCents`.
+  refundedCents      Int           @default(0) @map("refunded_cents")
+  status             PaymentStatus @default(PENDING)
+  provider           String        @default("stripe")
+  // Stripe's ids: the PaymentIntent (pi_…) and, when Checkout is used, the Checkout Session (cs_…).
+  providerPaymentId  String?       @unique @map("provider_payment_id")
+  providerCheckoutId String?       @unique @map("provider_checkout_id")
+  // Sent with every request to the provider for this payment, so a retried request never charges twice.
+  idempotencyKey     String        @unique @map("idempotency_key")
+  // Stripe's `livemode`. False until real payments are switched on.
+  livemode           Boolean       @default(false)
+  // Why it failed, from the provider, for the office.
+  failureReason      String?       @map("failure_reason")
+  // Required once paid (PAID, REFUNDED, PARTIALLY_REFUNDED).
+  paidAt             DateTime?     @map("paid_at") @db.Timestamptz
+  // The latest refund. Required once anything was refunded.
+  refundedAt         DateTime?     @map("refunded_at") @db.Timestamptz
+  createdAt          DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([jobId, createdAt])
+  @@index([variationId])
+  // Office ledger and reconciliation by status.
+  @@index([status, createdAt])
+  @@map("payments")
+}
+
+// Extra work on a job (a "variation"): the worker asks (what and how long), the office prices it with the job's
+// frozen rates from `job_pricing` (priced jobs keep their rates), the customer approves and pays, or declines.
+// REQUESTED → PRICED → APPROVED | DECLINED; the office may re-price while PRICED; APPROVED and DECLINED are final
+// (checked by the database). A row mixes the worker's ask, their pay and the customer's price, so it has no
+// Data API policy: who sees which part arrives with who-sees-what (#95). Hours are minutes, as in Schema 2.
+model Variation {
+  id                      String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  jobId                   String          @map("job_id") @db.Uuid
+  job                     Job             @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  // The worker who asked.
+  requestedById           String          @map("requested_by_id") @db.Uuid
+  requestedBy             Profile         @relation("VariationRequester", fields: [requestedById], references: [id], onDelete: Restrict)
+  description             String
+  // The worker's ask: their time and materials at cost, ex GST.
+  requestedMinutes        Int             @map("requested_minutes")
+  requestedMaterialsCents Int             @default(0) @map("requested_materials_cents")
+  status                  VariationStatus @default(REQUESTED)
+  // Set by the office when it prices it (required from PRICED on, empty before): billed time, materials at
+  // cost ex GST, then the result, built like `job_pricing`.
+  minutes                 Int?
+  materialsCents          Int?            @map("materials_cents")
+  workerGrossCents        Int?            @map("worker_gross_cents")
+  holidayPayCents         Int?            @map("holiday_pay_cents")
+  onCostCents             Int?            @map("on_cost_cents")
+  marginCents             Int?            @map("margin_cents")
+  gstCents                Int?            @map("gst_cents")
+  // What the customer pays for it, incl GST.
+  priceCents              Int?            @map("price_cents")
+  pricedById              String?         @map("priced_by_id") @db.Uuid
+  pricedBy                Profile?        @relation("VariationPricer", fields: [pricedById], references: [id], onDelete: SetNull)
+  // Set by the database when it's priced (and re-priced) and when the customer decides.
+  pricedAt                DateTime?       @map("priced_at") @db.Timestamptz
+  decidedAt               DateTime?       @map("decided_at") @db.Timestamptz
+  createdAt               DateTime        @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt               DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  payments Payment[]
+
+  @@index([jobId, createdAt])
+  // Office queue: extra work waiting to be priced.
+  @@index([status, createdAt])
+  @@map("variations")
+}
+
+// What a worker is owed for a job, for payroll: one per worker per job, so a crew (milestone 4) gets one each.
+// Minutes include approved extra work. `rateCents` is copied from the job's frozen pricing. Once exported, the
+// amounts can't change and it can't go back to QUEUED (checked by the database). The worker reads their own
+// payouts through the Data API; nobody else does.
+model Payout {
+  id              String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  jobId           String       @map("job_id") @db.Uuid
+  job             Job          @relation(fields: [jobId], references: [id], onDelete: Restrict)
+  workerId        String       @map("worker_id") @db.Uuid
+  worker          Profile      @relation(fields: [workerId], references: [id], onDelete: Restrict)
+  minutes         Int
+  // Per hour.
+  rateCents       Int          @map("rate_cents")
+  // minutes × rate, before PAYE.
+  grossCents      Int          @map("gross_cents")
+  // 8% for casual employees, paid as they go.
+  holidayPayCents Int          @map("holiday_pay_cents")
+  status          PayoutStatus @default(QUEUED)
+  // Required from EXPORTED on.
+  exportedAt      DateTime?    @map("exported_at") @db.Timestamptz
+  // Required when PAID.
+  paidAt          DateTime?    @map("paid_at") @db.Timestamptz
+  createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@unique([jobId, workerId])
+  // A worker's earnings (T-earnings).
+  @@index([workerId, createdAt])
+  // The next pay run.
+  @@index([status, createdAt])
+  @@map("payouts")
+}
+
+// Materials for a job, bought on TM's trade account under the job number (TM-1005): the budget the worker may
+// spend and what they actually spent, both at cost ex GST. Spend over budget is allowed and flagged for the office
+// by the app. Materials at cost would show customers the margin, so there's no Data API policy; the worker's
+// view of the budget arrives with who-sees-what (#95).
+model JobMaterials {
+  jobId        String    @id @map("job_id") @db.Uuid
+  job          Job       @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  budgetCents  Int       @map("budget_cents")
+  // Empty until the worker reports it at finish.
+  spentCents   Int?      @map("spent_cents")
+  // Path of the receipt or supplier slip in the private Storage bucket.
+  receiptPath  String?   @map("receipt_path")
+  spentAt      DateTime? @map("spent_at") @db.Timestamptz
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("job_materials")
+}
+
+// The office's settings (F-settings): exactly one row, id 1, made by the migration with the launch rates
+// (DECISIONS.md #62) and never deleted (checked by the database). Pricing a job copies the rates into
+// `job_pricing`, so a change here never changes an agreed price or payout. Only the server reads this table:
+// no Data API policy. Money is cents, percentages basis points (20% = 2000), time minutes or hours as named.
+model Settings {
+  id                   Int      @id @default(1)
+  // The worker's hourly rate for every licensed trade (ELECTRICAL, PLUMBING, GAS, CONSTRUCTION) and for OTHER.
+  // Per-trade rates may come later (DECISIONS.md 9).
+  sharedRateCents      Int      @default(7000) @map("shared_rate_cents")
+  otherRateCents       Int      @default(3800) @map("other_rate_cents")
+  // Minimum billed time per job: 2 hours licensed, 1 hour Other.
+  sharedMinMinutes     Int      @default(120) @map("shared_min_minutes")
+  otherMinMinutes      Int      @default(60) @map("other_min_minutes")
+  // Holiday pay on the worker's gross (8%), employer on-costs: KiwiSaver, ACC (12.5%), TM margin, GST.
+  holidayPayBps        Int      @default(800) @map("holiday_pay_bps")
+  onCostBps            Int      @default(1250) @map("on_cost_bps")
+  marginBps            Int      @default(2000) @map("margin_bps")
+  gstBps               Int      @default(1500) @map("gst_bps")
+  // A submitted job is signed off automatically after this long without the customer answering.
+  autoReleaseHours     Int      @default(48) @map("auto_release_hours")
+  // The quick look the customer pays when a job needs someone to go and look (DECISIONS.md 2–3), incl GST.
+  quickLookPriceCents  Int      @default(3000) @map("quick_look_price_cents")
+  // How long a quote bounty stays open.
+  bountyExpiryHours    Int      @default(24) @map("bounty_expiry_hours")
+  // Where we work (#97): a circle around a centre, Invercargill at launch (DECISIONS.md 12). A job is covered
+  // when its point is within `coverage_radius_km` of the centre.
+  coverageCentreLat    Float    @default(-46.4132) @map("coverage_centre_lat")
+  coverageCentreLng    Float    @default(168.3538) @map("coverage_centre_lng")
+  coverageRadiusKm     Int      @default(20) @map("coverage_radius_km")
+  updatedById          String?  @map("updated_by_id") @db.Uuid
+  updatedBy            Profile? @relation(fields: [updatedById], references: [id], onDelete: SetNull)
+  updatedAt            DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("settings")
 }
