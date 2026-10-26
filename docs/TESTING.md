@@ -100,8 +100,10 @@ for (const viewport of VIEWPORTS) {
 **End-to-end tests (later).** E2E runs keep Supabase off (`playwright.config.ts`), so everyone is signed out and
 `tests/e2e/route-protection.spec.ts` only checks the signed-out redirect. Signed-in e2e tests need a throwaway
 Supabase Auth to sign in against (a local `supabase start`, or the staging project from #89, never the real one) and
-the seeded demo accounts (#88). When those exist, add a fixture in `tests/e2e/support/` that logs in once per role
-through the log-in page (#102), saves the session with Playwright's `storageState`, and lets tests start signed in:
+the seeded demo accounts (see "Seed data" below: seed that Supabase with `SUPABASE_SECRET_KEY` and
+`SEED_DEMO_PASSWORD` set, so the accounts really log in). Then add a fixture in `tests/e2e/support/` that logs in once
+per role (`customer@`, `tradie@`, `worker@`, `office@demo.test`, password from `SEED_DEMO_PASSWORD`) through the
+log-in page (#102), saves the session with Playwright's `storageState`, and lets tests start signed in:
 `test.use({ storageState: "tests/e2e/.auth/customer.json" })` (`.auth/` must stay out of git).
 
 ## Accessibility checks (axe)
@@ -154,5 +156,61 @@ Database tests never share data with each other:
   `auth.uid()`). Make a person by inserting into `auth.users` first, then their profile. To test row-level security,
   switch to a role without the owner's bypass and set `request.jwt.claims`, like the `asSignedIn` helper does.
 - **End-to-end tests (Playwright): seed once, then each test makes its own rows.** A `globalSetup` migrates the test
-  database and runs `npm run db:seed` (demo accounts and a job in every status, #88). Tests that change data create
+  database and runs `npm run db:seed` with `ALLOW_SEED=1` (demo accounts and a job in every status, #88). Tests that change data create
   their own job with a unique name rather than editing a shared seeded one, so parallel tests don't collide.
+
+## Seed data
+
+`npm run db:seed` (`prisma/seed.mjs`, #88) fills a local or preview database with demo data. It is safe to run again:
+a second run leaves exactly the same rows (same ids, same TM numbers), and rows that aren't demo data are left alone.
+
+```bash
+# A local Postgres, migrated first (npm run db:migrate, or npx prisma migrate deploy):
+ALLOW_SEED=1 DIRECT_URL=postgresql://postgres:postgres@localhost:5432/tm_local \
+  DATABASE_URL=postgresql://postgres:postgres@localhost:5432/tm_local npm run db:seed
+```
+
+**What it makes** (`prisma/seed/data.mjs`; every name, address and figure is an example):
+
+| Account | Role | What it's for |
+|---|---|---|
+| `customer@demo.test` | Customer | Posted every demo job. Two saved places in Invercargill (Home, Rental). |
+| `tradie@demo.test` | Tradie | Electrical, licence `VERIFIED`, verified badge, available. |
+| `worker@demo.test` | Tradie | Other work only, not verified (no badge), available. |
+| `office@demo.test` | Office (`ADMIN`) | Priced the jobs, checked the licence. |
+
+Ten jobs (TM-1001 onwards on a fresh database), at least one in every status (`REVIEW`, `QUOTE_BOUNTY`, `PRICED`,
+`BOOKABLE`, `ASSIGNED`, `SUBMITTED`, `COMPLETED`, `CANCEL_REVIEW`, `CANCELLED`) and every trade, each with photos,
+and with time windows, blind estimates, example pricing rows, a worker and a booked window where its status would
+have them. Each job is posted as `REVIEW` and moved through its statuses by the person who'd do it, so the database
+triggers write a real status history and check every job rule. Time windows are days from the day you seed, so
+previews always show upcoming ones. "Assigned with extra work" and payments/payouts need Schema 3 (#91) and are a
+follow-up.
+
+**Photos.** Uploads (#96) aren't built yet, so `job_photos.path` holds `demo/<file>` and the small files live in
+`prisma/seed/photos/` (a few KB each). The uploads task should send each file to that path in the photos bucket.
+
+**Sign-ins.** Every demo profile needs a Supabase Auth user, and the seed picks how to make them from the environment:
+
+- **Plain Postgres** (local, CI): rows go straight into the migration's stand-in `auth.users`. There's no Supabase
+  Auth to log in against, so nobody can log in; it's for database tests and local development.
+- **A Supabase project** (preview/staging #89, or a local `supabase start`): set `NEXT_PUBLIC_SUPABASE_URL`,
+  `SUPABASE_SECRET_KEY` (server-only, `sb_secret_…`) and `SEED_DEMO_PASSWORD` for that project. Users are made (or
+  updated) through the Supabase Auth admin API, email confirmed, so the demo accounts log in with
+  `SEED_DEMO_PASSWORD`. The password is never in the repo; keep it in the password manager.
+
+**When it refuses.** It writes nothing and lists every reason unless **all** of these hold:
+
+1. `ALLOW_SEED=1` is set.
+2. Every database URL set (`DIRECT_URL`, `DATABASE_URL`) is local (`localhost`, `127.0.0.1`, `::1`), or its database
+   name contains `preview` or `local`, or it's a Supabase project whose ref can be read from the URL and isn't
+   production. (Supabase database names are always `postgres`, so the ref comes from the host `db.<ref>.supabase.co`
+   or the pooler user name `postgres.<ref>`.)
+3. The production project ref (`bwbwbpnqfxjdkbompsvg`, docs/SERVICES.md) appears in none of the database or Supabase
+   URLs.
+4. On a Supabase database, the Auth keys above are set and name the same project (rows without a password in the
+   real `auth.users` would be accounts nobody can use). The seed also checks the database itself: a real Supabase
+   `auth.users` without the keys is refused.
+
+Tests: `tests/unit/seed-guard.test.ts` (refusal rules) and `tests/unit/seed.test.ts` (seeding twice gives the same rows,
+every status and trade, sign-ins through a fake Supabase admin API, no committed password).
