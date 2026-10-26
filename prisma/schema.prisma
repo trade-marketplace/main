@@ -157,23 +157,25 @@ model Licence {
 }
 
 // A customer's saved addresses (C21). At most one default per person (checked by the database).
-// Geocoding and the coverage check arrive with #97; lat/lng are empty for a manually typed address.
+// lat/lng come from address search or a dropped pin, and are empty when the address was only typed (#97).
 model Address {
-  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId    String   @map("user_id") @db.Uuid
-  user      Profile  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id             String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId         String          @map("user_id") @db.Uuid
+  user           Profile         @relation(fields: [userId], references: [id], onDelete: Cascade)
   // e.g. "Home", "Rental on Dee St".
-  label     String?
-  line1     String
-  line2     String?
-  suburb    String
-  city      String
-  postcode  String?
-  lat       Float?
-  lng       Float?
-  isDefault Boolean  @default(false) @map("is_default")
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  label          String?
+  line1          String
+  line2          String?
+  suburb         String
+  city           String
+  postcode       String?
+  lat            Float?
+  lng            Float?
+  // Where lat/lng came from (#97). Empty for addresses saved before #97.
+  locationSource LocationSource? @map("location_source")
+  isDefault      Boolean         @default(false) @map("is_default")
+  createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   @@index([userId])
   @@map("addresses")
@@ -223,6 +225,28 @@ enum JobStatus {
   @@map("job_status")
 }
 
+// Where an address's or job's lat/lng came from (#97).
+enum LocationSource {
+  // Picked from address search (Mapbox).
+  SEARCH
+  // Address not found (new subdivision, rural): typed by hand and a pin dropped on the map.
+  PIN
+  // Address search was down: typed by hand, no lat/lng yet.
+  TYPED
+
+  @@map("location_source")
+}
+
+// Whether a job's location is inside the coverage area (settings, Schema 3). CHECK_LATER: there was no point to
+// check (address search was down), so the office checks it.
+enum CoverageCheck {
+  INSIDE
+  OUTSIDE
+  CHECK_LATER
+
+  @@map("coverage_check")
+}
+
 enum TimeOfDay {
   MORNING
   AFTERNOON
@@ -234,43 +258,54 @@ enum TimeOfDay {
 // A job a customer has posted. Customers see their own jobs, including the price they pay (`priceCents`).
 // What the worker earns and how the price was built are in `job_pricing`, which customers never see.
 model Job {
-  id           String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id                 String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   // Shown as TM-1001 (also the order number for supplier accounts). Starts at 1001.
-  jobNumber    Int        @unique @default(autoincrement()) @map("job_number")
-  customerId   String     @map("customer_id") @db.Uuid
-  customer     Profile    @relation("JobCustomer", fields: [customerId], references: [id], onDelete: Restrict)
-  category     Trade
-  title        String
-  description  String
+  jobNumber          Int             @unique @default(autoincrement()) @map("job_number")
+  customerId         String          @map("customer_id") @db.Uuid
+  customer           Profile         @relation("JobCustomer", fields: [customerId], references: [id], onDelete: Restrict)
+  category           Trade
+  title              String
+  description        String
   // Copied from the address the customer picked, so editing a saved address never moves a posted job.
   // The full address is for the assigned worker only; others see the suburb (#95).
-  addressLine1 String     @map("address_line1")
-  addressLine2 String?    @map("address_line2")
-  suburb       String
-  city         String
-  postcode     String?
-  lat          Float?
-  lng          Float?
+  addressLine1       String          @map("address_line1")
+  addressLine2       String?         @map("address_line2")
+  suburb             String
+  city               String
+  postcode           String?
+  lat                Float?
+  lng                Float?
+  // Where the location came from and whether it's in the coverage area, both copied when the job is posted
+  // (#97, src/server/geo/job-location.ts). Empty for jobs posted before #97.
+  locationSource     LocationSource? @map("location_source")
+  coverage           CoverageCheck?
+  // A dropped pin or a typed-only address: the office checks the location before the job goes out.
+  locationNeedsCheck Boolean         @default(false) @map("location_needs_check")
+  // The approximate pin shown to workers before the job is claimed: 100–300 m from the real point, picked at
+  // random once and kept, so it never jumps and can't be worked back to the address. The database clears it
+  // when lat/lng move without a new one.
+  approxLat          Float?          @map("approx_lat")
+  approxLng          Float?          @map("approx_lng")
   // Gate codes, dogs, parking.
-  accessNotes  String?    @map("access_notes")
+  accessNotes        String?         @map("access_notes")
   // Urgent: raises the job in worker alerts.
-  asap         Boolean    @default(false)
+  asap               Boolean         @default(false)
   // "Any time" works for the customer, so there may be no rows in `job_time_windows`.
-  anyTime      Boolean    @default(false) @map("any_time")
-  status       JobStatus  @default(REVIEW)
+  anyTime            Boolean         @default(false) @map("any_time")
+  status             JobStatus       @default(REVIEW)
   // The worker who claimed it. Required from ASSIGNED on (checked by the database).
-  workerId     String?    @map("worker_id") @db.Uuid
-  worker       Profile?   @relation("JobWorker", fields: [workerId], references: [id], onDelete: Restrict)
+  workerId           String?         @map("worker_id") @db.Uuid
+  worker             Profile?        @relation("JobWorker", fields: [workerId], references: [id], onDelete: Restrict)
   // What the customer pays, incl GST. Required from PRICED on, and can't change once paid (checked by the database).
-  priceCents   Int?       @map("price_cents")
+  priceCents         Int?            @map("price_cents")
   // The window the worker booked: one of the customer's windows, or any window when `anyTime`.
-  bookedDate   DateTime?  @map("booked_date") @db.Date
-  bookedTime   TimeOfDay? @map("booked_time")
+  bookedDate         DateTime?       @map("booked_date") @db.Date
+  bookedTime         TimeOfDay?      @map("booked_time")
   // Set by the database whenever what the job is (title, description, category, address, photos…) changes.
   // Estimates saved before it are flagged `madeBeforeEdit`.
-  editedAt     DateTime?  @map("edited_at") @db.Timestamptz
-  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt    DateTime   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  editedAt           DateTime?       @map("edited_at") @db.Timestamptz
+  createdAt          DateTime        @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   photos        JobPhoto[]
   timeWindows   JobTimeWindow[]
@@ -283,6 +318,8 @@ model Job {
   @@index([status, lat, lng])
   @@index([customerId, createdAt])
   @@index([workerId, status])
+  // Office queue: locations to check, oldest first.
+  @@index([locationNeedsCheck, createdAt])
   @@map("jobs")
 }
 

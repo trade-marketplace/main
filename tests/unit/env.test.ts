@@ -11,6 +11,7 @@ describe("parseEnv", () => {
       database: { enabled: false },
       supabase: { enabled: false },
       fieldEncryption: { enabled: false },
+      mapbox: { enabled: false },
     });
   });
 
@@ -55,6 +56,22 @@ describe("parseEnv", () => {
     expect(() =>
       parseEnv({ NEXT_PUBLIC_SUPABASE_URL: "ref.supabase.co", NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_x" }),
     ).toThrow(/NEXT_PUBLIC_SUPABASE_URL must be the project URL/);
+  });
+
+  it("turns address search on when MAPBOX_ACCESS_TOKEN is set", () => {
+    expect(parseEnv({ MAPBOX_ACCESS_TOKEN: "pk.eyJ1IjoidGVzdCJ9.abc-123" })).toMatchObject({
+      mapbox: { enabled: true, accessToken: "pk.eyJ1IjoidGVzdCJ9.abc-123" },
+    });
+  });
+
+  it("treats an empty MAPBOX_ACCESS_TOKEN as unset, so address search falls back to typing", () => {
+    expect(parseEnv({ MAPBOX_ACCESS_TOKEN: " " })).toMatchObject({ mapbox: { enabled: false } });
+  });
+
+  it("fails fast when MAPBOX_ACCESS_TOKEN isn't a Mapbox token", () => {
+    expect(() => parseEnv({ MAPBOX_ACCESS_TOKEN: "not-a-token" })).toThrow(
+      /MAPBOX_ACCESS_TOKEN must be a Mapbox access token/,
+    );
   });
 
   it("lists every problem at once", () => {

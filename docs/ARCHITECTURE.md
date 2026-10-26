@@ -163,6 +163,47 @@ checks, triggers) is hand-written SQL at the end of the same migration, under a 
 - **Plain Postgres works too.** The first migration creates stand-ins for Supabase's `auth.users` and `auth.uid()`
   when they don't exist (local Docker, CI, Prisma's shadow database). On Supabase it does nothing.
 
+## Addresses, coverage and distances (#97)
+
+Server logic only; the screens that use it (post a job C04, saved addresses C21, the waitlist A07, the job map D03/D18,
+office checks) come with their own issues.
+
+| Piece | Where | What it does |
+|---|---|---|
+| Distance | `src/lib/geo/distance.ts` | `haversineKm()` (straight line), `roundKm()` (whole km, half up), `formatKm()` ("12 km", "<1 km"). Pure. |
+| Coverage area | `src/lib/geo/coverage.ts` | `checkCoverage(coverage, point)`: centre + radius, the edge counts as inside. Inside / outside (with the waitlist path `/coming-soon`) / check later (no point). |
+| Loading the area | `src/server/geo/coverage-settings.ts` | `loadCoverage(source)`: the settings row, else Invercargill (15 km round Esk St). A row set up wrong throws rather than quietly using Invercargill. |
+| Address search | `src/server/geo/address-search.ts`, `mapbox.ts` | `searchAddresses(query, { provider, coverage })`: NZ only, nearest the coverage centre first, each suggestion marked inside/outside. Mapbox Geocoding v6 behind an `AddressSearchProvider` interface. |
+| Job location | `src/server/geo/job-location.ts` | `resolveJobLocation()` decides what a job stores (or sends them to the waitlist), `saveJobLocation()`, the office queue, `jobPinFor()` and `distanceToJobKm()` for workers. |
+| Approximate pin | `src/server/geo/approximate.ts` | A random point 100–300 m from the address, picked once and stored. |
+
+**Address search is optional.** `MAPBOX_ACCESS_TOKEN` (`.env.example`) turns it on; without it the app builds and
+runs and `searchAddresses()` answers `{ mode: "manual", reason: "not-configured" }`, so the page shows the typed
+address form. Mapbox is only called from our server (the token never reaches the browser), with a 3 s timeout.
+Down, slow, rate-limited or refusing our token all answer `{ mode: "manual", reason: "unavailable" }`; nothing
+throws at the page. The typed query is never logged. Tests use a fake provider or a fake `fetch`, never Mapbox.
+
+**What a job stores** (`jobs` columns; `addresses` keeps `location_source` and the point):
+
+| How the address was given | `location_source` | Point | `coverage` | `location_needs_check` | Posted? |
+|---|---|---|---|---|---|
+| Picked from search, inside | `SEARCH` | yes | `INSIDE` | no | yes |
+| Not found: typed + pin dropped, inside | `PIN` | the pin | `INSIDE` | **yes** | yes |
+| Search down: typed only | `TYPED` | none | `CHECK_LATER` | **yes** | yes |
+| Any point outside the area | – | – | – | – | **no**: waitlist (A07) with their suburb |
+
+The office queue is `listJobsNeedingLocationCheck()` (indexed on `location_needs_check, created_at`). The database
+refuses a `TYPED` location with a point (or a `SEARCH`/`PIN` one without), and `CHECK_LATER` without the flag.
+
+**Approximate pins.** Workers who haven't claimed a job only ever get `approx_lat/approx_lng`: `jobPinFor()` and
+`distanceToJobKm()` use the real point only for the worker the job is assigned to, and never fall back to it. The
+pin is picked with a secure random number when the location is saved and stored, so it never jumps; it isn't
+derived from the job id or the address, because anything derived could be worked back to the address. The database
+refuses a pin equal to the real point and clears the pin when the real point moves without a new one.
+
+**Wiring still to do:** `loadCoverage()` reads nothing yet; once Schema 3 (#91) adds the settings row, pass a
+source that reads its coverage centre and radius (follow-up issue linked from the PR for #97).
+
 ## Tokens, fonts and modes (#72)
 
 - **Tokens.** `src/styles/tokens.css` is the app's copy of `docs/design/tokens.css`, imported once in
