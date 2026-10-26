@@ -134,6 +134,9 @@ export const EXAMPLE_RATES = {
  *   pricing?: { minutes: number; materialsCents: number; note: string };
  *   worker?: PersonKey; booked?: [number, TimeOfDay];
  *   steps: [JobStatus, PersonKey | null][];
+ *   checkoutStarted?: boolean;
+ *   extraWork?: { by: PersonKey; description: string; minutes: number; materialsCents: number }[];
+ *   materialsSpentCents?: number;
  * }} DemoJob
  */
 
@@ -141,6 +144,11 @@ export const EXAMPLE_RATES = {
  * At least one job in every status, across all five trades. `steps` is the way the job got to its status after
  * being posted (as REVIEW) and who made each change, so the status-history trigger writes a believable history.
  * `windows` and `booked` are days from the day the seed runs, so previews always show upcoming windows.
+ *
+ * Money (Schema 3) follows the steps too: every job that went to BOOKABLE was paid for (a test-mode payment for its
+ * price), `checkoutStarted` leaves a pending payment on a priced job, a worker who claims a job gets its materials
+ * budget and reports `materialsSpentCents` when they submit, a COMPLETED job has its worker's payout queued, and
+ * `extraWork` is asked for by the worker after claiming, waiting for the office to price it.
  * @type {DemoJob[]}
  */
 export const JOBS = [
@@ -210,6 +218,8 @@ export const JOBS = [
     estimates: [],
     pricing: { minutes: 120, materialsCents: 4500, note: "Standard hob swap, 2 h minimum, fittings and test." },
     steps: [["PRICED", "office"]],
+    // The customer went to pay and hasn't finished.
+    checkoutStarted: true,
   },
   {
     id: id(0xb005),
@@ -252,6 +262,15 @@ export const JOBS = [
       ["BOOKABLE", "customer"],
       ["ASSIGNED", "tradie"],
     ],
+    // Assigned with extra work: found on site, waiting for the office to price it.
+    extraWork: [
+      {
+        by: "tradie",
+        description: "Existing hob cable is nicked, needs a new run from the board, about 12 m.",
+        minutes: 90,
+        materialsCents: 9500,
+      },
+    ],
   },
   {
     id: id(0xb007),
@@ -276,6 +295,7 @@ export const JOBS = [
       ["ASSIGNED", "otherWorker"],
       ["SUBMITTED", "otherWorker"],
     ],
+    materialsSpentCents: 1380,
   },
   {
     id: id(0xb008),
@@ -297,6 +317,7 @@ export const JOBS = [
       ["SUBMITTED", "tradie"],
       ["COMPLETED", "customer"],
     ],
+    materialsSpentCents: 4210,
   },
   {
     id: id(0xb009),
@@ -330,6 +351,34 @@ export const JOBS = [
     steps: [["CANCELLED", "customer"]],
   },
 ];
+
+/**
+ * Fixed ids for a demo job's money rows, from the job's own id (de…b006 → payment de…c006, payout de…d006, extra
+ * work de…e006 onwards), so seeding again makes the same rows.
+ * @param {string} jobId
+ */
+export function moneyIds(jobId) {
+  const n = Number.parseInt(jobId.slice(-3), 16);
+  return {
+    payment: id(0xc000 + n),
+    payout: id(0xd000 + n),
+    variation: (/** @type {number} */ index) => id(0xe000 + n * 0x10 + index),
+  };
+}
+
+/**
+ * Test-mode payment references. Stripe's real ids are random; these say DEMO so nobody mistakes them for a real
+ * charge, and payments.livemode stays false.
+ * @param {string} jobId
+ */
+export function testPaymentRefs(jobId) {
+  const suffix = jobId.slice(-4);
+  return {
+    checkoutId: `cs_test_DEMO_${suffix}`,
+    paymentId: `pi_test_DEMO_${suffix}`,
+    idempotencyKey: `demo-job-payment-${jobId}`,
+  };
+}
 
 /** Where a demo photo is stored. Uploads (#96) will put `prisma/seed/photos/<file>` at this path in the bucket. */
 export const photoPath = (/** @type {string} */ file) => `demo/${file}`;
