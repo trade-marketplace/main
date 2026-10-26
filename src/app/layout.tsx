@@ -9,6 +9,7 @@ import { getViewer } from "@/server/auth/viewer";
 
 import "@/styles/tokens.css";
 import "@/styles/base.css";
+import "@/styles/motion.css";
 
 export const metadata: Metadata = {
   title: "Trade Marketplace",

@@ -189,3 +189,22 @@ checks, triggers) is hand-written SQL at the end of the same migration, under a 
 - **`/dev/tokens`** shows every token (read from `src/styles/tokens.css` at request time), per mode
   (`?mode=trade`, `?mode=office`), the type scale in both families and an icon sample (`?icons=off` simulates the icon
   font failing). It only works under `npm run dev`; in a production build it returns `notFound()` (404).
+
+## Motion (#73)
+
+The named animations M01–M27 (WEBAPP_SPEC "Motion") are built once and used everywhere. Never write a one-off
+animation in a component.
+
+- **CSS:** `src/styles/motion.css` (imported once by the root layout) holds the keyframes ported from
+  `docs/design/web.css` and a class for each animation (`.tm-anim-rise`, `.tm-lift`, `.tm-skel`, …). Only transform
+  and opacity animate (clip-path for M09, grid rows for the M24 accordion). Where the kit changes a shadow, filter,
+  border or background, the new look is a layer whose opacity fades. Its `prefers-reduced-motion` block makes every
+  one instant and the skeleton static grey. `tests/unit/motion-css.test.ts` enforces all of this.
+- **Hooks:** `src/lib/motion/hooks.ts` covers what needs JavaScript: `useCelebration(eventId)` (M09/M10 play once
+  per event, remembered in localStorage, never on a refresh or revisit; `useOncePerEvent(id, "visit")` for M07),
+  `useCountUp` / `<CountUp>`, `usePresence` (exit animations), `useTabIndicator`, `useParallax`, `useToastTimer`,
+  and more. All of them honour reduced motion. `<BoltFlash>` (`src/components/motion/`) is M10.
+- **Which to use:** `src/lib/motion/catalogue.ts` lists each animation with the spec text and what implements it
+  (checked against `docs/design/sitemap.json` by `tests/unit/motion-catalogue.test.ts`).
+- **`/dev/motion`** plays each one (dev only, a 404 in production builds). Its e2e checks run against a dev server:
+  `E2E_DEV_BASE_URL=http://localhost:3000 npx playwright test tests/e2e/dev-motion.spec.ts`.
