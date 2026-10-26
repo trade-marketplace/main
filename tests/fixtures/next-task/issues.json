@@ -1,0 +1,167 @@
+[
+  {
+    "number": 101,
+    "title": "Customer: wizard step 1",
+    "state": "open",
+    "labels": [{ "name": "P2" }, { "name": "size:M" }, { "name": "area:customer" }, { "name": "ui" }],
+    "assignees": [],
+    "assignee": null,
+    "milestone": { "number": 2, "title": "1 · Core job flow" },
+    "comments": 0,
+    "issue_dependencies_summary": { "blocked_by": 0, "total_blocked_by": 2, "blocking": 0, "total_blocking": 0 }
+  },
+  {
+    "number": 102,
+    "title": "Customer: wizard step 2",
+    "state": "open",
+    "labels": [{ "name": "P1" }, { "name": "size:S" }, { "name": "area:customer" }],
+    "assignees": [],
+    "assignee": null,
+    "milestone": { "number": 2, "title": "1 · Core job flow" },
+    "comments": 0,
+    "issue_dependencies_summary": { "blocked_by": 0, "total_blocked_by": 0, "blocking": 0, "total_blocking": 0 }
+  },
+  {
+    "number": 103,
+    "title": "Scaffold follow-up",
+    "state": "open",
+    "labels": [{ "name": "P3" }, { "name": "size:S" }, { "name": "area:setup" }],
+    "assignees": [],
+    "assignee": null,
+    "milestone": { "number": 1, "title": "0 · Foundations" },
+    "comments": 0,
+    "issue_dependencies_summary": { "blocked_by": 0, "total_blocked_by": 0, "blocking": 0, "total_blocking": 0 }
+  },
+  {
+    "number": 104,
+    "title": "Tokens in the app",
+    "state": "open",
+    "labels": [{ "name": "P1" }, { "name": "size:M" }, { "name": "area:design-system" }],
+    "assignees": [],
+    "assignee": null,
+    "milestone": { "number": 1, "title": "0 · Foundations" },
+    "comments": 1,
+    "issue_dependencies_summary": { "blocked_by": 0, "total_blocked_by": 1, "blocking": 3, "total_blocking": 3 }
+  },
+  {
+    "number": 105,
+    "title": "Tradie job board (milestone created out of order)",
+    "state": "open",
+    "labels": [{ "name": "P1" }, { "name": "size:M" }, { "name": "area:tradie" }],
+    "assignees": [],
+    "assignee": null,
+    "milestone": { "number": 9, "title": "1 · Core job flow" },
+    "comments": 0,
+    "issue_dependencies_summary": { "blocked_by": 0, "total_blocked_by": 0, "blocking": 0, "total_blocking": 0 }
+  },
+  {
+    "number": 106,
+    "title": "Untriaged task with no labels or milestone",
+    "state": "open",
+    "labels": [],
+    "assignees": [],
+    "assignee": null,
+    "milestone": null,
+    "comments": 0,
+    "issue_dependencies_summary": { "blocked_by": 0, "total_blocked_by": 0, "blocking": 0, "total_blocking": 0 }
+  },
+  {
+    "number": 107,
+    "title": "Launch task with no priority",
+    "state": "open",
+    "labels": [{ "name": "size:S" }, { "name": "area:launch" }],
+    "assignees": [],
+    "assignee": null,
+    "milestone": { "number": 4, "title": "3 · Launch: Invercargill" },
+    "comments": 0,
+    "issue_dependencies_summary": { "blocked_by": 0, "total_blocked_by": 0, "blocking": 0, "total_blocking": 0 }
+  },
+  {
+    "number": 201,
+    "title": "Blocked: still waiting on one open issue",
+    "state": "open",
+    "labels": [{ "name": "P1" }, { "name": "size:S" }, { "name": "area:customer" }],
+    "assignees": [],
+    "assignee": null,
+    "milestone": { "number": 1, "title": "0 · Foundations" },
+    "comments": 0,
+    "issue_dependencies_summary": { "blocked_by": 1, "total_blocked_by": 2, "blocking": 0, "total_blocking": 0 }
+  },
+  {
+    "number": 202,
+    "title": "Assigned to someone",
+    "state": "open",
+    "labels": [{ "name": "P1" }, { "name": "size:S" }, { "name": "area:customer" }],
+    "assignees": [{ "login": "willimobro" }],
+    "assignee": { "login": "willimobro" },
+    "milestone": { "number": 1, "title": "0 · Foundations" },
+    "comments": 0,
+    "issue_dependencies_summary": { "blocked_by": 0, "total_blocked_by": 0, "blocking": 0, "total_blocking": 0 }
+  },
+  {
+    "number": 203,
+    "title": "Customer: post a job",
+    "state": "open",
+    "labels": [{ "name": "area:customer" }, { "name": "epic" }],
+    "assignees": [],
+    "assignee": null,
+    "milestone": null,
+    "comments": 0,
+    "issue_dependencies_summary": { "blocked_by": 0, "total_blocked_by": 0, "blocking": 0, "total_blocking": 0 }
+  },
+  {
+    "number": 204,
+    "title": "Post-a-job wizard",
+    "state": "open",
+    "labels": [{ "name": "area:customer" }, { "name": "feature" }],
+    "assignees": [],
+    "assignee": null,
+    "milestone": null,
+    "comments": 0,
+    "issue_dependencies_summary": { "blocked_by": 0, "total_blocked_by": 0, "blocking": 0, "total_blocking": 0 }
+  },
+  {
+    "number": 205,
+    "title": "Decide: AI pricing thresholds",
+    "state": "open",
+    "labels": [{ "name": "P1" }, { "name": "decision" }, { "name": "human-only" }],
+    "assignees": [],
+    "assignee": null,
+    "milestone": { "number": 1, "title": "0 · Foundations" },
+    "comments": 0,
+    "issue_dependencies_summary": { "blocked_by": 0, "total_blocked_by": 0, "blocking": 0, "total_blocking": 0 }
+  },
+  {
+    "number": 206,
+    "title": "Referrals",
+    "state": "open",
+    "labels": [{ "name": "area:shared" }, { "name": "idea" }],
+    "assignees": [],
+    "assignee": null,
+    "milestone": null,
+    "comments": 0,
+    "issue_dependencies_summary": { "blocked_by": 0, "total_blocked_by": 0, "blocking": 0, "total_blocking": 0 }
+  },
+  {
+    "number": 207,
+    "title": "Buy the domain",
+    "state": "open",
+    "labels": [{ "name": "P1" }, { "name": "size:S" }, { "name": "human-only" }],
+    "assignees": [],
+    "assignee": null,
+    "milestone": { "number": 4, "title": "3 · Launch: Invercargill" },
+    "comments": 0,
+    "issue_dependencies_summary": { "blocked_by": 0, "total_blocked_by": 0, "blocking": 0, "total_blocking": 0 }
+  },
+  {
+    "number": 208,
+    "title": "Tokens, fonts and modes in the app",
+    "state": "open",
+    "labels": [],
+    "assignees": [],
+    "assignee": null,
+    "milestone": null,
+    "comments": 0,
+    "pull_request": { "url": "https://api.github.com/repos/trade-marketplace/main/pulls/208" }
+  }
+]

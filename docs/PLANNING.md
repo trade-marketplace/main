@@ -56,6 +56,9 @@ Find the next task:
 gh issue list --repo trade-marketplace/main --search "is:open no:assignee -is:blocked -label:epic,decision,idea,human-only sort:created-asc" --limit 20
 ```
 
+Or run `npm run next-task` (add `-- --limit 5` or `-- --area customer`): open, untaken, unblocked tasks in milestone
+then P1 → P3 order, using only the REST API, so it works where `gh issue list` (GraphQL) is blocked.
+
 Then follow `AGENTS.md`: assign yourself, branch `<type>/<issue>-<name>`, build the whole thing, tick every box, PR
 with `Closes #<issue>` and screenshots.
 
