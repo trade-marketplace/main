@@ -11,7 +11,8 @@ Three kinds of test, all in `tests/`:
 Every PR runs `npm run lint`, `npm run typecheck`, `npm test` and `npm run build` (AGENTS.md §3). Run `npm run e2e`
 too whenever you change a screen. CI (`.github/workflows/ci.yml`) runs all of them, e2e last on the app it just built.
 When an e2e test fails there, the run's **Artifacts** has `playwright-report` (kept 7 days): download it and open
-`index.html` to see each failure with its screenshot and trace.
+`index.html` to see each failure with its screenshot and trace. UI PRs also get screenshots of every changed screen
+posted as a comment; see "Screenshots on UI PRs" below.
 
 ## Unit tests (Vitest)
 
@@ -97,7 +98,9 @@ for (const viewport of VIEWPORTS) {
   as Supabase would).
 - **Server Components**: mock `@/server/auth/viewer` and set what `getViewer()` returns (`tests/unit/layout.test.tsx`).
 
-**End-to-end tests (later).** E2E runs keep Supabase off (`playwright.config.ts`), so everyone is signed out and
+**End-to-end tests (later).** (The screenshot run signs in differently, through a stand-in Supabase Auth: see
+"Screenshots on UI PRs". That's for pictures only; e2e tests of sign-in itself need the real Auth flow below.)
+E2E runs keep Supabase off (`playwright.config.ts`), so everyone is signed out and
 `tests/e2e/route-protection.spec.ts` only checks the signed-out redirect. Signed-in e2e tests need a throwaway
 Supabase Auth to sign in against (a local `supabase start`, or the staging project from #89, never the real one) and
 the seeded demo accounts (see "Seed data" below: seed that Supabase with `SUPABASE_SECRET_KEY` and
@@ -121,6 +124,93 @@ is, a link explaining the fix, and the element.
   and a screen reader by hand (AGENTS.md §3).
 
 `tests/e2e/a11y-helper.spec.ts` proves the helper really fails on a broken page, so keep it passing.
+
+## Screenshots on UI PRs
+
+Matt reviews screens from pictures (AGENTS.md §3), and agents can't drag images into a PR. So CI takes them:
+`.github/workflows/screenshots.yml` (#90) runs on every PR labelled `ui` or touching `src/app/`, `src/components/` or
+a `*.css` file, and keeps **one** comment on the PR with a table: route · 1440 · 390. That comment satisfies the PR
+gate's screenshots rule (docs/PR_GATE.md), so **an agent's UI PR needs no images in the description**: push, wait a few
+minutes, check the comment, and fix anything that looks wrong.
+
+**What it does.** Builds the app, starts it against a throwaway Postgres (migrated and seeded: the demo accounts and a
+job in every status, see "Seed data"), signs in as the right demo account, and takes a full-page screenshot of each
+route at 1440 × 900 and 390 × 844 with reduced motion on (`prefers-reduced-motion: reduce`, CSS animations stopped,
+fonts loaded first). Images are kept 7 days: in the run's `screenshots` artifact and on the `pr-screenshots` branch.
+
+**Which routes.** By default, the routes the changed files show up on: a changed page is its own route, a changed
+layout, `loading` or `error` file counts for every page below it, and any other file (a component, a hook, a CSS
+module, a style sheet) counts for every page that imports it, directly or through other files. Up to 12 routes per
+run; the rest are listed in the comment. To choose yourself (or when nothing was found, e.g. a `ui` label on a
+non-UI change), put a `screenshots:` list in the PR description. It replaces the detected routes:
+
+```md
+screenshots:
+- /jobs?state=empty as tradie
+- /jobs/[id] status=ASSIGNED
+- /admin
+- /help/getting-started
+```
+
+- **State:** add the page's query flags to the path (`?state=empty`, `?state=error`, `?step=photos`). Building the
+  states behind those flags is the screen's job; the list just opens them.
+- **Role:** `as guest|customer|tradie|worker|office`. Without it, each route is shot as everyone who may open it
+  (from `src/lib/auth/routes.ts`): public pages signed out; `/` both signed out (landing) and as the customer (home);
+  a page both sides of a job see as the customer *and* the tradie. Accounts: `customer@`, `tradie@`, `worker@` (the
+  unverified all-rounder) and `office@demo.test`.
+- **A job in a particular status:** `[id]` on job, receipt and office job pages is filled with the seeded job in the
+  status the page is about (`/jobs/[id]/book` → BOOKABLE, `/complete` and `/help` → ASSIGNED, `/problem` → SUBMITTED,
+  `/receipts/[jobId]` → COMPLETED, `/admin/jobs/[id]` → REVIEW, `/jobs/[id]` → PRICED for the customer and BOOKABLE
+  for a tradie). Pick another with `status=<STATUS>`. When a demo worker is doing that job, the shot signs in as them.
+- **Other params:** `[trade]` and `[city]` get `electrical` / `invercargill` and `/tradies/[id]` the demo tradie.
+  Anything else (`[slug]`, `[paymentId]`) needs a real URL in the list; the comment says which were skipped.
+- Write paths as plain text or `code`; lists inside HTML comments or code blocks are ignored, so the template's
+  examples never count.
+
+**Signing in without Supabase.** CI has no Supabase project (and must never use the real one), so the app is built
+with `NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321`, where the capture runs a small stand-in for Supabase Auth
+(`scripts/screenshots/auth-stub.ts`). The app's normal code checks the session cookie (`getClaims()` asks the stand-in
+who the token belongs to; tokens are signed with a random secret made for each run) and reads the role from the seeded
+`profiles` row. Nothing in `src/` knows about it. Each signed-in shot fails unless the app really checked that
+person's session and painted their role's colours.
+
+**What if…**
+
+- **The app fails to start:** the job fails, the step prints the end of the server log, and the whole log is attached
+  as the `screenshots-server-log` artifact. The comment then says "failed" and has no images, so the PR gate keeps
+  failing until it's fixed.
+- **A sign-in doesn't take:** that shot fails the job (Playwright output in the log), so a signed-out picture never
+  passes for a signed-in one.
+- **A page answers with an error or redirects:** it's still shot, with "HTTP 404" / "HTTP 500" or "redirected to …"
+  next to the route, so the reviewer sees it.
+- **New commits:** the next run replaces the comment. The gate only counts pictures of the latest commit.
+- **A PR from a fork:** its token can't push or comment; the pictures are in the run's artifact.
+
+**Where the images live.** The repo is private, so images need a home that renders for founders without making
+anything public. The workflow pushes them to the `pr-screenshots` branch (an orphan branch only the workflow writes
+to: one commit with no history, each PR in `pr-<n>/<commit>/`, folders older than 7 days removed on every run) and the
+comment shows them with `https://github.com/<repo>/blob/pr-screenshots/…?raw=true` links, which GitHub serves to
+anyone who can see the repo. Never merge that branch; deleting it is harmless (the next run recreates it). Two jobs
+keep the write access small: the job that runs the PR's app has a read-only token; a second job, which doesn't install
+packages or run the app, pushes the images, posts the comment and re-runs the PR gate.
+
+**Run it locally** (needs a local Postgres and Chromium; port 54321 must be free):
+
+```bash
+export DATABASE_URL=postgresql://postgres:postgres@localhost:5432/tm_local DIRECT_URL=$DATABASE_URL
+npx prisma migrate deploy && ALLOW_SEED=1 npx prisma db seed
+export NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_screenshots_stub
+npm run build
+printf 'src/app/page.tsx\n' | PR_BODY=$'screenshots:\n- /jobs as tradie' node scripts/ci/screenshots.mjs plan
+node scripts/ci/screenshots.mjs start          # next start on :3100, log in screenshots/server.log
+npx playwright test -c scripts/screenshots/playwright.config.ts
+node scripts/ci/screenshots.mjs comment        # screenshots/comment.md; the PNGs are next to it
+```
+
+Use a database named `…local…` or `…preview…` (the seed refuses others), and build with the stand-in URL only for
+this: a normal `npm run build` must not have it. The code: `scripts/ci/screenshots.mjs` (plan, start, comment,
+publish), `scripts/screenshots/` (resolving routes to accounts and jobs, the stand-in, the Playwright capture). Tests:
+`tests/unit/screenshots*.test.ts`.
 
 ## Databases in tests
 

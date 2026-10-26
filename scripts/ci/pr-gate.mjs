@@ -13,6 +13,17 @@ export const COMMENT_MARKER = "<!-- pr-gate -->";
 export const SKIP_LABEL = "skip-gate";
 export const NO_SCREENS_LABEL = "no-screens";
 export const UI_LABEL = "ui";
+// The screenshot bot's comment (#90, scripts/ci/screenshots.mjs). Kept here so the gate needs no other file.
+export const SCREENSHOTS_MARKER = "<!-- pr-screenshots -->";
+export const SCREENSHOTS_BOT = "github-actions[bot]";
+
+/**
+ * The hidden line in the screenshot comment that says which commit the pictures are of.
+ * @param {string} sha
+ */
+export function screenshotsShaLine(sha) {
+  return `<!-- pr-screenshots-sha: ${sha} -->`;
+}
 
 /**
  * Remove everything that GitHub does not show as text: fenced code blocks, HTML comments and
@@ -96,6 +107,25 @@ export function hasImage(body) {
 }
 
 /**
+ * The screenshot bot's comment for this exact commit, if it has at least one image. A person can't post as
+ * `github-actions[bot]`, and pictures of an older commit don't count: new commits need new screenshots.
+ * @param {{ body?: string | null, user?: { login?: string, type?: string } }[]} comments
+ * @param {string | null | undefined} headSha
+ */
+export function findScreenshotsComment(comments, headSha) {
+  if (!headSha) return undefined;
+  return comments.find(
+    (comment) =>
+      comment.user?.type === "Bot" &&
+      comment.user.login === SCREENSHOTS_BOT &&
+      typeof comment.body === "string" &&
+      comment.body.startsWith(SCREENSHOTS_MARKER) &&
+      comment.body.includes(screenshotsShaLine(headSha)) &&
+      hasImage(comment.body),
+  );
+}
+
+/**
  * Whether a changed file counts as a UI change.
  * @param {string} path
  */
@@ -110,10 +140,11 @@ export function isUiFile(path) {
 
 /**
  * Check a PR against every rule.
- * @param {{ body?: string | null, labels?: string[], files?: string[] }} pr
+ * `botScreenshots`: the screenshot bot has posted pictures of the PR's latest commit (findScreenshotsComment).
+ * @param {{ body?: string | null, labels?: string[], files?: string[], botScreenshots?: boolean }} pr
  * @returns {GateResult}
  */
-export function evaluate({ body, labels = [], files = [] }) {
+export function evaluate({ body, labels = [], files = [], botScreenshots = false }) {
   const labelSet = new Set(labels.map((label) => label.toLowerCase()));
   const closes = findClosedIssues(body);
   const needsScreens = labelSet.has(UI_LABEL) || files.some(isUiFile);
@@ -140,11 +171,11 @@ export function evaluate({ body, labels = [], files = [] }) {
     });
   }
 
-  if (needsScreens && !labelSet.has(NO_SCREENS_LABEL) && !hasImage(body)) {
+  if (needsScreens && !labelSet.has(NO_SCREENS_LABEL) && !botScreenshots && !hasImage(body)) {
     failures.push({
       rule: "screenshots",
       message:
-        "This PR changes screens (`ui` label, or files in `src/app/`, `src/components/` or `*.css`) but the description has no screenshots. Add desktop 1440 and phone 390 screenshots, or ask a founder for the `no-screens` label if nothing visible changed.",
+        "This PR changes screens (`ui` label, or files in `src/app/`, `src/components/` or `*.css`) but has no screenshots of its latest commit. The Screenshots workflow posts them as a comment and re-runs this gate; if it found no routes, list them under `screenshots:` in the description. Or add desktop 1440 and phone 390 screenshots to the description, or ask a founder for the `no-screens` label if nothing visible changed.",
     });
   }
 
@@ -237,21 +268,28 @@ export async function runGate({ gh, repo, number, serverUrl = "https://github.co
     (/** @type {{ filename: string, previous_filename?: string }} */ file) =>
       file.previous_filename ? [file.filename, file.previous_filename] : [file.filename],
   );
+  // Read comments before deciding: the screenshot bot's comment satisfies the screenshots rule. If they can't be
+  // read, carry on without them (the rule then needs an image in the description).
+  /** @type {{ id: number, body?: string, user?: { login?: string, type?: string } }[] | null} */
+  let comments = null;
+  try {
+    comments = await paginate(gh, `/repos/${repo}/issues/${number}/comments`);
+  } catch (error) {
+    log(`::warning::Could not read the PR's comments: ${error instanceof Error ? error.message : error}`);
+  }
   const result = evaluate({
     body: pr.body,
     labels: (pr.labels ?? []).map((/** @type {{ name: string }} */ label) => label.name),
     files,
+    botScreenshots: Boolean(comments && findScreenshotsComment(comments, pr.head?.sha)),
   });
   const comment = renderComment(result, `${serverUrl}/${repo}/blob/${pr.base?.ref ?? "main"}/docs/PR_GATE.md`);
 
   /** @type {"created" | "updated" | "unchanged" | "none" | "failed"} */
   let action = "none";
   try {
-    const comments = await paginate(gh, `/repos/${repo}/issues/${number}/comments`);
-    const existing = comments.find(
-      (/** @type {{ body?: string, user?: { type?: string } }} */ c) =>
-        c.user?.type === "Bot" && c.body?.startsWith(COMMENT_MARKER),
-    );
+    if (!comments) throw new Error("the PR's comments couldn't be read");
+    const existing = comments.find((c) => c.user?.type === "Bot" && c.body?.startsWith(COMMENT_MARKER));
     if (existing) {
       if (existing.body === comment) {
         action = "unchanged";
