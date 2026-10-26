@@ -25,8 +25,9 @@ The visual PDF guides (Brand Guidelines, Front-End Build Guide, Web App Design S
    Without them the app runs with the database and Supabase off.
 4. Start it: `npm run dev`, then open http://localhost:3000.
 
-Before a PR: `npm run lint`, `npm run typecheck`, `npm test` and `npm run build`. How the code is laid out:
-[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+Before a PR: `npm run lint`, `npm run typecheck`, `npm test` and `npm run build`; `npm run e2e` too if you changed a
+screen. How the code is laid out: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). How to write tests:
+[docs/TESTING.md](docs/TESTING.md).
 
 ## Who's who
 
