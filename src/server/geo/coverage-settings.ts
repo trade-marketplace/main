@@ -2,12 +2,14 @@ import "server-only";
 
 import { z } from "zod";
 
+import type { PrismaClient } from "@/generated/prisma/client";
 import { type Coverage, INVERCARGILL_COVERAGE } from "@/lib/geo/coverage";
+import { getDb } from "@/server/db";
 
-// Loads the coverage area the office set (F14). The settings table arrives with Schema 3 (#91); until it's
-// wired in, there is nothing to read and the area is Invercargill.
+// Loads the coverage area the office set (F14) from the settings row (Schema 3, #91). With the database off there
+// is nothing to read and the area is Invercargill.
 
-/** What the settings row holds, or null when there is no row (or no settings table yet). */
+/** What the settings row holds, or null when there is no row (or no database). */
 export type CoverageSource = () => Promise<{ name?: string | null; lat: number; lng: number; radiusKm: number } | null>;
 
 export class CoverageSettingsError extends Error {
@@ -25,13 +27,28 @@ const row = z.object({
   radiusKm: z.number().positive().max(500),
 });
 
-const noSettingsYet: CoverageSource = async () => null;
+/**
+ * The `settings` row's coverage columns. The row has no area name, so the name stays Invercargill's. `db` returns
+ * null when the database is off (no `DATABASE_URL`); it connects on first use, like getDb().
+ */
+export function settingsCoverageSource(
+  db: () => Pick<PrismaClient, "settings"> | null = () => (process.env.DATABASE_URL?.trim() ? getDb() : null),
+): CoverageSource {
+  return async () => {
+    const settings = await db()?.settings.findUnique({
+      where: { id: 1 },
+      select: { coverageCentreLat: true, coverageCentreLng: true, coverageRadiusKm: true },
+    });
+    if (!settings) return null;
+    return { lat: settings.coverageCentreLat, lng: settings.coverageCentreLng, radiusKm: settings.coverageRadiusKm };
+  };
+}
 
 /**
  * The coverage area: the settings row when there is one, else Invercargill. A row that is set up wrong throws
  * instead of quietly falling back, so the office doesn't believe an area is live when it isn't.
  */
-export async function loadCoverage(source: CoverageSource = noSettingsYet): Promise<Coverage> {
+export async function loadCoverage(source: CoverageSource = settingsCoverageSource()): Promise<Coverage> {
   const raw = await source();
   if (!raw) return INVERCARGILL_COVERAGE;
   const parsed = row.safeParse(raw);
