@@ -609,10 +609,10 @@ model Settings {
   // How long a quote bounty stays open.
   bountyExpiryHours    Int      @default(24) @map("bounty_expiry_hours")
   // Where we work (#97): a circle around a centre, Invercargill at launch (DECISIONS.md 12). A job is covered
-  // when its point is within `coverage_radius_km` of the centre.
+  // when its point is within `coverage_radius_km` of the centre: 60 km at launch (Matt, 26 Oct), 1–200 km.
   coverageCentreLat    Float    @default(-46.4132) @map("coverage_centre_lat")
   coverageCentreLng    Float    @default(168.3538) @map("coverage_centre_lng")
-  coverageRadiusKm     Int      @default(20) @map("coverage_radius_km")
+  coverageRadiusKm     Int      @default(60) @map("coverage_radius_km")
   updatedById          String?  @map("updated_by_id") @db.Uuid
   updatedBy            Profile? @relation(fields: [updatedById], references: [id], onDelete: SetNull)
   updatedAt            DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz

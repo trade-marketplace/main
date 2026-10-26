@@ -158,7 +158,7 @@ checks, triggers) is hand-written SQL at the end of the same migration, under a 
   `shared_rate_cents` 7000 (every licensed trade) and `other_rate_cents` 3800, `shared_min_minutes` 120 /
   `other_min_minutes` 60, holiday pay 8%, on-costs 12.5%, margin 20%, GST 15% (basis points), `auto_release_hours`
   48, `quick_look_price_cents` 3000, `bounty_expiry_hours` 24. **Coverage** is a circle:
-  `coverage_centre_lat` / `coverage_centre_lng` (Invercargill, -46.4132 / 168.3538) and `coverage_radius_km` (20);
+  `coverage_centre_lat` / `coverage_centre_lng` (Invercargill, -46.4132 / 168.3538) and `coverage_radius_km` (60 km, 1–200);
   a point is covered when it's within the radius of the centre (#97 reads these). Pricing copies the rates into
   `job_pricing`, so editing settings never changes a priced job.
 - **Money rules live in the database too.** Refunds never exceed the amount and agree with the status; a paid

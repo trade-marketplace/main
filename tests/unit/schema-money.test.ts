@@ -173,11 +173,11 @@ describe.skipIf(!testDatabaseUrl)("Schema 3: money", () => {
       expect(Math.round(customerHourly(s.otherRateCents) / 100)).toBe(64);
     });
 
-    it("covers Invercargill by default, as a centre and a radius", async () => {
+    it("covers 60 km around Invercargill by default (Matt, 26 Oct), as a centre and a radius", async () => {
       const s = await schema.db.settings.findUniqueOrThrow({ where: { id: 1 } });
       expect(s.coverageCentreLat).toBeCloseTo(-46.41, 1);
       expect(s.coverageCentreLng).toBeCloseTo(168.35, 1);
-      expect(s.coverageRadiusKm).toBe(20);
+      expect(s.coverageRadiusKm).toBe(60);
     });
 
     it("won't take a second row", async () => {
@@ -207,9 +207,16 @@ describe.skipIf(!testDatabaseUrl)("Schema 3: money", () => {
       await expect(schema.db.settings.update({ where: { id: 1 }, data: { marginBps: 10001 } })).rejects.toThrow(
         /settings_percentages/,
       );
-      await expect(schema.db.settings.update({ where: { id: 1 }, data: { coverageRadiusKm: 0 } })).rejects.toThrow(
-        /settings_coverage/,
-      );
+      for (const coverageRadiusKm of [0, 201]) {
+        await expect(schema.db.settings.update({ where: { id: 1 }, data: { coverageRadiusKm } })).rejects.toThrow(
+          /settings_coverage/,
+        );
+      }
+      for (const coverageRadiusKm of [1, 200, 60]) {
+        expect(await schema.db.settings.update({ where: { id: 1 }, data: { coverageRadiusKm } })).toMatchObject({
+          coverageRadiusKm,
+        });
+      }
       await expect(schema.db.settings.update({ where: { id: 1 }, data: { coverageCentreLat: 91 } })).rejects.toThrow(
         /settings_coverage/,
       );

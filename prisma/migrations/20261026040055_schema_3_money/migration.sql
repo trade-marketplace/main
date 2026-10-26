@@ -106,7 +106,7 @@ CREATE TABLE "settings" (
     "bounty_expiry_hours" INTEGER NOT NULL DEFAULT 24,
     "coverage_centre_lat" DOUBLE PRECISION NOT NULL DEFAULT -46.4132,
     "coverage_centre_lng" DOUBLE PRECISION NOT NULL DEFAULT 168.3538,
-    "coverage_radius_km" INTEGER NOT NULL DEFAULT 20,
+    "coverage_radius_km" INTEGER NOT NULL DEFAULT 60,
     "updated_by_id" UUID,
     "updated_at" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
@@ -193,7 +193,7 @@ CREATE TRIGGER "settings_set_updated_at" BEFORE UPDATE ON "settings"
 -- Settings: exactly one row ----------------------------------------------------------------------------------
 -- id can only be 1, the migration makes that row with the launch rates (DECISIONS.md #62: $70/hr licensed,
 -- $38/hr Other, 2 h / 1 h minimums, 8% holiday pay, 12.5% on-costs, 20% margin, 15% GST; 48 h auto-release,
--- $30 quick look, 24 h bounties; Invercargill, 20 km), and it can't be deleted. The office edits it in place.
+-- $30 quick look, 24 h bounties; Invercargill, 60 km), and it can't be deleted. The office edits it in place.
 ALTER TABLE "settings"
   ADD CONSTRAINT "settings_one_row" CHECK ("id" = 1),
   ADD CONSTRAINT "settings_rates_positive" CHECK ("shared_rate_cents" > 0 AND "other_rate_cents" > 0),
@@ -205,7 +205,7 @@ ALTER TABLE "settings"
   ADD CONSTRAINT "settings_quick_look_not_negative" CHECK ("quick_look_price_cents" >= 0),
   ADD CONSTRAINT "settings_coverage"
     CHECK ("coverage_centre_lat" BETWEEN -90 AND 90 AND "coverage_centre_lng" BETWEEN -180 AND 180
-           AND "coverage_radius_km" > 0);
+           AND "coverage_radius_km" BETWEEN 1 AND 200);
 
 INSERT INTO "settings" ("id") VALUES (1);
 
