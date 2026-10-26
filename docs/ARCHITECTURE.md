@@ -51,12 +51,24 @@ checks, triggers) is hand-written SQL at the end of the same migration, under a 
   and sessions ("log out other devices" is Supabase's), so there is no sessions table. Workers add
   `worker_profiles`, `worker_trades` (several per worker, incl. `OTHER`) and `licences` (one per worker per licensed
   trade, its own status). Customers' saved places are `addresses`. Bank and tax details are in `payroll_details`.
+- **Jobs (Schema 2, #87).** `jobs` (TM-1001 onwards, category = the `trade` enum, status incl. `QUOTE_BOUNTY`, the
+  customer's price in `price_cents`, the booked window) with `job_photos`, `job_time_windows` (date × morning /
+  afternoon / evening, or `any_time` on the job), blind `estimates` (one per worker per job; time in minutes) and
+  `job_status_history`. How a price was built (rates copied from settings, worker pay, margin) is in `job_pricing`.
+  Money is whole cents, percentages basis points.
+- **Job rules live in the database.** Triggers write a status history row on every insert and status change (the
+  server names the actor with `SET LOCAL app.actor_id`), set `edited_at` when the job's content or photos change
+  and flag older estimates `made_before_edit` (cleared when the worker saves again), freeze `price_cents` and
+  `job_pricing` once the job is paid, and only allow booking a window the customer offered.
 - **Auth link without a foreign key.** Prisma only manages `public`, and a foreign key into `auth.users` stops it
   reading the database, so triggers do that job: a profile needs an auth user, and deleting the auth user deletes the
   profile (and everything hanging off it).
 - **Row-level security is on for every table.** The app's server code connects as the table owner and isn't limited
   by it; it protects the Supabase Data API that the browser can reach with the public key. There, people can read
-  their own rows and write nothing. `payroll_details` has no policy at all. Wider rules come with who-sees-what (#95).
+  their own rows and write nothing. Customers also read their own jobs' photos, windows and history; workers read
+  their own estimates. Customers never see estimates or `job_pricing`, and workers get no policy on `jobs` yet
+  (it holds the customer's price). `payroll_details` and `job_pricing` have no policy at all. Wider rules come with
+  who-sees-what (#95).
 - **Encrypted fields.** IRD numbers and bank accounts are encrypted by `encryptField()` (`src/server/crypto.ts`,
   AES-256-GCM, key in `FIELD_ENCRYPTION_KEY`) before they're saved, and bound to their row so a copied value won't
   decrypt elsewhere. The last digits are stored separately for the masked display.

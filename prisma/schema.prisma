@@ -73,6 +73,12 @@ model Profile {
   workersVerified  WorkerProfile[]    @relation("WorkerVerifier")
   addresses        Address[]
   payrollDetails   PayrollDetails?
+  jobsPosted       Job[]              @relation("JobCustomer")
+  jobsAssigned     Job[]              @relation("JobWorker")
+  jobPhotos        JobPhoto[]
+  estimates        Estimate[]
+  jobsPriced       JobPricing[]
+  statusChanges    JobStatusHistory[]
 
   @@map("profiles")
 }
@@ -191,4 +197,195 @@ model PayrollDetails {
   updatedAt            DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   @@map("payroll_details")
+}
+
+// ---------------------------------------------------------------- Schema 2 (#87): jobs
+
+// Where a job is. QUOTE_BOUNTY is when the price can't be settled from photos and estimates and someone has to
+// go and look (DECISIONS.md 2, page C22/D19). Customers see their own words for these, never the raw names.
+enum JobStatus {
+  // Posted; workers send blind estimates and the office prices it. Editable by the customer until priced.
+  REVIEW
+  QUOTE_BOUNTY
+  // Price sent to the customer, waiting for them to pay.
+  PRICED
+  // Paid; open for a worker to claim.
+  BOOKABLE
+  // Claimed by a worker.
+  ASSIGNED
+  // Worker has finished and sent the evidence; waiting on the customer's sign-off (48h).
+  SUBMITTED
+  COMPLETED
+  // Cancelled after payment: the office reviews it.
+  CANCEL_REVIEW
+  CANCELLED
+
+  @@map("job_status")
+}
+
+enum TimeOfDay {
+  MORNING
+  AFTERNOON
+  EVENING
+
+  @@map("time_of_day")
+}
+
+// A job a customer has posted. Customers see their own jobs, including the price they pay (`priceCents`).
+// What the worker earns and how the price was built are in `job_pricing`, which customers never see.
+model Job {
+  id           String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  // Shown as TM-1001 (also the order number for supplier accounts). Starts at 1001.
+  jobNumber    Int        @unique @default(autoincrement()) @map("job_number")
+  customerId   String     @map("customer_id") @db.Uuid
+  customer     Profile    @relation("JobCustomer", fields: [customerId], references: [id], onDelete: Restrict)
+  category     Trade
+  title        String
+  description  String
+  // Copied from the address the customer picked, so editing a saved address never moves a posted job.
+  // The full address is for the assigned worker only; others see the suburb (#95).
+  addressLine1 String     @map("address_line1")
+  addressLine2 String?    @map("address_line2")
+  suburb       String
+  city         String
+  postcode     String?
+  lat          Float?
+  lng          Float?
+  // Gate codes, dogs, parking.
+  accessNotes  String?    @map("access_notes")
+  // Urgent: raises the job in worker alerts.
+  asap         Boolean    @default(false)
+  // "Any time" works for the customer, so there may be no rows in `job_time_windows`.
+  anyTime      Boolean    @default(false) @map("any_time")
+  status       JobStatus  @default(REVIEW)
+  // The worker who claimed it. Required from ASSIGNED on (checked by the database).
+  workerId     String?    @map("worker_id") @db.Uuid
+  worker       Profile?   @relation("JobWorker", fields: [workerId], references: [id], onDelete: Restrict)
+  // What the customer pays, incl GST. Required from PRICED on, and can't change once paid (checked by the database).
+  priceCents   Int?       @map("price_cents")
+  // The window the worker booked: one of the customer's windows, or any window when `anyTime`.
+  bookedDate   DateTime?  @map("booked_date") @db.Date
+  bookedTime   TimeOfDay? @map("booked_time")
+  // Set by the database whenever what the job is (title, description, category, address, photos…) changes.
+  // Estimates saved before it are flagged `madeBeforeEdit`.
+  editedAt     DateTime?  @map("edited_at") @db.Timestamptz
+  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  photos        JobPhoto[]
+  timeWindows   JobTimeWindow[]
+  estimates     Estimate[]
+  pricing       JobPricing?
+  statusHistory JobStatusHistory[]
+
+  // Job board and office queues by status and trade; the map by status and location.
+  @@index([status, category])
+  @@index([status, lat, lng])
+  @@index([customerId, createdAt])
+  @@index([workerId, status])
+  @@map("jobs")
+}
+
+// Photos of the job. The customer's own, in the private Storage bucket (DECISIONS.md, #59).
+model JobPhoto {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  jobId        String   @map("job_id") @db.Uuid
+  job          Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  // Path in the private Supabase Storage bucket, never a public URL.
+  path         String
+  // Gallery order, first is the cover.
+  position     Int      @default(0)
+  uploadedById String?  @map("uploaded_by_id") @db.Uuid
+  uploadedBy   Profile? @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([jobId, position])
+  @@map("job_photos")
+}
+
+// When the customer can have the work done: a date and part of the day (DECISIONS.md 10). Workers book one.
+model JobTimeWindow {
+  jobId     String    @map("job_id") @db.Uuid
+  job       Job       @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  date      DateTime  @db.Date
+  timeOfDay TimeOfDay @map("time_of_day")
+
+  @@id([jobId, date, timeOfDay])
+  @@map("job_time_windows")
+}
+
+// A worker's blind estimate: they never see each other's, and customers never see any (AGENTS.md §5).
+// One per worker per job; saving again updates it. Hours are stored as minutes (3.5 h = 210).
+model Estimate {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  jobId          String   @map("job_id") @db.Uuid
+  job            Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  workerId       String   @map("worker_id") @db.Uuid
+  worker         Profile  @relation(fields: [workerId], references: [id], onDelete: Cascade)
+  minutes        Int
+  // Materials at cost, ex GST.
+  materialsCents Int      @default(0) @map("materials_cents")
+  note           String?
+  // "Needs a site visit" tick in the estimate drawer.
+  needsSiteVisit Boolean  @default(false) @map("needs_site_visit")
+  // True when the job was edited after this estimate was last saved. Set and cleared by the database.
+  madeBeforeEdit Boolean  @default(false) @map("made_before_edit")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@unique([jobId, workerId])
+  // A worker's estimates history (D13).
+  @@index([workerId, createdAt])
+  @@map("estimates")
+}
+
+// How a job's price was built, frozen when the office prices it: the rates are copied from settings (Schema 3)
+// so a later change there never changes an agreed price or payout. Can't change once the job is paid (checked
+// by the database). Only the server reads this table: no Data API policy. Percentages are basis points
+// (20% = 2000) and hours are minutes, so everything is a whole number.
+model JobPricing {
+  jobId            String   @id @map("job_id") @db.Uuid
+  job              Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  // Copied from settings when priced.
+  workerRateCents  Int      @map("worker_rate_cents")
+  minMinutes       Int      @map("min_minutes")
+  holidayPayBps    Int      @map("holiday_pay_bps")
+  onCostBps        Int      @map("on_cost_bps")
+  marginBps        Int      @map("margin_bps")
+  gstBps           Int      @map("gst_bps")
+  // What was priced: billed time (after the minimum) and materials at cost, ex GST.
+  minutes          Int
+  materialsCents   Int      @map("materials_cents")
+  // The result. The customer's total is `jobs.price_cents`.
+  workerGrossCents Int      @map("worker_gross_cents")
+  holidayPayCents  Int      @map("holiday_pay_cents")
+  onCostCents      Int      @map("on_cost_cents")
+  marginCents      Int      @map("margin_cents")
+  gstCents         Int      @map("gst_cents")
+  // Office note on how it was priced (e.g. "trimmed average of 3, +30 min access").
+  note             String?
+  pricedById       String?  @map("priced_by_id") @db.Uuid
+  pricedBy         Profile? @relation(fields: [pricedById], references: [id], onDelete: SetNull)
+  pricedAt         DateTime @default(now()) @map("priced_at") @db.Timestamptz
+  updatedAt        DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("job_pricing")
+}
+
+// Every status a job has had, oldest first. Written by the database on every insert and status change, so
+// nothing can skip it. The server names who made the change with `SET LOCAL app.actor_id = '<profile id>'`
+// in the same transaction; empty means the system (e.g. a scheduled job).
+model JobStatusHistory {
+  id          String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  jobId       String     @map("job_id") @db.Uuid
+  job         Job        @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  // Empty for the first row, when the job was posted.
+  fromStatus  JobStatus? @map("from_status")
+  toStatus    JobStatus  @map("to_status")
+  changedById String?    @map("changed_by_id") @db.Uuid
+  changedBy   Profile?   @relation(fields: [changedById], references: [id], onDelete: SetNull)
+  createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([jobId, createdAt])
+  @@map("job_status_history")
 }
