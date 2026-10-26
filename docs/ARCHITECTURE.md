@@ -291,3 +291,55 @@ animation in a component.
   (checked against `docs/design/sitemap.json` by `tests/unit/motion-catalogue.test.ts`).
 - **`/dev/motion`** plays each one (dev only, a 404 in production builds). Its e2e checks run against a dev server:
   `E2E_DEV_BASE_URL=http://localhost:3000 npx playwright test tests/e2e/dev-motion.spec.ts`.
+
+## Titles, icons, share images and search (#218)
+
+Mockup `w-meta` ("Icons, share images & install") in `docs/design/pages.html`, WEBAPP_SPEC G07.
+
+- **Page titles** follow one pattern: "[Page] · [Job] | Trade Marketplace". The root layout sets
+  `title.template`; a page sets only its own part with `pageTitle()` from `src/lib/metadata.ts`:
+
+  ```ts
+  export async function generateMetadata({ params }): Promise<Metadata> {
+    return { title: pageTitle("Your price", job.title) }; // "Your price · Sub wiring | Trade Marketplace"
+  }
+  ```
+
+  Unread counts go in front of the tab title: `document.title = formatTitle("Messages", unread)` →
+  "(2) Messages | Trade Marketplace" (99+ above 99). Wiring it to real counts is for the notifications tasks.
+- **Private pages are noindex with no share image.** Everything under `PRIVATE_PATHS` in `src/lib/metadata.ts`
+  (`/jobs`, `/dashboard`, `/profile`, `/admin`, `/messages`, `/notifications`, `/pay`, `/receipts`, `/earnings`,
+  `/quoting`, `/support`) is disallowed in `/robots.txt` (`src/app/robots.ts`), and every page there must spread
+  `privateMetadata`, which adds `noindex, nofollow` and removes the share image and Twitter card it would
+  otherwise inherit from the root. Easiest is once per section, in its layout:
+
+  ```ts
+  // src/app/jobs/layout.tsx
+  export const metadata: Metadata = { ...privateMetadata };
+  // or on a single page
+  export const metadata: Metadata = { ...privateMetadata, title: pageTitle("My jobs") };
+  ```
+
+  `tests/unit/robots.test.ts` fails if a sign-in-only route in `src/lib/auth/routes.ts` isn't covered, or a
+  public one is. A new private area goes in `PRIVATE_PATHS` and gets the metadata.
+- **Favicon and app icons** (bolt mark on Forest) are generated, not drawn by hand: `src/app/icon.svg` (tab),
+  `src/app/icon.png` (32px), `src/app/apple-icon.png` (180), `public/icons/icon-192.png`, `icon-512.png` and
+  `icon-maskable-512.png`. Next.js adds the `<link>` tags for the files in `src/app/`; the manifest lists the
+  others. To change them, edit `scripts/brand/icons.mjs` (sizes and proportions), the logo
+  (`docs/design/brand/logo.svg`) or the tokens, then run `node scripts/brand/icons.mjs` and commit the files.
+  `tests/unit/brand-icons.test.ts` fails if `icon.svg` no longer matches the logo and tokens. These image files
+  hold literal colours (an icon can't use CSS variables); they come from the tokens via the script.
+- **Web app manifest**: `src/app/manifest.ts` → `/manifest.webmanifest` (name, short name "TradeMkt", Forest theme,
+  Paper background, standalone, the three PWA icons). The install card is the "Install as app (PWA)" task (G08).
+- **Share images** (Open Graph 1200 × 630, also used as the large Twitter card): one per public page type, in that
+  page's mode. `src/app/opengraph-image.tsx` (customer, the default for every public page) and
+  `src/app/for-tradies/opengraph-image.tsx` (trade) both call `shareImage()` in `src/server/share-image.tsx`, each
+  with a `twitter-image.tsx` that re-exports it. A new page type (e.g. service pages, with the trade name) adds its
+  own pair the same way. They are drawn by `next/og` at build time with static TTF copies of Roboto Flex
+  (`scripts/brand/og-fonts.py`, because next/og can't read WOFF2 or variable fonts).
+- **Colours outside CSS.** The manifest and share images need literal colours, so they read them from
+  `src/styles/tokens.css` with `tokenColour(name, mode)` (`src/server/brand-colours.ts`): no hex in code, and a
+  token change reaches them on the next build. It reads the file from disk, so only use it in code that is
+  prerendered at build time (metadata routes like these), not in request-time code.
+- **Absolute URLs.** `metadataBase` is the primary domain (`SITE_URL`, https://trademarketplace.nz). Vercel preview
+  deployments use their own URL automatically.
