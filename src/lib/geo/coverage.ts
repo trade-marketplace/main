@@ -11,8 +11,9 @@ export type Coverage = {
 };
 
 /**
- * Until settings exist: 60 km around central Invercargill (Matt, 26 Oct), which takes in Bluff and Gore. The same centre and radius as the
- * settings row's defaults (Schema 3, #91). The one place the fallback is defined: use this, never the numbers.
+ * When there are no settings to read (database off): 60 km around central Invercargill (Matt, 26 Oct), which takes in
+ * Bluff and Gore. The same centre and radius as the settings row's defaults (Schema 3, #91); a test fails if they
+ * drift. The one place the fallback is defined: use this, never the numbers.
  */
 export const INVERCARGILL_COVERAGE: Coverage = {
   name: "Invercargill",
