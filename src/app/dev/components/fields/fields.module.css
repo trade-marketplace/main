@@ -1,0 +1,38 @@
+.page { min-height: 100dvh; color: var(--trade-text); background: var(--trade-surface); }
+.wrap { position: relative; width: 100%; max-width: var(--trade-content-max); margin: auto; padding: 0 var(--trade-inset-browse); }
+.band { position: relative; overflow: hidden; padding: var(--trade-space-10) 0 var(--trade-space-8); background: var(--trade-forest); color: var(--trade-text-on-dark); }
+.bolt { position: absolute; width: 520px; top: -200px; right: -180px; fill: var(--trade-signature); opacity: .2; pointer-events: none; }
+.eyebrow { color: var(--trade-signature); font-size: var(--trade-fs-caption); text-transform: uppercase; letter-spacing: .12em; font-weight: 800; margin: 0 0 var(--trade-space-2); }
+.title { margin: 0; font-family: var(--trade-font-heading); font-weight: 900; font-variation-settings: var(--trade-display-axes); font-size: var(--trade-fs-title); line-height: var(--trade-lh-title); }
+.lede { max-width: var(--trade-read-max); margin: var(--trade-space-3) 0 0; color: var(--trade-text-on-dark-2); }
+.modeNav { display: flex; flex-wrap: wrap; gap: var(--trade-space-2); margin-top: var(--trade-space-6); }
+.modeNav a { display: inline-flex; align-items: center; min-height: var(--trade-tap); padding: var(--trade-space-2) var(--trade-space-5); border-radius: var(--trade-radius-pill); box-shadow: inset 0 0 0 2px var(--trade-text-on-dark-2); color: var(--trade-text-on-dark); font-size: var(--trade-fs-small); font-weight: 700; text-decoration: none; }
+.modeNav a[aria-current="page"] { background: var(--trade-signature); color: var(--trade-on-signature); box-shadow: none; }
+.toc { display: flex; flex-wrap: wrap; gap: var(--trade-space-2) var(--trade-space-5); padding: var(--trade-space-4) 0; border-bottom: 1px solid var(--trade-line); }
+.toc a { display: inline-flex; align-items: center; min-height: var(--trade-tap); color: var(--trade-link); font-size: var(--trade-fs-small); font-weight: 700; }
+.previewBar { padding: var(--trade-space-6) 0; border-bottom: 1px solid var(--trade-line); }
+.note { color: var(--trade-text-2); font-size: var(--trade-fs-caption); margin: var(--trade-space-2) 0 0; overflow-wrap: anywhere; }
+.section { padding: var(--trade-space-8) 0; border-bottom: 1px solid var(--trade-line); scroll-margin-top: var(--trade-space-4); }
+.section:last-child { padding-bottom: var(--trade-space-16); border: 0; }
+.sectionHead { display: flex; align-items: flex-start; gap: var(--trade-space-4); margin-bottom: var(--trade-space-6); }
+.sectionHead h2 { font-family: var(--trade-font-heading); font-weight: 900; font-variation-settings: var(--trade-display-axes); font-size: var(--trade-fs-heading); line-height: var(--trade-lh-heading); margin: 0; }
+.sectionHead > div { min-width: 0; }
+.sectionHead > div > p { color: var(--trade-text-2); font-size: var(--trade-fs-small); margin: var(--trade-space-2) 0 0; max-width: var(--trade-read-max); }
+.sectionNumber { flex: none; padding-top: var(--trade-space-1); color: var(--trade-link); font-size: var(--trade-fs-caption); font-weight: 800; margin: 0; }
+.twoColumns, .bookingGrid { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--trade-space-6); min-width: 0; }
+.panel { display: grid; align-content: start; gap: var(--trade-space-5); min-width: 0; padding: var(--trade-space-5); border: 1px solid var(--trade-line); border-radius: var(--trade-radius-card); background: var(--trade-surface); }
+.panel h3 { font-size: var(--trade-fs-section); line-height: var(--trade-lh-section); margin: 0 0 var(--trade-space-1); font-weight: 700; }
+.section > .panel { margin-top: var(--trade-space-6); }
+.example { display: grid; gap: var(--trade-space-5); min-width: 0; max-width: 760px; padding: var(--trade-space-6); border-radius: var(--trade-radius-card); border: 1px solid var(--trade-line-strong); background: var(--trade-surface); box-shadow: var(--trade-shadow-header); }
+.exampleHeading { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--trade-space-4); }
+.exampleHeading > div { min-width: 0; }
+.exampleHeading h3 { margin: var(--trade-space-1) 0 0; font-family: var(--trade-font-heading); font-weight: 900; font-variation-settings: var(--trade-display-axes); font-size: var(--trade-fs-subheading); line-height: var(--trade-lh-subheading); }
+.formStatus { font-size: var(--trade-fs-small); font-weight: 600; color: var(--trade-text); overflow-wrap: anywhere; }
+.formStatus:empty { display: none; }
+.page h1, .page h2, .page h3, .page p, .page a { overflow-wrap: anywhere; }
+@media (min-width: 768px) {
+  .twoColumns, .bookingGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .panel .twoColumns { gap: var(--trade-space-4); }
+}
+@media (min-width: 1024px) { .bookingGrid { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); } }
+@media (max-width: 389px) { .panel, .example { padding: var(--trade-space-4); } }
