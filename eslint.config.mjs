@@ -15,5 +15,7 @@ export default defineConfig([
     // Playwright output (npm run e2e)
     "playwright-report/**",
     "test-results/**",
+    // Claude Code agent worktrees: full local copies of the repo, not repo files.
+    ".claude/**",
   ]),
 ]);

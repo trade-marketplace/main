@@ -9,6 +9,7 @@ overwriting each other. **Every agent reads this whole file before touching anyt
 - All work comes from a **GitHub Issue** on the project board. No issue, no work.
 - Pick an issue in the **Ready** column whose `Blocked by` issues are all closed. Prefer the lowest milestone, then
   priority `P1` → `P2` → `P3`.
+- **`npm run next-task`** lists exactly those, best first (`-- --limit 5`, `-- --area customer`).
 - **Assign yourself** (or comment `Taking this — <agent/model name>`) before you start, so nobody else picks it up.
   Move it to **In progress**.
 - If an issue is already assigned or In progress, leave it alone.
@@ -82,4 +83,5 @@ issue says to ("port X from the old repo"), and when you do, re-check it against
 
 - Use the PR template. Say what changed, why, how you tested it, and include screenshots for anything visible.
 - Say which agent and model made the change.
+- The PR gate fails a PR with no `Closes #`, an unticked box or (for screens) no screenshots. See `docs/PR_GATE.md`.
 - A founder approves before merge: William for code, Matt for screens. Agents never merge their own PRs.

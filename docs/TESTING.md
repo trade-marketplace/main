@@ -9,7 +9,9 @@ Three kinds of test, all in `tests/`:
 | Accessibility | part of `npm run e2e` | inside e2e tests | [axe](https://github.com/dequelabs/axe-core) via `expectNoA11yViolations` |
 
 Every PR runs `npm run lint`, `npm run typecheck`, `npm test` and `npm run build` (AGENTS.md §3). Run `npm run e2e`
-too whenever you change a screen.
+too whenever you change a screen. CI (`.github/workflows/ci.yml`) runs all of them, e2e last on the app it just built.
+When an e2e test fails there, the run's **Artifacts** has `playwright-report` (kept 7 days): download it and open
+`index.html` to see each failure with its screenshot and trace.
 
 ## Unit tests (Vitest)
 

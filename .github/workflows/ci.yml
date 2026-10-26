@@ -1,5 +1,5 @@
-# Runs the four checks from AGENTS.md on every pull request and on main (#68).
-# A red check means the PR doesn't merge. Each check is its own step, so the failing one is shown by name.
+# Runs the four checks from AGENTS.md, then the end-to-end and accessibility tests, on every pull request and on main
+# (#68, #287). A red check means the PR doesn't merge. Each check is its own step, so the failing one is shown by name.
 name: CI
 
 on:
@@ -69,7 +69,7 @@ jobs:
 
       - name: Docs only, skipping checks
         if: steps.changes.outputs.docs_only == 'true'
-        run: echo "Only docs changed, so lint, typecheck, test and build were skipped." >> "$GITHUB_STEP_SUMMARY"
+        run: echo "Only docs changed, so lint, typecheck, test, build and e2e were skipped." >> "$GITHUB_STEP_SUMMARY"
 
       - name: Set up Node (version from .nvmrc)
         if: steps.changes.outputs.docs_only != 'true'
@@ -95,7 +95,6 @@ jobs:
         run: npm run typecheck
 
       # Database tests use the Postgres service above; without TEST_DATABASE_URL they'd fail here, not skip.
-      # End-to-end tests (#70) get their own step when that tooling lands.
       - name: Test
         id: test
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
@@ -108,6 +107,47 @@ jobs:
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: npm run build
 
+      # End-to-end and accessibility tests (#70, #287). They need the built app, so they only run when Build passed
+      # (and so never on a docs-only PR). The browser is cached per Playwright version: a new version downloads a
+      # new browser, otherwise only the system libraries are installed.
+      - name: Find Playwright version
+        id: playwright
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Playwright browser
+        id: browser-cache
+        if: ${{ !cancelled() && steps.playwright.outcome == 'success' }}
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+
+      - name: Install Playwright browser
+        id: browsers
+        if: ${{ !cancelled() && steps.playwright.outcome == 'success' }}
+        run: |
+          if [ "${{ steps.browser-cache.outputs.cache-hit }}" = "true" ]; then
+            npx playwright install-deps chromium
+          else
+            npx playwright install --with-deps chromium
+          fi
+
+      # `npm run e2e` would build the app again, so run Playwright on the build from the step above.
+      - name: End-to-end and accessibility
+        id: e2e
+        if: ${{ !cancelled() && steps.browsers.outcome == 'success' }}
+        run: npx playwright test
+
+      # The HTML report (with traces and screenshots of each failed test) is attached to the run for 7 days.
+      - name: Upload Playwright report
+        if: ${{ !cancelled() && steps.e2e.outcome == 'failure' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
       - name: Summary
         if: ${{ !cancelled() && steps.changes.outputs.docs_only != 'true' }}
         run: |
@@ -119,4 +159,5 @@ jobs:
             echo "| Typecheck | ${{ steps.typecheck.outcome }} |"
             echo "| Test | ${{ steps.test.outcome }} |"
             echo "| Build | ${{ steps.build.outcome }} |"
+            echo "| E2E + accessibility | ${{ steps.e2e.outcome }} |"
           } >> "$GITHUB_STEP_SUMMARY"

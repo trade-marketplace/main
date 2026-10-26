@@ -35,5 +35,8 @@ screenshots/
 .vercel
 __pycache__/
 
+# Claude Code agent worktrees (full local copies of the repo)
+.claude/worktrees/
+
 # generated Prisma client (rebuilt by `npm install` / `npm run build`)
 src/generated/
