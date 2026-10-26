@@ -20,15 +20,15 @@ const deeSt: AddressSuggestion = {
   postcode: "9810",
   point: { lat: -46.4118, lng: 168.3477 },
 };
-const bluffSt: AddressSuggestion = {
+const princesSt: AddressSuggestion = {
   ...deeSt,
   id: "address.2",
-  label: "1 Gore Street, Bluff 9814",
-  line1: "1 Gore Street",
-  suburb: "Bluff",
-  city: "Bluff",
-  postcode: "9814",
-  point: { lat: -46.6, lng: 168.3333 },
+  label: "1 Princes Street, Dunedin Central, Dunedin 9016",
+  line1: "1 Princes Street",
+  suburb: "Dunedin Central",
+  city: "Dunedin",
+  postcode: "9016",
+  point: { lat: -45.8788, lng: 170.5028 },
 };
 
 function fakeProvider(suggest: AddressSearchProvider["suggest"]): AddressSearchProvider {
@@ -39,13 +39,13 @@ const quiet = { onError: () => {} };
 
 describe("searchAddresses", () => {
   it("returns the provider's suggestions, each marked inside or outside the coverage area", async () => {
-    const provider = fakeProvider(async () => [deeSt, bluffSt]);
+    const provider = fakeProvider(async () => [deeSt, princesSt]);
     const result = await searchAddresses("12 Dee", { provider, coverage: INVERCARGILL_COVERAGE });
     expect(result.mode).toBe("search");
     if (result.mode !== "search") return;
     expect(result.suggestions.map((s) => [s.line1, s.coverage.status])).toEqual([
       ["12 Dee Street", "inside"],
-      ["1 Gore Street", "outside"],
+      ["1 Princes Street", "outside"],
     ]);
   });
 

@@ -12,8 +12,8 @@ const { centre, radiusKm } = INVERCARGILL_COVERAGE;
 const north = (km: number) => ({ lat: centre.lat + km / KM_PER_DEGREE_LAT, lng: centre.lng });
 
 describe("checkCoverage", () => {
-  it("falls back to 20 km around central Invercargill, the same as the settings defaults", () => {
-    expect(INVERCARGILL_COVERAGE).toEqual({ name: "Invercargill", centre: { lat: -46.4132, lng: 168.3538 }, radiusKm: 20 });
+  it("falls back to 60 km around central Invercargill, the same as the settings defaults", () => {
+    expect(INVERCARGILL_COVERAGE).toEqual({ name: "Invercargill", centre: { lat: -46.4132, lng: 168.3538 }, radiusKm: 60 });
   });
 
   it("is inside at the centre", () => {
@@ -37,13 +37,15 @@ describe("checkCoverage", () => {
   });
 
   it("says how far from the centre the point is", () => {
-    const result = checkCoverage(INVERCARGILL_COVERAGE, north(30));
-    expect(result.status === "outside" && result.distanceKm).toBeCloseTo(30, 6);
+    const result = checkCoverage(INVERCARGILL_COVERAGE, north(90));
+    expect(result.status === "outside" && result.distanceKm).toBeCloseTo(90, 6);
   });
 
-  it("puts Bluff (≈20.8 km) just outside the launch area and Gladstone inside", () => {
-    expect(checkCoverage(INVERCARGILL_COVERAGE, { lat: -46.6, lng: 168.3333 }).status).toBe("outside");
+  it("takes in Gladstone, Bluff (≈21 km) and Gore (≈57 km), and leaves out Dunedin (≈176 km)", () => {
     expect(checkCoverage(INVERCARGILL_COVERAGE, { lat: -46.392, lng: 168.355 }).status).toBe("inside");
+    expect(checkCoverage(INVERCARGILL_COVERAGE, { lat: -46.6, lng: 168.3333 }).status).toBe("inside");
+    expect(checkCoverage(INVERCARGILL_COVERAGE, { lat: -46.0983, lng: 168.9446 }).status).toBe("inside");
+    expect(checkCoverage(INVERCARGILL_COVERAGE, { lat: -45.8788, lng: 170.5028 }).status).toBe("outside");
   });
 
   it("can't check without a point: the office checks later", () => {

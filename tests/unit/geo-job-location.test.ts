@@ -61,8 +61,8 @@ describe("resolveJobLocation", () => {
   });
 
   it("a dropped pin outside the area goes to the waitlist too", () => {
-    const bluff = { lat: -46.6, lng: 168.3333 };
-    expect(resolveJobLocation({ source: "PIN", suburb: "Bluff", point: bluff }, INVERCARGILL_COVERAGE)).toMatchObject({
+    const dunedin = { lat: -45.8788, lng: 170.5028 };
+    expect(resolveJobLocation({ source: "PIN", suburb: "Dunedin Central", point: dunedin }, INVERCARGILL_COVERAGE)).toMatchObject({
       ok: false,
       error: "outside-coverage",
     });
