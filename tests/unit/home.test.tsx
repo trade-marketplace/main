@@ -1,7 +1,7 @@
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import Home from "@/app/page";
+import Home from "@/app/(site)/page";
 
 describe("placeholder home page", () => {
   const html = renderToString(<Home />);
