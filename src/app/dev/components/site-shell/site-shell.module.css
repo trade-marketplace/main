@@ -1,0 +1,71 @@
+/* /dev/components/site-shell (dev only). Page content around the site shell; the shell brings its own styles.
+   Tokens only: no hex values. */
+
+.wrap {
+  position: relative;
+  max-width: var(--trade-content-max);
+  margin: 0 auto;
+  padding: 0 var(--trade-inset-browse);
+}
+
+.hero {
+  position: relative;
+  overflow: hidden;
+  background: var(--trade-forest);
+  color: var(--trade-text-on-dark);
+  /* The header sits over the top of the hero. */
+  padding: calc(76px + var(--trade-space-8)) 0 var(--trade-space-12);
+}
+.heroBolt { position: absolute; width: 520px; top: -160px; right: -200px; fill: var(--trade-signature); opacity: 0.2; pointer-events: none; }
+.plainTop { padding-top: var(--trade-space-8); }
+
+.eyebrow {
+  margin: 0 0 var(--trade-space-2);
+  font-size: var(--trade-fs-caption);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 800;
+  color: var(--trade-success);
+}
+.hero .eyebrow { color: var(--trade-signature); }
+.title {
+  margin: 0;
+  font-family: var(--trade-font-heading);
+  font-weight: 900;
+  font-variation-settings: var(--trade-display-axes);
+  font-size: var(--trade-fs-title);
+  line-height: var(--trade-lh-title);
+  overflow-wrap: anywhere;
+}
+.lede { margin: var(--trade-space-3) 0 0; max-width: var(--trade-read-max); color: var(--trade-text-2); }
+.hero .lede { color: var(--trade-text-on-dark-2); }
+
+.pickNav { display: flex; flex-wrap: wrap; gap: var(--trade-space-2); margin-top: var(--trade-space-4); }
+.pick {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--trade-tap);
+  padding: 0 var(--trade-space-5);
+  border-radius: var(--trade-radius-pill);
+  color: var(--trade-text);
+  font-weight: 700;
+  font-size: var(--trade-fs-small);
+  text-decoration: none;
+  box-shadow: inset 0 0 0 2px var(--trade-line-strong);
+}
+.hero .pick { color: var(--trade-text-on-dark); box-shadow: inset 0 0 0 2px var(--trade-text-on-dark-2); }
+.pick:hover { text-decoration: underline; }
+.pick[aria-current="page"],
+.hero .pick[aria-current="page"] { background: var(--trade-signature); color: var(--trade-on-signature); box-shadow: none; }
+
+.heading {
+  margin: var(--trade-space-10) 0 var(--trade-space-3);
+  font-family: var(--trade-font-heading);
+  font-weight: 900;
+  font-variation-settings: var(--trade-display-axes);
+  font-size: var(--trade-fs-heading);
+  line-height: var(--trade-lh-heading);
+}
+.list { margin: 0; padding-left: var(--trade-space-5); display: grid; gap: var(--trade-space-2); max-width: var(--trade-read-max); }
+.filler { max-width: var(--trade-read-max); color: var(--trade-text-2); margin: var(--trade-space-6) 0; }
+.filler:last-child { margin-bottom: var(--trade-space-16); }
