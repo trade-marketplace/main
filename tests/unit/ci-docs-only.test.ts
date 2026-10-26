@@ -152,9 +152,10 @@ describe("CI end-to-end and accessibility step (#287)", () => {
     expect(cache).toContain("path: ~/.cache/ms-playwright");
     expect(cache).toContain("${{ steps.playwright.outputs.version }}");
     const install = step("Install Playwright browser").body;
-    expect(install).toContain("steps.browser-cache.outputs.cache-hit");
-    expect(install).toContain("npx playwright install --with-deps chromium");
-    expect(install).toContain("npx playwright install-deps chromium");
+    expect(install).toContain("run: npx playwright install chromium");
+    // No apt: the slow Ubuntu mirror ran CI out of time (#328).
+    expect(install).not.toMatch(/install-deps|--with-deps/);
+    expect(install).toMatch(/timeout-minutes: \d+/);
   });
 
   it("attaches the Playwright report for 7 days, only when e2e failed", () => {
