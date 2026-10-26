@@ -92,8 +92,8 @@ jobs:
         run: npm run build
 
       # End-to-end and accessibility tests (#70, #287). They need the built app, so they only run when Build passed
-      # (and so never on a docs-only PR). The browser is cached per Playwright version: a new version downloads a
-      # new browser, otherwise only the system libraries are installed.
+      # (and so never on a docs-only PR). The browser is cached per Playwright version, so it's only downloaded
+      # when the version changes.
       - name: Find Playwright version
         id: playwright
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
@@ -110,11 +110,26 @@ jobs:
       - name: Install Playwright browser
         id: browsers
         if: ${{ !cancelled() && steps.playwright.outcome == 'success' }}
+        # System libraries: GitHub's Ubuntu image already has everything headless Chromium needs (it ships Google
+        # Chrome), so apt only runs if a library is really missing. apt's mirror is sometimes very slow: on one run
+        # in #287 `--with-deps` spent 7 minutes downloading fonts and xvfb the tests don't use.
         run: |
-          if [ "${{ steps.browser-cache.outputs.cache-hit }}" = "true" ]; then
+          if [ "${{ steps.browser-cache.outputs.cache-hit }}" != "true" ]; then
+            npx playwright install chromium
+          fi
+          bins=$(find ~/.cache/ms-playwright -type f \
+            \( -name chrome -o -name chrome-headless-shell -o -name headless_shell \))
+          if [ -z "$bins" ]; then
+            missing="(couldn't find the Chromium binaries to check)"
+          else
+            missing=$(echo "$bins" | xargs ldd | grep "not found" || true)
+          fi
+          if [ -n "$missing" ]; then
+            echo "Chromium is missing system libraries, installing them:"
+            echo "$missing"
             npx playwright install-deps chromium
           else
-            npx playwright install --with-deps chromium
+            echo "Chromium's system libraries are already installed."
           fi
 
       # `npm run e2e` would build the app again, so run Playwright on the build from the step above.

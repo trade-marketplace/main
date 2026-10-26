@@ -145,16 +145,21 @@ describe("CI end-to-end and accessibility step (#287)", () => {
     expect(step("Install").body).toContain("steps.changes.outputs.docs_only != 'true'");
   });
 
-  it("caches the browser per @playwright/test version and installs only Chromium", () => {
+  it("caches the browser per @playwright/test version, installs only Chromium, and uses apt only as a fallback", () => {
     expect(step("Find Playwright version").body).toContain("require('@playwright/test/package.json').version");
     const cache = step("Cache Playwright browser").body;
     expect(cache).toMatch(/uses: actions\/cache@v\d+/);
     expect(cache).toContain("path: ~/.cache/ms-playwright");
     expect(cache).toContain("${{ steps.playwright.outputs.version }}");
     const install = step("Install Playwright browser").body;
-    expect(install).toContain("steps.browser-cache.outputs.cache-hit");
-    expect(install).toContain("npx playwright install --with-deps chromium");
-    expect(install).toContain("npx playwright install-deps chromium");
+    expect(install).toContain(`if [ "\${{ steps.browser-cache.outputs.cache-hit }}" != "true" ]; then`);
+    expect(install).toContain("npx playwright install chromium");
+    // apt's mirror can take minutes, so system libraries are only installed when ldd finds one missing.
+    expect(install).not.toContain("npx playwright install --with-deps");
+    expect(install).toContain('xargs ldd | grep "not found"');
+    // If it can't find the binaries to check, it installs the libraries rather than guessing they're there.
+    expect(install).toMatch(/if \[ -z "\$bins" \]; then\s+missing="/);
+    expect(install).toMatch(/if \[ -n "\$missing" \]; then[\s\S]*npx playwright install-deps chromium/);
   });
 
   it("attaches the Playwright report for 7 days, only when e2e failed", () => {
