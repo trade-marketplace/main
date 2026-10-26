@@ -16,7 +16,8 @@
     "e2e": "npm run build && playwright test",
     "db:migrate": "node --env-file-if-exists=.env.local --env-file-if-exists=.env scripts/require-db.mjs && prisma migrate dev",
     "db:seed": "node --env-file-if-exists=.env.local --env-file-if-exists=.env scripts/require-db.mjs && prisma db seed",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "next-task": "node scripts/next-task.mjs"
   },
   "dependencies": {
     "@prisma/adapter-pg": "7.10.1",
