@@ -184,8 +184,25 @@ Ten jobs (TM-1001 onwards on a fresh database), at least one in every status (`R
 and with time windows, blind estimates, example pricing rows, a worker and a booked window where its status would
 have them. Each job is posted as `REVIEW` and moved through its statuses by the person who'd do it, so the database
 triggers write a real status history and check every job rule. Time windows are days from the day you seed, so
-previews always show upcoming ones. "Assigned with extra work" and payments/payouts need Schema 3 (#91) and are a
-follow-up.
+previews always show upcoming ones.
+
+**Money** (Schema 3, #297), written at the step the app would write it, every figure taken from the job's own
+`job_pricing` / `price_cents`:
+
+- **Payments.** Every job that has been paid (`BOOKABLE`, `ASSIGNED`, `SUBMITTED`, `COMPLETED`, `CANCEL_REVIEW`) has
+  one `JOB` payment, `PAID`, for its price. The `PRICED` job has a `PENDING` one (checkout started, not finished).
+  All test mode: `livemode` false, ids `cs_test_DEMO_…` / `pi_test_DEMO_…`, never a real Stripe id.
+- **Assigned with extra work.** The `ASSIGNED` kitchen-reno job has extra work asked for by its worker ("existing hob
+  cable is nicked…", 1.5 h, $95 materials), `REQUESTED`, waiting for the office to price it.
+- **Materials.** Jobs with a worker have a materials budget (what was priced in); `SUBMITTED` and `COMPLETED` ones
+  have the spend reported.
+- **Payout.** The `COMPLETED` job's worker has a `QUEUED` payout: the minutes, rate, gross and holiday pay it was
+  priced with.
+- **Settings.** The migration makes the one settings row; the seed leaves it alone.
+
+Payments and payouts stop a job from being deleted (and a paid payment or exported payout can't be changed), so a
+re-seed deletes the demo jobs' payments and payouts first, then the jobs (extra work, materials and pricing go with
+them), then writes everything again.
 
 **Photos.** Uploads (#96) aren't built yet, so `job_photos.path` holds `demo/<file>` and the small files live in
 `prisma/seed/photos/` (a few KB each). The uploads task should send each file to that path in the photos bucket.
@@ -213,4 +230,5 @@ follow-up.
    `auth.users` without the keys is refused.
 
 Tests: `tests/unit/seed-guard.test.ts` (refusal rules) and `tests/unit/seed.test.ts` (seeding twice gives the same rows,
-every status and trade, sign-ins through a fake Supabase admin API, no committed password).
+every status and trade, every money row matching its job, re-seeding after the money has moved on, sign-ins through a
+fake Supabase admin API, no committed password).
