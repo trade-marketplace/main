@@ -1,15 +1,15 @@
 // /dev/components/site-shell: the public site header, phone menu and footer (#83) for each kind of visitor, with
 // fake viewers. `?viewer=customer|tradie|office|long` signs a pretend person in (signed out by default);
-// `?hero=off` shows a page without a hero (solid header from the top). Development only: in a production build
-// this page is a 404, so the fake viewers never reach a real page. Names are examples.
+// `?hero=off` shows a page without a hero (solid header from the top). Dev only: the shared guard makes it a 404 in
+// production (and on every Vercel deployment), so the fake viewers never reach a real page. Names are examples.
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
 
 import { BoltMark } from "@/components/BoltMark";
 import { SiteShellView } from "@/components/site/SiteShell";
 import type { SiteViewer } from "@/components/site/site-links";
 import { modeForRole } from "@/lib/mode";
+import { guardDevPage } from "@/server/dev-pages";
 
 import styles from "./site-shell.module.css";
 
@@ -46,7 +46,7 @@ function href(viewer: ViewerKey, hero: boolean) {
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 export default async function SiteShellPreview({ searchParams }: { searchParams: SearchParams }) {
-  if (process.env.NODE_ENV === "production") notFound();
+  guardDevPage();
 
   const params = await searchParams;
   const key: ViewerKey = isViewerKey(params.viewer) ? params.viewer : "signed-out";

@@ -57,6 +57,10 @@ export function useTestSchema(testFile: string): TestSchema {
 
   afterAll(async () => {
     await db?.$disconnect();
+    // Drop this schema's trigger on the shared auth.users first, on its own. Dropping it as part of DROP SCHEMA
+    // would lock this schema's tables and then auth.users, while another file's DELETE FROM auth.users locks them
+    // the other way round (its trigger fires into every schema): a deadlock.
+    await admin?.$executeRawUnsafe(`DROP TRIGGER IF EXISTS "delete_profile_${name}" ON auth.users`);
     await admin?.$executeRawUnsafe(`DROP SCHEMA IF EXISTS "${name}" CASCADE`);
     await admin?.$disconnect();
   });
