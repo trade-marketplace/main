@@ -91,3 +91,81 @@ describe("CI workflow (#68)", () => {
     }
   });
 });
+
+/** The job's steps in order, each as its name and its own lines (no YAML parser needed for this flat list). */
+function workflowSteps(workflow: string) {
+  return workflow
+    .split(/^ {6}- name: /m)
+    .slice(1)
+    .map((chunk) => {
+      const [name, ...rest] = chunk.split("\n");
+      return { name: name.trim(), body: rest.join("\n") };
+    });
+}
+
+describe("CI end-to-end and accessibility step (#287)", () => {
+  const workflow = readFileSync(new URL(".github/workflows/ci.yml", root), "utf8");
+  const steps = workflowSteps(workflow);
+  const names = steps.map((step) => step.name);
+  const step = (name: string) => {
+    const found = steps.find((s) => s.name === name);
+    if (!found) throw new Error(`No step named "${name}" in ci.yml. Steps: ${names.join(", ")}`);
+    return found;
+  };
+
+  it("installs the browser and runs e2e after Build, then reports, in that order", () => {
+    const order = [
+      "Build",
+      "Find Playwright version",
+      "Cache Playwright browser",
+      "Install Playwright browser",
+      "End-to-end and accessibility",
+      "Upload Playwright report",
+      "Summary",
+    ];
+    const positions = order.map((name) => names.indexOf(name));
+    expect(positions, names.join(", ")).not.toContain(-1);
+    expect([...positions].sort((a, b) => a - b)).toEqual(positions);
+  });
+
+  it("reuses the build instead of building again", () => {
+    const e2e = step("End-to-end and accessibility").body;
+    expect(e2e).toContain("run: npx playwright test");
+    // `npm run e2e` runs `npm run build` first, which would build the app twice.
+    expect(workflow).not.toMatch(/^\s*(?:run: )?npm run e2e/m);
+  });
+
+  it("only runs e2e when the build passed, so a docs-only PR (Build skipped) skips it too", () => {
+    expect(step("Find Playwright version").body).toContain("steps.build.outcome == 'success'");
+    expect(step("Cache Playwright browser").body).toContain("steps.playwright.outcome == 'success'");
+    expect(step("Install Playwright browser").body).toContain("steps.playwright.outcome == 'success'");
+    expect(step("End-to-end and accessibility").body).toContain("steps.browsers.outcome == 'success'");
+    // Build itself only runs after a real install, which the docs-only check skips.
+    expect(step("Build").body).toContain("steps.install.outcome == 'success'");
+    expect(step("Install").body).toContain("steps.changes.outputs.docs_only != 'true'");
+  });
+
+  it("caches the browser per @playwright/test version and installs only Chromium", () => {
+    expect(step("Find Playwright version").body).toContain("require('@playwright/test/package.json').version");
+    const cache = step("Cache Playwright browser").body;
+    expect(cache).toMatch(/uses: actions\/cache@v\d+/);
+    expect(cache).toContain("path: ~/.cache/ms-playwright");
+    expect(cache).toContain("${{ steps.playwright.outputs.version }}");
+    const install = step("Install Playwright browser").body;
+    expect(install).toContain("steps.browser-cache.outputs.cache-hit");
+    expect(install).toContain("npx playwright install --with-deps chromium");
+    expect(install).toContain("npx playwright install-deps chromium");
+  });
+
+  it("attaches the Playwright report for 7 days, only when e2e failed", () => {
+    const upload = step("Upload Playwright report").body;
+    expect(upload).toContain("steps.e2e.outcome == 'failure'");
+    expect(upload).toMatch(/uses: actions\/upload-artifact@v\d+/);
+    expect(upload).toContain("path: playwright-report/");
+    expect(upload).toContain("retention-days: 7");
+  });
+
+  it("shows the e2e result in the run summary", () => {
+    expect(step("Summary").body).toContain("${{ steps.e2e.outcome }}");
+  });
+});
