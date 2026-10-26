@@ -2,11 +2,11 @@
 // table in docs/design/WEBAPP_SPEC.md. Development only: in a production build this page is a 404.
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
 
 import { BoltMark } from "@/components/BoltMark";
 import { MOTION } from "@/lib/motion/catalogue";
 import { DEFAULT_MODE, isMode, MODES, type Mode } from "@/lib/mode";
+import { guardDevPage } from "@/server/dev-pages";
 
 import { MotionShowcase, ReducedMotionStatus } from "./MotionShowcase";
 import styles from "./motion.module.css";
@@ -21,7 +21,7 @@ const MODE_NAMES: Record<Mode, string> = { customer: "Customer", trade: "Trade",
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 export default async function MotionPage({ searchParams }: { searchParams: SearchParams }) {
-  if (process.env.NODE_ENV === "production") notFound();
+  guardDevPage();
 
   const params = await searchParams;
   const mode: Mode = isMode(params.mode) ? params.mode : DEFAULT_MODE;

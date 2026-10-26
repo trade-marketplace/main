@@ -9,6 +9,7 @@ import { evaluate, findScreenshotsComment, SCREENSHOTS_MARKER } from "../../scri
 import {
   buildPlan,
   detectRoutes,
+  devComponentRoutes,
   gateRunToRerun,
   imageUrl,
   importsOf,
@@ -160,6 +161,56 @@ describe("detectRoutes", () => {
 
   it("finds nothing for deleted or non-UI files", () => {
     expect(detectRoutes(["src/app/old/page.tsx", "README.md", "src/server/db.ts"], sources)).toEqual([]);
+  });
+});
+
+describe("component sets map to their /dev/components page (#317)", () => {
+  const sources = new Map([
+    ["src/app/page.tsx", 'import { Button } from "@/components/Button";'],
+    ["src/app/dev/components/buttons/page.tsx", 'import { Button } from "@/components/Button";'],
+    ["src/app/dev/components/buttons/buttons.module.css", ".x {}"],
+    ["src/app/dev/components/status/page.tsx", 'import styles from "./status-preview.module.css";'],
+    ["src/app/dev/components/status/status-preview.module.css", ".x {}"],
+    ["src/app/dev/components/map/page.tsx", "export default function Map() {}"],
+    ["src/app/dev/tokens/page.tsx", "export default function Tokens() {}"],
+    ["src/components/Button.tsx", "export function Button() {}"],
+    ["src/components/Button.module.css", ".x {}"],
+    ["src/components/status/Pill.tsx", "export function Pill() {}"],
+    ["src/components/map/MapPin.tsx", "export function MapPin() {}"],
+  ]);
+
+  it("maps a changed component folder to its set's page, even when no page imports the file", () => {
+    expect(detectRoutes(["src/components/status/Pill.tsx"], sources)).toEqual(["/dev/components/status"]);
+    expect(detectRoutes(["src/components/map/MapPin.tsx"], sources)).toEqual(["/dev/components/map"]);
+  });
+
+  it("maps a top-level component file, singular or plural, to its set", () => {
+    expect(detectRoutes(["src/components/Button.module.css"], sources)).toEqual(["/dev/components/buttons"]);
+    // Imported by the home page too, so both are shot.
+    expect(detectRoutes(["src/components/Button.tsx"], sources)).toEqual(["/", "/dev/components/buttons"]);
+  });
+
+  it("maps any file in a dev set's own folder to that set", () => {
+    expect(detectRoutes(["src/app/dev/components/status/status-preview.module.css"], sources)).toEqual([
+      "/dev/components/status",
+    ]);
+    expect(detectRoutes(["src/app/dev/components/map/demo-jobs.ts"], sources)).toEqual(["/dev/components/map"]);
+  });
+
+  it("finds the set for a deleted component file", () => {
+    expect(detectRoutes(["src/components/status/OldPill.tsx"], sources)).toEqual(["/dev/components/status"]);
+  });
+
+  it("finds nothing when the set has no page", () => {
+    expect(devComponentRoutes(["src/components/jobs/JobCard.tsx", "src/components/Icon.tsx"], ["/", "/dev/tokens"]))
+      .toEqual([]);
+    expect(devComponentRoutes(["src/components/forms/Field.tsx"], ["/dev/components/fields"])).toEqual([]);
+  });
+
+  it("a component PR is planned with its /dev/components page", () => {
+    const plan = buildPlan({ changed: ["src/components/status/Pill.tsx"], sources });
+    expect(plan.capture).toBe(true);
+    expect(plan.entries).toEqual([{ path: "/dev/components/status" }]);
   });
 });
 
@@ -426,6 +477,31 @@ describe("screenshots workflow", () => {
     expect(workflow).toMatch(/capture:[\s\S]*?permissions:\n\s+contents: read\n\s+outputs:/);
     expect(workflow).not.toMatch(/pull_request_target/);
     expect(workflow).toMatch(/persist-credentials: false/);
+  });
+
+  it("turns on the /dev pages only for the app it starts, with a fixed value nothing in the PR can change", () => {
+    const steps = workflow.replace(/^\s*#.*\n/gm, "").split(/\n(?=      - name: )/);
+    const using = steps.filter((step) => step.includes("SCREENSHOT_DEV_PAGES"));
+    expect(using).toHaveLength(1);
+    expect(using[0]).toMatch(/^      - name: Start the app\n/);
+    expect(using[0]).toMatch(/\n {10}SCREENSHOT_DEV_PAGES: "1"\n/);
+    expect(using[0]).toContain("run: node scripts/ci/screenshots.mjs start");
+    // Not from an expression (description, labels, inputs) and not workflow- or job-wide.
+    expect(workflow).not.toMatch(/SCREENSHOT_DEV_PAGES:\s*\$\{\{/);
+    expect(workflow.match(/SCREENSHOT_DEV_PAGES:/g)).toHaveLength(1);
+  });
+
+  it("can't take SCREENSHOT_DEV_PAGES from the PR description or labels", () => {
+    const script = readFileSync(new URL("../../scripts/ci/screenshots.mjs", import.meta.url), "utf8");
+    expect(script).not.toContain("SCREENSHOT_DEV_PAGES");
+    const plan = buildPlan({
+      changed: ["src/components/Button.tsx"],
+      body: "screenshots:\n- /dev/components/buttons SCREENSHOT_DEV_PAGES=1",
+      labels: ["ui", "SCREENSHOT_DEV_PAGES=1"],
+      sources: new Map(),
+    });
+    expect(plan.entries).toEqual([]);
+    expect(plan.problems).toHaveLength(1);
   });
 
   it("never points the app at a real Supabase project", () => {

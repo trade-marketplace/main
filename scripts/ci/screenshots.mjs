@@ -265,7 +265,37 @@ export function detectRoutes(changed, sources) {
       for (const page of pages) if (page.startsWith(folder)) routes.add(routeForPage(page));
     }
   }
+  for (const route of devComponentRoutes(changed, pages.map((page) => /** @type {string} */ (routeForPage(page)))))
+    routes.add(route);
   return [...routes].sort((a, b) => a.localeCompare(b));
+}
+
+/**
+ * Each component set has a page of its own, `/dev/components/<set>` (#317). A changed file in
+ * `src/app/dev/components/<set>/`, a `src/components/<Set>/` folder or a top-level `src/components/<Set>.*` file
+ * (e.g. `Button.tsx`, `Button.module.css`) maps to that page when it exists. Singular and plural both match
+ * (`Button` → `buttons`), so a set is found even when nothing imports the file (a deleted file, an unused CSS rule).
+ * @param {string[]} changed changed file paths, deleted ones included
+ * @param {string[]} routes every page's route
+ * @returns {string[]}
+ */
+export function devComponentRoutes(changed, routes) {
+  const sets = new Set(
+    routes.filter((route) => /^\/dev\/components\/[^/]+$/.test(route)).map((route) => route.split("/")[3]),
+  );
+  const found = new Set();
+  for (const file of changed) {
+    const match =
+      /^src\/app\/dev\/components\/([^/]+)\//.exec(file) ??
+      /^src\/components\/([^/]+)\//.exec(file) ??
+      /^src\/components\/([^/.]+)\.[^/]+$/.exec(file);
+    if (!match) continue;
+    const name = match[1].toLowerCase();
+    for (const set of [name, `${name}s`, name.replace(/s$/, "")]) {
+      if (sets.has(set)) found.add(`/dev/components/${set}`);
+    }
+  }
+  return [...found];
 }
 
 /**

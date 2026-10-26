@@ -140,8 +140,10 @@ fonts loaded first). Images are kept 7 days: in the run's `screenshots` artifact
 
 **Which routes.** By default, the routes the changed files show up on: a changed page is its own route, a changed
 layout, `loading` or `error` file counts for every page below it, and any other file (a component, a hook, a CSS
-module, a style sheet) counts for every page that imports it, directly or through other files. Up to 12 routes per
-run; the rest are listed in the comment. To choose yourself (or when nothing was found, e.g. a `ui` label on a
+module, a style sheet) counts for every page that imports it, directly or through other files. A changed file in
+`src/components/<Set>/`, a top-level `src/components/<Set>.*` file or `src/app/dev/components/<set>/` also counts for
+that set's `/dev/components/<set>` page when there is one (`Button.tsx` → `/dev/components/buttons`). Up to 12 routes
+per run; the rest are listed in the comment. To choose yourself (or when nothing was found, e.g. a `ui` label on a
 non-UI change), put a `screenshots:` list in the PR description. It replaces the detected routes:
 
 ```md
@@ -174,6 +176,17 @@ who the token belongs to; tokens are signed with a random secret made for each r
 `profiles` row. Nothing in `src/` knows about it. Each signed-in shot fails unless the app really checked that
 person's session and painted their role's colours.
 
+**Component PRs and the `/dev` pages.** `/dev/tokens`, `/dev/motion` and `/dev/components/<set>` are a 404 in a
+production build, but the bot shoots the production build. So the workflow starts the app with
+`SCREENSHOT_DEV_PAGES=1` (set on the "Start the app" step only, a fixed value: nothing in a PR description or label
+can turn it on), and the one guard every dev page calls first, `guardDevPage()` from `src/server/dev-pages.ts`, lets them
+render. A component PR gets 1440 + 390 pictures of its set's page like any other route; name it in a `screenshots:`
+list (`- /dev/components/buttons?mode=trade`) to pick a palette or state. The guard still refuses on Vercel
+(`VERCEL_ENV` `production` or `preview`, or `VERCEL=1`), even if someone sets the variable there by mistake, so real
+deployments keep the 404. A new dev page must start with `guardDevPage();` (it also makes the page render per
+request, so the variable is read when the app runs, not baked in by `next build`); `tests/unit/dev-pages.test.tsx`
+fails until the page is added there.
+
 **What if…**
 
 - **The app fails to start:** the job fails, the step prints the end of the server log, and the whole log is attached
@@ -202,7 +215,7 @@ npx prisma migrate deploy && ALLOW_SEED=1 npx prisma db seed
 export NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_screenshots_stub
 npm run build
 printf 'src/app/page.tsx\n' | PR_BODY=$'screenshots:\n- /jobs as tradie' node scripts/ci/screenshots.mjs plan
-node scripts/ci/screenshots.mjs start          # next start on :3100, log in screenshots/server.log
+SCREENSHOT_DEV_PAGES=1 node scripts/ci/screenshots.mjs start   # next start on :3100 (with /dev pages); log in screenshots/server.log
 npx playwright test -c scripts/screenshots/playwright.config.ts
 node scripts/ci/screenshots.mjs comment        # screenshots/comment.md; the PNGs are next to it
 ```

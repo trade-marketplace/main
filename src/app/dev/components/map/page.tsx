@@ -3,7 +3,6 @@
 // The map is a placeholder surface until Mapbox is wired in (separate issue): no token, no network.
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
 
 import { BoltMark } from "@/components/BoltMark";
 import { MapCard } from "@/components/map/MapCard";
@@ -13,6 +12,7 @@ import { MapLegend, MapSurface } from "@/components/map/MapSurface";
 import { boundsAround, type MapJob, metresAsWidthPct, projectPoint } from "@/lib/map/pins";
 import { isMode, MODES, type Mode } from "@/lib/mode";
 import { APPROX_MAX_METRES, APPROX_MIN_METRES } from "@/server/geo/approximate";
+import { guardDevPage } from "@/server/dev-pages";
 
 import { DEMO_YOU, demoClaimPair, demoJobs, type DemoJob } from "./demo-jobs";
 import styles from "./preview.module.css";
@@ -39,7 +39,7 @@ const renderTime = () => Date.now();
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 export default async function MapComponentsPage({ searchParams }: { searchParams: SearchParams }) {
-  if (process.env.NODE_ENV === "production") notFound();
+  guardDevPage();
 
   const params = await searchParams;
   const mode: Mode = isMode(params.mode) ? params.mode : PAGE_DEFAULT_MODE;

@@ -4,7 +4,6 @@
 // Prices, names and counts are examples.
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { BoltMark } from "@/components/BoltMark";
@@ -25,6 +24,7 @@ import {
 } from "@/lib/job-status";
 import { jobTracker } from "@/lib/job-tracker";
 import { DEFAULT_MODE, isMode, MODES, type Mode } from "@/lib/mode";
+import { guardDevPage } from "@/server/dev-pages";
 
 import { PriceRevealDemo, ReducedMotionNote, StatusChangeDemo, TrackerProgressDemo } from "./StatusPreview";
 import styles from "./status-preview.module.css";
@@ -68,7 +68,7 @@ const LONG_NAME = "Wiremu Hēnare-Fitzgerald-MacPherson of Invercargill Electric
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 export default async function StatusComponentsPage({ searchParams }: { searchParams: SearchParams }) {
-  if (process.env.NODE_ENV === "production") notFound();
+  guardDevPage();
 
   const params = await searchParams;
   const mode: Mode = isMode(params.mode) ? params.mode : DEFAULT_MODE;
