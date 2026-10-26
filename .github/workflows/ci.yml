@@ -25,6 +25,20 @@ jobs:
     name: Lint, typecheck, test, build
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # A throwaway Postgres for the database tests (docs/TESTING.md). Never the Supabase project.
+    # Same major version as Supabase. Each test file migrates its own schema, so nothing is shared.
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - name: Check out
         uses: actions/checkout@v7
@@ -80,11 +94,13 @@ jobs:
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: npm run typecheck
 
-      # Unit tests need no database yet. A throwaway Postgres service is added here with the first test that does.
+      # Database tests use the Postgres service above; without TEST_DATABASE_URL they'd fail here, not skip.
       # End-to-end tests (#70) get their own step when that tooling lands.
       - name: Test
         id: test
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        env:
+          TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
         run: npm test
 
       - name: Build

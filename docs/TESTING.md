@@ -105,19 +105,37 @@ is, a link explaining the fix, and the element.
 
 ## Databases in tests
 
-There are no database tests yet: the schema arrives in #86 and seed data in #88. End-to-end runs start the app with
-`DATABASE_URL`, `DIRECT_URL` and the Supabase variables blank (see `playwright.config.ts`), so tests can never touch
-the real Supabase project (docs/SERVICES.md).
+End-to-end runs start the app with `DATABASE_URL`, `DIRECT_URL` and the Supabase variables blank (see
+`playwright.config.ts`), so tests can never touch the real Supabase project (docs/SERVICES.md).
 
-When database tests arrive, they must not share data with each other:
+Database tests never share data with each other:
 
-- **Never the real project.** Tests use a throwaway Postgres: a local Docker `postgres` in development and a service
-  container in CI, with its own `TEST_DATABASE_URL`. A test that finds no test database skips with a clear message;
-  it never falls back to `DATABASE_URL`.
-- **Unit and integration tests (Vitest): one schema per test file.** A setup file creates a schema named after the
-  file and worker (e.g. `test_jobs_3`), runs `prisma migrate deploy` against it (`?schema=` in the URL), and drops it
-  afterwards. Files then run in parallel without seeing each other's rows. Inside a file, a test that only reads and
-  writes can instead run in a transaction that is rolled back at the end.
+- **Never the real project.** Tests use a throwaway Postgres named by `TEST_DATABASE_URL`: a local Docker `postgres`
+  in development and a service container in CI. It never falls back to `DATABASE_URL`. Without it, database tests
+  are skipped with a message locally and fail in CI.
+
+  ```bash
+  docker run --rm -d -p 54329:5432 -e POSTGRES_PASSWORD=postgres postgres:17
+  TEST_DATABASE_URL=postgresql://postgres:postgres@localhost:54329/postgres npm test
+  ```
+
+- **Unit and integration tests (Vitest): one schema per test file.** `useTestSchema()` (`tests/support/test-db.ts`)
+  creates a schema named after the file and worker (e.g. `test_schema_people_3_a1b2c3`), runs
+  `prisma migrate deploy` into it, gives you a Prisma client for it, and drops it afterwards. Files run in parallel
+  without seeing each other's rows. See `tests/unit/schema-people.test.ts`:
+
+  ```ts
+  describe.skipIf(!testDatabaseUrl)("jobs", () => {
+    const schema = useTestSchema(import.meta.filename);
+    it("…", async () => {
+      await schema.db.profile.findMany();
+    });
+  });
+  ```
+
+  A plain Postgres has no Supabase `auth` schema, so the first migration creates small stand-ins (`auth.users`,
+  `auth.uid()`). Make a person by inserting into `auth.users` first, then their profile. To test row-level security,
+  switch to a role without the owner's bypass and set `request.jwt.claims`, like the `asSignedIn` helper does.
 - **End-to-end tests (Playwright): seed once, then each test makes its own rows.** A `globalSetup` migrates the test
   database and runs `npm run db:seed` (demo accounts and a job in every status, #88). Tests that change data create
   their own job with a unique name rather than editing a shared seeded one, so parallel tests don't collide.
