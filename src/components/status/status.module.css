@@ -1,0 +1,129 @@
+/* Status pills, the job tracker and the price block (#77).
+   Built from docs/design/components.css (.tm-status, .tm-track, .tm-pricebox) and web.css (.tm-status--bounty),
+   written with tokens. Tokens only: no hex values (tests/unit/no-hex.test.ts). Animations come from
+   src/styles/motion.css (M09, M11, M25, M27), never from here. */
+
+/* ---- Pill (.tm-status) ------------------------------------------------------------------------ */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  min-height: 26px;
+  padding: 3px 10px;
+  /* Half the 26px height: a pill on one line, a rounded box if a long label wraps. */
+  border-radius: 13px;
+  font-size: var(--trade-fs-caption);
+  line-height: var(--trade-lh-caption);
+  font-weight: 700;
+  vertical-align: middle;
+}
+.dot { flex: none; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.text { min-width: 0; overflow-wrap: anywhere; }
+/* Truncate instead of wrapping (dense tables): one line, an ellipsis, the full text in the tooltip. */
+.truncate .text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; overflow-wrap: normal; }
+.icon { flex: none; font-size: 13px; }
+
+.waiting { background: var(--trade-waiting-bg); color: var(--trade-waiting); }
+.action  { background: var(--trade-signature); color: var(--trade-on-signature); }
+.good    { background: var(--trade-success-bg); color: var(--trade-success); }
+.done    { background: var(--trade-forest); color: var(--trade-text-on-dark); }
+.alert   { background: var(--trade-danger-bg); color: var(--trade-danger); }
+.info    { background: var(--trade-info-bg); color: var(--trade-info); }
+.bounty  { background: var(--trade-gold); color: var(--trade-on-gold); }
+/* M27 glint layer needs a positioned pill. */
+.glint { position: relative; }
+
+/* M25: old and new pill stacked in .tm-swap; never wider than its container. */
+.swap { max-width: 100%; min-width: 0; vertical-align: middle; }
+.swap > * { min-width: 0; }
+
+/* ---- Tracker (.tm-track) ------------------------------------------------------------------------ */
+.track { display: grid; margin: 0; padding: 0; list-style: none; }
+.step {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 12px;
+  position: relative;
+  padding-bottom: 18px;
+}
+.step:last-child { padding-bottom: 0; }
+/* The line down to the next step; .lineFill is the done colour, scaled in by M11 (.tm-anim-fill). */
+.line {
+  position: absolute;
+  left: 13px;
+  top: 26px;
+  bottom: 0;
+  width: 2px;
+  background: var(--trade-line-strong);
+}
+.lineFill { position: absolute; inset: 0; background: var(--trade-action); }
+.dot28 {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid var(--trade-line-strong);
+  background: var(--trade-surface);
+  display: grid;
+  place-items: center;
+  z-index: 1;
+}
+.step[data-state="done"] .dot28 { background: var(--trade-action); border-color: var(--trade-action); color: var(--trade-on-action); }
+.step[data-state="now"] .dot28 { border: 8px solid var(--trade-signature); }
+.dotIcon { font-size: 16px; }
+.stepBody { min-width: 0; padding-top: 3px; }
+.stepLabel { display: block; font-weight: 700; font-size: var(--trade-fs-label); line-height: var(--trade-lh-label); overflow-wrap: anywhere; }
+.step[data-state="todo"] .stepLabel { color: var(--trade-text-3); font-weight: 600; }
+.stepNote { display: block; margin-top: 2px; font-size: var(--trade-fs-caption); line-height: var(--trade-lh-caption); color: var(--trade-text-2); overflow-wrap: anywhere; }
+
+/* ---- Price block (.tm-pricebox) ---------------------------------------------------------------- */
+.pricebox {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--trade-radius-card);
+  background: var(--trade-forest);
+  color: var(--trade-text-on-dark);
+  padding: var(--trade-space-5);
+  /* The number scales down to fit a narrow box (container units) rather than breaking mid-number. */
+  container-type: inline-size;
+}
+.priceBolt { position: absolute; width: 200px; right: -30px; top: -50px; fill: var(--trade-signature); opacity: 0.2; pointer-events: none; }
+.priceRow { position: relative; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: var(--trade-space-2) var(--trade-space-4); }
+.priceMain { min-width: 0; }
+.priceCap { display: block; font-size: var(--trade-fs-caption); line-height: var(--trade-lh-caption); color: var(--trade-text-on-dark-2); }
+.price {
+  display: block;
+  margin: 2px 0;
+  font-family: var(--trade-font-heading);
+  font-weight: 900;
+  font-variation-settings: var(--trade-display-axes);
+  font-size: min(2.5rem, 13cqi);
+  line-height: var(--trade-lh-price);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.breakdown { font-size: var(--trade-fs-caption); line-height: var(--trade-lh-caption); color: var(--trade-text-on-dark-2); text-align: right; }
+.underline { position: relative; display: block; width: 120px; max-width: 100%; height: 3px; margin-top: var(--trade-space-3); border-radius: 2px; background: var(--trade-signature); }
+.ticks { display: grid; gap: var(--trade-space-2); margin: var(--trade-space-4) 0 0; padding: 0; list-style: none; font-size: var(--trade-fs-small); line-height: var(--trade-lh-small); }
+.ticks li { display: flex; gap: var(--trade-space-2); align-items: flex-start; overflow-wrap: anywhere; min-width: 0; }
+.tickIcon { flex: none; color: var(--trade-success); }
+
+/* Desktop job page: the bigger number (pages.html 48–52px). */
+@media (min-width: 1024px) {
+  .pricebox { padding: var(--trade-space-6); }
+  .price { font-size: min(3.25rem, 13cqi); }
+  .priceBolt { width: 240px; top: -60px; }
+}
+
+/* Visually hidden, still read by screen readers. */
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
