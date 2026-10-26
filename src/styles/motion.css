@@ -189,6 +189,16 @@
 .tm-anim-scrim { animation: tm-fade-in var(--trade-dur-slow) var(--trade-ease-out) backwards; }
 .tm-anim-scrim-out { animation: tm-fade-out var(--trade-dur-base) var(--trade-ease-in-out) forwards; }
 
+/* ---- Bottom sheet (phone): rises from the bottom (320ms ease-out), scrim fades in. Out: 200ms ease-in-out.
+   From FRONTEND_SPEC "Motion" (Sheet in / Sheet out); the phone partner of M12. Use with usePresence(). A sheet
+   being dragged moves with the `translate` property, so these transforms still play from where it was let go. */
+@keyframes tm-sheet { from { transform: translateY(100%); } to { transform: none; } }
+@keyframes tm-sheet-out { from { transform: none; } to { transform: translateY(100%); } }
+.tm-anim-sheet { animation: tm-sheet var(--trade-dur-slow) var(--trade-ease-out) backwards; }
+.tm-anim-sheet-out { animation: tm-sheet-out var(--trade-dur-base) var(--trade-ease-in-out) forwards; }
+.tm-anim-sheet::backdrop { animation: tm-fade-in var(--trade-dur-slow) var(--trade-ease-out) backwards; }
+.tm-anim-sheet-out::backdrop { animation: tm-fade-out var(--trade-dur-base) var(--trade-ease-in-out) forwards; }
+
 /* ---- M13 Dialog (200ms): fades in and scales .96 -> 1 from slightly below centre; scrim fades. Out: 150ms.
    The kit centres dialogs with translate(-50%, -50%); a native <dialog> (centred by the browser) sets
    --tm-dialog-at: translate(0, 0). */
@@ -321,6 +331,10 @@
   .tm-anim-drawer-out::backdrop,
   .tm-anim-scrim,
   .tm-anim-scrim-out,
+  .tm-anim-sheet,
+  .tm-anim-sheet-out,
+  .tm-anim-sheet::backdrop,
+  .tm-anim-sheet-out::backdrop,
   .tm-anim-dialog,
   .tm-anim-dialog-out,
   .tm-anim-dialog::backdrop,

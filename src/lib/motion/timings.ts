@@ -43,9 +43,10 @@ export const MOTION_MS = {
   m27UrgentMs: 2 * 60 * 60 * 1000,
 } as const;
 
-/** Exit durations for overlays that animate out (M12 drawer, M13 dialog, M14 toast). */
+/** Exit durations for overlays that animate out (M12 drawer, M13 dialog, M14 toast, the phone bottom sheet). */
 export const EXIT_MS = {
   drawer: MOTION_MS.base,
+  sheet: MOTION_MS.base,
   dialog: MOTION_MS.m13Out,
   toast: MOTION_MS.base,
 } as const;

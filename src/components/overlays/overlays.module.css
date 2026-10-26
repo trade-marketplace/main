@@ -1,0 +1,275 @@
+/* Overlays (#78): dialog, drawer, bottom sheet, menu, toast, banner. Values from docs/design/web.css (.w-dialog,
+   .w-drawer, .w-menu, .w-toast, .w-scrim) and components.css (.tm-sheet, .tm-scrim, .tm-toast, .tm-banner),
+   written with tokens only: no hex values (shadows and scrims mix Forest with transparent). Motion in and out is
+   src/styles/motion.css (M08, M12, M13, M14, sheet), never re-made here.
+
+   Changes from the kit, so nothing spills on a small screen, with long text or at 200% zoom:
+   - fixed widths become "this wide, or the screen less its gutter" (min());
+   - overlays are never taller than the screen: the body scrolls inside instead;
+   - long words break (overflow-wrap) instead of running out of the box. */
+
+/* ---- The modal: a native <dialog> (browser styles reset) with one panel filling it ---- */
+.modal {
+  margin: auto;
+  padding: 0;
+  border: 0;
+  max-width: none;
+  max-height: none;
+  background: var(--trade-surface);
+  color: var(--trade-text);
+  overscroll-behavior: contain;
+}
+.modal::backdrop { background: color-mix(in srgb, var(--trade-forest) 50%, transparent); }
+.modal[data-exiting] { pointer-events: none; }
+
+.panel { display: flex; flex-direction: column; min-width: 0; }
+
+.head { display: flex; align-items: flex-start; gap: var(--trade-space-3); min-width: 0; }
+.headText { flex: 1; min-width: 0; }
+.eyebrow {
+  margin-bottom: var(--trade-space-2);
+  font-size: var(--trade-fs-caption);
+  line-height: var(--trade-lh-caption);
+  color: var(--trade-text-2);
+  overflow-wrap: break-word;
+}
+.title {
+  margin: 0;
+  font-family: var(--trade-font-heading);
+  font-weight: 900;
+  font-variation-settings: var(--trade-display-axes);
+  font-size: var(--trade-fs-heading);
+  line-height: var(--trade-lh-heading);
+  overflow-wrap: break-word;
+}
+/* The title takes focus when the overlay opens, so a screen reader starts there. It isn't a control: no ring. */
+.title:focus { outline: none; }
+.description { margin: var(--trade-space-2) 0 0; color: var(--trade-text-2); overflow-wrap: break-word; }
+/* The × sits in the corner: pull the 44px circle out so its icon lines up with the padding. */
+.close { flex: none; margin: calc(-1 * var(--trade-space-2)) calc(-1 * var(--trade-space-2)) 0 0; color: var(--trade-text); }
+
+.body {
+  display: grid;
+  /* minmax(0, 1fr): one very long word can't stretch the column wider than the overlay (it breaks instead). */
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--trade-space-4);
+  align-content: start;
+  min-width: 0;
+  min-height: 0;
+  overflow-wrap: break-word;
+}
+.body > p { margin: 0; }
+.foot { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--trade-space-3); min-width: 0; }
+/* On a phone the buttons stack, full width, with the main action (the last one) on top. */
+@media (max-width: 599.98px) {
+  .foot { flex-direction: column-reverse; align-items: stretch; }
+}
+
+/* ---- Dialog (.w-dialog): centred, 16px radius, scrolls as a whole when it doesn't fit ---- */
+.dialog {
+  /* motion.css: a native <dialog> is centred by the browser, so M13 needs no translate(-50%, -50%). */
+  --tm-dialog-at: translate(0, 0);
+  width: min(520px, calc(100% - 2 * var(--trade-inset-browse)));
+  max-height: calc(100dvh - 2 * var(--trade-inset-browse));
+  overflow: auto;
+  border-radius: 16px;
+  box-shadow: 0 24px 64px color-mix(in srgb, var(--trade-forest) 30%, transparent);
+}
+.sm { width: min(460px, calc(100% - 2 * var(--trade-inset-browse))); }
+.lg { width: min(620px, calc(100% - 2 * var(--trade-inset-browse))); }
+.dialog .panel { padding: var(--trade-space-6) var(--trade-space-5); }
+.dialog .body { margin-top: var(--trade-space-4); }
+.dialog .foot { margin-top: var(--trade-space-6); }
+@media (min-width: 600px) {
+  .dialog .panel { padding: 28px; }
+  /* 28px: the closest type token to the mockup's 30px dialog titles. */
+  .dialog .title { font-size: var(--trade-fs-price); line-height: var(--trade-lh-price); }
+  .dialog .foot > * { min-width: 140px; }
+}
+
+/* ---- Drawer (.w-drawer): the right edge, full height; header and footer stay, the body scrolls ---- */
+.drawer {
+  margin: 0 0 0 auto;
+  width: min(480px, 100%);
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+  box-shadow: -16px 0 40px color-mix(in srgb, var(--trade-forest) 18%, transparent);
+}
+.drawer .panel { height: 100%; }
+.drawer .head { align-items: center; padding: 22px var(--trade-space-6) var(--trade-space-4); border-bottom: 1px solid var(--trade-line); }
+.drawer .eyebrow { margin-bottom: var(--trade-space-1); }
+.drawer .close { margin: 0 calc(-1 * var(--trade-space-2)) 0 0; }
+.drawer .body { flex: 1; overflow: auto; padding: var(--trade-space-5) var(--trade-space-6); }
+.drawer .foot { flex: none; padding: var(--trade-space-4) var(--trade-space-6); border-top: 1px solid var(--trade-line); }
+@media (max-width: 599.98px) {
+  .drawer .head,
+  .drawer .body,
+  .drawer .foot { padding-inline: var(--trade-inset-browse); }
+}
+
+/* ---- Bottom sheet (.tm-sheet): the bottom edge, 22px top corners, a grab handle; the body scrolls ---- */
+.sheet {
+  margin: auto auto 0;
+  width: 100%;
+  max-width: 640px;
+  max-height: calc(100dvh - var(--trade-space-6));
+  overflow: hidden;
+  border-radius: var(--trade-radius-sheet) var(--trade-radius-sheet) 0 0;
+  box-shadow: var(--trade-shadow-sheet);
+}
+.sheet::backdrop { background: color-mix(in srgb, var(--trade-forest) 55%, transparent); }
+/* Let go without closing: spring back. (Being dragged: follow the finger exactly.) */
+.sheet:not([data-dragging]) { transition: translate var(--trade-dur-base) var(--trade-ease-out); }
+.sheet .panel {
+  max-height: calc(100dvh - var(--trade-space-6));
+  padding: 10px var(--trade-space-5) calc(28px + env(safe-area-inset-bottom));
+}
+.grab {
+  position: relative;
+  flex: none;
+  width: 40px;
+  height: 5px;
+  margin: 0 auto 14px;
+  border-radius: 3px;
+  background: var(--trade-line-strong);
+  touch-action: none;
+  cursor: grab;
+}
+/* A bigger area to grab than the 5px bar. */
+.grab::before { content: ""; position: absolute; inset: -10px -40px -14px; }
+.sheet .head { flex: none; touch-action: none; }
+.sheet .close { margin: calc(-1 * var(--trade-space-2)) calc(-1 * var(--trade-space-2)) calc(-1 * var(--trade-space-2)) 0; }
+.sheet .body { flex: 1 1 auto; overflow: auto; margin-top: var(--trade-space-4); }
+.sheet .foot { flex: none; flex-direction: column-reverse; align-items: stretch; gap: 10px; margin-top: var(--trade-space-4); }
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet:not([data-dragging]) { transition: none; }
+}
+
+/* A very short screen (a phone on its side, 200% zoom): a long title and the buttons could fill a drawer or sheet
+   with no room left for the body. Then the whole panel scrolls instead, buttons included. */
+@media (max-height: 480px) {
+  .drawer .panel,
+  .sheet .panel { overflow: auto; }
+  .drawer .body,
+  .sheet .body { flex: none; overflow: visible; }
+}
+
+/* ---- Menu (.w-menu): under its trigger, 12px radius, 40px rows ---- */
+.menuRoot { position: relative; display: inline-flex; max-width: 100%; vertical-align: middle; }
+.menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  z-index: var(--trade-z-modal);
+  width: max-content;
+  min-width: min(220px, calc(100vw - 2 * var(--trade-inset-browse)));
+  max-width: min(320px, calc(100vw - 2 * var(--trade-inset-browse)));
+  padding: 6px;
+  border-radius: 12px;
+  background: var(--trade-surface);
+  color: var(--trade-text);
+  box-shadow: var(--trade-shadow-pop), 0 0 0 1px color-mix(in srgb, var(--trade-forest) 6%, transparent);
+  /* --menu-shift is set by Menu.tsx when the menu would run off the side of the screen. */
+  translate: var(--menu-shift, 0px) 0;
+}
+.menu[data-align="end"] { right: 0; }
+.menu[data-align="start"] { left: 0; }
+.menu[data-up] { top: auto; bottom: calc(100% + 6px); transform-origin: bottom center; }
+.menuHeader {
+  display: grid;
+  gap: 2px;
+  padding: 10px 12px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid var(--trade-line);
+  font-size: var(--trade-fs-small);
+  overflow-wrap: break-word;
+}
+.menuHeader > :not(:first-child) { font-size: var(--trade-fs-caption); color: var(--trade-text-2); }
+.menuItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 40px;
+  padding: var(--trade-space-2) 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--trade-text);
+  font: inherit;
+  font-size: var(--trade-fs-small);
+  line-height: var(--trade-lh-small);
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+.menuItem:hover,
+.menuItem:focus { background: color-mix(in srgb, var(--trade-forest) 6%, var(--trade-surface)); }
+.menuItem:focus-visible { outline-offset: -2px; }
+.menuItem[aria-disabled="true"] { color: var(--trade-text-3); background: transparent; cursor: not-allowed; }
+.menuDanger { color: var(--trade-danger); }
+.menuLabel { flex: 1; min-width: 0; overflow-wrap: break-word; }
+.menuSeparator { margin: 6px 0; border-top: 1px solid var(--trade-line); }
+
+/* ---- Toast (.w-toast / .tm-toast): Forest, bottom right on a computer, the full width on a phone ----
+   A page with a bottom nav lifts it clear by setting --tm-toast-offset: calc(var(--trade-nav-height) + 12px). */
+.toastRegion {
+  position: fixed;
+  left: var(--trade-inset-browse);
+  right: var(--trade-inset-browse);
+  bottom: calc(var(--tm-toast-offset, var(--trade-inset-browse)) + env(safe-area-inset-bottom));
+  z-index: var(--trade-z-toast);
+  pointer-events: none;
+}
+@media (min-width: 600px) {
+  .toastRegion {
+    left: auto;
+    right: var(--trade-space-6);
+    bottom: calc(var(--tm-toast-offset, var(--trade-space-6)) + env(safe-area-inset-bottom));
+    width: min(360px, calc(100vw - 2 * var(--trade-space-6)));
+  }
+}
+.toast {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px var(--trade-space-4);
+  border-radius: var(--trade-radius-card);
+  background: var(--trade-forest);
+  color: var(--trade-text-on-dark);
+  box-shadow: var(--trade-shadow-pop);
+  font-size: var(--trade-fs-small);
+  line-height: var(--trade-lh-small);
+  pointer-events: auto;
+}
+@media (min-width: 600px) { .toast { border-radius: 12px; } }
+.toastIcon { flex: none; color: var(--trade-signature); }
+.toastMessage { flex: 1; min-width: 0; margin: 0; overflow-wrap: break-word; }
+/* Undo: a tertiary button in the signature colour (the link colours are for white backgrounds). */
+.toast .toastAction { flex: none; margin: -12px -8px -12px 0; color: var(--trade-signature); }
+
+/* ---- Banner (.tm-banner): in the page, as wide as its column ---- */
+.banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+  padding: 12px 14px;
+  border-radius: var(--trade-radius-card);
+  font-size: var(--trade-fs-small);
+  line-height: 1.4;
+}
+.banner-info { background: var(--trade-info-bg); color: var(--trade-info); }
+.banner-good { background: var(--trade-success-bg); color: var(--trade-success); }
+.banner-alert { background: var(--trade-danger-bg); color: var(--trade-danger); }
+.banner-brand { background: var(--trade-tint); color: var(--trade-text); }
+.banner-brand .bannerIcon { color: var(--trade-link); }
+/* Test mode: the kit's pale gold (#fff4d6) as a mix of the gold token, with Forest text (13:1). */
+.banner-test { background: color-mix(in srgb, var(--trade-gold) 22%, var(--trade-surface)); color: var(--trade-text); }
+.bannerIcon { flex: none; }
+.bannerText { flex: 1; min-width: 0; margin: 0; overflow-wrap: break-word; }
+.bannerText a { color: inherit; }
+.bannerDismiss { flex: none; margin: -12px -10px -12px 0; }
