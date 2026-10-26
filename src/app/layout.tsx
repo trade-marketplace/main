@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { preload } from "react-dom";
 
 import { FONT_PRELOADS } from "@/lib/fonts";
+import { SITE_NAME, SITE_URL, TITLE_TEMPLATE } from "@/lib/metadata";
 import { modeForRole, type Role } from "@/lib/mode";
 import { getViewer } from "@/server/auth/viewer";
 
@@ -12,8 +13,13 @@ import "@/styles/base.css";
 import "@/styles/motion.css";
 
 export const metadata: Metadata = {
-  title: "Trade Marketplace",
+  metadataBase: SITE_URL,
+  // Pages set only their own part ("Messages"); the template adds the rest (src/lib/metadata.ts, #218).
+  title: { default: SITE_NAME, template: TITLE_TEMPLATE },
   description: "Post any job free, accept one fair fixed price, and someone local sorts it.",
+  applicationName: SITE_NAME,
+  openGraph: { siteName: SITE_NAME, type: "website", locale: "en_NZ" },
+  twitter: { card: "summary_large_image" },
 };
 
 export const viewport: Viewport = {
