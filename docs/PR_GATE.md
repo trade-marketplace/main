@@ -22,6 +22,11 @@ commit (new commits need new pictures) and has at least one image. Because a com
 start a new gate run, the Screenshots workflow re-runs the gate itself once the comment is up. How agents get
 screenshots: docs/TESTING.md ("Screenshots on UI PRs").
 
+**Component PRs.** A PR that changes a component set (`src/components/…`, `src/app/dev/components/<set>/`) gets
+pictures of its `/dev/components/<set>` page from the same bot: the workflow alone turns the `/dev` pages on for the
+app it shoots (`SCREENSHOT_DEV_PAGES=1`, #317), so no `skip-gate` or private pages are needed. Deployed sites still
+answer 404 there. Details: docs/TESTING.md ("Component PRs and the `/dev` pages").
+
 ## Escape hatches
 
 - **Unfinished on purpose?** An unticked box still fails, even with an explanation next to it. Move that item to a new

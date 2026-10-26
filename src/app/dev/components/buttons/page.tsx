@@ -3,13 +3,13 @@
 // Development only: in a production build this page is a 404. Labels are examples.
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { BoltMark } from "@/components/BoltMark";
 import { Button, IconButton, type ButtonVariant } from "@/components/Button";
 import { TextLink } from "@/components/TextLink";
 import { DEFAULT_MODE, isMode, MODES, type Mode } from "@/lib/mode";
+import { guardDevPage } from "@/server/dev-pages";
 
 import { LoadingDemo, UsageExample } from "./ButtonDemos";
 import { USAGE_SOURCE } from "./usage-source";
@@ -71,7 +71,7 @@ function Row({ name, note, children }: { name: string; note?: string; children: 
 }
 
 export default async function ButtonsPage({ searchParams }: { searchParams: SearchParams }) {
-  if (process.env.NODE_ENV === "production") notFound();
+  guardDevPage();
 
   const params = await searchParams;
   const mode: Mode = isMode(params.mode) ? params.mode : DEFAULT_MODE;

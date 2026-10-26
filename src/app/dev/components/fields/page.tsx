@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
 
 import { BoltMark } from "@/components/BoltMark";
 import { DEFAULT_MODE, isMode, MODES } from "@/lib/mode";
+import { guardDevPage } from "@/server/dev-pages";
 
 import { FieldDemos, type PreviewState } from "./FieldDemos";
 import styles from "./fields.module.css";
@@ -13,7 +13,7 @@ export const metadata: Metadata = { title: "Form fields (dev)", robots: { index:
 export default async function FieldsPage({ searchParams }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  if (process.env.NODE_ENV === "production") notFound();
+  guardDevPage();
   const params = await searchParams;
   const mode = isMode(params.mode) ? params.mode : DEFAULT_MODE;
   const state: PreviewState = params.state === "error" || params.state === "disabled" || params.state === "success" ? params.state : "default";
