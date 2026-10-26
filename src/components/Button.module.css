@@ -1,0 +1,198 @@
+/* Buttons, icon buttons and text links (#74). Values from docs/design/components.css (.tm-btn, .tm-iconbtn,
+   .tm-save, .tm-link) and web.css (.w-link-u, .w-tip), written with tokens only: no hex values. Mode colours come
+   from the mode tokens (--trade-action, --trade-on-action, --trade-signature, --trade-link), so nothing here knows
+   which mode it is in. Press and hover (M04) are .tm-press in src/styles/motion.css; nothing is re-made here.
+
+   One change from the kit: buttons use min-height, not height, so a long label (or 200% zoom) can wrap onto a
+   second line instead of spilling out. A one-line label looks exactly the same. */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 100%;
+  min-height: var(--trade-btn-h);
+  padding: var(--trade-space-2) var(--trade-space-5);
+  border: 0;
+  border-radius: var(--trade-radius-action);
+  font-family: var(--trade-font-body);
+  font-weight: 700;
+  font-size: var(--trade-fs-button);
+  line-height: var(--trade-lh-label);
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.content {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--trade-space-2);
+  min-width: 0;
+}
+.label { min-width: 0; overflow-wrap: anywhere; }
+
+/* ---- Variants ---- */
+.primary { background: var(--trade-action); color: var(--trade-on-action); }
+.secondary { background: var(--trade-surface); color: var(--trade-ink); box-shadow: inset 0 0 0 2px var(--trade-action); }
+.hero {
+  min-height: var(--trade-btn-h-hero);
+  background: var(--trade-signature);
+  color: var(--trade-on-signature);
+  font-family: var(--trade-font-heading);
+  font-weight: 900;
+  font-variation-settings: var(--trade-display-axes);
+  font-size: var(--trade-fs-heading);
+  line-height: var(--trade-lh-heading);
+  box-shadow: var(--trade-shadow-action);
+}
+.tertiary { min-height: var(--trade-tap); padding: var(--trade-space-1) var(--trade-space-2); background: transparent; color: var(--trade-link); }
+.destructive { background: var(--trade-surface); color: var(--trade-danger); box-shadow: inset 0 0 0 2px var(--trade-danger); }
+/* M04's hover tint is the action colour; on a red button it is the danger tint instead. */
+.btn.destructive::before { background: var(--trade-danger-bg); }
+
+/* ---- Sizes and widths ---- */
+.sm { min-height: var(--trade-btn-h-small); padding-inline: var(--trade-space-4); }
+.full { width: 100%; }
+@media (max-width: 599.98px) {
+  .fullOnPhone { width: 100%; }
+}
+
+/* ---- Long labels: one line with "…" (the whole label is in the tooltip and the accessible name) ---- */
+.truncate .label { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; overflow-wrap: normal; }
+.truncate .content { max-width: 100%; }
+
+/* ---- Loading: the label stays (invisible) so the width doesn't jump; a spinner sits on top ---- */
+.loading { cursor: progress; }
+/* opacity, not visibility: a hidden label would drop out of the accessible name. */
+.loading .content { opacity: 0; }
+.spinner {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2.5px solid currentColor;
+  border-right-color: transparent;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  /* A still ring (and the hidden "loading" text) instead of a spin. */
+  .spinner { animation-name: none; }
+}
+
+/* ---- Disabled (aria-disabled, so it can still be focused and explain itself). The doubled attribute outranks
+   M04's :hover and :active rules, so a disabled button never brightens, lifts or presses in. ---- */
+.btn[data-disabled][aria-disabled],
+.iconBtn[data-disabled][aria-disabled] {
+  background: var(--trade-waiting-bg);
+  color: var(--trade-text-2);
+  box-shadow: none;
+  cursor: not-allowed;
+  filter: none;
+  transform: none;
+}
+.tertiary[data-disabled][aria-disabled],
+.plain[data-disabled][aria-disabled] { background: transparent; color: var(--trade-text-3); }
+.btn[data-disabled]::before,
+.iconBtn[data-disabled]::before,
+.loading::before { display: none; }
+.loading[aria-busy] { filter: none; transform: none; }
+
+/* ---- Icon buttons ---- */
+.iconBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: 0;
+  border: 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.plain { width: var(--trade-tap); height: var(--trade-tap); border-radius: 50%; background: transparent; color: inherit; }
+.signature {
+  width: 50px;
+  height: 50px;
+  border-radius: var(--trade-radius-action);
+  background: var(--trade-signature);
+  color: var(--trade-on-signature);
+  box-shadow: var(--trade-shadow-action);
+}
+
+/* ---- Tooltip (.w-tip): above the control, inside the hovered area ---- */
+.host { position: relative; display: inline-flex; max-width: 100%; vertical-align: middle; }
+.host[data-width="full"] { display: flex; width: 100%; }
+.host[data-width="full"] > .btn { flex: 1; }
+@media (max-width: 599.98px) {
+  .host[data-width="full-on-phone"] { display: flex; width: 100%; }
+  .host[data-width="full-on-phone"] > .btn { flex: 1; }
+}
+.tip {
+  position: absolute;
+  bottom: calc(100% + var(--trade-space-2));
+  left: 50%;
+  /* --tip-shift is set by Button.tsx when the tooltip would run off the side of the screen. */
+  transform: translateX(calc(-50% + var(--tip-shift, 0px)));
+  z-index: var(--trade-z-toast);
+  display: grid;
+  gap: 2px;
+  width: max-content;
+  max-width: min(18rem, calc(100vw - 2 * var(--trade-inset-browse)));
+  padding: 6px 10px;
+  border-radius: 7px;
+  background: var(--trade-forest);
+  color: var(--trade-text-on-dark);
+  box-shadow: var(--trade-shadow-pop);
+  font-family: var(--trade-font-body);
+  font-weight: 400;
+  font-size: var(--trade-fs-caption);
+  line-height: var(--trade-lh-caption);
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+.tip[hidden] { display: none; }
+.tip::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -5px;
+  width: 10px;
+  height: 10px;
+  background: var(--trade-forest);
+  transform: translateX(calc(-50% - var(--tip-shift, 0px))) rotate(45deg);
+  border-radius: 2px;
+}
+.tipReason { color: var(--trade-text-on-dark-2); }
+
+/* ---- Text links (.tm-link standalone, .w-link-u inside text) ---- */
+.link {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--trade-tap);
+  color: var(--trade-link);
+  font-weight: 700;
+  font-size: var(--trade-fs-small);
+  line-height: var(--trade-lh-small);
+  text-decoration: none;
+  text-underline-offset: 3px;
+  overflow-wrap: anywhere;
+}
+.link:hover { text-decoration: underline; }
+.linkInline { display: inline; min-height: 0; font-size: inherit; line-height: inherit; text-decoration: underline; }
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}

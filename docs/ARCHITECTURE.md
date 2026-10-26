@@ -401,3 +401,25 @@ ever compiles). Don't widen these props; a new figure gets its own field on the 
 **`/dev/components/status`** shows every variant and state (`?mode=trade`, `?mode=office`). Dev only, a 404 in
 production builds. Its e2e checks run against a dev server:
 `E2E_DEV_BASE_URL=http://localhost:3000 npx playwright test tests/e2e/dev-status-components.spec.ts`.
+
+## Buttons and links (#74)
+
+Every button and link in the app is one of these. Don't style a `<button>` or `<a>` by hand.
+
+- **`<Button>`** (`src/components/Button.tsx`): `variant` primary (default, one per view) · secondary · tertiary ·
+  hero (one per screen) · destructive; `size` md (55px) · sm (40px); `width` full-on-phone (default) · full · auto;
+  `icon` / `iconEnd`; `href` makes it a Next.js link. Colours are the mode tokens only, so it recolours itself in
+  each mode, with Forest labels on coloured fills (white on Forest in office). Press and hover are M04 (`.tm-press`).
+  - `loading`: a spinner over the (invisible) label, so the width stays; `aria-busy`, presses ignored, and the name
+    becomes "Label, loading".
+  - `disabled="Why it's disabled"`: uses `aria-disabled`, not `disabled`, so it can still be focused; the reason is
+    its accessible description and a tooltip on hover (500ms), keyboard focus or a tap; Esc hides it. Pass
+    `disabled` alone only when the reason is already on screen next to it.
+  - Long labels wrap (buttons use `min-height`); `truncate` keeps one line with "…" and the whole label in a tooltip.
+- **`<IconButton icon label>`**: 44px plain circle or the 50px `signature` Save square; `label` is the name and the
+  hover tooltip; `pressed` for on/off.
+- **`<TextLink href>`**: standalone 14px bold link; `inline` inside a sentence (always underlined); `external` opens a
+  new tab and says so.
+- **`/dev/components/buttons`** shows every variant and state (`?mode=trade`, `?mode=office`) and a usage example.
+  Dev only, like `/dev/motion`; its e2e checks run against a dev server:
+  `E2E_DEV_BASE_URL=http://localhost:3000 npx playwright test tests/e2e/dev-buttons.spec.ts`.
