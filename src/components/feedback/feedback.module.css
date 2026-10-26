@@ -1,0 +1,171 @@
+/* Loading, empty and error states (#79). Values from docs/design/components.css (.tm-skel, .tm-empty, .tm-banner,
+   .tm-jobrow, .tm-cat, .tm-progress) and the "404 · 500 · maintenance · offline" page in pages.html, written with
+   tokens only: no hex values. The skeleton grey, its 300ms delay and the shimmer are M15 (.tm-skel in
+   src/styles/motion.css), never re-made here; under reduced motion that file makes it static grey.
+
+   Every text here wraps (overflow-wrap: anywhere) instead of spilling out: names, suburbs and job titles can be
+   any length, and the page can be zoomed to 200%. */
+
+/* ---- Skeletons ---- */
+.skel { display: block; flex: none; max-width: 100%; }
+.skelLine { height: 14px; }
+.skel.skelCircle { border-radius: 50%; } /* doubled class: outranks .tm-skel's 6px whatever order the CSS loads in */
+.skel.skelPill { border-radius: var(--trade-radius-pill); }
+.skelText { display: grid; gap: var(--trade-space-2); min-width: 0; }
+
+.skelList { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+/* .tm-jobrow: a card row with a 64px photo, as on My jobs and the job board. */
+.skelRow {
+  display: flex;
+  align-items: center;
+  gap: var(--trade-space-3);
+  padding: var(--trade-space-3);
+  border-radius: var(--trade-radius-card);
+  background: var(--trade-surface);
+  box-shadow: var(--trade-shadow-category);
+}
+.skelRowBody { flex: 1; display: grid; gap: var(--trade-space-2); min-width: 0; }
+/* .tm-cat: a category tile (110 × 96 picture, a 14px name under it). */
+.skelTiles { display: flex; flex-wrap: wrap; gap: var(--trade-space-3); margin: 0; padding: 0; list-style: none; }
+.skelTile {
+  display: grid;
+  gap: var(--trade-space-3);
+  padding: var(--trade-space-3);
+  border-radius: var(--trade-radius-category);
+  background: var(--trade-surface);
+  box-shadow: var(--trade-shadow-category);
+}
+
+/* ---- LoadingRegion ---- */
+.region { min-width: 0; }
+
+/* ---- Spinner ---- */
+.spinner { display: inline-flex; align-items: center; gap: var(--trade-space-2); max-width: 100%; color: var(--trade-text-2); font-size: var(--trade-fs-small); line-height: var(--trade-lh-small); }
+.ring {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2.5px solid var(--trade-line-strong);
+  border-top-color: var(--trade-action);
+  animation: spin 0.7s linear infinite;
+}
+.ringSm { width: 16px; height: 16px; border-width: 2px; }
+.ringLg { width: 32px; height: 32px; border-width: 3.5px; }
+.spinnerLabel { min-width: 0; overflow-wrap: anywhere; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ---- Progress bar (.tm-progress: 4px, rounded, action fill on the strong line colour) ---- */
+.progress { display: grid; gap: var(--trade-space-1); min-width: 0; }
+.progressHead { display: flex; justify-content: space-between; gap: var(--trade-space-3); font-size: var(--trade-fs-small); line-height: var(--trade-lh-small); }
+.progressLabel { min-width: 0; overflow-wrap: anywhere; font-weight: 600; }
+.progressValue { flex: none; color: var(--trade-text-2); font-variant-numeric: tabular-nums; }
+.track { position: relative; height: 4px; overflow: hidden; border-radius: 4px; background: var(--trade-line-strong); }
+.fill { position: absolute; inset: 0 auto 0 0; border-radius: inherit; background: var(--trade-action); transition: width var(--trade-dur-base) var(--trade-ease-out); }
+.indeterminate .fill { width: 40%; animation: slide 1.2s var(--trade-ease-in-out) infinite; }
+@keyframes slide { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
+
+@media (prefers-reduced-motion: reduce) {
+  /* A still ring and a still bar: the label (visible or for screen readers) still says it's loading. */
+  .ring { animation: none; }
+  .fill { transition: none; }
+  .indeterminate .fill { animation: none; transform: none; }
+}
+
+/* ---- Empty state (.tm-empty) ---- */
+.empty {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: var(--trade-space-8) var(--trade-space-6);
+  text-align: center;
+}
+.emptyArt { width: 220px; max-width: 100%; height: auto; }
+.badge {
+  display: grid;
+  place-items: center;
+  width: 84px;
+  height: 84px;
+  border-radius: 24px;
+  background: var(--trade-tint);
+  color: var(--trade-ink);
+}
+.badge > span { font-size: 42px; }
+.title {
+  margin: 0;
+  max-width: 100%;
+  font-family: var(--trade-font-heading);
+  font-weight: 900;
+  font-variation-settings: var(--trade-display-axes);
+  font-size: var(--trade-fs-heading);
+  line-height: var(--trade-lh-heading);
+  color: var(--trade-text);
+  overflow-wrap: anywhere;
+}
+.message {
+  margin: 0;
+  max-width: 34ch;
+  font-size: var(--trade-fs-small);
+  line-height: var(--trade-lh-small);
+  color: var(--trade-text-2);
+  overflow-wrap: anywhere;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--trade-space-2) var(--trade-space-3);
+  width: 100%;
+  margin-top: 6px;
+}
+/* The main action is 220px wide, as in the mockup (it can grow for a long label, never past the column). A
+   second action (usually a link) keeps its own width and wraps under it when there isn't room. */
+.actions > :first-child { min-width: min(220px, 100%); }
+@media (max-width: 599.98px) {
+  .actions { flex-direction: column; align-items: center; }
+}
+
+/* ---- Error state (page and section): the 84px danger badge, heading, line, Try again ---- */
+.errorBadge { background: var(--trade-danger-bg); color: var(--trade-danger); }
+.page { min-height: min(70dvh, 40rem); align-content: center; padding-block: var(--trade-space-12); }
+.page .message { max-width: 48ch; }
+.reference { margin: var(--trade-space-1) 0 0; font-size: var(--trade-fs-caption); line-height: var(--trade-lh-caption); color: var(--trade-text-2); overflow-wrap: anywhere; }
+
+/* ---- Banners (.tm-banner): inline error and the offline banner ---- */
+.banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  padding: 12px 14px;
+  border-radius: var(--trade-radius-card);
+  font-size: var(--trade-fs-small);
+  line-height: 1.4;
+}
+.alert { background: var(--trade-danger-bg); color: var(--trade-danger); }
+.good { background: var(--trade-success-bg); color: var(--trade-success); }
+.bannerText { flex: 1 1 12rem; display: flex; gap: 10px; align-items: flex-start; min-width: 0; }
+.bannerText > span:last-child { min-width: 0; overflow-wrap: anywhere; }
+.bannerText > [aria-hidden] { font-size: 20px; }
+/* The banner's Try again / Retry now is a tertiary <Button>, in the banner's own colour and always underlined so
+   it isn't told apart by colour alone. min-height keeps it a 44px tap target. */
+.bannerAction { flex: none; margin-left: auto; color: inherit; text-decoration: underline; text-underline-offset: 3px; }
+
+/* Offline: full width across the top of the page, square corners, centred (pages.html "Offline banner + retry").
+   It sticks to the top while the page scrolls under it. */
+.offline { justify-content: center; border-radius: 0; padding-inline: var(--trade-inset-browse); }
+.offline .bannerText { flex: 0 1 auto; }
+.offline .bannerAction { margin-left: 0; }
+.sticky { position: sticky; top: 0; z-index: var(--trade-z-sticky); }
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
