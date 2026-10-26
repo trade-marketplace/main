@@ -17,16 +17,27 @@ const httpsUrl = z
     message: "must be the project URL, e.g. https://<project-ref>.supabase.co",
   });
 
+// 32 random bytes, base64. Used by src/server/crypto.ts to encrypt IRD numbers and bank accounts.
+const fieldEncryptionKey = z
+  .string()
+  .trim()
+  .refine(isBase64Key, {
+    message: "must be 32 random bytes, base64-encoded (see .env.example for how to make one)",
+  });
+
 const schema = z.object({
   DATABASE_URL: postgresUrl.optional(),
   DIRECT_URL: postgresUrl.optional(),
   NEXT_PUBLIC_SUPABASE_URL: httpsUrl.optional(),
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().trim().optional(),
+  FIELD_ENCRYPTION_KEY: fieldEncryptionKey.optional(),
 });
 
 export type ServerEnv = {
   database: { enabled: false } | { enabled: true; url: string; directUrl: string };
   supabase: { enabled: false } | { enabled: true; url: string; publishableKey: string };
+  // Off: saving an IRD number or bank account fails with a message saying how to set the key.
+  fieldEncryption: { enabled: boolean };
 };
 
 export class EnvError extends Error {
@@ -76,6 +87,7 @@ export function parseEnv(raw: RawEnv): ServerEnv {
       env.NEXT_PUBLIC_SUPABASE_URL && env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
         ? { enabled: true, url: env.NEXT_PUBLIC_SUPABASE_URL, publishableKey: env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }
         : { enabled: false },
+    fieldEncryption: { enabled: env.FIELD_ENCRYPTION_KEY !== undefined },
   };
 }
 
@@ -84,4 +96,9 @@ function pairProblems(nameA: string, a: string | undefined, nameB: string, b: st
   if (a && !b) return [`${nameB} is missing (${nameA} is set; set both or neither)`];
   if (b && !a) return [`${nameA} is missing (${nameB} is set; set both or neither)`];
   return [];
+}
+
+function isBase64Key(value: string): boolean {
+  const bytes = Buffer.from(value, "base64");
+  return bytes.length === 32 && bytes.toString("base64") === value;
 }

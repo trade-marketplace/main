@@ -1,5 +1,12 @@
 // Database schema. Supabase Postgres (Sydney), see DECISIONS.md (#58).
-// Models start in "Schema 1" (#86). Schema changes need William's review (AGENTS.md §4).
+// Schema changes need William's review (AGENTS.md §4).
+//
+// Conventions:
+// - Tables and columns are snake_case in Postgres (@@map / @map), camelCase in TypeScript.
+// - Every table has row-level security on (set in the migration SQL). The app's server code connects as the
+//   table owner, so it is not limited by those policies; they protect the Supabase Data API, which the browser
+//   can reach with the public key. Users may only read their own rows there; every write goes through our server.
+// - Timestamps are timestamptz.
 
 generator client {
   provider = "prisma-client"
@@ -8,4 +15,180 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+}
+
+// ---------------------------------------------------------------- Schema 1 (#86): people
+
+enum Role {
+  CUSTOMER
+  TRADIE
+  ADMIN
+
+  @@map("role")
+}
+
+// The trades a worker can do and a job can need. Same list as job categories (Schema 2, #87).
+// OTHER is any labour (moving, cleaning, gardening, assembly…) and never needs a licence (DECISIONS.md 1).
+enum Trade {
+  ELECTRICAL
+  PLUMBING
+  GAS
+  CONSTRUCTION
+  OTHER
+
+  @@map("trade")
+}
+
+enum LicenceStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+
+  @@map("licence_status")
+}
+
+// One row per person who can sign in. `id` is the Supabase Auth user id (auth.users.id): Supabase Auth owns
+// the password and sessions, this table holds what the app needs. Deleting the auth user deletes the profile.
+model Profile {
+  id              String    @id @db.Uuid
+  // Lowercased and trimmed by a trigger on every insert and update, so `Sam@X.nz` and `sam@x.nz` are one person.
+  email           String    @unique
+  // Copied from Supabase Auth when the person confirms their email (sign-in, #101).
+  emailVerifiedAt DateTime? @map("email_verified_at") @db.Timestamptz
+  role            Role      @default(CUSTOMER)
+  // Public pages show the first name and last initial only.
+  firstName       String    @map("first_name")
+  lastName        String?   @map("last_name")
+  // NZ mobile in E.164 (+6421…). Hidden from the other side until a job is claimed (DECISIONS.md 11).
+  phone           String?
+  // Path in the private Supabase Storage bucket, never a public URL.
+  avatarPath      String?   @map("avatar_path")
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  workerProfile    WorkerProfile?
+  workerTrades     WorkerTrade[]
+  licences         Licence[]          @relation("LicenceHolder")
+  licencesChecked  Licence[]          @relation("LicenceChecker")
+  workersVerified  WorkerProfile[]    @relation("WorkerVerifier")
+  addresses        Address[]
+  payrollDetails   PayrollDetails?
+
+  @@map("profiles")
+}
+
+// Tradie / worker details. Only TRADIE profiles have one (tradie sign-up, #105, creates it).
+model WorkerProfile {
+  userId       String    @id @map("user_id") @db.Uuid
+  user         Profile   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bio          String?
+  // Work area: a base suburb and a radius around its centre (10 / 25 / 50 km on the form).
+  baseSuburb   String?   @map("base_suburb")
+  areaLat      Float?    @map("area_lat")
+  areaLng      Float?    @map("area_lng")
+  areaRadiusKm Int?      @map("area_radius_km")
+  // Off until the worker turns it on, so nobody is sent jobs before they've finished setting up.
+  available    Boolean   @default(false)
+  // Verified badge: set by the office when the worker has been checked (DECISIONS.md 1).
+  verifiedAt   DateTime? @map("verified_at") @db.Timestamptz
+  verifiedById String?   @map("verified_by_id") @db.Uuid
+  verifiedBy   Profile?  @relation("WorkerVerifier", fields: [verifiedById], references: [id], onDelete: SetNull)
+  // Verified quoters arrive in milestone 5 (#258). Invite only.
+  isQuoter     Boolean   @default(false) @map("is_quoter")
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Finding available workers near a job: a bounding box on lat/lng, then the exact distance in code (#97).
+  @@index([available, areaLat, areaLng])
+  @@map("worker_profiles")
+}
+
+// The trades a worker does. A worker can do several.
+model WorkerTrade {
+  userId    String    @map("user_id") @db.Uuid
+  user      Profile   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trade     Trade
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  licence   Licence?
+
+  @@id([userId, trade])
+  // Finding workers by trade.
+  @@index([trade])
+  @@map("worker_trades")
+}
+
+// A licence for one of the worker's trades. Status is per trade: a worker can be verified for electrical and
+// still pending for plumbing. One row per worker per trade; "Try again" after a rejection updates the row and
+// the audit log (#100) keeps the history. OTHER never has a licence (checked by the database).
+// How licences are checked is still being decided (#64), so `type` is free text for now.
+model Licence {
+  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId          String        @map("user_id") @db.Uuid
+  user            Profile       @relation("LicenceHolder", fields: [userId], references: [id], onDelete: Cascade)
+  trade           Trade
+  // Removing a trade from a worker removes its licence.
+  workerTrade     WorkerTrade   @relation(fields: [userId, trade], references: [userId, trade], onDelete: Cascade)
+  number          String
+  // e.g. "Registered electrician", "Certifying plumber".
+  type            String?
+  status          LicenceStatus @default(PENDING)
+  // Required when REJECTED; shown to the worker with "Try again".
+  rejectionReason String?       @map("rejection_reason")
+  checkedById     String?       @map("checked_by_id") @db.Uuid
+  checkedBy       Profile?      @relation("LicenceChecker", fields: [checkedById], references: [id], onDelete: SetNull)
+  // Required when VERIFIED or REJECTED.
+  checkedAt       DateTime?     @map("checked_at") @db.Timestamptz
+  expiresOn       DateTime?     @map("expires_on") @db.Date
+  // Path of the uploaded licence in the private Storage bucket.
+  documentPath    String?       @map("document_path")
+  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@unique([userId, trade])
+  // Office queue: licences waiting to be checked, oldest first.
+  @@index([status, createdAt])
+  @@map("licences")
+}
+
+// A customer's saved addresses (C21). At most one default per person (checked by the database).
+// Geocoding and the coverage check arrive with #97; lat/lng are empty for a manually typed address.
+model Address {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  user      Profile  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // e.g. "Home", "Rental on Dee St".
+  label     String?
+  line1     String
+  line2     String?
+  suburb    String
+  city      String
+  postcode  String?
+  lat       Float?
+  lng       Float?
+  isDefault Boolean  @default(false) @map("is_default")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([userId])
+  @@map("addresses")
+}
+
+// A worker's bank and tax details for payroll (D15). Only the server reads this table: no Data API policy.
+// The IRD number and bank account are encrypted by the app before they're saved (src/server/crypto.ts, key
+// from FIELD_ENCRYPTION_KEY). The last digits are kept in the clear so the page can show them masked.
+model PayrollDetails {
+  userId               String   @id @map("user_id") @db.Uuid
+  user                 Profile  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  irdNumberEncrypted   String?  @map("ird_number_encrypted")
+  irdNumberLast3       String?  @map("ird_number_last3")
+  bankAccountEncrypted String?  @map("bank_account_encrypted")
+  bankAccountLast4     String?  @map("bank_account_last4")
+  // IRD tax code, e.g. "M", "SB", "ND".
+  taxCode              String?  @map("tax_code")
+  // KiwiSaver employee contribution in whole percent; empty when not enrolled.
+  kiwiSaverRatePct     Int?     @map("kiwisaver_rate_pct")
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt            DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("payroll_details")
 }

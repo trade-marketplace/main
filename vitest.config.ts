@@ -2,6 +2,13 @@ import { fileURLToPath } from "node:url";
 
 import { defineConfig } from "vitest/config";
 
+// Printed here because Vitest hides output from a test file whose tests are all skipped.
+if (!process.env.TEST_DATABASE_URL?.trim()) {
+  console.warn(
+    "Database tests will be skipped: set TEST_DATABASE_URL to a throwaway Postgres to run them (docs/TESTING.md).",
+  );
+}
+
 export default defineConfig({
   resolve: {
     alias: {

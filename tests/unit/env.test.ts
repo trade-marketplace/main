@@ -7,7 +7,11 @@ const direct = "postgresql://postgres.ref:pw@aws-0-ap-southeast-2.pooler.supabas
 
 describe("parseEnv", () => {
   it("runs with the database off when no database variables are set", () => {
-    expect(parseEnv({})).toEqual({ database: { enabled: false }, supabase: { enabled: false } });
+    expect(parseEnv({})).toEqual({
+      database: { enabled: false },
+      supabase: { enabled: false },
+      fieldEncryption: { enabled: false },
+    });
   });
 
   it("treats empty values copied from .env.example as unset", () => {
@@ -57,5 +61,17 @@ describe("parseEnv", () => {
     expect(() => parseEnv({ DATABASE_URL: pooled, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "k" })).toThrow(
       /DIRECT_URL is missing[\s\S]*NEXT_PUBLIC_SUPABASE_URL is missing/,
     );
+  });
+
+  it("turns field encryption on when FIELD_ENCRYPTION_KEY is a 32-byte base64 key", () => {
+    const key = Buffer.alloc(32, 7).toString("base64");
+    expect(parseEnv({ FIELD_ENCRYPTION_KEY: key })).toMatchObject({ fieldEncryption: { enabled: true } });
+  });
+
+  it("fails fast when FIELD_ENCRYPTION_KEY is the wrong length or not base64", () => {
+    expect(() => parseEnv({ FIELD_ENCRYPTION_KEY: Buffer.alloc(16).toString("base64") })).toThrow(
+      /FIELD_ENCRYPTION_KEY must be 32 random bytes/,
+    );
+    expect(() => parseEnv({ FIELD_ENCRYPTION_KEY: "not a key" })).toThrow(/FIELD_ENCRYPTION_KEY must be 32 random bytes/);
   });
 });

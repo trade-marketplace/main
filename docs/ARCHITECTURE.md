@@ -41,6 +41,28 @@ jose/bcrypt sessions are not ported.
 - Both are optional like the database: until `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
   are set they throw an error that says how to connect. The session-refresh proxy arrives with sign-in (#101).
 
+## Data model
+
+`prisma/schema.prisma` is the map: every model has a comment saying what it holds and who may see it. Changes are
+Prisma migrations in `prisma/migrations/` (William reviews). What Prisma's schema can't express (row-level security,
+checks, triggers) is hand-written SQL at the end of the same migration, under a clear divider.
+
+- **People (Schema 1, #86).** `profiles` has one row per Supabase Auth user (same id). Supabase Auth owns passwords
+  and sessions ("log out other devices" is Supabase's), so there is no sessions table. Workers add
+  `worker_profiles`, `worker_trades` (several per worker, incl. `OTHER`) and `licences` (one per worker per licensed
+  trade, its own status). Customers' saved places are `addresses`. Bank and tax details are in `payroll_details`.
+- **Auth link without a foreign key.** Prisma only manages `public`, and a foreign key into `auth.users` stops it
+  reading the database, so triggers do that job: a profile needs an auth user, and deleting the auth user deletes the
+  profile (and everything hanging off it).
+- **Row-level security is on for every table.** The app's server code connects as the table owner and isn't limited
+  by it; it protects the Supabase Data API that the browser can reach with the public key. There, people can read
+  their own rows and write nothing. `payroll_details` has no policy at all. Wider rules come with who-sees-what (#95).
+- **Encrypted fields.** IRD numbers and bank accounts are encrypted by `encryptField()` (`src/server/crypto.ts`,
+  AES-256-GCM, key in `FIELD_ENCRYPTION_KEY`) before they're saved, and bound to their row so a copied value won't
+  decrypt elsewhere. The last digits are stored separately for the masked display.
+- **Plain Postgres works too.** The first migration creates stand-ins for Supabase's `auth.users` and `auth.uid()`
+  when they don't exist (local Docker, CI, Prisma's shadow database). On Supabase it does nothing.
+
 ## Tokens, fonts and modes (#72)
 
 - **Tokens.** `src/styles/tokens.css` is the app's copy of `docs/design/tokens.css`, imported once in
