@@ -1,0 +1,106 @@
+# Runs the four checks from AGENTS.md on every pull request and on main (#68).
+# A red check means the PR doesn't merge. Each check is its own step, so the failing one is shown by name.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# A new push to the same PR cancels the run that is now out of date. Runs on main are never cancelled.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  NEXT_TELEMETRY_DISABLED: "1"
+  # No secrets or database: the app builds and tests run without any env vars (see .env.example).
+
+jobs:
+  checks:
+    # Branch protection: mark "Lint, typecheck, test, build" as the required check.
+    name: Lint, typecheck, test, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+        with:
+          # On a PR this is GitHub's merge commit: its first parent is the base branch, so 2 commits are enough
+          # to see what the PR changes.
+          fetch-depth: 2
+          persist-credentials: false
+
+      # Docs-only PRs skip the heavy steps but the job still finishes green, so a required check never sits on
+      # "waiting". (A workflow-level `paths-ignore` would skip the whole workflow and block those PRs.)
+      # Pushes to main always run everything. If anything goes wrong here, everything runs.
+      - name: Detect docs-only change
+        id: changes
+        run: |
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            echo "docs_only=false" >> "$GITHUB_OUTPUT"
+          elif files=$(git diff --name-only --no-renames HEAD^1 HEAD); then
+            echo "$files"
+            echo "$files" | node scripts/ci/docs-only.mjs || {
+              echo "The docs-only check failed; running every check."
+              echo "docs_only=false" >> "$GITHUB_OUTPUT"
+            }
+          else
+            echo "Couldn't list the changed files; running every check."
+            echo "docs_only=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Docs only, skipping checks
+        if: steps.changes.outputs.docs_only == 'true'
+        run: echo "Only docs changed, so lint, typecheck, test and build were skipped." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Set up Node (version from .nvmrc)
+        if: steps.changes.outputs.docs_only != 'true'
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install
+        id: install
+        if: steps.changes.outputs.docs_only != 'true'
+        run: npm ci
+
+      # Each check runs even if an earlier one failed, so one run shows every problem at once.
+      - name: Lint
+        id: lint
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: npm run lint
+
+      - name: Typecheck
+        id: typecheck
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: npm run typecheck
+
+      # Unit tests need no database yet. A throwaway Postgres service is added here with the first test that does.
+      # End-to-end tests (#70) get their own step when that tooling lands.
+      - name: Test
+        id: test
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: npm test
+
+      - name: Build
+        id: build
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: npm run build
+
+      - name: Summary
+        if: ${{ !cancelled() && steps.changes.outputs.docs_only != 'true' }}
+        run: |
+          {
+            echo "| Check | Result |"
+            echo "|---|---|"
+            echo "| Install | ${{ steps.install.outcome }} |"
+            echo "| Lint | ${{ steps.lint.outcome }} |"
+            echo "| Typecheck | ${{ steps.typecheck.outcome }} |"
+            echo "| Test | ${{ steps.test.outcome }} |"
+            echo "| Build | ${{ steps.build.outcome }} |"
+          } >> "$GITHUB_STEP_SUMMARY"
