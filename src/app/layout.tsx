@@ -1,9 +1,11 @@
 import type { Metadata, Viewport } from "next";
+import { unstable_rethrow } from "next/navigation";
 import type { ReactNode } from "react";
 import { preload } from "react-dom";
 
 import { FONT_PRELOADS } from "@/lib/fonts";
 import { modeForRole, type Role } from "@/lib/mode";
+import { getViewer } from "@/server/auth/viewer";
 
 import "@/styles/tokens.css";
 import "@/styles/base.css";
@@ -18,11 +20,11 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
-  // Nobody can sign in yet, so everyone is "signed out" and gets the customer palette.
-  // Sign-in (#101) replaces this with the visitor's role, read on the server from their Supabase session.
-  // Because the attribute is in the server-rendered HTML, the first paint already has the right colours: no flash.
-  const role: Role | null = null;
+export default async function RootLayout({ children }: { children: ReactNode }) {
+  // The visitor's role, read on the server from their Supabase session and their `profiles` row (signed out →
+  // customer palette). Because the attribute is in the server-rendered HTML, the first paint already has the
+  // right colours: no flash. Log-in and log-out revalidate the layout so it changes with the next page.
+  const role = await viewerRole();
 
   // React puts these <link rel="preload"> tags at the top of <head>, before the CSS, so the fonts start downloading
   // straight away instead of waiting for the stylesheet to be parsed.
@@ -35,4 +37,19 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body>{children}</body>
     </html>
   );
+}
+
+/**
+ * The palette is never worth a broken page: if the profile can't be read (database blip), show the signed-out
+ * colours and let the page itself report the problem. Next.js's own signals (e.g. "this page reads cookies, so
+ * render it per request") are passed on untouched.
+ */
+async function viewerRole(): Promise<Role | null> {
+  try {
+    return (await getViewer())?.role ?? null;
+  } catch (error) {
+    unstable_rethrow(error);
+    console.error("Layout: couldn't read the signed-in visitor; using the signed-out palette.", error);
+    return null;
+  }
 }

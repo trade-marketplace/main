@@ -6,8 +6,8 @@ export const MODES = ["customer", "trade", "office"] as const;
 export type Mode = (typeof MODES)[number];
 
 /**
- * The account roles that pick a mode. These will come from the database once the schema has users (#86) and
- * sign-in exists (#101); keep the names in step with the schema's Role enum.
+ * The account roles that pick a mode. The signed-in visitor's comes from `profiles.role` (#86), read on the server
+ * (src/server/auth/viewer.ts, #101); keep the names in step with the schema's Role enum.
  */
 export const ROLES = ["CUSTOMER", "TRADIE", "ADMIN"] as const;
 export type Role = (typeof ROLES)[number];

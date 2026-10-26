@@ -1,8 +1,25 @@
 import { prerender } from "react-dom/static";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import RootLayout from "@/app/layout";
 import { FONT_PRELOADS } from "@/lib/fonts";
+import type { Role } from "@/lib/mode";
+import { getViewer } from "@/server/auth/viewer";
+
+// The layout reads the signed-in visitor on the server. Tests choose who that is; nobody by default.
+vi.mock("@/server/auth/viewer", () => ({ getViewer: vi.fn(async () => null) }));
+
+afterEach(() => vi.mocked(getViewer).mockReset().mockResolvedValue(null));
+
+function signInAs(role: Role) {
+  vi.mocked(getViewer).mockResolvedValue({
+    userId: "user-1",
+    email: "sam@example.nz",
+    role,
+    firstName: "Sam",
+    emailVerified: true,
+  });
+}
 
 // Render the whole document the way the server streams it, so the hoisted <head> tags are included.
 async function renderDocument() {
@@ -16,6 +33,15 @@ async function renderDocument() {
 
 describe("root layout", () => {
   it("renders the customer mode on <html> on the server, so the first paint has the right palette", async () => {
+    expect(await renderDocument()).toMatch(/<html lang="en-NZ" data-mode="customer">/);
+  });
+
+  it("uses the signed-in visitor's role for the mode", async () => {
+    signInAs("TRADIE");
+    expect(await renderDocument()).toMatch(/<html lang="en-NZ" data-mode="trade">/);
+    signInAs("ADMIN");
+    expect(await renderDocument()).toMatch(/<html lang="en-NZ" data-mode="office">/);
+    signInAs("CUSTOMER");
     expect(await renderDocument()).toMatch(/<html lang="en-NZ" data-mode="customer">/);
   });
 
@@ -38,5 +64,13 @@ describe("root layout", () => {
 
   it("renders its children", async () => {
     expect(await renderDocument()).toContain("<p>child</p>");
+  });
+});
+
+describe("root layout when the visitor can't be read", () => {
+  it("falls back to the signed-out palette instead of failing the page", async () => {
+    vi.mocked(getViewer).mockRejectedValue(new Error("connection reset"));
+    vi.spyOn(console, "error").mockImplementationOnce(() => {});
+    expect(await renderDocument()).toMatch(/<html lang="en-NZ" data-mode="customer">/);
   });
 });
