@@ -1,10 +1,13 @@
-import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { checkCoverage, type Coverage, INVERCARGILL_COVERAGE, WAITLIST_PATH } from "@/lib/geo/coverage";
 import { EARTH_RADIUS_KM, haversineKm } from "@/lib/geo/distance";
-import { CoverageSettingsError, loadCoverage } from "@/server/geo/coverage-settings";
+import { CoverageSettingsError, loadCoverage, settingsCoverageSource } from "@/server/geo/coverage-settings";
 
-// The coverage area (#97): a centre and a radius, Invercargill until settings (Schema 3, #91) are wired in.
+// The coverage area (#97): a centre and a radius, read from the settings row (Schema 3, #91, wired in by #300).
+// The same against a real Postgres: geo-coverage-db.test.ts.
 
 const KM_PER_DEGREE_LAT = (EARTH_RADIUS_KM * Math.PI) / 180;
 const { centre, radiusKm } = INVERCARGILL_COVERAGE;
@@ -14,6 +17,16 @@ const north = (km: number) => ({ lat: centre.lat + km / KM_PER_DEGREE_LAT, lng: 
 describe("checkCoverage", () => {
   it("falls back to 60 km around central Invercargill, the same as the settings defaults", () => {
     expect(INVERCARGILL_COVERAGE).toEqual({ name: "Invercargill", centre: { lat: -46.4132, lng: 168.3538 }, radiusKm: 60 });
+  });
+
+  it("is the settings row's defaults in prisma/schema.prisma, so the fallback and the database never drift", () => {
+    const prisma = readFileSync("prisma/schema.prisma", "utf8");
+    const settings = prisma.match(/^model Settings \{([\s\S]*?)^\}/m)?.[1] ?? "";
+    const defaultOf = (field: string) => Number(settings.match(new RegExp(`^\\s*${field}\\s.*@default\\(([^)]+)\\)`, "m"))?.[1]);
+    expect({
+      centre: { lat: defaultOf("coverageCentreLat"), lng: defaultOf("coverageCentreLng") },
+      radiusKm: defaultOf("coverageRadiusKm"),
+    }).toEqual({ centre: INVERCARGILL_COVERAGE.centre, radiusKm: INVERCARGILL_COVERAGE.radiusKm });
   });
 
   it("is inside at the centre", () => {
@@ -60,8 +73,17 @@ describe("checkCoverage", () => {
 });
 
 describe("loadCoverage", () => {
-  it("is Invercargill when there are no settings yet", async () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("is Invercargill when the database is off (no DATABASE_URL), without connecting", async () => {
+    vi.stubEnv("DATABASE_URL", "");
     await expect(loadCoverage()).resolves.toEqual(INVERCARGILL_COVERAGE);
+    await expect(loadCoverage(settingsCoverageSource())).resolves.toEqual(INVERCARGILL_COVERAGE);
+  });
+
+  it("is Invercargill when there is no settings row", async () => {
     await expect(loadCoverage(async () => null)).resolves.toEqual(INVERCARGILL_COVERAGE);
   });
 

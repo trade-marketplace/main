@@ -192,7 +192,7 @@ office checks) come with their own issues.
 |---|---|---|
 | Distance | `src/lib/geo/distance.ts` | `haversineKm()` (straight line), `roundKm()` (whole km, half up), `formatKm()` ("12 km", "<1 km"). Pure. |
 | Coverage area | `src/lib/geo/coverage.ts` | `checkCoverage(coverage, point)`: centre + radius, the edge counts as inside. Inside / outside (with the waitlist path `/coming-soon`) / check later (no point). |
-| Loading the area | `src/server/geo/coverage-settings.ts` | `loadCoverage(source)`: the settings row, else `INVERCARGILL_COVERAGE`: 60 km around central Invercargill (-46.4132, 168.3538; Matt, 26 Oct), the same as the settings defaults (#91). The office can change it in Settings once the settings row is wired in (#300). A row set up wrong throws rather than quietly using Invercargill. |
+| Loading the area | `src/server/geo/coverage-settings.ts` | `loadCoverage()`: the `settings` row's `coverage_*` columns (`settingsCoverageSource()`, #300), so a change the office makes there applies everywhere. With the database off (no `DATABASE_URL`) or no row it's `INVERCARGILL_COVERAGE`: 60 km around central Invercargill (-46.4132, 168.3538; Matt, 26 Oct), which a test keeps equal to the column defaults. The row has no area name yet, so the name stays "Invercargill". A row set up wrong throws rather than quietly using Invercargill. |
 | Address search | `src/server/geo/address-search.ts`, `mapbox.ts` | `searchAddresses(query, { provider, coverage })`: NZ only, nearest the coverage centre first, each suggestion marked inside/outside. Mapbox Geocoding v6 behind an `AddressSearchProvider` interface. |
 | Job location | `src/server/geo/job-location.ts` | `resolveJobLocation()` decides what a job stores (or sends them to the waitlist), `saveJobLocation()`, the office queue, `jobPinFor()` and `distanceToJobKm()` for workers. |
 | Approximate pin | `src/server/geo/approximate.ts` | A random point 100–300 m from the address, picked once and stored. |
@@ -220,9 +220,6 @@ refuses a `TYPED` location with a point (or a `SEARCH`/`PIN` one without), and `
 pin is picked with a secure random number when the location is saved and stored, so it never jumps; it isn't
 derived from the job id or the address, because anything derived could be worked back to the address. The database
 refuses a pin equal to the real point and clears the pin when the real point moves without a new one.
-
-**Wiring still to do:** `loadCoverage()` reads nothing yet; once Schema 3 (#91) adds the settings row, pass a
-source that reads its coverage centre and radius (follow-up issue linked from the PR for #97).
 
 ## Tokens, fonts and modes (#72)
 
