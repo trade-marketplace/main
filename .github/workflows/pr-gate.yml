@@ -1,0 +1,39 @@
+# PR gate (#69): fails a PR whose description has no `Closes #<issue>`, has unticked checkboxes, or (for screen
+# changes) has no screenshots. Keeps one comment on the PR saying what's missing. Rules: docs/PR_GATE.md.
+name: PR gate
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened, labeled, unlabeled]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: pr-gate-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    name: PR gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          sparse-checkout: scripts/ci
+
+      - name: Set up Node (version from .nvmrc)
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+
+      # No npm install needed: the script only uses Node built-ins.
+      - name: Check the description
+        run: node scripts/ci/pr-gate.mjs
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}

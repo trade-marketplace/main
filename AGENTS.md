@@ -82,4 +82,5 @@ issue says to ("port X from the old repo"), and when you do, re-check it against
 
 - Use the PR template. Say what changed, why, how you tested it, and include screenshots for anything visible.
 - Say which agent and model made the change.
+- The PR gate fails a PR with no `Closes #`, an unticked box or (for screens) no screenshots. See `docs/PR_GATE.md`.
 - A founder approves before merge: William for code, Matt for screens. Agents never merge their own PRs.
