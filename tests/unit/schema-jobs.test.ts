@@ -53,7 +53,11 @@ describe.skipIf(!testDatabaseUrl)("Schema 2: jobs", () => {
     gstBps: 1500,
   };
 
-  /** Prices a job the way the office will: copy the rates, store the result, move it to PRICED. */
+  /**
+   * Prices a job the way the office will: copy the rates, store the result, move it to PRICED. Figures follow
+   * src/server/pricing/calculate.ts: 2 h × $70 = $140, holiday $11.20, on-costs 12.5% of $151.20 = $18.90,
+   * + $15 materials = $185.10, margin $37.02, ex GST $202.12, GST $30.318 → $30.32, customer $232.44.
+   */
   async function priceJob(jobId: string, officeId: string) {
     await schema.db.$transaction([
       schema.db.jobPricing.create({
@@ -64,13 +68,13 @@ describe.skipIf(!testDatabaseUrl)("Schema 2: jobs", () => {
           materialsCents: 1500,
           workerGrossCents: 14000,
           holidayPayCents: 1120,
-          onCostCents: 1750,
-          marginCents: 3450,
-          gstCents: 3105,
+          onCostCents: 1890,
+          marginCents: 3702,
+          gstCents: 3032,
           pricedById: officeId,
         },
       }),
-      schema.db.job.update({ where: { id: jobId }, data: { status: "PRICED", priceCents: 23805 } }),
+      schema.db.job.update({ where: { id: jobId }, data: { status: "PRICED", priceCents: 23244 } }),
     ]);
   }
 
@@ -245,7 +249,7 @@ describe.skipIf(!testDatabaseUrl)("Schema 2: jobs", () => {
       await priceJob(job.id, office.id);
       expect(await schema.db.job.findUniqueOrThrow({ where: { id: job.id }, include: { pricing: true } })).toMatchObject({
         status: "PRICED",
-        priceCents: 23805,
+        priceCents: 23244,
         pricing: { ...launchRates, workerGrossCents: 14000, pricedById: office.id },
       });
     });
@@ -510,7 +514,7 @@ describe.skipIf(!testDatabaseUrl)("Schema 2: jobs", () => {
         history: await sql(`SELECT DISTINCT job_id FROM {schema}.job_status_history`),
       }));
       expect(seen).toEqual({
-        jobs: [{ id: mine.job.id, price_cents: 23805 }],
+        jobs: [{ id: mine.job.id, price_cents: 23244 }],
         photos: [{ job_id: mine.job.id }],
         windows: [{ job_id: mine.job.id }],
         history: [{ job_id: mine.job.id }],
@@ -565,7 +569,7 @@ describe.skipIf(!testDatabaseUrl)("Schema 2: jobs", () => {
           sql(`INSERT INTO {schema}.estimates (job_id, worker_id, minutes) VALUES ('${job.id}', '${worker.id}', 30)`),
         ),
       ).rejects.toThrow(/row-level security/);
-      expect((await schema.db.job.findUniqueOrThrow({ where: { id: job.id } })).priceCents).toBe(23805);
+      expect((await schema.db.job.findUniqueOrThrow({ where: { id: job.id } })).priceCents).toBe(23244);
     });
   });
 });
