@@ -1,0 +1,367 @@
+/* ==========================================================================
+   Motion: the named animations M01–M27 (#73)
+   Spec: docs/design/WEBAPP_SPEC.md "Motion" and docs/design/sitemap.json `motion`.
+   Keyframes ported from docs/design/web.css (+ the skeleton from components.css).
+   Every page uses THESE classes (and the hooks in src/lib/motion). Never a one-off animation.
+   The dev showcase at /dev/motion plays each one.
+
+   Rules (WEBAPP_SPEC "Motion"):
+   - Only transform and opacity animate (plus clip-path for M09, and the panel height for M24).
+     Where the kit changes a shadow, filter, border or background (M03, M04, M06, M22, M26, M27), the
+     new look is drawn on a layer whose opacity animates: it looks the same and stays on the compositor.
+   - prefers-reduced-motion: every class here becomes an instant change; the skeleton is static grey.
+   - Entrance animations fill `backwards`: once they end the element is back on its own styles, so
+     hover, focus and component transforms keep working.
+   - Tokens only: never a hex value here (tests/unit/no-hex.test.ts).
+   ========================================================================== */
+
+:root {
+  /* Timings from the Motion table that have no shared token. Keep in step with src/lib/motion/timings.ts
+     (tests/unit/motion-css.test.ts checks). 120/200/320ms are the shared --trade-dur-* tokens. */
+  --tm-m01-stagger: 40ms;
+  --tm-m02-fade: 180ms;
+  --tm-m03-lift: 160ms;
+  --tm-m03-zoom: 400ms;
+  --tm-m07-reveal: 500ms;
+  --tm-m07-step: 70ms;
+  --tm-m08-suggest: 160ms;
+  --tm-m09-wipe: 300ms;
+  --tm-m09-count: 700ms;
+  --tm-m09-step: 60ms;
+  --tm-m10-pop: 400ms;
+  --tm-m10-burst: 440ms;
+  --tm-m10-total: 600ms;
+  --tm-m10-delay: 160ms;
+  --tm-m11-line: 400ms;
+  --tm-m13-out: 150ms;
+  --tm-m14-life: 4000ms;
+  --tm-m15-delay: 300ms;
+  --tm-m15-loop: 1200ms;
+  --tm-m15-swap: 150ms;
+  --tm-m19-bubble: 160ms;
+  --tm-m19-typing: 1000ms;
+  --tm-m20-badge: 240ms;
+  --tm-m21-step: 30ms;
+  --tm-m23-save: 160ms;
+  --tm-m27-loop: 4000ms;
+  --tm-m27-pulse: 2000ms;
+
+  /* The bolt flash spring, from web.css .tm-anim-pop */
+  --tm-spring: cubic-bezier(.34, 1.56, .64, 1);
+
+  /* Looks from web.css / components.css, written with tokens */
+  --tm-lift-shadow: 0 10px 24px color-mix(in srgb, var(--trade-forest) 18%, transparent);   /* M03 */
+  --tm-hero-shadow: 0 8px 18px color-mix(in srgb, var(--trade-forest) 22%, transparent);    /* M04 hero */
+  --tm-gold-glow: 0 0 6px color-mix(in srgb, var(--trade-gold) 80%, transparent);          /* M27 */
+  --tm-skel-base: color-mix(in srgb, var(--trade-line) 68%, var(--trade-surface));         /* = kit skeleton grey */
+  --tm-skel-shine: color-mix(in srgb, var(--trade-line) 32%, var(--trade-surface));        /* = kit shimmer highlight */
+}
+
+/* ---- Shared keyframes ------------------------------------------------------ */
+@keyframes tm-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes tm-fade-out { from { opacity: 1; } to { opacity: 0; } }
+@keyframes tm-hidden { from { opacity: 0; } to { opacity: 0; } }
+
+/* ---- M01 Page enter: fade in + rise 8px, 200ms ease-out; cards stagger 40ms (max 6, then all at once) */
+@keyframes tm-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.tm-anim-rise { animation: tm-rise var(--trade-dur-base) var(--trade-ease-out) backwards; }
+.tm-stagger > * { animation: tm-rise var(--trade-dur-base) var(--trade-ease-out) backwards; }
+.tm-stagger > :nth-child(2) { animation-delay: calc(1 * var(--tm-m01-stagger)); }
+.tm-stagger > :nth-child(3) { animation-delay: calc(2 * var(--tm-m01-stagger)); }
+.tm-stagger > :nth-child(4) { animation-delay: calc(3 * var(--tm-m01-stagger)); }
+.tm-stagger > :nth-child(5) { animation-delay: calc(4 * var(--tm-m01-stagger)); }
+.tm-stagger > :nth-child(6) { animation-delay: calc(5 * var(--tm-m01-stagger)); }
+.tm-stagger > :nth-child(n + 7) { animation-delay: calc(6 * var(--tm-m01-stagger)); }
+
+/* ---- M02 Route transition: View Transitions API. Page cross-fade 180ms; a named element (a job photo,
+   see morphName() in src/lib/motion) morphs from its tile into the job header in 320ms. */
+::view-transition-group(*),
+::view-transition-old(*),
+::view-transition-new(*) { animation-duration: var(--trade-dur-slow); animation-timing-function: var(--trade-ease-out); }
+::view-transition-group(root),
+::view-transition-old(root),
+::view-transition-new(root) { animation-duration: var(--tm-m02-fade); }
+
+/* ---- M03 Hover lift: card rises 2px and its shadow deepens to 0 10 24 / 18% (160ms ease-out);
+   a photo inside zooms 1.04 (400ms). Put .tm-lift on the card, or on a wrapper if the card clips
+   (overflow: hidden) its own outside. The deeper shadow is a layer that fades in. */
+.tm-lift { position: relative; isolation: isolate; transition: transform var(--tm-m03-lift) var(--trade-ease-out); }
+.tm-lift::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; box-shadow: var(--tm-lift-shadow); opacity: 0; pointer-events: none; transition: opacity var(--tm-m03-lift) var(--trade-ease-out); }
+.tm-lift.is-hover { transform: translateY(-2px); }
+.tm-lift.is-hover::before { opacity: 1; }
+.tm-zoom { overflow: hidden; }
+.tm-zoom__img { transition: transform var(--tm-m03-zoom) var(--trade-ease-out); }
+.tm-zoom.is-hover .tm-zoom__img,
+.tm-lift.is-hover .tm-zoom__img { transform: scale(1.04); }
+@media (hover: hover) {
+  .tm-lift:hover { transform: translateY(-2px); }
+  .tm-lift:hover::before { opacity: 1; }
+  .tm-zoom:hover .tm-zoom__img,
+  .tm-lift:hover .tm-zoom__img { transform: scale(1.04); }
+}
+
+/* ---- M04 Button press: scale .98 on press (120ms). Hover: brightness 1.06 (primary), tint fill
+   (secondary), lift 1px + shadow (hero). Brightness switches instantly (filter never animates);
+   the tint and the hero shadow are layers that fade. */
+.tm-press { position: relative; isolation: isolate; transition: transform var(--trade-dur-fast) var(--trade-ease-out); }
+.tm-press--secondary::before,
+.tm-press--hero::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; opacity: 0; pointer-events: none; transition: opacity var(--trade-dur-fast) var(--trade-ease-out); }
+.tm-press--secondary::before { background: var(--trade-tint); }
+.tm-press--hero::before { box-shadow: var(--tm-hero-shadow); }
+.tm-press--primary.is-hover { filter: brightness(1.06); }
+.tm-press--secondary.is-hover::before,
+.tm-press--hero.is-hover::before { opacity: 1; }
+.tm-press--hero.is-hover { transform: translateY(-1px); }
+@media (hover: hover) {
+  .tm-press--primary:hover { filter: brightness(1.06); }
+  .tm-press--secondary:hover::before,
+  .tm-press--hero:hover::before { opacity: 1; }
+  .tm-press--hero:hover { transform: translateY(-1px); }
+}
+.tm-press:active,
+.tm-press.is-press { transform: scale(.98); }
+
+/* ---- M05 Focus ring: no animation. 2px focus ring, 2px offset, instant: `:focus-visible` in tokens.css.
+   Nothing in this file transitions outline, so the ring is never animated. */
+
+/* ---- M06 Hero bolt parallax + nav fill. useParallax() writes --tm-parallax-y (0.3x scroll, max 60px).
+   The nav turns solid Forest + header shadow after the hero (200ms): set data-solid="true"
+   (useScrolledPast()). The nav must be positioned (sticky/fixed/relative); its fill is a layer. */
+.tm-parallax { transform: translate3d(0, var(--tm-parallax-y, 0px), 0); }
+.tm-navfill { isolation: isolate; }
+.tm-navfill::before { content: ""; position: absolute; inset: 0; z-index: -1; background: var(--trade-forest); box-shadow: var(--trade-shadow-header); opacity: 0; pointer-events: none; transition: opacity var(--trade-dur-base) var(--trade-ease-out); }
+.tm-navfill[data-solid="true"]::before { opacity: 1; }
+
+/* ---- M07 Headline reveal: lines rise 16px + fade (500ms ease-out), 70ms apart, then the sub-copy,
+   then the search bar. Number them with --tm-i (staggerStyle(i)). Once per visit: useOncePerEvent(…, "visit"). */
+@keyframes tm-reveal { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+.tm-anim-reveal { animation: tm-reveal var(--tm-m07-reveal) var(--trade-ease-out) backwards; animation-delay: calc(var(--tm-i, 0) * var(--tm-m07-step)); }
+
+/* ---- M08 Search suggestions: dropdown fades in and scales .98 -> 1 from its top edge (160ms).
+   Results update as you type: useDebouncedValue(query, 150). */
+@keyframes tm-suggest { from { opacity: 0; transform: scale(.98); } to { opacity: 1; transform: none; } }
+.tm-anim-suggest { transform-origin: top center; animation: tm-suggest var(--tm-m08-suggest) var(--trade-ease-out) backwards; }
+
+/* ---- M09 Price reveal (~1.1s, once per job): the Forest block wipes in left -> right (300ms), the number
+   counts up from $0 (700ms ease-out, <CountUp delay={300}>), the signature underline draws with it, then
+   the reassurance ticks appear one by one, 60ms apart (--tm-i). */
+@keyframes tm-wipe { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+@keyframes tm-draw-x { from { transform: scaleX(0); } to { transform: none; } }
+.tm-anim-wipe { animation: tm-wipe var(--tm-m09-wipe) var(--trade-ease-out) backwards; }
+.tm-anim-underline { transform-origin: left center; animation: tm-draw-x var(--tm-m09-count) var(--trade-ease-out) var(--tm-m09-wipe) backwards; }
+.tm-anim-tick { animation: tm-fade-in var(--trade-dur-fast) var(--trade-ease-out) backwards; animation-delay: calc(var(--tm-m09-wipe) + var(--tm-m09-count) + var(--tm-i, 0) * var(--tm-m09-step)); }
+
+/* ---- M10 Bolt flash (600ms, big wins only, once per event): the signature circle pops 0.6 -> 1.08 -> 1
+   (spring, 400ms), the tick/bolt draws in, 8 sparks burst out 26px and fade, a soft signature glow pulses
+   behind. Use <BoltFlash> (src/components/motion/BoltFlash.tsx), which builds this markup. */
+@keyframes tm-pop { 0% { transform: scale(.6); opacity: 0; } 60% { transform: scale(1.08); opacity: 1; } 100% { transform: scale(1); } }
+@keyframes tm-spark { from { opacity: 1; transform: translate(-50%, -50%) rotate(var(--a)) translateY(var(--tm-spark-from)) scaleY(1); } to { opacity: 0; transform: translate(-50%, -50%) rotate(var(--a)) translateY(calc(var(--tm-spark-from) - 26px)) scaleY(.4); } }
+@keyframes tm-glow { 0%, 100% { opacity: 0; } 40% { opacity: .4; } }
+.tm-flash { --tm-flash-size: 110px; --tm-spark-from: calc(var(--tm-flash-size) / -2 + 3px); position: relative; width: var(--tm-flash-size); height: var(--tm-flash-size); }
+.tm-flash__glow { position: absolute; inset: -60px; border-radius: 50%; background: radial-gradient(circle, var(--trade-signature) 0%, transparent 70%); opacity: 0; pointer-events: none; }
+.tm-flash__sparks { position: absolute; inset: -18px; pointer-events: none; }
+.tm-flash__sparks > i { position: absolute; left: 50%; top: 50%; width: 4px; height: 14px; border-radius: 2px; background: var(--trade-signature); opacity: 0; transform: translate(-50%, -50%) rotate(var(--a)) translateY(var(--tm-spark-from)); }
+.tm-flash__circle { position: relative; width: 100%; height: 100%; border-radius: 50%; background: var(--trade-signature); color: var(--trade-on-signature); display: grid; place-items: center; }
+.tm-flash__mark { display: grid; place-items: center; }
+.tm-flash .tm-flash__icon { font-size: calc(var(--tm-flash-size) * .58); }   /* 64px tick in a 110px circle */
+.tm-flash .tm-flash__bolt { width: calc(var(--tm-flash-size) * .3); fill: currentColor; }
+.tm-flash.is-playing .tm-flash__glow { animation: tm-glow var(--tm-m10-total) var(--trade-ease-out) both; }
+.tm-flash.is-playing .tm-flash__sparks > i { animation: tm-spark var(--tm-m10-burst) var(--trade-ease-out) var(--tm-m10-delay); }
+.tm-flash.is-playing .tm-flash__circle { animation: tm-pop var(--tm-m10-pop) var(--tm-spring) backwards; }
+.tm-flash.is-playing .tm-flash__mark { animation: tm-pop calc(var(--tm-m10-total) - var(--tm-m10-delay) - var(--tm-m10-delay)) var(--trade-ease-out) var(--tm-m10-delay) backwards; }
+.tm-anim-pop { animation: tm-pop var(--tm-m10-pop) var(--tm-spring) backwards; }
+
+/* ---- M11 Tracker progress (600ms): the line fills down to the next step (400ms), then the new dot pops
+   (200ms) and its label fades in. Put the classes on the line, dot and label of the step that just changed. */
+@keyframes tm-fill { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+.tm-anim-fill { transform-origin: top center; animation: tm-fill var(--tm-m11-line) var(--trade-ease-out) backwards; }
+.tm-anim-step-dot { animation: tm-pop var(--trade-dur-base) var(--trade-ease-out) var(--tm-m11-line) backwards; }
+.tm-anim-step-label { animation: tm-fade-in var(--trade-dur-base) var(--trade-ease-out) var(--tm-m11-line) backwards; }
+
+/* ---- M12 Drawer: slides in from the right (320ms), scrim fades to 50%. Out: 200ms (usePresence).
+   Focus moves to the drawer title. On a native <dialog>, ::backdrop is the scrim. */
+@keyframes tm-drawer { from { transform: translateX(100%); } to { transform: none; } }
+@keyframes tm-drawer-out { from { transform: none; } to { transform: translateX(100%); } }
+.tm-anim-drawer { animation: tm-drawer var(--trade-dur-slow) var(--trade-ease-out) backwards; }
+.tm-anim-drawer-out { animation: tm-drawer-out var(--trade-dur-base) var(--trade-ease-in-out) forwards; }
+.tm-anim-drawer::backdrop { animation: tm-fade-in var(--trade-dur-slow) var(--trade-ease-out) backwards; }
+.tm-anim-drawer-out::backdrop { animation: tm-fade-out var(--trade-dur-base) var(--trade-ease-in-out) forwards; }
+.tm-anim-scrim { animation: tm-fade-in var(--trade-dur-slow) var(--trade-ease-out) backwards; }
+.tm-anim-scrim-out { animation: tm-fade-out var(--trade-dur-base) var(--trade-ease-in-out) forwards; }
+
+/* ---- M13 Dialog (200ms): fades in and scales .96 -> 1 from slightly below centre; scrim fades. Out: 150ms.
+   The kit centres dialogs with translate(-50%, -50%); a native <dialog> (centred by the browser) sets
+   --tm-dialog-at: translate(0, 0). */
+@keyframes tm-dialog { from { opacity: 0; transform: var(--tm-dialog-at, translate(-50%, -50%)) translateY(2%) scale(.96); } to { opacity: 1; transform: var(--tm-dialog-at, translate(-50%, -50%)) scale(1); } }
+@keyframes tm-dialog-out { from { opacity: 1; transform: var(--tm-dialog-at, translate(-50%, -50%)) scale(1); } to { opacity: 0; transform: var(--tm-dialog-at, translate(-50%, -50%)) translateY(2%) scale(.96); } }
+.tm-anim-dialog { animation: tm-dialog var(--trade-dur-base) var(--trade-ease-out) backwards; }
+.tm-anim-dialog-out { animation: tm-dialog-out var(--tm-m13-out) var(--trade-ease-in-out) forwards; }
+.tm-anim-dialog::backdrop { animation: tm-fade-in var(--trade-dur-base) var(--trade-ease-out) backwards; }
+.tm-anim-dialog-out::backdrop { animation: tm-fade-out var(--tm-m13-out) var(--trade-ease-in-out) forwards; }
+
+/* ---- M14 Toast: rises 12px + fades in (200ms), stays 4s while a signature hairline shrinks to show the
+   time left, then 200ms out. Pauses on hover/focus: useToastTimer() sets data-paused on the toast. */
+@keyframes tm-toast { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@keyframes tm-toast-out { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(12px); } }
+@keyframes tm-time-left { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+.tm-anim-toast { animation: tm-toast var(--trade-dur-base) var(--trade-ease-out) backwards; }
+.tm-anim-toast-out { animation: tm-toast-out var(--trade-dur-base) var(--trade-ease-in-out) forwards; }
+.tm-toast-timer { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: var(--trade-signature); transform-origin: left center; animation: tm-time-left var(--tm-m14-life) linear forwards; pointer-events: none; }
+[data-paused="true"] .tm-toast-timer { animation-play-state: paused; }
+
+/* ---- M15 Skeleton -> content: skeletons appear after 300ms and shimmer on a 1.2s loop; the real content
+   cross-fades in (150ms). The shimmer is a highlight band that slides (transform) across the grey. */
+@keyframes tm-shimmer { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+.tm-skel { position: relative; overflow: hidden; border-radius: 6px; background: var(--tm-skel-base); animation: tm-hidden 1ms var(--tm-m15-delay) backwards; }
+.tm-skel::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent 0%, var(--tm-skel-shine) 50%, transparent 100%); transform: translateX(-100%); animation: tm-shimmer var(--tm-m15-loop) linear var(--tm-m15-delay) infinite; }
+.tm-anim-swap { animation: tm-fade-in var(--tm-m15-swap) var(--trade-ease-out) backwards; }
+
+/* ---- M16 Tab underline: the active indicator slides and resizes to the new tab (200ms ease-in-out).
+   useTabIndicator() measures the active tab and sets --tm-tab-x / --tm-tab-scale; the bar is drawn full
+   width and scaled, so only transform moves. The tab list must be positioned. */
+.tm-tab-indicator { position: absolute; left: 0; bottom: 0; width: 100%; transform-origin: left center; transform: translateX(var(--tm-tab-x, 0px)) scaleX(var(--tm-tab-scale, 0)); transition: transform var(--trade-dur-base) var(--trade-ease-in-out); pointer-events: none; }
+.tm-tab-indicator:not([data-ready="true"]) { transition: none; } /* no slide in from nowhere on first paint */
+
+/* ---- M17 Number ticker: KPIs and money count up from 0 (600ms ease-out) the first time they enter view.
+   JavaScript only: <CountUp> / useCountUp() + useInViewOnce(). */
+
+/* ---- M18 Upload: the thumbnail appears (scale .9 -> 1, 200ms), the progress ring follows the real upload,
+   a tick pops when done. Failed: red ring + Retry (a state, not an animation). */
+@keyframes tm-thumb { from { opacity: 0; transform: scale(.9); } to { opacity: 1; transform: none; } }
+.tm-anim-thumb { animation: tm-thumb var(--trade-dur-base) var(--trade-ease-out) backwards; }
+.tm-anim-tick-pop { animation: tm-pop var(--trade-dur-base) var(--trade-ease-out) backwards; }
+
+/* ---- M19 Live message: a new bubble rises 8px + fades (160ms). Typing indicator: 3 dots bounce.
+   The thread auto-scrolls only if it was already at the bottom: useStickToBottom(). */
+@keyframes tm-typing { 0%, 60%, 100% { transform: none; } 30% { transform: translateY(-4px); } }
+.tm-anim-bubble { animation: tm-rise var(--tm-m19-bubble) var(--trade-ease-out) backwards; }
+.tm-typing { display: inline-flex; align-items: center; gap: 4px; }
+.tm-typing > span { width: 6px; height: 6px; border-radius: 50%; background: currentColor; animation: tm-typing var(--tm-m19-typing) var(--trade-ease-in-out) infinite; }
+.tm-typing > span:nth-child(2) { animation-delay: calc(var(--tm-m19-typing) * .16); }
+.tm-typing > span:nth-child(3) { animation-delay: calc(var(--tm-m19-typing) * .32); }
+
+/* ---- M20 Badge pop: the count badge pops 0 -> 1.15 -> 1 (240ms) when the number goes up; nothing when it
+   goes down. useBump(count, wentUp) gives the key that replays it. */
+@keyframes tm-badge { 0% { transform: scale(0); } 70% { transform: scale(1.15); } 100% { transform: scale(1); } }
+.tm-anim-badge { animation: tm-badge var(--tm-m20-badge) var(--trade-ease-out) backwards; }
+
+/* ---- M21 Map pins: drop in 12px + fade (200ms), staggered 30ms (--tm-i). Hovering a list row grows its pin
+   1.15x with a signature ring (web.css .w-pin--hot), and the reverse. Pins sit at translate(-50%, -100%). */
+@keyframes tm-drop { from { opacity: 0; transform: translate(-50%, calc(-100% - 12px)); } to { opacity: 1; transform: translate(-50%, -100%); } }
+.tm-anim-pin { animation: tm-drop var(--trade-dur-base) var(--trade-ease-out) backwards; animation-delay: calc(var(--tm-i, 0) * var(--tm-m21-step)); }
+.tm-pin { transform: translate(-50%, -100%); transition: transform var(--trade-dur-base) var(--trade-ease-out); }
+.tm-pin.is-hot { z-index: 2; transform: translate(-50%, -100%) scale(1.15); box-shadow: 0 0 0 3px var(--trade-signature), 0 6px 14px color-mix(in srgb, var(--trade-forest) 35%, transparent); }
+
+/* ---- M22 Claim lost: the card desaturates to grey (200ms) and a banner slides down. No shaking.
+   The grey is a backdrop-filter layer that fades in over the card. */
+@keyframes tm-slide-down { from { opacity: 0; transform: translateY(-100%); } to { opacity: 1; transform: none; } }
+.tm-claim-lost { position: relative; isolation: isolate; }
+.tm-claim-lost::after { content: ""; position: absolute; inset: 0; z-index: 1; border-radius: inherit; backdrop-filter: grayscale(1); -webkit-backdrop-filter: grayscale(1); opacity: 0; pointer-events: none; transition: opacity var(--trade-dur-base) var(--trade-ease-out); }
+.tm-claim-lost[data-lost="true"]::after { opacity: 1; }
+.tm-anim-slide-down { animation: tm-slide-down var(--trade-dur-base) var(--trade-ease-out) backwards; }
+
+/* ---- M23 Save: the bookmark fills and pops 1.2x once (160ms). Only when it becomes saved. */
+@keyframes tm-save { 0%, 100% { transform: none; } 50% { transform: scale(1.2); } }
+.tm-anim-save { animation: tm-save var(--tm-m23-save) var(--trade-ease-out); }
+
+/* ---- M24 Accordion: the height animates to the content (the one allowed height animation, done with grid
+   rows); the chevron rotates 180deg (200ms). Give the closed panel `inert` so it can't be tabbed into. */
+.tm-accordion { display: grid; grid-template-rows: 0fr; transition: grid-template-rows var(--trade-dur-base) var(--trade-ease-out); }
+.tm-accordion[data-open="true"] { grid-template-rows: 1fr; }
+.tm-accordion > * { min-height: 0; overflow: hidden; }
+.tm-chevron { transition: transform var(--trade-dur-base) var(--trade-ease-out); }
+[aria-expanded="true"] .tm-chevron,
+.tm-chevron[data-open="true"] { transform: rotate(180deg); }
+
+/* ---- M25 Status change: the pill's colour cross-fades and it pulses once (scale 1.05), 200ms.
+   useSwap(status, 200) keeps the old pill for the cross-fade; stack both in .tm-swap. */
+@keyframes tm-status { 0% { opacity: 0; transform: none; } 50% { transform: scale(1.05); } 100% { opacity: 1; transform: none; } }
+.tm-swap { display: inline-grid; }
+.tm-swap > * { grid-area: 1 / 1; }
+.tm-anim-status { animation: tm-status var(--trade-dur-base) var(--trade-ease-out) backwards; }
+.tm-anim-status-out { animation: tm-fade-out var(--trade-dur-base) var(--trade-ease-out) forwards; }
+
+/* ---- M26 Drop zone: while a file is dragged over, the dashed border turns solid action colour and the tint
+   fills (120ms). The solid border + tint is a layer that fades in: data-over="true" (useDropZone()). */
+.tm-dropzone { position: relative; isolation: isolate; }
+.tm-dropzone::after { content: ""; position: absolute; inset: -2px; z-index: -1; border: 2px solid var(--trade-action); border-radius: inherit; background: var(--trade-tint); opacity: 0; pointer-events: none; transition: opacity var(--trade-dur-fast) var(--trade-ease-out); }
+.tm-dropzone[data-over="true"]::after { opacity: 1; }
+
+/* ---- M27 Bounty shimmer + countdown: gold bounty pins and cards glint every 4s (brightness + soft gold glow,
+   the web.css tm-shimmer-gold curve). Countdown rings tick down (the value, no animation); under 2h the ring
+   pulses gently (.tm-ring-urgent, isUrgent()). The glint is a brightening layer whose opacity animates.
+   The element must be positioned (pins already are; give a card position: relative). */
+@keyframes tm-shimmer-gold { 0%, 80%, 100% { opacity: 0; } 88% { opacity: 1; } }
+@keyframes tm-ring-pulse { 0%, 100% { transform: none; } 50% { transform: scale(1.05); } }
+.tm-glint { isolation: isolate; }
+.tm-glint::before { content: ""; position: absolute; inset: 0; z-index: 1; border-radius: inherit; backdrop-filter: brightness(1.18); -webkit-backdrop-filter: brightness(1.18); box-shadow: var(--tm-gold-glow); opacity: 0; pointer-events: none; animation: tm-shimmer-gold var(--tm-m27-loop) ease var(--tm-glint-delay, 0s) infinite; }
+.tm-ring-urgent { animation: tm-ring-pulse var(--tm-m27-pulse) var(--trade-ease-in-out) infinite; }
+
+/* ---- prefers-reduced-motion: every change is instant. The skeleton stays: static grey, no shimmer. -------
+   tests/unit/motion-css.test.ts checks that every class above that animates or transitions is listed here. */
+@media (prefers-reduced-motion: reduce) {
+  .tm-anim-rise,
+  .tm-stagger > *,
+  .tm-anim-reveal,
+  .tm-anim-suggest,
+  .tm-anim-wipe,
+  .tm-anim-underline,
+  .tm-anim-tick,
+  .tm-flash.is-playing .tm-flash__glow,
+  .tm-flash.is-playing .tm-flash__sparks > i,
+  .tm-flash.is-playing .tm-flash__circle,
+  .tm-flash.is-playing .tm-flash__mark,
+  .tm-anim-pop,
+  .tm-anim-fill,
+  .tm-anim-step-dot,
+  .tm-anim-step-label,
+  .tm-anim-drawer,
+  .tm-anim-drawer-out,
+  .tm-anim-drawer::backdrop,
+  .tm-anim-drawer-out::backdrop,
+  .tm-anim-scrim,
+  .tm-anim-scrim-out,
+  .tm-anim-dialog,
+  .tm-anim-dialog-out,
+  .tm-anim-dialog::backdrop,
+  .tm-anim-dialog-out::backdrop,
+  .tm-anim-toast,
+  .tm-anim-toast-out,
+  .tm-toast-timer,
+  .tm-skel::after,
+  .tm-anim-swap,
+  .tm-anim-thumb,
+  .tm-anim-tick-pop,
+  .tm-anim-bubble,
+  .tm-typing > span,
+  .tm-anim-badge,
+  .tm-anim-pin,
+  .tm-anim-slide-down,
+  .tm-anim-save,
+  .tm-anim-status,
+  .tm-anim-status-out,
+  .tm-glint::before,
+  .tm-ring-urgent,
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) { animation: none !important; }
+
+  .tm-lift,
+  .tm-lift::before,
+  .tm-zoom__img,
+  .tm-press,
+  .tm-press--secondary::before,
+  .tm-press--hero::before,
+  .tm-navfill::before,
+  .tm-tab-indicator,
+  .tm-pin,
+  .tm-claim-lost::after,
+  .tm-accordion,
+  .tm-chevron,
+  .tm-dropzone::after { transition: none !important; }
+
+  /* Skeleton: static grey. The shimmer layer goes; the 300ms wait before showing stays (it isn't motion). */
+  .tm-skel::after { display: none; }
+  /* The time-left hairline can't shrink without moving, so it isn't shown. The toast still waits 4s. */
+  .tm-toast-timer { display: none; }
+}

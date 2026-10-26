@@ -1,0 +1,510 @@
+/* /dev/motion (dev only). Demo elements follow docs/design/components.css + web.css, written with tokens.
+   Tokens only: no hex values. The animations themselves come from src/styles/motion.css, never from here. */
+
+.page {
+  min-height: 100dvh;
+  background: var(--trade-surface);
+  color: var(--trade-text);
+  overflow-x: clip;
+}
+
+.wrap {
+  position: relative;
+  max-width: var(--trade-content-max);
+  margin: 0 auto;
+  padding: 0 var(--trade-inset-browse);
+}
+
+/* ---- Header band (same as /dev/tokens) ---- */
+.band {
+  position: relative;
+  overflow: hidden;
+  background: var(--trade-forest);
+  color: var(--trade-text-on-dark);
+  padding: var(--trade-space-10) 0 var(--trade-space-8);
+}
+.bandBolt {
+  position: absolute;
+  width: 520px;
+  top: -200px;
+  right: -180px;
+  fill: var(--trade-signature);
+  opacity: 0.2;
+  pointer-events: none;
+}
+.eyebrow {
+  margin: 0 0 var(--trade-space-2);
+  font-size: var(--trade-fs-caption);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 800;
+  color: var(--trade-signature);
+}
+.title {
+  margin: 0;
+  font-family: var(--trade-font-heading);
+  font-weight: 900;
+  font-variation-settings: var(--trade-display-axes);
+  font-size: var(--trade-fs-title);
+  line-height: var(--trade-lh-title);
+}
+.lede {
+  margin: var(--trade-space-3) 0 0;
+  max-width: var(--trade-read-max);
+  color: var(--trade-text-on-dark-2);
+}
+.lede code { color: var(--trade-text-on-dark); }
+.modeNav { display: flex; flex-wrap: wrap; gap: var(--trade-space-2); margin-top: var(--trade-space-6); }
+.modeLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--trade-tap);
+  padding: 0 var(--trade-space-5);
+  border-radius: var(--trade-radius-pill);
+  color: var(--trade-text-on-dark);
+  font-weight: 700;
+  font-size: var(--trade-fs-small);
+  text-decoration: none;
+  box-shadow: inset 0 0 0 2px var(--trade-text-on-dark-2);
+}
+.modeLink:hover { background: var(--trade-forest-2); }
+.modeLink[aria-current="page"] { background: var(--trade-signature); color: var(--trade-on-signature); box-shadow: none; }
+.reduced { margin: var(--trade-space-5) 0 0; font-size: var(--trade-fs-small); color: var(--trade-text-on-dark-2); }
+.reduced b { color: var(--trade-text-on-dark); }
+.reduced[data-reduced="on"] b { color: var(--trade-signature); }
+
+.toc {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--trade-space-2) var(--trade-space-4);
+  padding: var(--trade-space-6) 0;
+  border-bottom: 1px solid var(--trade-line);
+  font-size: var(--trade-fs-small);
+}
+.toc a { color: var(--trade-link); font-weight: 700; }
+
+.page code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.8125rem; }
+
+/* ---- Cards ---- */
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--trade-space-6);
+  padding: var(--trade-space-8) 0 var(--trade-space-16);
+}
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--trade-space-3);
+  min-width: 0;
+  padding: var(--trade-space-5);
+  border: 1px solid var(--trade-line);
+  border-radius: var(--trade-radius-card);
+  background: var(--trade-surface);
+  scroll-margin-top: var(--trade-space-4);
+}
+.cardHead { display: flex; align-items: center; gap: var(--trade-space-3); }
+.mid {
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: var(--trade-radius-pill);
+  background: var(--trade-forest);
+  color: var(--trade-signature);
+  font-size: var(--trade-fs-caption);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+.cardTitle {
+  margin: 0;
+  font-family: var(--trade-font-heading);
+  font-weight: 900;
+  font-variation-settings: var(--trade-display-axes);
+  font-size: var(--trade-fs-section);
+  line-height: var(--trade-lh-section);
+}
+.what { margin: 0; font-size: var(--trade-fs-small); line-height: var(--trade-lh-small); }
+.meta { margin: 0; display: grid; gap: var(--trade-space-1); font-size: var(--trade-fs-caption); line-height: var(--trade-lh-caption); color: var(--trade-text-2); }
+.meta div { display: flex; gap: var(--trade-space-2); }
+.meta dt { font-weight: 700; color: var(--trade-text); min-width: 52px; }
+.meta dd { margin: 0; }
+.uses { display: flex; flex-wrap: wrap; gap: var(--trade-space-1) var(--trade-space-2); align-items: baseline; margin: 0; font-size: var(--trade-fs-caption); color: var(--trade-text-2); }
+.uses span { font-weight: 700; color: var(--trade-text); }
+.uses code { padding: 1px 6px; border-radius: 4px; background: var(--trade-waiting-bg); color: var(--trade-text); overflow-wrap: anywhere; }
+
+.stage {
+  position: relative;
+  min-height: 210px;
+  padding: var(--trade-space-4);
+  border-radius: var(--trade-radius-card);
+  background: var(--trade-paper);
+  overflow: hidden;
+}
+.center { display: grid; place-items: center; text-align: center; }
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--trade-space-2) var(--trade-space-3); margin-top: auto; }
+.play, .extra {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--trade-tap);
+  padding: 0 var(--trade-space-4);
+  border: 0;
+  border-radius: var(--trade-radius-action);
+  font: inherit;
+  font-weight: 700;
+  font-size: var(--trade-fs-small);
+  cursor: pointer;
+}
+.play { background: var(--trade-forest); color: var(--trade-text-on-dark); }
+.play:hover { background: var(--trade-forest-2); }
+.extra { background: var(--trade-surface); color: var(--trade-text); box-shadow: inset 0 0 0 2px var(--trade-action); }
+.extra:disabled { box-shadow: inset 0 0 0 2px var(--trade-line-strong); color: var(--trade-text-3); cursor: not-allowed; }
+.note, .eventNote { margin: 0; font-size: var(--trade-fs-caption); line-height: var(--trade-lh-caption); color: var(--trade-text-2); }
+.eventNote { margin-top: var(--trade-space-2); }
+.caption { margin: 0; font-size: var(--trade-fs-caption); line-height: var(--trade-lh-caption); color: var(--trade-text-2); }
+.hiddenText {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Photo placeholder: a Forest-to-action wash instead of a stock photo */
+.photo { border-radius: var(--trade-radius-job-tile); background: linear-gradient(135deg, var(--trade-forest-2), var(--trade-action)); }
+.photoAlt { background: linear-gradient(135deg, var(--trade-forest), var(--trade-signature)); }
+.photoFill { height: 100%; background: linear-gradient(135deg, var(--trade-forest-2), var(--trade-action)); }
+.lines { display: grid; gap: var(--trade-space-2); padding: var(--trade-space-3) 0; }
+.lines span { display: block; height: 10px; border-radius: 4px; background: var(--trade-line); }
+.lines span:nth-child(2n) { width: 70%; }
+
+/* Buttons, after components.css .tm-btn */
+.btnPrimary, .btnSecondary, .btnHero {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--trade-btn-h-small);
+  padding: 0 var(--trade-space-4);
+  border: 0;
+  border-radius: var(--trade-radius-action);
+  font: inherit;
+  font-weight: 700;
+  font-size: var(--trade-fs-button);
+  cursor: pointer;
+}
+.btnPrimary { background: var(--trade-action); color: var(--trade-on-action); }
+.btnPrimary:disabled { background: var(--trade-waiting-bg); color: var(--trade-text-3); cursor: not-allowed; }
+.btnSecondary { background: var(--trade-surface); color: var(--trade-ink); box-shadow: inset 0 0 0 2px var(--trade-action); }
+.btnHero {
+  background: var(--trade-signature);
+  color: var(--trade-on-signature);
+  font-family: var(--trade-font-heading);
+  font-weight: 900;
+  font-variation-settings: var(--trade-display-axes);
+  font-size: var(--trade-fs-section);
+  box-shadow: var(--trade-shadow-action);
+}
+.btnSmall { height: 36px; }
+.buttonRow { display: flex; flex-wrap: wrap; gap: var(--trade-space-3); justify-content: center; }
+.forcedFocus { outline: 2px solid var(--trade-focus); outline-offset: 2px; }
+.iconBtn {
+  display: inline-grid;
+  place-items: center;
+  width: var(--trade-tap);
+  height: var(--trade-tap);
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--trade-text);
+  cursor: pointer;
+}
+.iconBtn:hover { background: var(--trade-waiting-bg); }
+
+/* ---- M01 ---- */
+.miniPage { display: grid; gap: var(--trade-space-3); }
+.miniHead { height: 26px; width: 55%; border-radius: 6px; background: var(--trade-forest); }
+.miniGrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--trade-space-2); }
+.miniCard { height: 64px; border-radius: var(--trade-radius-card); background: var(--trade-surface); box-shadow: var(--trade-shadow-category); }
+
+/* ---- M02 ---- */
+.tileRow { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--trade-gap-photo); }
+.tileRow .photo { aspect-ratio: 1; }
+.jobPage { display: grid; gap: var(--trade-space-2); }
+.jobHeader {
+  display: flex;
+  align-items: flex-end;
+  height: 120px;
+  padding: var(--trade-space-3);
+  color: var(--trade-text-on-dark);
+  font-family: var(--trade-font-heading);
+  font-weight: 900;
+  font-variation-settings: var(--trade-display-axes);
+  font-size: var(--trade-fs-section);
+}
+
+/* ---- M03 ---- */
+.liftCard { width: min(100%, 240px); border-radius: var(--trade-radius-card); background: var(--trade-surface); box-shadow: var(--trade-shadow-category); cursor: pointer; text-align: left; }
+.liftPhoto { height: 96px; border-radius: var(--trade-radius-card) var(--trade-radius-card) 0 0; }
+.liftBody { display: grid; gap: 2px; padding: var(--trade-space-3); font-size: var(--trade-fs-small); }
+.liftBody span { color: var(--trade-text-2); font-size: var(--trade-fs-caption); }
+
+/* ---- M06 ---- */
+.scroller { height: 178px; overflow-y: auto; border-radius: var(--trade-radius-job-tile); background: var(--trade-surface); }
+.demoNav {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  height: 40px;
+  margin-bottom: -40px;
+  display: flex;
+  align-items: center;
+  gap: var(--trade-space-4);
+  padding: 0 var(--trade-space-3);
+  color: var(--trade-text-on-dark);
+  font-size: var(--trade-fs-caption);
+}
+.navTradies { color: var(--trade-amber); font-weight: 700; }
+.hero { position: relative; height: 150px; overflow: hidden; background: var(--trade-forest); display: flex; align-items: flex-end; padding: var(--trade-space-3); }
+.heroBoltWrap { position: absolute; right: -30px; top: -70px; display: block; }
+.heroBolt { width: 180px; fill: var(--trade-signature); opacity: 0.2; display: block; }
+.heroText { position: relative; margin: 0; color: var(--trade-text-on-dark); font-family: var(--trade-font-heading); font-weight: 900; font-variation-settings: var(--trade-display-axes); font-size: var(--trade-fs-subheading); }
+.scroller .lines { padding: var(--trade-space-4) var(--trade-space-3) var(--trade-space-16); }
+
+/* ---- M07 ---- */
+.revealBand { min-height: 178px; padding: var(--trade-space-4); border-radius: var(--trade-radius-job-tile); background: var(--trade-forest); color: var(--trade-text-on-dark); display: grid; gap: var(--trade-space-2); align-content: center; }
+.revealHead { margin: 0; font-family: var(--trade-font-heading); font-weight: 900; font-variation-settings: var(--trade-display-axes); font-size: var(--trade-fs-heading); line-height: var(--trade-lh-heading); }
+.revealHead span { display: block; }
+.revealSub { margin: 0; color: var(--trade-text-on-dark-2); font-size: var(--trade-fs-small); }
+.revealSearch { display: flex; align-items: center; gap: var(--trade-space-2); height: 40px; padding: 0 var(--trade-space-3); border-radius: var(--trade-radius-action); background: var(--trade-surface); color: var(--trade-text-2); font-size: var(--trade-fs-small); }
+
+/* ---- M08 ---- */
+.searchWrap { position: relative; display: grid; gap: 6px; }
+.label { font-size: var(--trade-fs-small); font-weight: 700; }
+.input {
+  height: var(--trade-field-h);
+  padding: 0 14px;
+  border: 1px solid var(--trade-field-border);
+  border-radius: var(--trade-radius-field);
+  background: var(--trade-surface);
+  font: inherit;
+  font-size: var(--trade-fs-body);
+  color: var(--trade-text);
+  min-width: 0;
+}
+.suggest {
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+  border-radius: 12px;
+  background: var(--trade-surface);
+  box-shadow: var(--trade-shadow-pop);
+  font-size: var(--trade-fs-small);
+}
+.suggest li { display: flex; align-items: center; gap: var(--trade-space-2); min-height: 36px; padding: 0 var(--trade-space-2); border-radius: 8px; color: var(--trade-text); }
+.suggest li:first-child { background: var(--trade-tint); }
+
+/* ---- M09 ---- */
+.priceWrap { display: grid; gap: var(--trade-space-3); }
+.pricebox { position: relative; overflow: hidden; display: grid; gap: 2px; padding: var(--trade-space-5); border-radius: var(--trade-radius-card); background: var(--trade-forest); color: var(--trade-text-on-dark); }
+.priceBolt { position: absolute; width: 160px; right: -40px; top: -50px; fill: var(--trade-signature); opacity: 0.2; pointer-events: none; }
+.priceCap { position: relative; font-size: var(--trade-fs-caption); color: var(--trade-text-on-dark-2); }
+.price { position: relative; font-family: var(--trade-font-heading); font-weight: 900; font-variation-settings: var(--trade-display-axes); font-size: 2.5rem; line-height: 1.1; }
+.underline { position: relative; display: block; width: 120px; height: 3px; margin-top: var(--trade-space-2); border-radius: 2px; background: var(--trade-signature); }
+.ticks { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: var(--trade-fs-small); }
+.ticks li { display: flex; align-items: center; gap: var(--trade-space-2); }
+.tickIcon { color: var(--trade-success); }
+
+/* ---- M10 ---- */
+.flashWrap { display: grid; justify-items: center; gap: var(--trade-space-5); padding: var(--trade-space-6) 0; }
+.flashTitle { margin: 0; font-family: var(--trade-font-heading); font-weight: 900; font-variation-settings: var(--trade-display-axes); font-size: var(--trade-fs-title); line-height: var(--trade-lh-title); }
+
+/* ---- M11 (tracker, after components.css .tm-track) ---- */
+.track { list-style: none; margin: 0; padding: var(--trade-space-4); display: grid; border-radius: var(--trade-radius-card); background: var(--trade-surface); }
+.step { position: relative; display: grid; grid-template-columns: 28px 1fr; gap: var(--trade-space-3); align-items: center; padding-bottom: 10px; }
+.line { position: absolute; left: 13px; top: 26px; bottom: -2px; width: 2px; background: var(--trade-line-strong); }
+.lineFill { position: absolute; inset: 0; background: var(--trade-action); }
+.dot { position: relative; z-index: 1; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--trade-line-strong); background: var(--trade-surface); }
+.step[data-state="done"] .dot { background: var(--trade-action); border-color: var(--trade-action); color: var(--trade-on-action); }
+.step[data-state="now"] .dot { border: 8px solid var(--trade-signature); }
+.step .dotIcon { font-size: 16px; }
+.stepLabel { font-weight: 700; font-size: var(--trade-fs-small); }
+.step[data-state="todo"] .stepLabel { color: var(--trade-text-3); font-weight: 600; }
+
+/* ---- M12 drawer / M13 dialog (native <dialog>, after web.css .w-drawer / .w-dialog) ---- */
+.drawer, .dialog { border: 0; padding: 0; color: var(--trade-text); background: var(--trade-surface); }
+.drawer::backdrop, .dialog::backdrop { background: color-mix(in srgb, var(--trade-forest) 50%, transparent); }
+.drawer {
+  margin: 0 0 0 auto;
+  width: min(480px, 100vw);
+  max-width: 100vw;
+  height: 100dvh;
+  max-height: 100dvh;
+  box-shadow: -16px 0 40px color-mix(in srgb, var(--trade-forest) 18%, transparent);
+}
+.drawer[open] { display: flex; flex-direction: column; }
+.drawerHead { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--trade-space-3); padding: 22px var(--trade-space-6) var(--trade-space-4); border-bottom: 1px solid var(--trade-line); }
+.drawerBody { flex: 1; display: grid; align-content: start; gap: var(--trade-space-4); padding: var(--trade-space-5) var(--trade-space-6); }
+.drawerBody p { margin: 0; }
+.drawerFoot { display: flex; padding: var(--trade-space-4) var(--trade-space-6); border-top: 1px solid var(--trade-line); }
+.drawerFoot .btnPrimary { flex: 1; height: var(--trade-btn-h); }
+.overlayTitle { margin: 0; font-family: var(--trade-font-heading); font-weight: 900; font-variation-settings: var(--trade-display-axes); font-size: var(--trade-fs-heading); line-height: var(--trade-lh-heading); }
+.overlayTitle:focus { outline: none; }
+.dialog {
+  --tm-dialog-at: translate(0, 0);
+  width: min(520px, calc(100vw - 32px));
+  padding: 28px;
+  border-radius: 16px;
+  box-shadow: 0 24px 64px color-mix(in srgb, var(--trade-forest) 30%, transparent);
+}
+.dialogText { margin: 6px 0 0; color: var(--trade-text-2); }
+.dialogActions { display: flex; flex-wrap: wrap; gap: var(--trade-space-3); justify-content: flex-end; margin-top: var(--trade-space-6); }
+.dialogActions + .caption { text-align: right; margin-top: var(--trade-space-2); }
+
+/* ---- M14 toast (after web.css .w-toast) ---- */
+.toastRegion { position: fixed; right: var(--trade-space-6); bottom: var(--trade-space-6); left: var(--trade-space-6); z-index: var(--trade-z-toast); display: flex; justify-content: flex-end; pointer-events: none; }
+.toast {
+  position: relative;
+  pointer-events: auto;
+  width: min(360px, 100%);
+  display: flex;
+  align-items: center;
+  gap: var(--trade-space-3);
+  padding: 14px var(--trade-space-4);
+  overflow: hidden;
+  border-radius: 12px;
+  background: var(--trade-forest);
+  color: var(--trade-text-on-dark);
+  box-shadow: var(--trade-shadow-pop);
+  font-size: var(--trade-fs-small);
+}
+.toastIcon { color: var(--trade-signature); }
+.toastText { flex: 1; }
+.toastUndo { min-height: var(--trade-tap); padding: 0 var(--trade-space-2); border: 0; background: transparent; color: var(--trade-signature); font: inherit; font-weight: 700; cursor: pointer; }
+
+/* ---- M15 rows + skeleton ---- */
+.rows { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--trade-space-3); }
+.jobRow { display: flex; align-items: center; gap: var(--trade-space-3); padding: var(--trade-space-3); border-radius: var(--trade-radius-card); background: var(--trade-surface); box-shadow: var(--trade-shadow-category); min-height: 88px; }
+.rowImg { width: 64px; height: 64px; flex: none; }
+.rowText { display: grid; gap: 2px; min-width: 0; flex: 1; font-size: var(--trade-fs-small); }
+.skelImg { display: block; width: 64px; height: 64px; flex: none; }
+.skelLines { flex: 1; display: grid; gap: var(--trade-space-2); }
+.skelShort { display: block; width: 40%; height: 10px; }
+.skelLong { display: block; width: 70%; height: 14px; }
+
+/* ---- M16 tabs (after components.css .tm-tabs) ---- */
+.tabsDemo { display: grid; gap: var(--trade-space-4); }
+.tabsWrap { position: relative; border-bottom: 1px solid var(--trade-line); }
+.tabs { display: flex; gap: var(--trade-space-6); }
+.tab { height: var(--trade-tap); padding: 0; border: 0; background: transparent; font: inherit; font-weight: 700; font-size: var(--trade-fs-small); color: var(--trade-text-2); cursor: pointer; }
+.tab[aria-selected="true"] { color: var(--trade-text); }
+.tabBar { height: 3px; border-radius: 3px 3px 0 0; background: var(--trade-action); }
+.tabPanel { padding: var(--trade-space-4); border-radius: var(--trade-radius-card); background: var(--trade-surface); font-weight: 700; }
+
+/* ---- M17 KPIs (after web.css .w-kpi) ---- */
+.kpis { margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr)); gap: var(--trade-space-3); }
+.kpi { padding: var(--trade-space-4); border: 1px solid var(--trade-line); border-radius: 12px; background: var(--trade-surface); }
+.kpi dt { font-size: var(--trade-fs-caption); color: var(--trade-text-2); }
+.kpi dd { margin: 6px 0 0; }
+.kpiN { font-family: var(--trade-font-heading); font-weight: 900; font-variation-settings: var(--trade-display-axes); font-size: var(--trade-fs-price); line-height: var(--trade-lh-price); }
+
+/* ---- M18 upload ---- */
+.upload { display: grid; grid-template-columns: repeat(3, minmax(0, 96px)); gap: var(--trade-gap-photo); }
+.thumb { position: relative; aspect-ratio: 1; display: grid; place-items: center; }
+.ring { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: conic-gradient(var(--trade-action) var(--p, 0%), var(--trade-waiting-bg) 0); }
+.ring[data-status="failed"] { background: conic-gradient(var(--trade-danger) 100%, var(--trade-danger) 0); }
+.ringInner { width: 34px; height: 34px; border-radius: 50%; background: var(--trade-surface); display: grid; place-items: center; color: var(--trade-text); }
+.ring[data-status="failed"] .ringInner { color: var(--trade-danger); }
+.ringInner .ringIcon { font-size: 20px; }
+.retry { position: absolute; bottom: 4px; min-height: 28px; padding: 0 var(--trade-space-2); border: 0; border-radius: 6px; background: var(--trade-surface); color: var(--trade-danger); font: inherit; font-weight: 700; font-size: var(--trade-fs-caption); cursor: pointer; }
+
+/* ---- M19 messages (after components.css .tm-bubble) ---- */
+.thread { height: 178px; overflow-y: auto; display: flex; flex-direction: column; gap: var(--trade-space-2); padding: var(--trade-space-2); border-radius: var(--trade-radius-job-tile); background: var(--trade-surface); }
+.bubble { margin: 0; max-width: 78%; padding: 10px 14px; border-radius: 18px; font-size: var(--trade-fs-small); line-height: 1.4; }
+.bubbleThem { background: var(--trade-waiting-bg); color: var(--trade-text); border-bottom-left-radius: 4px; }
+.bubbleMe { margin-left: auto; background: var(--trade-forest); color: var(--trade-text-on-dark); border-bottom-right-radius: 4px; }
+.thread > :first-child { margin-top: auto; }
+
+/* ---- M20 badge (after components.css .tm-count) ---- */
+.bell { position: relative; display: inline-grid; place-items: center; width: 56px; height: 56px; border-radius: 12px; background: var(--trade-forest); color: var(--trade-text-on-dark); }
+.count { position: absolute; top: 6px; right: 4px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--trade-danger); color: var(--trade-text-on-dark); font-size: 11px; font-weight: 800; display: inline-grid; place-items: center; }
+
+/* ---- M21 map (after web.css .w-map / .w-pin) ---- */
+.mapDemo { display: grid; gap: var(--trade-space-3); }
+.map { position: relative; height: 150px; border-radius: var(--trade-radius-job-tile); background: var(--trade-tint-strong); }
+.pin {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 9px;
+  border-radius: var(--trade-radius-pill);
+  background: var(--trade-forest);
+  color: var(--trade-text-on-dark);
+  font-weight: 800;
+  font-size: var(--trade-fs-caption);
+  white-space: nowrap;
+  box-shadow: 0 4px 10px color-mix(in srgb, var(--trade-forest) 30%, transparent);
+}
+.pin::after { content: ""; position: absolute; left: 50%; bottom: -5px; width: 10px; height: 10px; background: inherit; transform: translateX(-50%) rotate(45deg); z-index: -1; }
+.pinEst { background: var(--trade-surface); color: var(--trade-text); }
+.pinBounty { background: var(--trade-gold); color: var(--trade-on-gold); }
+.mapRows { display: flex; flex-wrap: wrap; gap: var(--trade-space-2); }
+.mapRow { display: inline-flex; gap: var(--trade-space-2); align-items: center; min-height: var(--trade-tap); padding: 0 var(--trade-space-3); border: 0; border-radius: 10px; background: var(--trade-surface); font: inherit; font-size: var(--trade-fs-small); color: var(--trade-text); cursor: pointer; }
+.mapRowHot { background: var(--trade-tint); }
+
+/* ---- M22 claim lost ---- */
+.claimWrap { display: grid; gap: var(--trade-space-2); }
+.banner { margin: 0; padding: 12px 14px; border-radius: var(--trade-radius-card); background: var(--trade-waiting-bg); color: var(--trade-text); font-size: var(--trade-fs-small); font-weight: 700; }
+.claimCard { display: flex; align-items: center; gap: var(--trade-space-3); padding: var(--trade-space-3); border-radius: var(--trade-radius-card); background: var(--trade-surface); box-shadow: var(--trade-shadow-category); }
+
+/* ---- M23 save (after components.css .tm-save) ---- */
+.save { width: 50px; height: 50px; border: 0; border-radius: var(--trade-radius-action); background: var(--trade-signature); color: var(--trade-on-signature); display: inline-grid; place-items: center; box-shadow: var(--trade-shadow-action); cursor: pointer; }
+.saveIcon { display: inline-grid; place-items: center; }
+
+/* ---- M24 FAQ ---- */
+.faq { display: grid; gap: var(--trade-space-2); }
+.faqItem { border-radius: var(--trade-radius-card); background: var(--trade-surface); }
+.faqQ { margin: 0; font-size: var(--trade-fs-body); }
+.faqBtn { width: 100%; min-height: 52px; display: flex; align-items: center; justify-content: space-between; gap: var(--trade-space-3); padding: 0 var(--trade-space-4); border: 0; background: transparent; font: inherit; font-weight: 700; color: var(--trade-text); text-align: left; cursor: pointer; }
+.faqA { margin: 0; padding: 0 var(--trade-space-4) var(--trade-space-4); color: var(--trade-text-2); font-size: var(--trade-fs-small); }
+
+/* ---- M25 status pills (after components.css .tm-status) ---- */
+.pill { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: var(--trade-radius-pill); font-size: var(--trade-fs-caption); font-weight: 700; white-space: nowrap; }
+.pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.pill_waiting { background: var(--trade-waiting-bg); color: var(--trade-waiting); }
+.pill_action { background: var(--trade-signature); color: var(--trade-on-signature); }
+.pill_good { background: var(--trade-success-bg); color: var(--trade-success); }
+.pill_done { background: var(--trade-forest); color: var(--trade-text-on-dark); }
+
+/* ---- M26 drop zone (after web.css .w-drop) ---- */
+.drop { min-height: 178px; display: grid; place-items: center; align-content: center; gap: var(--trade-space-1); padding: var(--trade-space-6); border: 2px dashed var(--trade-field-border); border-radius: 14px; background: var(--trade-surface); color: var(--trade-text-2); text-align: center; }
+.drop b { color: var(--trade-text); }
+.dropIcon { color: var(--trade-link); }
+
+/* ---- M27 bounty (after web.css .w-ring / .tm-status--bounty) ---- */
+.bounties { display: grid; gap: var(--trade-space-3); }
+.bountyCard { position: relative; display: flex; align-items: center; gap: var(--trade-space-3); padding: var(--trade-space-3); border-radius: var(--trade-radius-card); background: var(--trade-surface); box-shadow: var(--trade-shadow-category); }
+.bountyPill { display: inline-flex; align-items: center; gap: 4px; width: fit-content; height: 24px; padding: 0 8px; border-radius: var(--trade-radius-pill); background: var(--trade-gold); color: var(--trade-on-gold); font-size: var(--trade-fs-caption); font-weight: 700; }
+.goldRing { flex: none; width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; background: conic-gradient(var(--trade-gold) var(--p, 74%), var(--trade-waiting-bg) 0); }
+.goldRing > span { width: 42px; height: 42px; border-radius: 50%; background: var(--trade-surface); display: grid; place-items: center; text-align: center; font-size: 11px; line-height: 1.1; font-weight: 800; font-variant-numeric: tabular-nums; }
+
+@media (min-width: 600px) {
+  .wrap { padding: 0 var(--trade-space-6); }
+  .bandBolt { width: 760px; top: -330px; right: -200px; }
+}
+
+@media (min-width: 768px) {
+  .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (min-width: 1024px) {
+  .band { padding: var(--trade-space-16) 0 var(--trade-space-10); }
+  .title { font-size: var(--trade-fs-display); line-height: var(--trade-lh-display); }
+}
+
+@media (min-width: 1200px) {
+  .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
