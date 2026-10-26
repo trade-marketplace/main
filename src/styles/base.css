@@ -1,0 +1,14 @@
+/* App-wide basics on top of tokens.css. Tokens only: never a hex value here. */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  background: var(--trade-surface);
+  font-size: var(--trade-fs-body);
+  line-height: var(--trade-lh-body);
+  -webkit-font-smoothing: antialiased;
+}

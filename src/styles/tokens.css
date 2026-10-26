@@ -1,0 +1,164 @@
+/* ==========================================================================
+   Trade Marketplace — web design tokens v1.0 (October 2026)
+   Source of truth: Trade Marketplace Brand Guidelines + Front-End Build Guide.
+   Drop-in replacement for src/styles/brand.css. Existing --trade-* names are
+   kept so nothing breaks; new tokens are added beside them.
+   RULE: components use these variables. Never hard-code a hex value.
+   ========================================================================== */
+
+/* Fonts: self-hosted Roboto Flex (SIL OFL 1.1). One variable file, two names. */
+@font-face { font-family: 'Trade Display'; src: url('/fonts/roboto-flex/RobotoFlex.woff2') format('woff2'), url('/fonts/roboto-flex/RobotoFlex.ttf') format('truetype'); font-weight: 100 1000; font-stretch: 25% 151%; font-display: swap; }
+@font-face { font-family: 'Trade UI';      src: url('/fonts/roboto-flex/RobotoFlex.woff2') format('woff2'), url('/fonts/roboto-flex/RobotoFlex.ttf') format('truetype'); font-weight: 100 1000; font-stretch: 25% 151%; font-display: swap; }
+/* Icons: Material Symbols Rounded (Apache 2.0), self-hosted. Replaces SF Symbols on the web. */
+@font-face { font-family: 'Material Symbols Rounded'; src: url('/fonts/material-symbols/MaterialSymbolsRounded.woff2') format('woff2'); font-weight: 100 700; font-display: block; }
+
+:root {
+  /* ---- 1. Brand palette (raw) ------------------------------------------ */
+  --trade-forest: #0c251d;   /* core: headers, text, dark surfaces          */
+  --trade-forest-2: #143a2d; /* core: raised surface on Forest              */
+  --trade-paper: #f1ece5;    /* core: Cream, warm page background           */
+  --trade-mint: #b7f0e4;     /* core: highlights, office mode               */
+  --trade-surface: #ffffff;
+  --trade-ink: #171717;
+  --trade-leaf: #6cbd45;     /* customer action                             */
+  --trade-lime: #a6d754;     /* customer signature                          */
+  --trade-hivis: #ff8200;    /* trade action   (PMS 151 C)                  */
+  --trade-amber: #eca154;    /* trade signature (PMS 157 C)                 */
+  --trade-gold: #f5c030;     /* quote bounties only: “easy money” pins. Forest text 9.6:1 */
+  --trade-on-gold: var(--trade-forest);
+
+  /* ---- 2. Text ---------------------------------------------------------- */
+  --trade-text: var(--trade-forest);          /* 16.2:1 on white            */
+  --trade-text-2: #52645b;                    /* secondary, 6.3:1 on white  */
+  --trade-text-3: #6b7a72;                    /* hints/placeholders 4.5:1   */
+  --trade-text-on-dark: #ffffff;              /* on Forest 16.2:1           */
+  --trade-text-on-dark-2: rgb(255 255 255 / 72%);
+  --trade-source-muted: #898989;              /* decorative only, 3.5:1 — never for body text */
+
+  /* ---- 3. Lines & fields ------------------------------------------------ */
+  --trade-line: #e3e6e4;          /* dividers, card outlines (decorative)   */
+  --trade-line-strong: #cbd5ce;
+  --trade-field-border: #52645b;  /* required: 3:1+ against white           */
+  --trade-chip-bg: rgb(175 172 172 / 20%);
+  --trade-chip-line: rgb(137 137 137 / 19%);
+
+  /* ---- 4. Feedback ------------------------------------------------------ */
+  --trade-focus: #2163c6;          /* focus ring, always 2px + 2px offset    */
+  --trade-danger: #a12424;         /* errors, destructive (7.5:1 on white)   */
+  --trade-danger-bg: #fbeaea;
+  --trade-success: #326c20;        /* verified, paid (6.4:1 on white)        */
+  --trade-success-bg: #e8f4e3;
+  --trade-waiting: #52645b;        /* "we're on it" states                   */
+  --trade-waiting-bg: #eef0ef;
+  --trade-info: #1d4f91;
+  --trade-info-bg: #e6eef9;
+
+  /* ---- 5. Mode tokens (default = customer). Components use ONLY these. --- */
+  --trade-action: var(--trade-leaf);        /* primary buttons, valid ticks  */
+  --trade-on-action: var(--trade-forest);   /* label on action fill 6.9:1    */
+  --trade-signature: var(--trade-lime);     /* hero CTA, save, bolt, stars   */
+  --trade-on-signature: var(--trade-forest);/* 9.6:1                          */
+  --trade-link: #326c20;                    /* 6.4:1 on white                 */
+  --trade-tint: rgb(108 189 69 / 12%);      /* selected chip / row            */
+  --trade-tint-strong: rgb(166 215 84 / 30%);
+
+  /* ---- 6. Type (Roboto Flex). Display = wght 900, wdth 151, opsz 28 ---- */
+  --trade-font-heading: 'Trade Display', system-ui, sans-serif;
+  --trade-font-body: 'Trade UI', system-ui, sans-serif;
+  --trade-display-axes: 'wdth' 151, 'opsz' 28;
+  --trade-ui-axes: 'wdth' 100, 'opsz' 14;
+  /* size / line-height pairs (source: original app at 390px) */
+  --trade-fs-display: 4rem;     --trade-lh-display: 1.05;  /* 64 splash/landing hero */
+  --trade-fs-title: 2.25rem;    --trade-lh-title: 1.1;     /* 36 screen titles        */
+  --trade-fs-price: 1.75rem;    --trade-lh-price: 1.1;     /* 28 prices, earnings      */
+  --trade-fs-heading: 1.5rem;   --trade-lh-heading: 1.15;  /* 24 section headings      */
+  --trade-fs-subheading: 1.25rem; --trade-lh-subheading: 1.2; /* 20 names, subsections */
+  --trade-fs-section: 1.125rem; --trade-lh-section: 1.2;   /* 18 section labels        */
+  --trade-fs-label: 0.9375rem;  --trade-lh-label: 1.2;     /* 15 tile overlays, status */
+  --trade-fs-body: 1rem;        --trade-lh-body: 1.45;     /* 16 body, inputs (never smaller on inputs: stops iOS zoom) */
+  --trade-fs-small: 0.875rem;   --trade-lh-small: 1.4;     /* 14 meta, links           */
+  --trade-fs-button: 0.875rem;  --trade-lh-button: 1;      /* 14 bold buttons          */
+  --trade-fs-caption: 0.75rem;  --trade-lh-caption: 1.35;  /* 12 web minimum (iOS source 11) */
+
+  /* ---- 7. Space (4px base) — source insets kept as named tokens -------- */
+  --trade-space-1: 4px;  --trade-space-2: 8px;  --trade-space-3: 12px; --trade-space-4: 16px;
+  --trade-space-5: 20px; --trade-space-6: 24px; --trade-space-8: 32px; --trade-space-9: 36px;
+  --trade-space-10: 40px; --trade-space-12: 48px; --trade-space-16: 64px; --trade-space-20: 80px;
+  --trade-inset-browse: 16px;  /* browse / lists screen edge   */
+  --trade-inset-form: 36px;    /* auth & form screen edge      */
+  --trade-gap-tile: 12px;      /* category tiles                */
+  --trade-gap-photo: 6px;      /* photo job grid                */
+
+  /* ---- 8. Shape ---------------------------------------------------------- */
+  --trade-radius-job-tile: 5px;   /* photo tiles, thumbnails     */
+  --trade-radius-action: 11px;    /* buttons                     */
+  --trade-radius-category: 11px;  /* cards, category tiles       */
+  --trade-radius-card: 11px;
+  --trade-radius-sheet: 22px;     /* bottom sheets, detail sheet */
+  --trade-radius-field: 0px;      /* fields are underlines/boxes with square corners */
+  --trade-radius-pill: 999px;     /* chips, status pills, filter pill */
+
+  /* ---- 9. Elevation ------------------------------------------------------ */
+  --trade-shadow-category: 0 4px 4px rgb(0 0 0 / 25%);  /* cards, tiles      */
+  --trade-shadow-action: 0 4px 4px rgb(0 0 0 / 10%);    /* hero CTA          */
+  --trade-shadow-header: 0 4px 4px rgb(0 0 0 / 5%);     /* sticky bars       */
+  --trade-shadow-sheet: 0 -8px 24px rgb(12 37 29 / 12%);
+  --trade-shadow-pop: 0 12px 32px rgb(12 37 29 / 18%);  /* menus, toasts     */
+
+  /* ---- 10. Sizing -------------------------------------------------------- */
+  --trade-tap: 44px;              /* minimum hit area, everything tappable */
+  --trade-btn-h: 55px;            /* primary/secondary buttons (source)     */
+  --trade-btn-h-hero: 61px;       /* hero CTA (source)                      */
+  --trade-btn-h-small: 40px;
+  --trade-field-h: 48px;
+  --trade-nav-height: 64px;       /* + env(safe-area-inset-bottom)          */
+  --trade-header-h: 56px;
+  --trade-content-width: 390px;   /* mobile source frame                    */
+  --trade-content-max: 1200px;    /* desktop container                      */
+  --trade-read-max: 680px;        /* long text / forms on desktop           */
+
+  /* ---- 11. Layers -------------------------------------------------------- */
+  --trade-z-sticky: 100; --trade-z-nav: 200; --trade-z-sheet: 300; --trade-z-modal: 400; --trade-z-toast: 500;
+
+  /* ---- 12. Motion -------------------------------------------------------- */
+  --trade-dur-fast: 120ms;   /* press, hover                 */
+  --trade-dur-base: 200ms;   /* state changes, chips         */
+  --trade-dur-slow: 320ms;   /* sheets, page content         */
+  --trade-ease-out: cubic-bezier(.2, .8, .2, 1);
+  --trade-ease-in-out: cubic-bezier(.65, 0, .35, 1);
+}
+
+/* ---- Modes: set ONE attribute on <html>. Nothing else changes. ---------- */
+[data-mode="trade"] {
+  --trade-action: var(--trade-hivis);        /* Forest label 6.5:1 */
+  --trade-on-action: var(--trade-forest);
+  --trade-signature: var(--trade-amber);     /* Forest label 7.5:1 */
+  --trade-on-signature: var(--trade-forest);
+  --trade-link: #9e4a00;                     /* 6.1:1 on white     */
+  --trade-tint: rgb(255 130 0 / 12%);
+  --trade-tint-strong: rgb(236 161 84 / 30%);
+}
+[data-mode="office"] {
+  --trade-action: var(--trade-forest);       /* white label 16.2:1 */
+  --trade-on-action: #ffffff;
+  --trade-signature: var(--trade-mint);      /* Forest label 12.8:1 */
+  --trade-on-signature: var(--trade-forest);
+  --trade-link: var(--trade-forest);
+  --trade-tint: rgb(183 240 228 / 40%);
+  --trade-tint-strong: rgb(183 240 228 / 70%);
+}
+
+/* ---- Breakpoints (CSS can't use vars in media queries — use these numbers)
+   sm  < 600px    phone: single column, bottom nav, 390 source geometry
+   md  600–1023   tablet: 2-column grids, bottom nav, content max 720
+   lg  ≥ 1024     desktop: top nav, 12-col grid, content max 1200
+   xl  ≥ 1440     wide: same as lg, more whitespace (never stretch past 1200)
+   -------------------------------------------------------------------------- */
+
+html { scroll-padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
+body { font-family: var(--trade-font-body); font-variation-settings: var(--trade-ui-axes); color: var(--trade-text); }
+:focus-visible { outline: 2px solid var(--trade-focus); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}

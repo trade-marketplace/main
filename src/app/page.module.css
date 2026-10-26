@@ -1,0 +1,70 @@
+/* Placeholder home: one Forest band with the bolt brand device (web rule 9). Tokens only. */
+
+.band {
+  position: relative;
+  overflow: hidden;
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  background: var(--trade-forest);
+  color: var(--trade-text-on-dark);
+}
+
+/* Big bolt behind the content at 20%, as on the landing hero (docs/design/pages.html, .tm-bolt). */
+.bolt {
+  position: absolute;
+  width: 600px;
+  top: -120px;
+  right: -300px;
+  fill: var(--trade-signature);
+  opacity: 0.2;
+  pointer-events: none;
+}
+
+.wrap {
+  position: relative;
+  width: 100%;
+  max-width: var(--trade-content-max);
+  margin: 0 auto;
+  padding: var(--trade-space-16) var(--trade-inset-browse);
+}
+
+.mark {
+  display: block;
+  width: 32px;
+  height: auto;
+  margin-bottom: var(--trade-space-6);
+  fill: var(--trade-signature);
+}
+
+.wordmark {
+  margin: 0;
+  max-width: 12ch;
+  font-family: var(--trade-font-heading);
+  font-weight: 900;
+  font-variation-settings: var(--trade-display-axes);
+  font-size: var(--trade-fs-title);
+  line-height: var(--trade-lh-title);
+  color: var(--trade-paper);
+  overflow-wrap: break-word;
+}
+
+.line {
+  margin: var(--trade-space-5) 0 0;
+  max-width: 34ch;
+  font-size: var(--trade-fs-body);
+  line-height: var(--trade-lh-body);
+  color: var(--trade-text-on-dark-2);
+}
+
+@media (min-width: 600px) {
+  .wrap { padding: var(--trade-space-20) var(--trade-space-6); }
+  .wordmark { max-width: none; font-size: var(--trade-fs-display); line-height: var(--trade-lh-display); }
+  .line { font-size: var(--trade-fs-subheading); }
+  .bolt { width: 900px; top: -280px; right: -380px; }
+}
+
+@media (min-width: 1024px) {
+  .mark { width: 40px; margin-bottom: var(--trade-space-8); }
+  .bolt { width: 1000px; top: -330px; right: -320px; }
+}
