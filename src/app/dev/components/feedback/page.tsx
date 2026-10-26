@@ -1,11 +1,10 @@
 // /dev/components/feedback: every loading, empty, error and offline state, for checking against
 // docs/design/components.css, the "404 · 500 · maintenance · offline" page in pages.html and the phone system-state
 // screens in screens.html. `?mode=trade` / `?mode=office` shows them in the other palettes; `?state=` picks the
-// usage example's state (loading, empty, error, jobs). Development only: in a production build this page is a
-// 404. All copy is from the spec; jobs and references are examples.
+// usage example's state (loading, empty, error, jobs). Dev only: the shared guard makes it a 404 in production
+// (and on every Vercel deployment). All copy is from the spec; jobs and references are examples.
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { BoltMark } from "@/components/BoltMark";
@@ -23,6 +22,7 @@ import {
 } from "@/components/feedback";
 import { TextLink } from "@/components/TextLink";
 import { DEFAULT_MODE, isMode, MODES, type Mode } from "@/lib/mode";
+import { guardDevPage } from "@/server/dev-pages";
 
 import {
   ErrorPreview,
@@ -88,7 +88,7 @@ function Row({ name, note, block, children }: { name: string; note?: ReactNode; 
 }
 
 export default async function FeedbackPage({ searchParams }: { searchParams: SearchParams }) {
-  if (process.env.NODE_ENV === "production") notFound();
+  guardDevPage();
 
   const params = await searchParams;
   const mode: Mode = isMode(params.mode) ? params.mode : DEFAULT_MODE;
