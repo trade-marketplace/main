@@ -27,7 +27,7 @@ uploads/
 coverage/
 playwright-report/
 test-results/
-screenshots/
+/screenshots/
 
 # misc
 .DS_Store

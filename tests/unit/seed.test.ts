@@ -5,7 +5,7 @@ import path from "node:path";
 import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { ADDRESSES, examplePricing, JOBS, PEOPLE } from "../../prisma/seed/data.mjs";
+import { ADDRESSES, examplePricing, JOBS, moneyIds, PEOPLE, testPaymentRefs } from "../../prisma/seed/data.mjs";
 import { plainAuthUsers, seedDemoData, supabaseAuthUsers } from "../../prisma/seed/run.mjs";
 import { testDatabaseUrl, useTestSchema } from "../support/test-db";
 
@@ -34,7 +34,15 @@ const TABLES = [
   "estimates",
   "job_pricing",
   "job_status_history",
+  "payments",
+  "variations",
+  "payouts",
+  "job_materials",
+  "settings",
 ];
+
+// Statuses a job only reaches once the customer has paid.
+const PAID_STATUSES = ["BOOKABLE", "ASSIGNED", "SUBMITTED", "COMPLETED", "CANCEL_REVIEW"];
 
 describe("demo data", () => {
   it("has a job in every status and every trade", () => {
@@ -72,6 +80,26 @@ describe("demo data", () => {
         priced.gstCents,
     );
     expect(examplePricing({ minutes: 30, materialsCents: 0 }, "OTHER").minutes).toBe(60);
+  });
+
+  it("gives every money row its own fixed id and clearly fake test-mode payment references", () => {
+    const ids = JOBS.flatMap((job) => {
+      const money = moneyIds(job.id);
+      return [money.payment, money.payout, money.variation(0), money.variation(1)];
+    });
+    expect(new Set([...ids, ...JOBS.map((job) => job.id)]).size).toBe(ids.length + JOBS.length);
+    for (const job of JOBS) {
+      const refs = testPaymentRefs(job.id);
+      expect(refs.checkoutId).toMatch(/^cs_test_DEMO_/);
+      expect(refs.paymentId).toMatch(/^pi_test_DEMO_/);
+      expect(refs.idempotencyKey).toMatch(/^demo-/);
+    }
+  });
+
+  it("has an assigned job with extra work waiting to be priced", () => {
+    const assigned = JOBS.filter((job) => job.steps.at(-1)?.[0] === "ASSIGNED" && job.extraWork?.length);
+    expect(assigned).toHaveLength(1);
+    expect(assigned[0].extraWork?.[0]).toMatchObject({ by: assigned[0].worker, minutes: 90 });
   });
 });
 
@@ -192,7 +220,22 @@ describe.skipIf(!testDatabaseUrl)("npm run db:seed against Postgres", () => {
          (SELECT array_agg(path ORDER BY position) FROM job_photos p WHERE p.job_id = j.id) AS photos
        FROM jobs j ORDER BY j.job_number`,
     );
-    return rows;
+    const money = await db.query(
+      `SELECT 'payment' AS row, id, job_id, kind::text || ':' || status::text AS what, amount_cents AS cents,
+         refunded_cents AS other_cents, coalesce(provider_payment_id, '') || '|' || coalesce(provider_checkout_id, '')
+           || '|' || idempotency_key || '|' || livemode AS detail
+       FROM payments
+       UNION ALL
+       SELECT 'payout', id, job_id, status::text, gross_cents, holiday_pay_cents,
+         worker_id || '|' || minutes || '|' || rate_cents FROM payouts
+       UNION ALL
+       SELECT 'variation', id, job_id, status::text, requested_materials_cents, requested_minutes,
+         requested_by_id || '|' || description FROM variations
+       UNION ALL
+       SELECT 'materials', job_id, job_id, '', budget_cents, spent_cents, coalesce(receipt_path, '') FROM job_materials
+       ORDER BY row, id`,
+    );
+    return { jobs: rows, money: money.rows };
   }
 
   it("seeds the same rows when run twice, with no duplicates", async () => {
@@ -204,7 +247,146 @@ describe.skipIf(!testDatabaseUrl)("npm run db:seed against Postgres", () => {
     expect(await counts()).toEqual(first);
     expect(await snapshot()).toEqual(firstJobs);
 
-    expect(first).toMatchObject({ profiles: 4, worker_profiles: 2, licences: 1, addresses: 2, jobs: JOBS.length });
+    expect(first).toMatchObject({
+      profiles: 4,
+      worker_profiles: 2,
+      licences: 1,
+      addresses: 2,
+      jobs: JOBS.length,
+      // One per paid job (five) and the pending one on the priced job.
+      payments: 6,
+      variations: 1,
+      payouts: 1,
+      job_materials: 3,
+      settings: 1,
+    });
+  });
+
+  it("has a paid test-mode payment for every paid job's price, and a pending one for the priced job", async () => {
+    const { rows } = await db.query(
+      `SELECT j.status::text AS job_status, j.price_cents, p.kind::text AS kind, p.status::text AS status,
+         p.amount_cents, p.refunded_cents, p.livemode, p.provider_payment_id, p.provider_checkout_id, p.paid_at
+       FROM jobs j LEFT JOIN payments p ON p.job_id = j.id ORDER BY j.job_number`,
+    );
+    const paid = rows.filter((row) => PAID_STATUSES.includes(row.job_status));
+    expect(paid.map((row) => row.job_status).sort()).toEqual([...PAID_STATUSES].sort());
+    for (const row of paid) {
+      expect(row, row.job_status).toMatchObject({ kind: "JOB", status: "PAID", refunded_cents: 0, livemode: false });
+      expect(row.amount_cents, row.job_status).toBe(row.price_cents);
+      expect(row.provider_payment_id).toMatch(/^pi_test_DEMO_/);
+      expect(row.provider_checkout_id).toMatch(/^cs_test_DEMO_/);
+      expect(row.paid_at).toBeInstanceOf(Date);
+    }
+    const pending = rows.filter((row) => row.status === "PENDING");
+    expect(pending).toHaveLength(1);
+    expect(pending[0]).toMatchObject({ job_status: "PRICED", kind: "JOB", provider_payment_id: null, paid_at: null });
+    expect(pending[0].amount_cents).toBe(pending[0].price_cents);
+    const unpaid = rows.filter((row) => !PAID_STATUSES.includes(row.job_status) && row.job_status !== "PRICED");
+    for (const row of unpaid) expect(row.kind, row.job_status).toBeNull();
+  });
+
+  it("has the assigned job's extra work asked for by its worker, waiting for the office to price it", async () => {
+    const { rows } = await db.query(
+      `SELECT j.status::text AS job_status, v.requested_by_id = j.worker_id AS by_worker, v.status::text AS status,
+         v.description, v.requested_minutes, v.requested_materials_cents, v.price_cents, v.priced_at
+       FROM variations v JOIN jobs j ON j.id = v.job_id`,
+    );
+    expect(rows).toEqual([
+      {
+        job_status: "ASSIGNED",
+        by_worker: true,
+        status: "REQUESTED",
+        description: expect.stringMatching(/hob cable is nicked.*12 m/),
+        requested_minutes: 90,
+        requested_materials_cents: 9500,
+        price_cents: null,
+        priced_at: null,
+      },
+    ]);
+  });
+
+  it("queues the completed job's payout at exactly the worker pay it was priced with", async () => {
+    const { rows } = await db.query(
+      `SELECT j.status::text AS job_status, o.worker_id = j.worker_id AS to_worker, o.status::text AS status,
+         o.minutes = p.minutes AS minutes, o.rate_cents = p.worker_rate_cents AS rate,
+         o.gross_cents = p.worker_gross_cents AS gross, o.holiday_pay_cents = p.holiday_pay_cents AS holiday_pay,
+         o.gross_cents, o.holiday_pay_cents
+       FROM payouts o JOIN jobs j ON j.id = o.job_id JOIN job_pricing p ON p.job_id = j.id`,
+    );
+    expect(rows).toEqual([
+      {
+        job_status: "COMPLETED",
+        to_worker: true,
+        status: "QUEUED",
+        minutes: true,
+        rate: true,
+        gross: true,
+        holiday_pay: true,
+        gross_cents: 14000,
+        holiday_pay_cents: 1120,
+      },
+    ]);
+  });
+
+  it("gives claimed jobs the materials budget they were priced with, and the spend once submitted", async () => {
+    const { rows } = await db.query(
+      `SELECT j.status::text AS job_status, m.budget_cents = p.materials_cents AS budget_as_priced,
+         m.spent_cents IS NOT NULL AS spent, m.spent_at IS NOT NULL AS spent_at
+       FROM job_materials m JOIN jobs j ON j.id = m.job_id JOIN job_pricing p ON p.job_id = j.id
+       ORDER BY j.job_number`,
+    );
+    expect(rows).toEqual([
+      { job_status: "ASSIGNED", budget_as_priced: true, spent: false, spent_at: false },
+      { job_status: "SUBMITTED", budget_as_priced: true, spent: true, spent_at: true },
+      { job_status: "COMPLETED", budget_as_priced: true, spent: true, spent_at: true },
+    ]);
+  });
+
+  it("leaves the settings row the migration made as it was", async () => {
+    const { rows } = await db.query("SELECT id, shared_rate_cents, other_rate_cents, updated_by_id FROM settings");
+    expect(rows).toEqual([{ id: 1, shared_rate_cents: 7000, other_rate_cents: 3800, updated_by_id: null }]);
+  });
+
+  it("seeds again after the money has moved on: refunded, extra work paid for, payout exported and paid", async () => {
+    const before = await counts();
+    const beforeRows = await snapshot();
+    const assigned = JOBS.find((job) => job.extraWork?.length);
+    const completed = JOBS.find((job) => job.steps.at(-1)?.[0] === "COMPLETED");
+    const cancelled = JOBS.find((job) => job.steps.at(-1)?.[0] === "CANCEL_REVIEW");
+    if (!assigned || !completed || !cancelled) throw new Error("demo jobs missing");
+    const variation = moneyIds(assigned.id).variation(0);
+
+    // What the app would do next: the office prices the extra work, the customer approves and pays for it, the
+    // cancelled job is refunded and payroll pays the worker. Each of these makes the rows harder to remove.
+    await db.query(
+      `UPDATE variations SET status = 'PRICED', minutes = 90, materials_cents = 9500, worker_gross_cents = 10500,
+         holiday_pay_cents = 840, on_cost_cents = 473, margin_cents = 4263, gst_cents = 3836, price_cents = 29412
+       WHERE id = $1`,
+      [variation],
+    );
+    await db.query("UPDATE variations SET status = 'APPROVED' WHERE id = $1", [variation]);
+    await db.query(
+      `INSERT INTO payments (job_id, kind, variation_id, amount_cents, status, provider_payment_id, idempotency_key,
+         paid_at)
+       VALUES ($1, 'VARIATION', $2, 29412, 'PAID', 'pi_test_DEMO_extra', 'demo-test-extra', now())`,
+      [assigned.id, variation],
+    );
+    await db.query(
+      "UPDATE payments SET status = 'REFUNDED', refunded_cents = amount_cents, refunded_at = now() WHERE id = $1",
+      [moneyIds(cancelled.id).payment],
+    );
+    await db.query("UPDATE payouts SET status = 'EXPORTED', exported_at = now() WHERE id = $1", [
+      moneyIds(completed.id).payout,
+    ]);
+    await db.query("UPDATE payouts SET status = 'PAID', paid_at = now() WHERE id = $1", [moneyIds(completed.id).payout]);
+
+    // The money rows really do stop their jobs (and the extra work) from being deleted on their own.
+    await expect(db.query("DELETE FROM jobs WHERE id = $1", [completed.id])).rejects.toThrow(/foreign key/);
+    await expect(db.query("DELETE FROM jobs WHERE id = $1", [assigned.id])).rejects.toThrow(/foreign key/);
+
+    await seedDemoData({ db, auth: plainAuthUsers(db) });
+    expect(await counts()).toEqual(before);
+    expect(await snapshot()).toEqual(beforeRows);
   });
 
   it("has a job in every status, across all five trades", async () => {
