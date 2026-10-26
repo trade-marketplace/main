@@ -7,7 +7,7 @@ import { addressLocation, distanceToJobKm, jobPinFor, resolveJobLocation } from 
 // Where a job is (#97): the coverage decision, the office flag, the approximate pin and the worker's distance.
 
 const KM_PER_DEGREE_LAT = (EARTH_RADIUS_KM * Math.PI) / 180;
-const centre = INVERCARGILL_COVERAGE.centre;
+const { centre, radiusKm } = INVERCARGILL_COVERAGE;
 const north = (km: number) => ({ lat: centre.lat + km / KM_PER_DEGREE_LAT, lng: centre.lng });
 const deeSt = { lat: -46.4118, lng: 168.3477 };
 
@@ -49,7 +49,7 @@ describe("resolveJobLocation", () => {
   });
 
   it("just outside the area: not posted, sent to the waitlist with their suburb", () => {
-    expect(resolveJobLocation({ source: "SEARCH", suburb: " Lorneville ", point: north(15.01) }, INVERCARGILL_COVERAGE)).toEqual({
+    expect(resolveJobLocation({ source: "SEARCH", suburb: " Lorneville ", point: north(radiusKm + 0.01) }, INVERCARGILL_COVERAGE)).toEqual({
       ok: false,
       error: "outside-coverage",
       waitlist: { path: "/coming-soon", suburb: "Lorneville", areaName: "Invercargill" },
@@ -57,7 +57,7 @@ describe("resolveJobLocation", () => {
   });
 
   it("just inside the area: posted", () => {
-    expect(resolveJobLocation({ source: "SEARCH", suburb: "Lorneville", point: north(14.99) }, INVERCARGILL_COVERAGE).ok).toBe(true);
+    expect(resolveJobLocation({ source: "SEARCH", suburb: "Lorneville", point: north(radiusKm - 0.01) }, INVERCARGILL_COVERAGE).ok).toBe(true);
   });
 
   it("a dropped pin outside the area goes to the waitlist too", () => {

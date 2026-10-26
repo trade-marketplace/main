@@ -10,11 +10,14 @@ export type Coverage = {
   radiusKm: number;
 };
 
-/** Until settings exist: central Invercargill (Esk St), 15 km, which takes in the city and its suburbs. */
+/**
+ * Until settings exist: 20 km around central Invercargill (Matt, 26 Oct). The same centre and radius as the
+ * settings row's defaults (Schema 3, #91). The one place the fallback is defined: use this, never the numbers.
+ */
 export const INVERCARGILL_COVERAGE: Coverage = {
   name: "Invercargill",
   centre: { lat: -46.4132, lng: 168.3538 },
-  radiusKm: 15,
+  radiusKm: 20,
 };
 
 /** The waitlist page (A07, `/coming-soon`): where someone goes when their address is outside coverage. */

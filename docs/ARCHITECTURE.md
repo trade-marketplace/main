@@ -172,7 +172,7 @@ office checks) come with their own issues.
 |---|---|---|
 | Distance | `src/lib/geo/distance.ts` | `haversineKm()` (straight line), `roundKm()` (whole km, half up), `formatKm()` ("12 km", "<1 km"). Pure. |
 | Coverage area | `src/lib/geo/coverage.ts` | `checkCoverage(coverage, point)`: centre + radius, the edge counts as inside. Inside / outside (with the waitlist path `/coming-soon`) / check later (no point). |
-| Loading the area | `src/server/geo/coverage-settings.ts` | `loadCoverage(source)`: the settings row, else Invercargill (15 km round Esk St). A row set up wrong throws rather than quietly using Invercargill. |
+| Loading the area | `src/server/geo/coverage-settings.ts` | `loadCoverage(source)`: the settings row, else `INVERCARGILL_COVERAGE`: 20 km around central Invercargill (-46.4132, 168.3538), the same as the settings defaults (#91). A row set up wrong throws rather than quietly using Invercargill. |
 | Address search | `src/server/geo/address-search.ts`, `mapbox.ts` | `searchAddresses(query, { provider, coverage })`: NZ only, nearest the coverage centre first, each suggestion marked inside/outside. Mapbox Geocoding v6 behind an `AddressSearchProvider` interface. |
 | Job location | `src/server/geo/job-location.ts` | `resolveJobLocation()` decides what a job stores (or sends them to the waitlist), `saveJobLocation()`, the office queue, `jobPinFor()` and `distanceToJobKm()` for workers. |
 | Approximate pin | `src/server/geo/approximate.ts` | A random point 100–300 m from the address, picked once and stored. |

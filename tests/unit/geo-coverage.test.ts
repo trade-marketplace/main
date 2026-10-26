@@ -7,37 +7,41 @@ import { CoverageSettingsError, loadCoverage } from "@/server/geo/coverage-setti
 // The coverage area (#97): a centre and a radius, Invercargill until settings (Schema 3, #91) are wired in.
 
 const KM_PER_DEGREE_LAT = (EARTH_RADIUS_KM * Math.PI) / 180;
-const centre = INVERCARGILL_COVERAGE.centre;
+const { centre, radiusKm } = INVERCARGILL_COVERAGE;
 /** A point `km` due north of the centre. */
 const north = (km: number) => ({ lat: centre.lat + km / KM_PER_DEGREE_LAT, lng: centre.lng });
 
 describe("checkCoverage", () => {
+  it("falls back to 20 km around central Invercargill, the same as the settings defaults", () => {
+    expect(INVERCARGILL_COVERAGE).toEqual({ name: "Invercargill", centre: { lat: -46.4132, lng: 168.3538 }, radiusKm: 20 });
+  });
+
   it("is inside at the centre", () => {
     expect(checkCoverage(INVERCARGILL_COVERAGE, centre)).toEqual({ status: "inside", distanceKm: 0 });
   });
 
   it("is inside just within the edge (10 m in)", () => {
-    expect(checkCoverage(INVERCARGILL_COVERAGE, north(14.99)).status).toBe("inside");
+    expect(checkCoverage(INVERCARGILL_COVERAGE, north(radiusKm - 0.01)).status).toBe("inside");
   });
 
   it("is outside just past the edge (10 m out), and points to the waitlist page", () => {
-    const result = checkCoverage(INVERCARGILL_COVERAGE, north(15.01));
+    const result = checkCoverage(INVERCARGILL_COVERAGE, north(radiusKm + 0.01));
     expect(result).toMatchObject({ status: "outside", waitlistPath: WAITLIST_PATH });
     expect(WAITLIST_PATH).toBe("/coming-soon");
   });
 
   it("counts exactly on the edge as inside", () => {
-    const point = north(15);
+    const point = north(radiusKm);
     const coverage: Coverage = { ...INVERCARGILL_COVERAGE, radiusKm: haversineKm(centre, point) };
     expect(checkCoverage(coverage, point).status).toBe("inside");
   });
 
   it("says how far from the centre the point is", () => {
-    const result = checkCoverage(INVERCARGILL_COVERAGE, north(20));
-    expect(result.status === "outside" && result.distanceKm).toBeCloseTo(20, 6);
+    const result = checkCoverage(INVERCARGILL_COVERAGE, north(30));
+    expect(result.status === "outside" && result.distanceKm).toBeCloseTo(30, 6);
   });
 
-  it("puts Bluff (≈21 km) outside the launch area and Gladstone inside", () => {
+  it("puts Bluff (≈20.8 km) just outside the launch area and Gladstone inside", () => {
     expect(checkCoverage(INVERCARGILL_COVERAGE, { lat: -46.6, lng: 168.3333 }).status).toBe("outside");
     expect(checkCoverage(INVERCARGILL_COVERAGE, { lat: -46.392, lng: 168.355 }).status).toBe("inside");
   });
