@@ -10,22 +10,23 @@ import type { Trade } from "@/generated/prisma/client";
 // `customerPriceCents` (as jobs.price_cents); workers only ever get `workerEarnsCents` (AGENTS.md §5).
 //
 // The price is built UP from the worker's rate, so the worker's pay is fixed first and TM's cut comes out of the
-// margin only. Order of operations, each money step rounded to whole cents before the next one uses it:
+// margin only. Order of operations (Matt, 26 Oct, on PR #307: matches DECISIONS.md #62's ~$117/hr), each money
+// step rounded to whole cents before the next one uses it:
 //
 //   1. billed minutes  = max(minutes, the trade's minimum)          (2 h licensed, 1 h Other at launch)
 //   2. worker gross    = billed minutes × hourly rate ÷ 60           rounded
 //   3. holiday pay     = worker gross × holiday pay %               rounded   (8%)
-//   4. on-costs        = worker gross × on-cost %                   rounded   (12.5%: holiday pay, KiwiSaver, ACC)
-//   5. labour cost     = worker gross + on-costs
+//   4. on-costs        = (worker gross + holiday pay) × on-cost %   rounded   (12.5%: KiwiSaver, ACC)
+//   5. labour cost     = worker gross + holiday pay + on-costs
 //   6. margin          = (labour cost + materials at cost) × margin %  rounded (20%; on labour only when no materials)
 //   7. ex GST          = labour cost + materials + margin
 //   8. GST             = ex GST × GST %                             rounded   (15%)
 //   9. customer price  = ex GST + GST
 //  10. worker earns    = worker gross + holiday pay                 (before PAYE)
 //
-// Holiday pay is part of the on-costs, not added on top of them: the customer pays for it through the 12.5%,
-// and the worker receives it (step 10). Rounding is half up (x.5 cents goes up), done in exact integer
-// arithmetic, so no float ever touches money. Every amount fits a Postgres integer, or pricing throws.
+// So one licensed hour at launch is $70 → $75.60 → $85.05 → $102.06 → $117.37 incl GST; Other is $63.71.
+// Rounding is half up (x.5 cents goes up), done in exact integer arithmetic, so no float ever touches money.
+// Every amount fits a Postgres integer, or pricing throws.
 
 /** The rates a job is priced with: a copy of settings, frozen onto the job when it's priced. */
 export type PricingRates = {
@@ -59,7 +60,7 @@ export type PriceBreakdown = {
   workerGrossCents: number;
   holidayPayCents: number;
   onCostCents: number;
-  /** Worker gross + on-costs. */
+  /** Worker gross + holiday pay + on-costs. */
   labourCostCents: number;
   /** TM's cut. */
   marginCents: number;
@@ -110,8 +111,8 @@ export function priceWork(
   const { materialsCents } = input;
   const workerGrossCents = mulDivRound(minutes, rates.workerRateCents, 60);
   const holidayPayCents = percentOf(workerGrossCents, rates.holidayPayBps);
-  const onCostCents = percentOf(workerGrossCents, rates.onCostBps);
-  const labourCostCents = workerGrossCents + onCostCents;
+  const onCostCents = percentOf(workerGrossCents + holidayPayCents, rates.onCostBps);
+  const labourCostCents = workerGrossCents + holidayPayCents + onCostCents;
   const marginCents = percentOf(labourCostCents + materialsCents, rates.marginBps);
   const exGstCents = labourCostCents + materialsCents + marginCents;
   const gstCents = percentOf(exGstCents, rates.gstBps);

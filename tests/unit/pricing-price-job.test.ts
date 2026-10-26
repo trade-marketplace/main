@@ -88,8 +88,8 @@ describe.skipIf(!testDatabaseUrl)("priceJob (database)", () => {
   it("prices a licensed job from settings and writes the snapshot and the customer price together", async () => {
     const office = await createPerson("ADMIN");
     const job = await createJob();
-    // 2.5 h × $70 = $175; holiday $14; on-costs $21.875 → $21.88; labour $196.88; + $50 materials = $246.88;
-    // margin $49.376 → $49.38; ex GST $296.26; GST $44.439 → $44.44; customer $340.70.
+    // 2.5 h × $70 = $175; holiday $14; on-costs 12.5% of $189 = $23.625 → $23.63; labour $212.63; + $50 materials
+    // = $262.63; margin $52.526 → $52.53; ex GST $315.16; GST $47.274 → $47.27; customer $362.43.
     const result = await priceJob(schema.db, {
       jobId: job.id,
       minutes: 150,
@@ -97,11 +97,11 @@ describe.skipIf(!testDatabaseUrl)("priceJob (database)", () => {
       note: "  median of 3  ",
       pricedById: office.id,
     });
-    expect(result).toMatchObject({ ok: true, breakdown: { customerPriceCents: 34070, workerEarnsCents: 18900 } });
+    expect(result).toMatchObject({ ok: true, breakdown: { customerPriceCents: 36243, workerEarnsCents: 18900 } });
 
     expect(await stored(job.id)).toMatchObject({
       status: "REVIEW",
-      priceCents: 34070,
+      priceCents: 36243,
       pricing: {
         workerRateCents: 7000,
         minMinutes: 120,
@@ -113,9 +113,9 @@ describe.skipIf(!testDatabaseUrl)("priceJob (database)", () => {
         materialsCents: 5000,
         workerGrossCents: 17500,
         holidayPayCents: 1400,
-        onCostCents: 2188,
-        marginCents: 4938,
-        gstCents: 4444,
+        onCostCents: 2363,
+        marginCents: 5253,
+        gstCents: 4727,
         note: "median of 3",
         pricedById: office.id,
       },
@@ -126,7 +126,7 @@ describe.skipIf(!testDatabaseUrl)("priceJob (database)", () => {
     const job = await createJob({ category: "OTHER", title: "Move a couch" });
     await priceJob(schema.db, { jobId: job.id, minutes: 30, materialsCents: 0 });
     expect(await stored(job.id)).toMatchObject({
-      priceCents: 5900,
+      priceCents: 6371,
       pricing: { workerRateCents: 3800, minMinutes: 60, minutes: 60, workerGrossCents: 3800, holidayPayCents: 304 },
     });
   });
@@ -135,7 +135,7 @@ describe.skipIf(!testDatabaseUrl)("priceJob (database)", () => {
     const job = await createJob();
     await priceJob(schema.db, { jobId: job.id, minutes: 45, materialsCents: 0 });
     expect(await stored(job.id)).toMatchObject({
-      priceCents: 21735,
+      priceCents: 23474,
       pricing: { minutes: 120, workerGrossCents: 14000, holidayPayCents: 1120 },
     });
   });
@@ -160,9 +160,10 @@ describe.skipIf(!testDatabaseUrl)("priceJob (database)", () => {
 
     await withSettings({ sharedRateCents: 8000 }, async () => {
       await priceJob(schema.db, { jobId: job.id, minutes: 120, materialsCents: 0 });
-      // 2 h × $80 = $160; on-costs $20; labour $180; margin $36; ex GST $216; GST $32.40.
+      // 2 h × $80 = $160; holiday $12.80; on-costs $21.60; labour $194.40; margin $38.88; ex GST $233.28;
+      // GST $34.992 → $34.99.
       expect(await stored(job.id)).toMatchObject({
-        priceCents: 24840,
+        priceCents: 26827,
         pricing: { workerRateCents: 8000, workerGrossCents: 16000 },
       });
     });

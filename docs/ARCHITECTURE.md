@@ -192,21 +192,25 @@ Server logic only; the office's Price a job screen (F02, #168) and Price extra w
 | The maths | `src/server/pricing/calculate.ts` | `priceWork({ minutes, materialsCents }, rates)` returns the whole breakdown in integer cents. `ratesForTrade(trade, settings)` picks the shared (licensed) or Other rate and minimum. `perHour(rates)` gives one hour without the minimum, for the pitch and Settings. Pure. |
 | Freezing it onto a job | `src/server/pricing/price-job.ts` | `priceJob(db, { jobId, minutes, materialsCents, note, pricedById })`: in one transaction, reads `settings`, prices the job for its trade, writes `jobs.price_cents` and upserts `job_pricing` (every rate used plus the breakdown). REVIEW, QUOTE_BOUNTY and PRICED only; it doesn't change the status. |
 
-**Order of operations.** The price is built up from the worker's rate, so their pay is fixed first and TM's cut
-comes out of the margin only. Each money step is rounded to whole cents before the next one uses it:
+**Order of operations** (Matt, 26 Oct, PR #307: matches DECISIONS.md #62's "about $117/hr"). The price is built up
+from the worker's rate, so their pay is fixed first and TM's cut comes out of the margin only. Each money step is
+rounded to whole cents before the next one uses it:
 
 ```
 billed minutes  = max(minutes, minimum for the trade)       2 h licensed, 1 h Other
 worker gross    = billed minutes × hourly rate ÷ 60         $70 licensed, $38 Other
 holiday pay     = worker gross × 8%
-on-costs        = worker gross × 12.5%                      holiday pay, KiwiSaver, ACC (holiday pay is inside it)
-labour cost     = worker gross + on-costs
+on-costs        = (worker gross + holiday pay) × 12.5%      KiwiSaver, ACC
+labour cost     = worker gross + holiday pay + on-costs
 margin          = (labour cost + materials at cost) × 20%   labour only when there are no materials
 ex GST          = labour cost + materials + margin
 GST             = ex GST × 15%
 customer price  = ex GST + GST                              → jobs.price_cents
 worker earns    = worker gross + holiday pay                before PAYE
 ```
+
+One licensed hour at launch: $70 → $75.60 → $85.05 labour → $102.06 ex GST → **$117.37** incl GST (worker earns
+$75.60). Other: $38 → **$63.71** (worker earns $41.04).
 
 **Rounding** is half up (x.5 cents goes up) at each of the five rounded steps (gross, holiday pay, on-costs,
 margin, GST), in exact integer arithmetic: minutes, cents and basis points in, BigInt for the multiply-divide, so

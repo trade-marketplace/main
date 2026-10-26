@@ -11,7 +11,7 @@ import {
 } from "@/server/pricing/calculate";
 
 // The pricing maths (#94). Expected numbers are worked out by hand from the order of operations in
-// src/server/pricing/calculate.ts, not copied from its output.
+// src/server/pricing/calculate.ts (on-costs on gross + holiday pay: Matt, 26 Oct, PR #307), not copied from its output.
 
 /** The launch settings (Schema 3 defaults, DECISIONS.md #62). */
 const launch: RateSettings = {
@@ -37,18 +37,23 @@ const prototype: PricingRates = {
   gstBps: 1500,
 };
 
-describe("same results as the prototype's pricing.test.ts", () => {
+// The prototype's pricing.test.ts cases, same inputs. Where its on-costs were on the gross alone (holiday pay inside
+// them), the customer side now follows the decided order; worker pay is unchanged. Old totals in the comments.
+describe("the prototype's pricing.test.ts cases", () => {
   it("prices a two-hour job with $100 materials and keeps gross pay apart from the customer price", () => {
+    // $120 gross; holiday $9.60; on-costs 12.5% of $129.60 = $16.20; labour $145.80; + $100 = $245.80;
+    // margin $49.16; ex GST $294.96; GST $44.244 → $44.24. (Prototype: $324.30.)
     const quote = priceWork({ minutes: 120, materialsCents: 10000 }, prototype);
     expect(quote).toMatchObject({
       workerGrossCents: 12000,
       holidayPayCents: 960,
-      workerEarnsCents: 12960, // before PAYE, not take-home pay
-      labourCostCents: 13500,
-      marginCents: 4700,
-      exGstCents: 28200,
-      gstCents: 4230,
-      customerPriceCents: 32430,
+      workerEarnsCents: 12960, // before PAYE, not take-home pay; same as the prototype
+      onCostCents: 1620,
+      labourCostCents: 14580,
+      marginCents: 4916,
+      exGstCents: 29496,
+      gstCents: 4424,
+      customerPriceCents: 33920,
     });
   });
 
@@ -64,7 +69,8 @@ describe("same results as the prototype's pricing.test.ts", () => {
     const extra = priceWork({ minutes: 30, materialsCents: 2500 }, prototype, { applyMinimum: false });
     expect(extra.minutes).toBe(30);
     expect(extra.workerEarnsCents).toBe(3240);
-    expect(extra.customerPriceCents).toBe(8108); // $70.50 + $10.575 GST rounded up
+    // $30 + $2.40 + $4.05 = $36.45; + $25 = $61.45; margin $12.29; ex GST $73.74; GST $11.061 → $11.06.
+    expect(extra.customerPriceCents).toBe(8480); // prototype: $81.08
   });
 
   it("keeps the worker's pay the same when materials or the margin change", () => {
@@ -75,11 +81,13 @@ describe("same results as the prototype's pricing.test.ts", () => {
     expect(larger.customerPriceCents).toBeGreaterThan(initial.customerPriceCents);
   });
 
-  it("doesn't add holiday pay on top of the on-costs", () => {
+  it("charges on-costs on gross + holiday pay, and counts holiday pay once", () => {
+    // $120 + $9.60 holiday; on-costs 12.5% of $129.60 = $16.20; labour $145.80; margin $29.16; ex GST $174.96;
+    // GST $26.244 → $26.24. (Prototype: on-costs $15 on the gross alone, $186.30.)
     const quote = priceWork({ minutes: 120, materialsCents: 0 }, prototype);
-    expect(quote.onCostCents).toBe(1500);
-    expect(quote.labourCostCents).toBe(13500);
-    expect(quote.customerPriceCents).toBe(18630);
+    expect(quote.onCostCents).toBe(1620);
+    expect(quote.labourCostCents).toBe(14580);
+    expect(quote.customerPriceCents).toBe(20120);
   });
 
   it("adds up across job sizes: customer price and worker pay reconcile with their parts", () => {
@@ -88,14 +96,15 @@ describe("same results as the prototype's pricing.test.ts", () => {
         const p = priceWork({ minutes, materialsCents }, prototype);
         expect(p.customerPriceCents).toBe(p.exGstCents + p.gstCents);
         expect(p.exGstCents).toBe(p.labourCostCents + p.materialsCents + p.marginCents);
-        expect(p.labourCostCents).toBe(p.workerGrossCents + p.onCostCents);
+        expect(p.labourCostCents).toBe(p.workerGrossCents + p.holidayPayCents + p.onCostCents);
         expect(p.workerEarnsCents).toBe(p.workerGrossCents + p.holidayPayCents);
       }
     }
   });
 
   it("shows the per-hour figures without the minimum", () => {
-    expect(perHour(prototype)).toEqual({ workerEarnsCents: 6480, customerPriceCents: 9315, marginCents: 1350 });
+    // $60 + $4.80 + $8.10 = $72.90; margin $14.58; ex GST $87.48; GST $13.122 → $13.12. (Prototype: $93.15, $13.50.)
+    expect(perHour(prototype)).toEqual({ workerEarnsCents: 6480, customerPriceCents: 10060, marginCents: 1458 });
   });
 });
 
@@ -118,43 +127,45 @@ describe("licensed vs Other", () => {
   });
 
   it("prices a licensed job at the 2-hour minimum", () => {
-    // 2 h × $70 = $140; holiday $11.20; on-costs $17.50; labour $157.50; margin $31.50; ex GST $189; GST $28.35.
+    // 2 h × $70 = $140; holiday $11.20; on-costs 12.5% of $151.20 = $18.90; labour $170.10; margin $34.02;
+    // ex GST $204.12; GST $30.618 → $30.62.
     expect(priceWork({ minutes: 60, materialsCents: 0 }, licensed)).toEqual({
       minutes: 120,
       materialsCents: 0,
       workerGrossCents: 14000,
       holidayPayCents: 1120,
-      onCostCents: 1750,
-      labourCostCents: 15750,
-      marginCents: 3150,
-      exGstCents: 18900,
-      gstCents: 2835,
-      customerPriceCents: 21735,
+      onCostCents: 1890,
+      labourCostCents: 17010,
+      marginCents: 3402,
+      exGstCents: 20412,
+      gstCents: 3062,
+      customerPriceCents: 23474,
       workerEarnsCents: 15120,
     });
   });
 
   it("prices an Other job at the 1-hour minimum", () => {
-    // 1 h × $38; holiday $3.04; on-costs $4.75; labour $42.75; margin $8.55; ex GST $51.30; GST $7.695 → $7.70.
+    // 1 h × $38; holiday $3.04; on-costs 12.5% of $41.04 = $5.13; labour $46.17; margin $9.234 → $9.23;
+    // ex GST $55.40; GST $8.31.
     expect(priceWork({ minutes: 20, materialsCents: 0 }, other)).toMatchObject({
       minutes: 60,
       workerGrossCents: 3800,
       holidayPayCents: 304,
-      onCostCents: 475,
-      marginCents: 855,
-      exGstCents: 5130,
-      gstCents: 770,
-      customerPriceCents: 5900,
+      onCostCents: 513,
+      labourCostCents: 4617,
+      marginCents: 923,
+      exGstCents: 5540,
+      gstCents: 831,
+      customerPriceCents: 6371,
       workerEarnsCents: 4104,
     });
   });
 
-  it("gives these per-hour launch figures, which are under DECISIONS.md's ~$117 and ~$64 (flagged on #94)", () => {
-    // Characterisation, not the target: DECISIONS.md #62 says the customer pays "about $117/hr incl GST
-    // licensed, ~$64/hr Other". This order of operations gives $108.68 and $59.00. Which is right is William's
-    // call; when it's settled, change this expectation on purpose.
-    expect(perHour(licensed)).toEqual({ workerEarnsCents: 7560, customerPriceCents: 10868, marginCents: 1575 });
-    expect(perHour(other)).toEqual({ workerEarnsCents: 4104, customerPriceCents: 5900, marginCents: 855 });
+  it("matches DECISIONS.md #62: about $117/hr licensed and ~$64/hr Other, incl GST", () => {
+    // Licensed: $70 + $5.60 holiday = $75.60; on-costs $9.45; labour $85.05; margin $17.01; ex GST $102.06;
+    // GST $15.309 → $15.31; $117.37. Other: $63.71 (above). Decided order: Matt, 26 Oct, PR #307.
+    expect(perHour(licensed)).toEqual({ workerEarnsCents: 7560, customerPriceCents: 11737, marginCents: 1701 });
+    expect(perHour(other)).toEqual({ workerEarnsCents: 4104, customerPriceCents: 6371, marginCents: 923 });
   });
 });
 
@@ -177,26 +188,33 @@ describe("what if…", () => {
 
   it("materials are zero: the margin is on labour only", () => {
     const quote = priceWork({ minutes: 180, materialsCents: 0 }, licensed);
-    // 3 h × $70 = $210; on-costs $26.25; labour $236.25; 20% = $47.25.
-    expect(quote.labourCostCents).toBe(23625);
-    expect(quote.marginCents).toBe(4725);
+    // 3 h × $70 = $210; holiday $16.80; on-costs 12.5% of $226.80 = $28.35; labour $255.15; 20% = $51.03.
+    expect(quote.labourCostCents).toBe(25515);
+    expect(quote.marginCents).toBe(5103);
     expect(quote.exGstCents).toBe(quote.labourCostCents + quote.marginCents);
   });
 
   it("materials are added: they carry the margin and GST, at cost, and don't change the worker's pay", () => {
     const without = priceWork({ minutes: 180, materialsCents: 0 }, licensed);
     const withMaterials = priceWork({ minutes: 180, materialsCents: 12345 }, licensed);
-    // Margin on $236.25 + $123.45 = $359.70 → $71.94.
-    expect(withMaterials.marginCents).toBe(7194);
+    // Margin on $255.15 + $123.45 = $378.60 → $75.72.
+    expect(withMaterials.marginCents).toBe(7572);
     expect(withMaterials.workerEarnsCents).toBe(without.workerEarnsCents);
   });
 
-  it("the margin, on-costs or GST are zero: those parts are zero and the rest still adds up", () => {
+  it("the margin, on-costs or GST are zero: those parts are zero and holiday pay is still charged", () => {
     const quote = priceWork(
       { minutes: 120, materialsCents: 5000 },
       { ...licensed, marginBps: 0, onCostBps: 0, gstBps: 0 },
     );
-    expect(quote).toMatchObject({ onCostCents: 0, marginCents: 0, gstCents: 0, customerPriceCents: 19000 });
+    // $140 gross + $11.20 holiday + $50 materials.
+    expect(quote).toMatchObject({ onCostCents: 0, marginCents: 0, gstCents: 0, customerPriceCents: 20120 });
+  });
+
+  it("holiday pay is more than the on-costs: the customer still pays for all of it", () => {
+    const quote = priceWork({ minutes: 60, materialsCents: 0 }, { ...licensed, minMinutes: 0, holidayPayBps: 2000, onCostBps: 100 });
+    // $70 + $14 holiday; on-costs 1% of $84 = $0.84; labour $84.84.
+    expect(quote).toMatchObject({ holidayPayCents: 1400, onCostCents: 84, labourCostCents: 8484, workerEarnsCents: 8400 });
   });
 
   it("the minimum is zero: the job is priced at the time given", () => {
@@ -209,12 +227,12 @@ describe("what if…", () => {
     expect(quote).toMatchObject({
       workerGrossCents: 2_800_000,
       holidayPayCents: 224_000,
-      onCostCents: 350_000,
-      labourCostCents: 3_150_000,
-      marginCents: 1_130_000,
-      exGstCents: 6_780_000,
-      gstCents: 1_017_000,
-      customerPriceCents: 7_797_000,
+      onCostCents: 378_000,
+      labourCostCents: 3_402_000,
+      marginCents: 1_180_400,
+      exGstCents: 7_082_400,
+      gstCents: 1_062_360,
+      customerPriceCents: 8_144_760,
       workerEarnsCents: 3_024_000,
     });
   });
@@ -256,25 +274,26 @@ describe("rounding: half up, to whole cents, at each step", () => {
   });
 
   it("rounds each percentage step on its own, before the next one uses it", () => {
-    // 67 min × $60.01 = 6701.12 → 6701. Holiday 8% = 536.08 → 536. On-costs 12.5% = 837.625 → 838.
-    // Labour 7539 + materials 1234 = 8773; margin 20% = 1754.6 → 1755. Ex GST 10528; GST 15% = 1579.2 → 1579.
+    // 67 min × $60.01 = 6701.12 → 6701. Holiday 8% = 536.08 → 536. On-costs 12.5% of 7237 = 904.625 → 905.
+    // Labour 8142 + materials 1234 = 9376; margin 20% = 1875.2 → 1875. Ex GST 11251; GST 15% = 1687.65 → 1688.
     const quote = priceWork({ minutes: 67, materialsCents: 1234 }, { ...prototype, workerRateCents: 6001, minMinutes: 0 });
     expect(quote).toMatchObject({
       workerGrossCents: 6701,
       holidayPayCents: 536,
-      onCostCents: 838,
-      labourCostCents: 7539,
-      marginCents: 1755,
-      exGstCents: 10528,
-      gstCents: 1579,
-      customerPriceCents: 12107,
+      onCostCents: 905,
+      labourCostCents: 8142,
+      marginCents: 1875,
+      exGstCents: 11251,
+      gstCents: 1688,
+      customerPriceCents: 12939,
       workerEarnsCents: 7237,
     });
   });
 
   it("rounds GST of exactly half a cent up", () => {
-    // Licensed hour: ex GST $94.50, 15% = $14.175 → 1417.5 cents → 1418.
-    expect(priceWork({ minutes: 60, materialsCents: 0 }, { ...licensed, minMinutes: 0 }).gstCents).toBe(1418);
+    // Nothing but GST: ex GST $70 + $0.10 materials = 7010 cents; 15% = 1051.5 → 1052.
+    const gstOnly = { ...licensed, minMinutes: 0, holidayPayBps: 0, onCostBps: 0, marginBps: 0 };
+    expect(priceWork({ minutes: 60, materialsCents: 10 }, gstOnly)).toMatchObject({ gstCents: 1052, customerPriceCents: 8062 });
   });
 
   it("never returns anything but whole cents", () => {
