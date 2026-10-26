@@ -208,6 +208,47 @@ checks, triggers) is hand-written SQL at the end of the same migration, under a 
 - **Plain Postgres works too.** The first migration creates stand-ins for Supabase's `auth.users` and `auth.uid()`
   when they don't exist (local Docker, CI, Prisma's shadow database). On Supabase it does nothing.
 
+## Pricing (#94)
+
+Server logic only; the office's Price a job screen (F02, #168) and Price extra work (F03, #169) call it.
+
+| Piece | Where | What it does |
+|---|---|---|
+| The maths | `src/server/pricing/calculate.ts` | `priceWork({ minutes, materialsCents }, rates)` returns the whole breakdown in integer cents. `ratesForTrade(trade, settings)` picks the shared (licensed) or Other rate and minimum. `perHour(rates)` gives one hour without the minimum, for the pitch and Settings. Pure. |
+| Freezing it onto a job | `src/server/pricing/price-job.ts` | `priceJob(db, { jobId, minutes, materialsCents, note, pricedById })`: in one transaction, reads `settings`, prices the job for its trade, writes `jobs.price_cents` and upserts `job_pricing` (every rate used plus the breakdown). REVIEW, QUOTE_BOUNTY and PRICED only; it doesn't change the status. |
+
+**Order of operations** (Matt, 26 Oct, PR #307: matches DECISIONS.md #62's "about $117/hr"). The price is built up
+from the worker's rate, so their pay is fixed first and TM's cut comes out of the margin only. Each money step is
+rounded to whole cents before the next one uses it:
+
+```
+billed minutes  = max(minutes, minimum for the trade)       2 h licensed, 1 h Other
+worker gross    = billed minutes × hourly rate ÷ 60         $70 licensed, $38 Other
+holiday pay     = worker gross × 8%
+on-costs        = (worker gross + holiday pay) × 12.5%      KiwiSaver, ACC
+labour cost     = worker gross + holiday pay + on-costs
+margin          = (labour cost + materials at cost) × 20%   labour only when there are no materials
+ex GST          = labour cost + materials + margin
+GST             = ex GST × 15%
+customer price  = ex GST + GST                              → jobs.price_cents
+worker earns    = worker gross + holiday pay                before PAYE
+```
+
+One licensed hour at launch: $70 → $75.60 → $85.05 labour → $102.06 ex GST → **$117.37** incl GST (worker earns
+$75.60). Other: $38 → **$63.71** (worker earns $41.04).
+
+**Rounding** is half up (x.5 cents goes up) at each of the five rounded steps (gross, holiday pay, on-costs,
+margin, GST), in exact integer arithmetic: minutes, cents and basis points in, BigInt for the multiply-divide, so
+no float ever touches money. Inputs must be whole numbers (minutes ≥ 1, cents ≥ 0, basis points 0–10000), and a
+result that wouldn't fit a Postgres `integer` throws. Both are in `tests/unit/pricing-calculate.test.ts`.
+
+**The minimum** applies to the customer price and the worker's pay alike (the billed minutes are stored in
+`job_pricing.minutes`). `priceWork(…, { applyMinimum: false })` is for extra work on a job that already paid it.
+
+**Frozen rates.** Re-pricing before payment takes settings as they are then; after payment the database refuses any
+change to `price_cents` or `job_pricing`. Who sees what: customers get `price_cents` only, workers get what they earn
+only, never the customer price; the breakdown stays on the server (AGENTS.md §5).
+
 ## Addresses, coverage and distances (#97)
 
 Server logic only; the screens that use it (post a job C04, saved addresses C21, the waitlist A07, the job map D03/D18,
@@ -291,6 +332,58 @@ animation in a component.
   (checked against `docs/design/sitemap.json` by `tests/unit/motion-catalogue.test.ts`).
 - **`/dev/motion`** plays each one (dev only, a 404 in production builds). Its e2e checks run against a dev server:
   `E2E_DEV_BASE_URL=http://localhost:3000 npx playwright test tests/e2e/dev-motion.spec.ts`.
+
+## Titles, icons, share images and search (#218)
+
+Mockup `w-meta` ("Icons, share images & install") in `docs/design/pages.html`, WEBAPP_SPEC G07.
+
+- **Page titles** follow one pattern: "[Page] · [Job] | Trade Marketplace". The root layout sets
+  `title.template`; a page sets only its own part with `pageTitle()` from `src/lib/metadata.ts`:
+
+  ```ts
+  export async function generateMetadata({ params }): Promise<Metadata> {
+    return { title: pageTitle("Your price", job.title) }; // "Your price · Sub wiring | Trade Marketplace"
+  }
+  ```
+
+  Unread counts go in front of the tab title: `document.title = formatTitle("Messages", unread)` →
+  "(2) Messages | Trade Marketplace" (99+ above 99). Wiring it to real counts is for the notifications tasks.
+- **Private pages are noindex with no share image.** Everything under `PRIVATE_PATHS` in `src/lib/metadata.ts`
+  (`/jobs`, `/dashboard`, `/profile`, `/admin`, `/messages`, `/notifications`, `/pay`, `/receipts`, `/earnings`,
+  `/quoting`, `/support`) is disallowed in `/robots.txt` (`src/app/robots.ts`), and every page there must spread
+  `privateMetadata`, which adds `noindex, nofollow` and removes the share image and Twitter card it would
+  otherwise inherit from the root. Easiest is once per section, in its layout:
+
+  ```ts
+  // src/app/jobs/layout.tsx
+  export const metadata: Metadata = { ...privateMetadata };
+  // or on a single page
+  export const metadata: Metadata = { ...privateMetadata, title: pageTitle("My jobs") };
+  ```
+
+  `tests/unit/robots.test.ts` fails if a sign-in-only route in `src/lib/auth/routes.ts` isn't covered, or a
+  public one is. A new private area goes in `PRIVATE_PATHS` and gets the metadata.
+- **Favicon and app icons** (bolt mark on Forest) are generated, not drawn by hand: `src/app/icon.svg` (tab),
+  `src/app/icon.png` (32px), `src/app/apple-icon.png` (180), `public/icons/icon-192.png`, `icon-512.png` and
+  `icon-maskable-512.png`. Next.js adds the `<link>` tags for the files in `src/app/`; the manifest lists the
+  others. To change them, edit `scripts/brand/icons.mjs` (sizes and proportions), the logo
+  (`docs/design/brand/logo.svg`) or the tokens, then run `node scripts/brand/icons.mjs` and commit the files.
+  `tests/unit/brand-icons.test.ts` fails if `icon.svg` no longer matches the logo and tokens. These image files
+  hold literal colours (an icon can't use CSS variables); they come from the tokens via the script.
+- **Web app manifest**: `src/app/manifest.ts` → `/manifest.webmanifest` (name, short name "TradeMkt", Forest theme,
+  Paper background, standalone, the three PWA icons). The install card is the "Install as app (PWA)" task (G08).
+- **Share images** (Open Graph 1200 × 630, also used as the large Twitter card): one per public page type, in that
+  page's mode. `src/app/opengraph-image.tsx` (customer, the default for every public page) and
+  `src/app/for-tradies/opengraph-image.tsx` (trade) both call `shareImage()` in `src/server/share-image.tsx`, each
+  with a `twitter-image.tsx` that re-exports it. A new page type (e.g. service pages, with the trade name) adds its
+  own pair the same way. They are drawn by `next/og` at build time with static TTF copies of Roboto Flex
+  (`scripts/brand/og-fonts.py`, because next/og can't read WOFF2 or variable fonts).
+- **Colours outside CSS.** The manifest and share images need literal colours, so they read them from
+  `src/styles/tokens.css` with `tokenColour(name, mode)` (`src/server/brand-colours.ts`): no hex in code, and a
+  token change reaches them on the next build. It reads the file from disk, so only use it in code that is
+  prerendered at build time (metadata routes like these), not in request-time code.
+- **Absolute URLs.** `metadataBase` is the primary domain (`SITE_URL`, https://trademarketplace.nz). Vercel preview
+  deployments use their own URL automatically.
 
 ## Buttons and links (#74)
 
