@@ -13,7 +13,7 @@ run in **Sydney** (`vercel.json` pins functions to `syd1`). See DECISIONS.md (#5
 | `src/lib/` | Small helpers safe on both server and browser (formatting, shared types). No secrets, no database. |
 | `src/generated/` | The generated Prisma client. Not committed; `npm install` and `npm run build` rebuild it. |
 | `prisma/` | `schema.prisma`, migrations and the seed script. Schema changes need William's review. |
-| `tests/` | Tests. `tests/unit/` runs with `npm test` (Vitest). |
+| `tests/` | Tests. `tests/unit/` runs with `npm test` (Vitest); `tests/e2e/` with `npm run e2e` (Playwright + axe). How to write them: [TESTING.md](TESTING.md). |
 | `scripts/` | Command-line helpers run by npm scripts. |
 
 Import from `src` with the `@/` alias, e.g. `import { getDb } from "@/server/db"`.
