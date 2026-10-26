@@ -32,3 +32,20 @@ describe("createSupabaseBrowserClient", () => {
     expect(createSupabaseBrowserClient().auth).toBeDefined();
   });
 });
+
+describe("authCookieOptions", () => {
+  it("makes session cookies http-only and same-site (lax), so page scripts can't read them", async () => {
+    const { authCookieOptions } = await import("@/server/supabase");
+    expect(authCookieOptions({ NODE_ENV: "production" })).toEqual({
+      path: "/",
+      sameSite: "lax",
+      httpOnly: true,
+      secure: true,
+    });
+  });
+
+  it("only drops `secure` in development, where the site runs on plain http://localhost", async () => {
+    const { authCookieOptions } = await import("@/server/supabase");
+    expect(authCookieOptions({ NODE_ENV: "development" }).secure).toBe(false);
+  });
+});

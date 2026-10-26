@@ -84,9 +84,24 @@ for (const viewport of VIEWPORTS) {
 
 ### Signing in as a role
 
-Not possible yet: sign-in (Supabase Auth) arrives in #101/#102. When it does, add a fixture in
-`tests/e2e/support/` that signs in as a seeded customer, tradie or office user once, saves the session with
-Playwright's `storageState`, and lets tests start already signed in:
+**Unit tests (now).** Nothing talks to Supabase. Pick who is signed in by handing the code a fake:
+
+- **Guards** (`requireRole`, `withRole`, `withRoleRoute`): `createGuards(async () => viewer)` with a `Viewer` of the
+  role you want, or `null` for signed out / session expired. See `tests/unit/auth-guard.test.ts`.
+- **The proxy**: `refreshSession(request, { readUserId, findRole })` with a `NextRequest` and fake sources. See
+  `tests/unit/auth-refresh.test.ts`, which also runs the real `@supabase/ssr` client against a stubbed `fetch` to
+  prove an expired token is refreshed and set as an http-only cookie.
+- **Sign up / log in**: `signUp()` / `logIn()` from `src/server/auth/account.ts` take a fake Supabase `auth` object
+  and a profile store (`tests/unit/auth-account.test.ts`). With `TEST_DATABASE_URL` set,
+  `tests/unit/auth-profiles.test.ts` does the same against the real `profiles` table (insert into `auth.users` first,
+  as Supabase would).
+- **Server Components**: mock `@/server/auth/viewer` and set what `getViewer()` returns (`tests/unit/layout.test.tsx`).
+
+**End-to-end tests (later).** E2E runs keep Supabase off (`playwright.config.ts`), so everyone is signed out and
+`tests/e2e/route-protection.spec.ts` only checks the signed-out redirect. Signed-in e2e tests need a throwaway
+Supabase Auth to sign in against (a local `supabase start`, or the staging project from #89, never the real one) and
+the seeded demo accounts (#88). When those exist, add a fixture in `tests/e2e/support/` that logs in once per role
+through the log-in page (#102), saves the session with Playwright's `storageState`, and lets tests start signed in:
 `test.use({ storageState: "tests/e2e/.auth/customer.json" })` (`.auth/` must stay out of git).
 
 ## Accessibility checks (axe)
