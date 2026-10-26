@@ -1,15 +1,10 @@
+/// <reference types="vite/client" />
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { unstable_noStore } from "next/cache";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import ButtonsPage from "@/app/dev/components/buttons/page";
-import FieldsPage from "@/app/dev/components/fields/page";
-import MapComponentsPage from "@/app/dev/components/map/page";
-import StatusComponentsPage from "@/app/dev/components/status/page";
-import MotionPage from "@/app/dev/motion/page";
-import TokensPage from "@/app/dev/tokens/page";
 import {
   DEV_PAGES_ENV,
   devPagesAllowed,
@@ -25,14 +20,15 @@ type DevPage = (props: {
   searchParams: Promise<Record<string, string>>;
 }) => Promise<unknown>;
 
-const PAGES: Record<string, DevPage> = {
-  "/dev/components/buttons": ButtonsPage,
-  "/dev/components/fields": FieldsPage,
-  "/dev/components/map": MapComponentsPage,
-  "/dev/components/status": StatusComponentsPage,
-  "/dev/motion": MotionPage,
-  "/dev/tokens": TokensPage,
-};
+// Every /dev page, found and imported automatically, so a new preview page is covered without editing this file.
+// (If a page you just added shows up as missing locally, Vitest's cache is stale: delete node_modules/.vitest-cache.)
+const modules = import.meta.glob<{ default: DevPage }>("../../src/app/dev/**/page.tsx", { eager: true });
+const PAGES: Record<string, DevPage> = Object.fromEntries(
+  Object.entries(modules).map(([file, module]) => [
+    file.replace("../../src/app", "").replace(/\/page\.tsx$/, ""),
+    module.default,
+  ]),
+);
 
 const open = (page: DevPage) => page({ searchParams: Promise.resolve({}) });
 const NOT_FOUND = { digest: expect.stringContaining("404") };
@@ -142,7 +138,7 @@ describe("guardDevPage", () => {
 });
 
 describe("every /dev page", () => {
-  it("uses the shared guard, and this test knows every one", () => {
+  it("uses the shared guard", () => {
     expect(devPageRoutes().sort()).toEqual(Object.keys(PAGES).sort());
     for (const route of Object.keys(PAGES)) {
       const source = readFileSync(`src/app${route}/page.tsx`, "utf8");
