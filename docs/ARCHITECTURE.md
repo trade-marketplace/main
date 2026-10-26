@@ -269,3 +269,20 @@ animation in a component.
   (checked against `docs/design/sitemap.json` by `tests/unit/motion-catalogue.test.ts`).
 - **`/dev/motion`** plays each one (dev only, a 404 in production builds). Its e2e checks run against a dev server:
   `E2E_DEV_BASE_URL=http://localhost:3000 npx playwright test tests/e2e/dev-motion.spec.ts`.
+
+## Status pills, tracker and price block (#77)
+
+| Piece | Where | What it does |
+|---|---|---|
+| Label map | `src/lib/job-status.ts` | `statusPill(status, audience, context)`: the label and colour kind for the customer, tradie or office (sitemap.json `job_statuses`, FRONTEND_SPEC §2), or null when that audience doesn't see it. Typed on the schema's `JobStatus` enum, so a new status fails typecheck until it has labels. `context` carries what the server knows (extra work, payout, "on now", unclaimed > 48h). |
+| Tracker steps | `src/lib/job-tracker.ts` | `jobTracker(status, audience, options)`: the steps and the current one. Customers get the journey (folded to "Price accepted" once paid); tradies only once they've claimed the job; the office has none (its job page shows the audit timeline). No money in it. |
+| Components | `src/components/status/` | `<StatusPill>` (M25 when the status changes; `announce` on the one pill at the top of a job page), `<Pill kind>` for the kit's other pills, `<BountyPill>` (gold, M27 glint), `<Tracker>` (M11), `<PriceBlock>` (M09 with `revealId`). |
+
+**Whose number.** `<PriceBlock audience="customer" priceCents>` and `<PriceBlock audience="tradie" earnCents breakdown>` are a
+union: the other side's fields are typed `never`, and each version reads only its own fields at run time.
+`tests/unit/price-block.test.tsx` proves both (its `@ts-expect-error` lines fail `npm run typecheck` if a wrong call
+ever compiles). Don't widen these props; a new figure gets its own field on the side that may see it.
+
+**`/dev/components/status`** shows every variant and state (`?mode=trade`, `?mode=office`). Dev only, a 404 in
+production builds. Its e2e checks run against a dev server:
+`E2E_DEV_BASE_URL=http://localhost:3000 npx playwright test tests/e2e/dev-status-components.spec.ts`.
