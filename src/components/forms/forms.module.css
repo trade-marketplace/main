@@ -1,0 +1,79 @@
+/* #75: values ported from docs/design/components.css (fields, choices and chips). */
+.field { display: grid; align-content: start; gap: 6px; min-width: 0; max-width: 100%; }
+.label, .legend { font-size: var(--trade-fs-small); font-weight: 700; color: var(--trade-text); overflow-wrap: anywhere; }
+.required { font-weight: 400; color: var(--trade-text-2); }
+.hint, .counter, .lookupStatus { margin: 0; color: var(--trade-text-2); font-size: var(--trade-fs-caption); line-height: var(--trade-lh-caption); overflow-wrap: anywhere; }
+.counter { text-align: end; font-variant-numeric: tabular-nums; }
+.error, .success { display: flex; align-items: flex-start; gap: var(--trade-space-1); margin: 0; font-size: var(--trade-fs-caption); font-weight: 600; overflow-wrap: anywhere; }
+.error { color: var(--trade-danger); }
+.success { color: var(--trade-success); }
+.error > span, .success > span { flex: none; }
+.control { display: flex; align-items: center; gap: 10px; min-width: 0; min-height: var(--trade-field-h); color: var(--trade-text-2); background: var(--trade-surface); }
+.control[data-variant="box"] { padding: 0 14px; border: 1px solid var(--trade-field-border); border-radius: var(--trade-radius-field); }
+.control[data-variant="underline"] { border-bottom: 1px solid var(--trade-field-border); }
+.control:focus-within { outline: 2px solid var(--trade-focus); outline-offset: 2px; }
+.control[data-variant="underline"]:focus-within { border-bottom: 2px solid var(--trade-focus); }
+.control[data-error="true"] { box-shadow: inset 0 0 0 1px var(--trade-danger); border-color: var(--trade-danger); }
+.control[data-variant="underline"][data-error="true"] { box-shadow: none; border-bottom: 2px solid var(--trade-danger); }
+.control[data-disabled] { background: var(--trade-waiting-bg); cursor: not-allowed; }
+.input, .textarea, .select { min-width: 0; width: 100%; max-width: 100%; border: 0; border-radius: 0; background: transparent; color: var(--trade-text); font: inherit; font-size: var(--trade-fs-body); line-height: var(--trade-lh-body); }
+.input, .select { min-height: calc(var(--trade-field-h) - 2px); padding: var(--trade-space-2) 0; }
+.input { flex: 1 1 0; }
+.textarea { display: block; min-height: 112px; padding: 12px 0; resize: vertical; overflow-wrap: anywhere; }
+.input:focus-visible, .textarea:focus-visible, .select:focus-visible { outline: none; }
+.input::placeholder, .textarea::placeholder { color: var(--trade-text-3); opacity: 1; }
+.input:disabled, .textarea:disabled, .select:disabled { color: var(--trade-text-2); opacity: 1; cursor: not-allowed; -webkit-text-fill-color: var(--trade-text-2); }
+.input[readonly], .textarea[readonly] { color: var(--trade-text-2); }
+.affix { flex: none; font-weight: 700; color: var(--trade-text-2); overflow-wrap: anywhere; }
+.group { min-width: 0; max-width: 100%; margin: 0; padding: 0; border: 0; }
+.legend { max-width: 100%; padding: 0; margin-bottom: var(--trade-space-2); }
+.group > .hint, .group > .error, .group > .success { margin-top: 6px; }
+.optionStack { display: grid; gap: var(--trade-space-2); }
+.choice, .choiceCard { position: relative; display: flex; align-items: center; gap: 14px; min-width: 0; min-height: var(--trade-tap); cursor: pointer; }
+.choiceCard { padding: 16px; border: 1px solid var(--trade-line-strong); border-radius: var(--trade-radius-card); background: var(--trade-surface); }
+.choiceCard:has(input:checked) { border: 2px solid var(--trade-action); padding: 15px; background: var(--trade-tint); }
+.choiceLabel { min-width: 0; font-size: var(--trade-fs-small); color: var(--trade-text); overflow-wrap: anywhere; }
+.optionHint { display: block; color: var(--trade-text-2); font-size: var(--trade-fs-caption); font-weight: 400; margin-top: var(--trade-space-1); overflow-wrap: anywhere; }
+.choiceInput { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; }
+.check, .radio { width: 22px; height: 22px; flex: none; border: 2px solid var(--trade-field-border); background: var(--trade-surface); }
+.check { border-radius: 5px; display: grid; place-items: center; color: transparent; }
+.radio { border-radius: 50%; }
+.choiceInput:checked + .check { background: var(--trade-action); border-color: var(--trade-action); color: var(--trade-on-action); }
+.choiceInput:checked + .radio { border: 7px solid var(--trade-action); }
+.choiceInput:focus-visible + .check, .choiceInput:focus-visible + .radio, .choiceInput:focus-visible + .switchTrack,
+.choiceInput:focus-visible + .chip, .choiceInput:focus-visible + .window { outline: 2px solid var(--trade-focus); outline-offset: 2px; }
+.choiceInput[aria-invalid="true"] + .check, .choiceInput[aria-invalid="true"] + .radio,
+.choiceInput[aria-invalid="true"] + .switchTrack, .choiceInput[aria-invalid="true"] + .chip,
+.choiceInput[aria-invalid="true"] + .window { box-shadow: 0 0 0 1px var(--trade-danger); }
+.choice[data-disabled], .choiceCard[data-disabled], .chipTarget[data-disabled], .windowTarget[data-disabled] { cursor: not-allowed; }
+[data-disabled] > .choiceLabel, [data-disabled] > .chip, [data-disabled] > .window { color: var(--trade-text-2); }
+[data-disabled] > .check, [data-disabled] > .radio, [data-disabled] > .switchTrack,
+[data-disabled] > .chip, [data-disabled] > .window { background: var(--trade-waiting-bg); border-color: var(--trade-field-border); }
+.switchTrack { display: flex; align-items: center; width: 44px; height: 26px; padding: 3px; border-radius: var(--trade-radius-pill); border: 1px solid var(--trade-field-border); background: var(--trade-waiting-bg); flex: none; }
+.switchTrack > span { width: 18px; height: 18px; border-radius: 50%; background: var(--trade-field-border); }
+.choiceInput:checked + .switchTrack { background: var(--trade-action); border-color: var(--trade-action); }
+.choiceInput:checked + .switchTrack > span { transform: translateX(18px); background: var(--trade-on-action); }
+.chips { display: flex; flex-wrap: wrap; gap: 0 var(--trade-space-2); }
+.chipTarget { position: relative; display: inline-flex; align-items: center; min-width: 0; min-height: var(--trade-tap); max-width: 100%; padding: 6px 0; cursor: pointer; }
+.chip { display: inline-flex; align-items: center; min-height: 32px; padding: 6px 14px; border-radius: var(--trade-radius-pill); background: var(--trade-chip-bg); box-shadow: inset 0 0 0 1px var(--trade-chip-line); color: var(--trade-ink); font-size: var(--trade-fs-small); line-height: var(--trade-lh-small); overflow-wrap: anywhere; }
+.choiceInput:checked + .chip, .choiceInput:checked + .window { background: var(--trade-action); color: var(--trade-on-action); box-shadow: none; font-weight: 700; }
+.windowActions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--trade-space-3); margin: var(--trade-space-3) 0; }
+.windowDays { display: grid; gap: var(--trade-space-3); }
+.day { min-width: 0; margin: 0; padding: 0; border: 0; }
+.day > legend { font-size: var(--trade-fs-small); font-weight: 700; margin-bottom: var(--trade-space-1); padding: 0; overflow-wrap: anywhere; }
+.windowOptions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--trade-space-2); }
+.windowTarget { position: relative; min-width: 0; display: flex; cursor: pointer; }
+.window { display: flex; align-items: center; justify-content: center; text-align: center; min-width: 0; width: 100%; min-height: var(--trade-tap); padding: var(--trade-space-2); border: 1px solid var(--trade-field-border); border-radius: var(--trade-radius-action); background: var(--trade-surface); color: var(--trade-text); font-size: var(--trade-fs-small); overflow-wrap: anywhere; }
+.address { position: relative; min-width: 0; }
+.suggestions { position: absolute; top: calc(var(--trade-field-h) + var(--trade-space-1)); left: 0; right: 0; z-index: var(--trade-z-sticky); max-height: 18rem; overflow-y: auto; margin: 0; padding: 0; list-style: none; border: 1px solid var(--trade-field-border); border-radius: var(--trade-radius-card); background: var(--trade-surface); box-shadow: var(--trade-shadow-pop); }
+.suggestions:empty { display: none; }
+.suggestion { display: flex; align-items: flex-start; gap: var(--trade-space-2); min-height: var(--trade-tap); padding: var(--trade-space-3); font-size: var(--trade-fs-small); color: var(--trade-text); cursor: pointer; overflow-wrap: anywhere; }
+.suggestion > span:first-child { flex: none; }
+.suggestion > span:last-child { min-width: 0; }
+.suggestion[aria-selected="true"] { background: var(--trade-tint); outline: 2px solid var(--trade-focus); outline-offset: -2px; }
+.lookupStatus:not(:empty) { margin-top: 6px; }
+@media (forced-colors: active) {
+  .choiceInput:checked + .check, .choiceInput:checked + .radio, .choiceInput:checked + .switchTrack,
+  .choiceInput:checked + .chip, .choiceInput:checked + .window { outline: 2px solid Highlight; }
+  .choiceInput:checked + .check::after { content: "✓"; }
+}

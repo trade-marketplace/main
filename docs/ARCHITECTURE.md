@@ -423,3 +423,61 @@ Every button and link in the app is one of these. Don't style a `<button>` or `<
 - **`/dev/components/buttons`** shows every variant and state (`?mode=trade`, `?mode=office`) and a usage example.
   Dev only, like `/dev/motion`; its e2e checks run against a dev server:
   `E2E_DEV_BASE_URL=http://localhost:3000 npx playwright test tests/e2e/dev-buttons.spec.ts`.
+
+## Form fields (#75)
+
+Import the controls from `@/components/forms`. The underline and box fields, choice cards and chips follow
+`docs/design/components.css`; native inputs keep browser autocomplete, phone keyboards, date pickers and select
+type-ahead. Every control has a visible label. `hint`, `error` and `success` are associated with it through stable
+ids; errors take precedence over success. An error never changes the value.
+
+```tsx
+import { TextField, PasswordField, MoneyField, ChipGroup, TimeWindowPicker } from "@/components/forms";
+
+<TextField label="Email" type="email" name="email" variant="underline"
+  autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} error={errors.email} />
+<PasswordField label="Password" name="password" autoComplete="new-password" />
+<MoneyField label="Materials (NZD)" name="materials" value={amount} onChange={e => setAmount(e.target.value)} />
+<ChipGroup label="Trades" name="trades" multiple options={trades} value={selected} onChange={setSelected} />
+<TimeWindowPicker label="When are you free?" name="windows" days={days} value={windows} onChange={setWindows} />
+```
+
+- **TextField**: text, email, tel, url, search or number; `variant="box"` (default) or `"underline"`; optional
+  decorative `icon`, `prefix`, `suffix`. Pass native constraints, autocomplete, name, ref and input events through.
+  Long input values scroll inside their field; labels and messages wrap, including unbroken words.
+- **PasswordField**: underline by default; a labelled, non-submit visibility button. Toggling it keeps the value.
+  **MoneyField** keeps a decimal *string* with a `$` affix and decimal keyboard: the consuming form validates and
+  converts to cents. It does not calculate a price. **DateField** uses the native date input with ISO min/max/value.
+- **TextAreaField**: native textarea with an optional `maxLength` counter. **SelectField**: native select and
+  children options. Both accept controlled `value` or native `defaultValue`, plus native change events.
+- **CheckboxField** (optional `card`), **SwitchField**: native checkbox props including checked/defaultChecked and
+  change events; a switch exposes `role="switch"`. **RadioGroup**: `options`, a shared `name`, value/defaultValue,
+  `onChange(value)`. **ChipGroup**: native radios for one choice; `multiple` gives checkboxes and `onChange(values)`.
+  Each choice supports `disabled`; chips retain their 32px appearance within a minimum 44px hit target.
+- **TimeWindowPicker**: `days` supplies day labels and windows, each with a unique `value`, visible `label` and
+  optional `disabled`. The caller owns dates, time zones, availability and urgency rules. Any time selects only
+  available windows; Clear removes selections. Checked windows submit as repeated native `name=value` entries.
+  With no availability there is an empty message. `value`/`onChange` supports controlled forms and resets.
+- **Composite validation**: a required single radio group uses native validation. For multi-choice chips and time
+  windows, the consuming form validates the selection as a group and passes `error`; it must not mark every
+  checkbox required (that would require *all* options). `required` labels the group visibly.
+- **AddressField** is an autocomplete *shell*: pass `value`, `onQueryChange`, `onSelect`, `suggestions` and a
+  `status` (`idle`, `loading`, `ready`, `error`). Each suggestion has `id`, `label`, optional `detail`. The caller
+  owns debounce, fetching, ignoring stale responses and checking coverage; no provider is called by the component.
+  Arrow keys move the active descendant while focus stays in the input; Enter chooses; Escape or Tab closes.
+  Empty/offline states allow a manually typed address, without pretending it has been geocoded.
+
+Use controlled values when a form needs to reset composite state together. The development-only preview
+**`/dev/components/fields`** has every control, long-content cases, address search fixtures, and a complete local
+validation example that keeps inputs on error and focuses the first invalid field. `?mode=trade|office` changes
+the palette; `?state=error|disabled|success` makes review states repeatable. It is a 404 in production.
+
+Checks: `tests/unit/form-fields.test.tsx`, `tests/e2e/dev-fields.spec.ts`. With `npm run dev` running:
+
+```bash
+E2E_DEV_BASE_URL=http://127.0.0.1:3000 npx playwright test tests/e2e/dev-fields.spec.ts
+```
+
+Optionally set `FORM_FIELD_SCREENSHOTS_DIR` to a local folder to capture the full preview at 1440 and 390 in
+each palette/state, plus keyboard, validation-error and 200% zoom views. The production screenshot bot cannot
+review a development-only page; attach these local captures to the PR instead.
