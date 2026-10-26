@@ -40,3 +40,30 @@ jose/bcrypt sessions are not ported.
 - `createSupabaseBrowserClient()` (`src/lib/supabase/browser.ts`) is for Client Components.
 - Both are optional like the database: until `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
   are set they throw an error that says how to connect. The session-refresh proxy arrives with sign-in (#101).
+
+## Tokens, fonts and modes (#72)
+
+- **Tokens.** `src/styles/tokens.css` is the app's copy of `docs/design/tokens.css`, imported once in
+  `src/app/layout.tsx`. It is the only file allowed to hold hex colours; everything else uses `var(--trade-…)`.
+  `tests/unit/no-hex.test.ts` fails `npm test` (and CI) on a hex value anywhere else in `src/` (CSS, CSS modules,
+  TS/TSX strings, inline styles, SVG fills; comments are ignored). `tests/unit/tokens.test.ts` fails if the app copy's
+  token values drift from `docs/design/tokens.css`. Changing either needs Matt's review.
+- **Fonts.** Self-hosted in `public/fonts/` (licences and notes in `public/fonts/README.md`). `Trade Display` and
+  `Trade UI` are one Roboto Flex variable file with `font-display: swap`; Material Symbols Rounded keeps `block` from
+  the tokens file. The root layout preloads both (`src/lib/fonts.ts`).
+- **Icons.** Use `<Icon>` (`src/components/Icon.tsx`), never the font directly. It must be given a `label` (stands
+  alone: `role="img"` + `aria-label`) or `decorative` (text next to it says the same), so nothing loses its meaning
+  if the icon font fails.
+- **Modes.** `data-mode` on `<html>` picks the palette: `customer` (also when signed out), `trade`, `office`.
+  `modeForRole()` (`src/lib/mode.ts`) maps CUSTOMER → customer, TRADIE → trade, ADMIN → office, none → customer.
+  The root layout renders the attribute on the server, so the first paint already has the right colours (no flash,
+  no client script).
+  - **When sign-in lands (#101):** make `RootLayout` async, read the signed-in user's role on the server (via
+    `createSupabaseServerClient()` and the user's row), and pass it to `modeForRole(role)` instead of `null`. After
+    log-in/log-out, redirect or `router.refresh()` so the layout re-renders and the attribute changes with the page.
+  - Components only use the mode tokens (`--trade-action`, `--trade-on-action`, `--trade-signature`, …), never the raw
+    brand colours, so they recolour themselves. A preview of another mode can set `data-mode` on any element, but
+    because customer colours live on `:root`, a `data-mode="customer"` area inside a trade/office area doesn't reset.
+- **`/dev/tokens`** shows every token (read from `src/styles/tokens.css` at request time), per mode
+  (`?mode=trade`, `?mode=office`), the type scale in both families and an icon sample (`?icons=off` simulates the icon
+  font failing). It only works under `npm run dev`; in a production build it returns `notFound()` (404).
