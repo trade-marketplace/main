@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 // Server-side environment. Every variable is listed, with a comment, in .env.example.
-// The database and Supabase are optional for now: with their variables unset the app runs with them off.
+// The database, Supabase and Mapbox are optional for now: with their variables unset the app runs with them off.
 
 const postgresUrl = z
   .string()
@@ -25,12 +25,21 @@ const fieldEncryptionKey = z
     message: "must be 32 random bytes, base64-encoded (see .env.example for how to make one)",
   });
 
+// Mapbox access token for address search (#97). Public tokens start pk., secret ones sk.
+const mapboxToken = z
+  .string()
+  .trim()
+  .refine((value) => /^(pk|sk)\.[A-Za-z0-9._-]+$/.test(value), {
+    message: "must be a Mapbox access token (starts pk. or sk.)",
+  });
+
 const schema = z.object({
   DATABASE_URL: postgresUrl.optional(),
   DIRECT_URL: postgresUrl.optional(),
   NEXT_PUBLIC_SUPABASE_URL: httpsUrl.optional(),
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().trim().optional(),
   FIELD_ENCRYPTION_KEY: fieldEncryptionKey.optional(),
+  MAPBOX_ACCESS_TOKEN: mapboxToken.optional(),
 });
 
 export type ServerEnv = {
@@ -38,6 +47,8 @@ export type ServerEnv = {
   supabase: { enabled: false } | { enabled: true; url: string; publishableKey: string };
   // Off: saving an IRD number or bank account fails with a message saying how to set the key.
   fieldEncryption: { enabled: boolean };
+  // Off: address search isn't offered and addresses are typed by hand (src/server/geo/address-search.ts).
+  mapbox: { enabled: false } | { enabled: true; accessToken: string };
 };
 
 export class EnvError extends Error {
@@ -88,6 +99,7 @@ export function parseEnv(raw: RawEnv): ServerEnv {
         ? { enabled: true, url: env.NEXT_PUBLIC_SUPABASE_URL, publishableKey: env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }
         : { enabled: false },
     fieldEncryption: { enabled: env.FIELD_ENCRYPTION_KEY !== undefined },
+    mapbox: env.MAPBOX_ACCESS_TOKEN ? { enabled: true, accessToken: env.MAPBOX_ACCESS_TOKEN } : { enabled: false },
   };
 }
 

@@ -25,6 +25,7 @@ Decided by Matt (Co-Founder/CEO) on 23 October 2026. These override older wordin
 - **Sign-in** (#60, William): **Supabase Auth**, not a port of the prototype's jose/bcrypt sessions. Email + password at launch; magic links and Google/Apple later. Users live in our own Supabase Postgres; free to 50k monthly users. Auth emails go through Resend.
 - **Scheduled jobs** (#61, Matt): **Supabase pg_cron**, every minute (bounty expiry, 48h auto sign-off, reminders, unclaimed alerts). Vercel Cron's free plan only runs daily.
 - **Launch rates** (#62, Matt, revised by William 26 Oct): **$70/hr licensed trades, $38/hr Other** to the worker, 20% margin, 2-hour minimum (licensed) / 1-hour (Other). Customer pays about $117/hr incl GST licensed, ~$64/hr Other. Goal: licensed tradies can almost replace a full-time job. Editable in office Settings; priced jobs keep their rates.
+- **Coverage area** (Matt, 26 Oct): **60 km around Invercargill** (centre -46.4132, 168.3538). Stored in office Settings (`settings.coverage_*`), so the office can change it without a deploy; editing it from the office Settings screen (F14, Coverage tab) comes with that page.
 
 ## Still to decide
 
