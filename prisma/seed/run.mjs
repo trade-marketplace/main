@@ -1,8 +1,9 @@
-// Writes the demo data from ./data.mjs (#88). Safe to run again: people, places and licences are upserted by fixed
-// ids, and each demo job is deleted and posted again (keeping its TM number), so a second run leaves the same rows.
-// Only the demo rows are touched; anything else in the database is left alone.
+// Writes the demo data from ./data.mjs (#88, money rows #297). Safe to run again: people, places and licences are
+// upserted by fixed ids, and each demo job is deleted and posted again (keeping its TM number) with its payments,
+// payout, materials and extra work, so a second run leaves the same rows. Only the demo rows are touched; anything
+// else in the database is left alone.
 
-import { ADDRESSES, examplePricing, JOBS, PEOPLE, photoPath } from "./data.mjs";
+import { ADDRESSES, examplePricing, JOBS, moneyIds, PEOPLE, photoPath, testPaymentRefs } from "./data.mjs";
 
 /**
  * @typedef {import("./data.mjs").PersonKey} PersonKey
@@ -134,6 +135,10 @@ export async function seedDemoData({ db, auth, now = new Date() }) {
     const jobIds = JOBS.map((job) => job.id);
     const { rows: previous } = await db.query("SELECT id, job_number FROM jobs WHERE id = ANY($1::uuid[])", [jobIds]);
     const jobNumbers = new Map(previous.map((row) => [row.id, row.job_number]));
+    // Payments and payouts keep their job from being deleted (and a paid one can't be changed), so they go first;
+    // nothing stops deleting them. Extra work, materials and pricing go with the job (cascade).
+    await db.query("DELETE FROM payments WHERE job_id = ANY($1::uuid[])", [jobIds]);
+    await db.query("DELETE FROM payouts WHERE job_id = ANY($1::uuid[])", [jobIds]);
     await db.query("DELETE FROM jobs WHERE id = ANY($1::uuid[])", [jobIds]);
 
     const jobs = [];
@@ -249,7 +254,9 @@ async function upsertAddresses(db, customerId) {
 /**
  * Posts the job as REVIEW with its photos, windows and estimates, then moves it through `steps` the way the app
  * would, so the triggers write its status history and check every rule (pricing only while unpaid, a worker from
- * ASSIGNED on, booking an offered window).
+ * ASSIGNED on, booking an offered window). Money rows are written at the step the app would write them: the
+ * payment before the job becomes BOOKABLE, materials and extra work once a worker has it, the spend when they
+ * submit, the payout once the customer signs off.
  * @param {Db} db
  * @param {import("./data.mjs").DemoJob} job
  * @param {Record<PersonKey, string>} ids
@@ -261,6 +268,9 @@ async function postJob(db, job, ids, jobNumber, { daysAgo, dateIn }) {
     db.query("SELECT set_config('app.actor_id', $1, true)", [who ? ids[who] : ""]);
   const address = ADDRESSES[job.address];
   const posted = daysAgo(job.postedDaysAgo);
+  const money = moneyIds(job.id);
+  // The customer pays (or starts to) a day after posting; demo jobs that get that far were posted days ago.
+  const checkoutAt = daysAgo(Math.max(job.postedDaysAgo - 1, 0));
 
   await actor("customer");
   const { rows } = await db.query(
@@ -349,16 +359,81 @@ async function postJob(db, job, ids, jobNumber, { daysAgo, dateIn }) {
         ],
       );
       await db.query("UPDATE jobs SET status = 'PRICED', price_cents = $2 WHERE id = $1", [job.id, p.priceCents]);
+    } else if (status === "BOOKABLE") {
+      // Checkout, then the payment provider confirms it, then the job opens to workers.
+      await startCheckout(db, job, money.payment, checkoutAt);
+      await db.query(
+        `UPDATE payments SET status = 'PAID', provider_payment_id = $2, paid_at = $3 WHERE id = $1`,
+        [money.payment, testPaymentRefs(job.id).paymentId, checkoutAt],
+      );
+      await db.query("UPDATE jobs SET status = 'BOOKABLE' WHERE id = $1", [job.id]);
     } else if (status === "ASSIGNED") {
       if (!job.worker) throw new Error(`Demo job "${job.title}" is assigned but has no worker.`);
       await db.query(
         `UPDATE jobs SET status = 'ASSIGNED', worker_id = $2, booked_date = $3, booked_time = $4 WHERE id = $1`,
         [job.id, ids[job.worker], job.booked ? dateIn(job.booked[0]) : null, job.booked?.[1] ?? null],
       );
+      // The worker's materials budget is what the office priced in, at cost.
+      await db.query(
+        `INSERT INTO job_materials (job_id, budget_cents)
+         SELECT job_id, materials_cents FROM job_pricing WHERE job_id = $1 AND materials_cents > 0`,
+        [job.id],
+      );
+      for (const [index, extra] of (job.extraWork ?? []).entries()) {
+        await actor(extra.by);
+        await db.query(
+          `INSERT INTO variations (id, job_id, requested_by_id, description, requested_minutes,
+             requested_materials_cents)
+           VALUES ($1, $2, $3, $4, $5, $6)`,
+          [money.variation(index), job.id, ids[extra.by], extra.description, extra.minutes, extra.materialsCents],
+        );
+      }
+    } else if (status === "SUBMITTED") {
+      if (job.materialsSpentCents !== undefined) {
+        const spentAt = job.booked ? dateIn(job.booked[0]) : new Date();
+        await db.query("UPDATE job_materials SET spent_cents = $2, spent_at = $3 WHERE job_id = $1", [
+          job.id,
+          job.materialsSpentCents,
+          spentAt,
+        ]);
+      }
+      await db.query("UPDATE jobs SET status = 'SUBMITTED' WHERE id = $1", [job.id]);
+    } else if (status === "COMPLETED") {
+      await db.query("UPDATE jobs SET status = 'COMPLETED' WHERE id = $1", [job.id]);
+      // The worker's pay is exactly what the job was priced with; payroll exports it later.
+      await db.query(
+        `INSERT INTO payouts (id, job_id, worker_id, minutes, rate_cents, gross_cents, holiday_pay_cents)
+         SELECT $1, j.id, j.worker_id, p.minutes, p.worker_rate_cents, p.worker_gross_cents, p.holiday_pay_cents
+         FROM jobs j JOIN job_pricing p ON p.job_id = j.id WHERE j.id = $2`,
+        [money.payout, job.id],
+      );
     } else {
       await db.query("UPDATE jobs SET status = $2 WHERE id = $1", [job.id, status]);
     }
   }
 
+  if (job.checkoutStarted) {
+    await actor("customer");
+    await startCheckout(db, job, money.payment, checkoutAt);
+  }
+
   return { jobNumber: rows[0].job_number, status: job.steps.at(-1)?.[0] ?? "REVIEW", title: job.title };
+}
+
+/**
+ * The customer goes to pay: a pending test-mode payment for the job's price, exactly as priced.
+ * @param {Db} db
+ * @param {import("./data.mjs").DemoJob} job
+ * @param {string} paymentId
+ * @param {Date} at
+ */
+async function startCheckout(db, job, paymentId, at) {
+  const refs = testPaymentRefs(job.id);
+  const { rowCount } = await db.query(
+    `INSERT INTO payments (id, job_id, kind, amount_cents, status, provider_checkout_id, idempotency_key, livemode,
+       created_at, updated_at)
+     SELECT $1, id, 'JOB', price_cents, 'PENDING', $3, $4, false, $5, $5 FROM jobs WHERE id = $2 AND price_cents > 0`,
+    [paymentId, job.id, refs.checkoutId, refs.idempotencyKey, at],
+  );
+  if (rowCount !== 1) throw new Error(`Demo job "${job.title}" has no price to pay.`);
 }
