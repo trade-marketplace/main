@@ -117,12 +117,8 @@ jobs:
 
       - name: Install Playwright browser
         if: steps.plan.outputs.capture == 'true'
-        run: |
-          if [ "${{ steps.browser-cache.outputs.cache-hit }}" = "true" ]; then
-            npx playwright install-deps chromium
-          else
-            npx playwright install --with-deps chromium
-          fi
+        timeout-minutes: 3
+        run: npx playwright install chromium
 
       # Starts `next start` in the background. If it crashes or doesn't answer within a minute, this step fails
       # and prints the end of the server log; the whole log is uploaded below.
