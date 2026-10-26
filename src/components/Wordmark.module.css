@@ -1,0 +1,4 @@
+/* The wordmark's colours (docs/design/brand/wordmark.svg: Lime bolt, Paper words), from tokens. */
+.wordmark { display: block; height: auto; }
+.words { fill: var(--trade-paper); }
+.bolt { fill: var(--trade-signature); }

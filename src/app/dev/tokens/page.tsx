@@ -5,12 +5,12 @@ import path from "node:path";
 
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
 import type { CSSProperties } from "react";
 
 import { BoltMark } from "@/components/BoltMark";
 import { Icon } from "@/components/Icon";
 import { DEFAULT_MODE, isMode, MODES, type Mode } from "@/lib/mode";
+import { guardDevPage } from "@/server/dev-pages";
 
 import { FontStatus } from "./FontStatus";
 import { parseTokens, type Token, type TokenSection } from "./parse-tokens";
@@ -30,7 +30,7 @@ function readTokensCss(): string {
 }
 
 export default async function TokensPage({ searchParams }: { searchParams: SearchParams }) {
-  if (process.env.NODE_ENV === "production") notFound();
+  guardDevPage();
 
   const params = await searchParams;
   const mode: Mode = isMode(params.mode) ? params.mode : DEFAULT_MODE;

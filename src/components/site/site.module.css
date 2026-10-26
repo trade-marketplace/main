@@ -1,0 +1,262 @@
+/* Public site header, phone menu and footer (#83). Values from docs/design/web.css (.w-sitenav, .w-footer) and the
+   w-landing mockup in pages.html / screens.html, written with tokens only. Breakpoints from tokens.css:
+   the full nav from 1024px (lg); below that the links are in the menu. */
+
+/* ---- The public site is customer (green) mode, whoever is signed in (sitemap A01–A16). The root layout paints
+   <html> in the visitor's mode, and customer colours live on :root, so a nested data-mode="customer" wouldn't reset
+   them: these do, from the same tokens as :root's mode block (tests/unit/site-shell.test.tsx checks they match). */
+.shell {
+  --trade-action: var(--trade-leaf);
+  --trade-on-action: var(--trade-forest);
+  --trade-signature: var(--trade-lime);
+  --trade-on-signature: var(--trade-forest);
+  --trade-link: var(--trade-success);
+  --trade-tint: color-mix(in srgb, var(--trade-leaf) 12%, transparent);
+  --trade-tint-strong: color-mix(in srgb, var(--trade-lime) 30%, transparent);
+  --site-header-h: 64px;
+
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+
+@media (min-width: 1024px) {
+  .shell { --site-header-h: 76px; }
+}
+
+/* ---- Skip link: hidden until it has keyboard focus, then above everything, top left ---- */
+.skip {
+  position: absolute;
+  top: var(--trade-space-2);
+  left: var(--trade-space-2);
+  z-index: var(--trade-z-toast);
+  padding: var(--trade-space-3) var(--trade-space-4);
+  border-radius: var(--trade-radius-action);
+  background: var(--trade-surface);
+  color: var(--trade-text);
+  font-weight: 700;
+  font-size: var(--trade-fs-small);
+  text-decoration: underline;
+  transform: translateY(calc(-100% - var(--trade-space-4)));
+}
+.skip:focus { transform: none; }
+
+.main { flex: 1; }
+/* Focused only by the skip link (tabIndex -1); it isn't something to click, so no ring. */
+.main:focus { outline: none; }
+
+/* ---- Header (.w-sitenav). Sticky; its Forest fill is the M06 layer (.tm-navfill in motion.css). ---- */
+.header {
+  position: sticky;
+  top: 0;
+  z-index: var(--trade-z-nav);
+  color: var(--trade-text-on-dark);
+}
+/* A page with a hero slides it up under the transparent header. */
+.shell:has([data-site-hero]) .header { margin-bottom: calc(-1 * var(--site-header-h)); }
+/* No hero: solid from the first paint, before any script runs. */
+.shell:not(:has([data-site-hero])) .header::before { opacity: 1; }
+
+.bar {
+  display: flex;
+  align-items: center;
+  gap: var(--trade-space-4);
+  min-height: var(--site-header-h);
+  padding: var(--trade-space-2) var(--trade-inset-browse);
+}
+
+.logo {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  min-height: var(--trade-tap);
+  border-radius: 4px;
+}
+.logoMark { width: 100px; }
+
+.barNav { display: none; }
+.navList,
+.menuList,
+.footerList { list-style: none; margin: 0; padding: 0; }
+
+.navLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--trade-tap);
+  color: var(--trade-text-on-dark);
+  font-weight: 600;
+  font-size: var(--trade-fs-label);
+  line-height: var(--trade-lh-label);
+  text-decoration: none;
+  text-underline-offset: 6px;
+  opacity: 0.88;
+  white-space: nowrap;
+}
+.navLink:hover,
+.navLink[aria-current="page"] { opacity: 1; text-decoration: underline; }
+.navLink.tradies,
+.menuLink.tradies { color: var(--trade-amber); opacity: 1; }
+
+.barActions {
+  display: flex;
+  align-items: center;
+  gap: var(--trade-space-2);
+  margin-left: auto;
+  min-width: 0;
+}
+
+.desktopOnly { display: none; }
+.menuToggle { display: inline-flex; color: var(--trade-text-on-dark); }
+
+/* ---- Signed in: the account link (first name, cut off with "…" when long) ---- */
+.account {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--trade-space-2);
+  min-width: 0;
+  min-height: var(--trade-tap);
+  color: var(--trade-text-on-dark);
+  font-weight: 600;
+  font-size: var(--trade-fs-label);
+  text-decoration: none;
+  text-underline-offset: 6px;
+}
+.account:hover,
+.account[aria-current="page"] { text-decoration: underline; }
+.accountName { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+@media (min-width: 1024px) {
+  .bar { gap: var(--trade-space-8); padding-inline: var(--trade-space-12); }
+  .logoMark { width: 133px; }
+  .barNav { display: block; margin-left: auto; }
+  .navList { display: flex; align-items: center; gap: 30px; }
+  .barActions { gap: 30px; margin-left: 0; }
+  .desktopOnly { display: inline-flex; align-items: center; gap: var(--trade-space-6); min-width: 0; }
+  .desktopOnly .accountName { max-width: 16ch; }
+  .menuToggle { display: none; }
+}
+
+/* ---- Phone menu: drops down under the header, Forest, scrolls inside itself when it's taller than the screen ---- */
+.menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  max-height: calc(100dvh - var(--site-header-h));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0 var(--trade-inset-browse) var(--trade-space-6);
+  background: var(--trade-forest);
+  box-shadow: var(--trade-shadow-pop);
+}
+.menu[hidden] { display: none; }
+
+.menuLink {
+  display: flex;
+  align-items: center;
+  min-height: 56px;
+  padding: var(--trade-space-2) 0;
+  border-bottom: 1px solid rgb(255 255 255 / 12%);
+  color: var(--trade-text-on-dark);
+  font-weight: 600;
+  font-size: var(--trade-fs-body);
+  line-height: var(--trade-lh-label);
+  text-decoration: none;
+  text-underline-offset: 4px;
+}
+.menuLink:hover,
+.menuLink[aria-current="page"] { text-decoration: underline; }
+.menuLinkText { display: grid; gap: 2px; }
+.menuCaption {
+  color: var(--trade-text-on-dark-2);
+  font-weight: 400;
+  font-size: var(--trade-fs-caption);
+  line-height: var(--trade-lh-caption);
+}
+
+.menuActions { display: grid; gap: var(--trade-space-3); margin-top: var(--trade-space-6); }
+.menuActions .account { justify-self: start; max-width: 100%; }
+
+@media (min-width: 1024px) {
+  .menu { display: none; }
+}
+
+/* ---- Footer (.w-footer) ---- */
+.footer {
+  position: relative;
+  overflow: hidden;
+  padding: var(--trade-space-10) var(--trade-inset-browse) var(--trade-space-6);
+  background: var(--trade-forest);
+  color: var(--trade-text-on-dark-2);
+  font-size: var(--trade-fs-small);
+  line-height: var(--trade-lh-small);
+}
+
+/* The brand-device bolt at 20% (.tm-bolt), off the top right as in the mockup. */
+.footerBolt {
+  position: absolute;
+  width: 300px;
+  top: -80px;
+  right: -120px;
+  fill: var(--trade-signature);
+  opacity: 0.2;
+  pointer-events: none;
+}
+
+.footerInner {
+  position: relative;
+  display: grid;
+  gap: var(--trade-space-8);
+}
+.footerMark { width: 141px; }
+.footerPitch { margin: var(--trade-space-4) 0 0; max-width: 300px; line-height: 1.6; }
+
+.footerNav {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr));
+  gap: var(--trade-space-6) var(--trade-space-8);
+}
+.footerTitle {
+  margin: 0 0 var(--trade-space-2);
+  color: var(--trade-text-on-dark);
+  font-size: var(--trade-fs-small);
+  font-weight: 700;
+  line-height: var(--trade-lh-small);
+}
+.footerLink {
+  display: inline-block;
+  padding-block: 2px;
+  color: var(--trade-text-on-dark-2);
+  line-height: 1.75;
+  text-decoration: none;
+  text-underline-offset: 3px;
+  overflow-wrap: anywhere;
+}
+.footerLink:hover { color: var(--trade-text-on-dark); text-decoration: underline; }
+
+.footerBase {
+  position: relative;
+  margin: var(--trade-space-10) 0 0;
+  padding-top: var(--trade-space-5);
+  border-top: 1px solid rgb(255 255 255 / 12%);
+  font-size: 0.8125rem;
+}
+
+@media (min-width: 1024px) {
+  .footer { padding: 56px var(--trade-space-12) var(--trade-space-8); }
+  .footerBolt { width: 420px; top: -120px; right: -80px; }
+  .footerInner { grid-template-columns: 2fr 4fr; }
+  .footerNav { grid-template-columns: repeat(4, 1fr); }
+}
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}

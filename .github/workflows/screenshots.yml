@@ -126,8 +126,13 @@ jobs:
 
       # Starts `next start` in the background. If it crashes or doesn't answer within a minute, this step fails
       # and prints the end of the server log; the whole log is uploaded below.
+      # SCREENSHOT_DEV_PAGES lets the /dev/* pages (tokens, motion, component sets) render in this production build
+      # so component PRs get pictures (#317; guard: src/server/dev-pages.ts). Only ever this fixed value, set here:
+      # nothing from the PR (description, labels) reaches it. Vercel deployments still 404 those pages.
       - name: Start the app
         if: steps.plan.outputs.capture == 'true'
+        env:
+          SCREENSHOT_DEV_PAGES: "1"
         run: node scripts/ci/screenshots.mjs start
 
       - name: Take screenshots
