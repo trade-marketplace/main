@@ -27,6 +27,8 @@ export type DataTableProps<Row> = {
   error?: string;
   onRetry?: () => unknown;
   disabled?: boolean;
+  emptyTitle?: string;
+  emptyMessage?: ReactNode;
   emptyAction?: ReactNode;
 };
 
@@ -41,7 +43,8 @@ function SelectionCheckbox({ label, checked, mixed = false, disabled, onChange }
 
 /** Semantic table, sticky column headers, and labelled cards below 600px. Selection is controlled across pages. */
 export function DataTable<Row>({ caption, rows, columns, rowKey, rowLabel, sort, onSort, selection, rowActions,
-  isRowDisabled, loading = false, error, onRetry, disabled = false, emptyAction }: DataTableProps<Row>) {
+  isRowDisabled, loading = false, error, onRetry, disabled = false, emptyTitle = "Nothing to show yet.",
+  emptyMessage, emptyAction }: DataTableProps<Row>) {
   const available = rows.filter((row) => !isRowDisabled?.(row)).map(rowKey);
   const selected = new Set(selection?.keys ?? []);
   const selectedHere = available.filter((key) => selected.has(key)).length;
@@ -61,7 +64,7 @@ export function DataTable<Row>({ caption, rows, columns, rowKey, rowLabel, sort,
     </div>}
     <LoadingRegion loading={loading} label={`Loading ${caption.toLowerCase()}`} skeleton={<div className={styles.tableState}><SkeletonText lines={6} /></div>}>
       {error ? <ErrorState title="Couldn't load the rows." message={error} onRetry={onRetry} />
-        : rows.length === 0 ? <EmptyState icon="search_off" title="No jobs match that." message="Try fewer filters." action={emptyAction} />
+        : rows.length === 0 ? <EmptyState icon="search_off" title={emptyTitle} message={emptyMessage} action={emptyAction} />
         : <div className={styles.tableScroll} role="region" aria-label={`${caption} rows`} tabIndex={0}>
           <table role="table" className={styles.table}>
             <caption className={styles.srOnly}>{caption}</caption>

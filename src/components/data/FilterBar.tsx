@@ -12,6 +12,7 @@ export type FilterSnapshot = { search: string; values: Record<string, string> };
 export type SavedFilter = FilterSnapshot & { id: string; name: string };
 export type FilterBarProps = {
   label?: string;
+  searchLabel?: string;
   filters: readonly FilterDefinition[];
   value: FilterSnapshot;
   onChange: (value: FilterSnapshot) => void;
@@ -22,7 +23,7 @@ export type FilterBarProps = {
   disabled?: boolean;
 };
 
-export function FilterBar({ label = "Filter jobs", filters, value, onChange, savedFilters = [], onSave, onDeleteSaved, disabled }: FilterBarProps) {
+export function FilterBar({ label = "Filters", searchLabel = "Search", filters, value, onChange, savedFilters = [], onSave, onDeleteSaved, disabled }: FilterBarProps) {
   const [name, setName] = useState("");
   const active = filters.flatMap((filter) => {
     const option = filter.options.find((option) => option.value === value.values[filter.key] && option.value);
@@ -31,7 +32,7 @@ export function FilterBar({ label = "Filter jobs", filters, value, onChange, sav
   const hasFilters = Boolean(value.search) || active.length > 0;
   return <section aria-label={label} className={styles.filters}>
     <div className={styles.filterFields}>
-      <TextField label="Search jobs" type="search" icon="search" value={value.search} disabled={disabled}
+      <TextField label={searchLabel} type="search" icon="search" value={value.search} disabled={disabled}
         onChange={(event) => onChange({ ...value, search: event.target.value })} />
       {filters.map((filter) => <SelectField key={filter.key} label={filter.label} value={value.values[filter.key] ?? ""} disabled={disabled}
         onChange={(event) => onChange({ ...value, values: { ...value.values, [filter.key]: event.target.value } })}>

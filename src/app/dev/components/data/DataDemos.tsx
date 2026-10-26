@@ -81,7 +81,7 @@ export function DataDemos({ initialState }: { initialState: PreviewState }) {
       <div className={styles.sectionHead}><div><p className={styles.eyebrow}>Working example</p><h2 id="usage-title">Jobs at a glance</h2></div>
         <p className={styles.note}>Example jobs · no live data</p></div>
       <p className={styles.note}>Sort a column, pick a few rows, or save a filter set. Saved filters stay in this browser for this preview.</p>
-      <FilterBar filters={FILTERS} value={filter} onChange={changeFilters} disabled={disabled || state === "loading"}
+      <FilterBar label="Filter jobs" searchLabel="Search jobs" filters={FILTERS} value={filter} onChange={changeFilters} disabled={disabled || state === "loading"}
         savedFilters={saved} onSave={(name, snapshot) => {
           const next = [...saved.filter((item) => item.name !== name), { ...snapshot, name, id: name }];
           writeStorage(JSON.stringify(next)); setMessage(`Saved filter ${name}.`);
@@ -90,6 +90,7 @@ export function DataDemos({ initialState }: { initialState: PreviewState }) {
         rowKey={(row) => row.id} rowLabel={(row) => row.id} sort={sort} onSort={(next) => { setSort(next); setPage(1); }} disabled={disabled}
         loading={state === "loading"} error={state === "error" ? "Check your connection and try again." : undefined}
         onRetry={() => { setState("default"); setMessage("Jobs loaded."); }}
+        emptyTitle="No jobs match that." emptyMessage="Try fewer filters."
         emptyAction={<Button variant="secondary" onClick={() => { changeFilters(EMPTY_FILTERS); setState("default"); setTab("all"); }}>Reset filters</Button>}
         selection={{ keys: selection, onChange: setSelection, actions: <Button variant="secondary" width="auto" size="sm" disabled={disabled || state === "loading" || state === "error"}
           onClick={() => setMessage(`Opened ${selection.length} selected example jobs.`)}>Open selected jobs</Button> }}

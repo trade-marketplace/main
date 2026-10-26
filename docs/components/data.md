@@ -7,14 +7,16 @@ The page uses the existing dev-page guard and is unavailable on deployed sites.
 - `DataTable<Row>` takes columns (`key`, `label`, `render`, `sortable`), `rows`, `rowKey` and `rowLabel`.
   Supply `sort` / `onSort`, `selection` (`keys`, `onChange`, optional bulk `actions`) and `rowActions` as needed.
   Selection spans pages; Select all affects only enabled rows on the current page. `isRowDisabled` disables
-  individual rows. `loading`, `error` / `onRetry`, and `emptyAction` use the existing feedback kit.
+  individual rows. `loading`, `error` / `onRetry`, and `emptyTitle` / `emptyMessage` / `emptyAction` use the existing
+  feedback kit. Empty content defaults to “Nothing to show yet.”; provide copy that fits the collection and filters.
 - `Tabs` and `SegmentedControl` take `label`, `items`, `value` and `onChange`. Each item has `value`, `label`,
   `content` and optional `disabled`. Arrows activate adjacent available tabs, wrapping at either end; Home/End
   activate the first/last. Tab enters the selected panel. Both variants use the existing M16 indicator utility
   and respect reduced motion.
 - `Pagination` takes `total`, `page`, `pageSize` and `onPageChange`; optionally `onPageSizeChange`. Zero results
   show `0–0 of 0`; out-of-range pages are clamped for display. Keep the caller's page in range when results change.
-- `FilterBar` takes filter definitions, a `value` (`search`, `values`) and `onChange`. Active chips remove one
+- `FilterBar` takes filter definitions, a `value` (`search`, `values`) and `onChange`. `label` names the region and
+  `searchLabel` labels the search input (defaults: “Filters” and “Search”). Active chips remove one
   filter; Reset removes all. Pass `savedFilters`, `onSave` and `onDeleteSaved` for saved sets. The caller owns
   persistence. The gallery uses browser storage for its example strings and falls back to memory when storage
   is unavailable; production pages should persist filters per account through their own data layer.

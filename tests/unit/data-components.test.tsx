@@ -46,10 +46,19 @@ describe("controlled table example", () => {
   it("shows loading, empty and retry states instead of stale rows", () => {
     const props = { caption: "Jobs", rows: JOBS, columns: [{ key: "title", label: "Job", render: (row: typeof JOBS[number]) => row.title }], rowKey: (row: typeof JOBS[number]) => row.id, rowLabel: (row: typeof JOBS[number]) => row.id };
     expect(renderToStaticMarkup(<DataTable {...props} loading />)).toContain('aria-busy="true"');
-    expect(renderToStaticMarkup(<DataTable {...props} rows={[]} />)).toContain("No jobs match that.");
+    expect(renderToStaticMarkup(<DataTable {...props} rows={[]} />)).toContain("Nothing to show yet.");
     const error = renderToStaticMarkup(<DataTable {...props} error="Try again." onRetry={noop} />);
     expect(error).toContain("Try again");
     expect(error).not.toContain("Repair the garden gate");
+  });
+  it("lets non-job pages supply their own empty title and message", () => {
+    const html = renderToStaticMarkup(<DataTable caption="Customers" rows={[]} columns={[]}
+      rowKey={() => ""} rowLabel={() => ""} emptyTitle="No customers match that."
+      emptyMessage={<>Try another <strong>name</strong>.</>} emptyAction={<button>Clear search</button>} />);
+    expect(html).toContain("No customers match that.");
+    expect(html).toContain("Try another <strong>name</strong>.");
+    expect(html).toContain("Clear search");
+    expect(html).not.toContain("jobs");
   });
   it("exposes sorting, row actions and bulk selection with names", () => {
     const html = renderToStaticMarkup(<DataTable caption="Jobs" rows={JOBS.slice(0, 2)}
@@ -85,5 +94,12 @@ describe("tabs and saved filters", () => {
     const html = renderToStaticMarkup(<FilterBar filters={[]} value={snapshot} onChange={noop} savedFilters={[snapshot]} onDeleteSaved={noop} />);
     expect(html).toContain("Delete saved filter Windsor");
     expect(html).toContain("Remove search: gate");
+  });
+  it("lets each collection name its search field independently of the filter region", () => {
+    const html = renderToStaticMarkup(<FilterBar label="Filter customers" searchLabel="Search customers"
+      filters={[]} value={{ search: "", values: {} }} onChange={noop} />);
+    expect(html).toContain('aria-label="Filter customers"');
+    expect(html).toMatch(/<label[^>]*>Search customers<\/label>/);
+    expect(html).not.toContain("jobs");
   });
 });
