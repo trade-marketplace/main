@@ -91,6 +91,7 @@ model Profile {
   reviewsReported  Review[]           @relation("ReviewReporter")
   reviewsHidden    Review[]           @relation("ReviewHider")
   notifications    Notification[]
+  notificationPreferences NotificationPreference[]
   problemsReported ProblemReport[]    @relation("ProblemReporter")
   problemsResolved ProblemReport[]    @relation("ProblemResolver")
   supportThreads   SupportThread[]
@@ -828,6 +829,20 @@ model Notification {
   // The bell and the notifications page: newest first. Unread counts use a partial index (migration SQL).
   @@index([userId, createdAt])
   @@map("notifications")
+}
+
+// Event × optional-channel choices. In-app notifications are always kept (#98), so cannot be switched off here.
+// No email or push provider sends yet. A missing row follows the event catalogue's defaults.
+model NotificationPreference {
+  userId    String              @map("user_id") @db.Uuid
+  user      Profile             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event     String
+  channel   NotificationChannel
+  enabled   Boolean
+  updatedAt DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@id([userId, event, channel])
+  @@map("notification_preferences")
 }
 
 // "Something's not right" (C16): the customer or the worker on a job reports a problem. While one is OPEN the
