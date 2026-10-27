@@ -34,7 +34,7 @@ beforeEach(() => {
 });
 
 describe("logInAction and Keep me logged in", () => {
-  it("ticked: a 30-day session, and the browser-session marker removed", async () => {
+  it("ticked: a long session (400 days), and the browser-session marker removed", async () => {
     await expect(logInAction(null, form({ email: "a@b.nz", password: "x", remember: "on" }))).rejects.toMatchObject({ to: "/dashboard" });
     expect(supabase.createSupabaseServerClient).toHaveBeenCalledWith({ sessionOnly: false });
     expect(supabase.rememberSessionChoice).toHaveBeenCalledWith(false);

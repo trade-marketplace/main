@@ -91,8 +91,8 @@ the refresh happens in the proxy. The proxy reads `profiles` only for non-public
 database read.
 
 **Cookies** (`authCookieOptions()` in `src/server/supabase.ts`): `HttpOnly`, `Secure` (except `next dev` on plain
-http), `SameSite=Lax`, path `/`. Supabase decides when a session ends, not the cookie. "Keep me logged in" (30 days
-vs browser session) is the log-in page's (#102).
+http), `SameSite=Lax`, path `/`. Supabase decides when a session ends, not the cookie. "Keep me logged in" (400 days,
+the browser maximum, vs browser session) is the log-in page's (#102).
 
 **CSRF.** Forms post to **server actions**, never to GET links or our own POST endpoints. That's safe without a
 token because (1) Next.js only runs an action on POST and refuses one whose `Origin` header doesn't match the host,

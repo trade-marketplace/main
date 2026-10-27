@@ -18,13 +18,13 @@ export function authCookieOptions(env: Record<string, string | undefined> = proc
 }
 
 /**
- * "Keep me logged in" (#102). Ticked: the session cookies last 30 days from the last visit (each refresh
- * re-sets them). Not ticked: they're browser-session cookies, gone when the browser closes. The choice is kept in
+ * "Keep me logged in" (#102). Ticked: the session cookies last 400 days from the last visit (each refresh
+ * re-sets them), the longest browsers allow: Matt wants people to stay logged in as long as possible. Not ticked: they're browser-session cookies, gone when the browser closes. The choice is kept in
  * this marker cookie (itself a browser-session cookie), so the proxy's refreshes keep honouring it. Supabase
  * still decides when a session ends; this only decides how long the browser keeps the cookies.
  */
 export const SESSION_ONLY_COOKIE = "tm-session-only";
-export const REMEMBER_ME_MAX_AGE = 60 * 60 * 24 * 30;
+export const REMEMBER_ME_MAX_AGE = 60 * 60 * 24 * 400;
 
 /** The options for one session cookie Supabase wants to set. Deletions (empty value or max age 0) pass as they are. */
 export function sessionCookieOptions(cookie: CookieToSet, sessionOnly: boolean): CookieOptions {

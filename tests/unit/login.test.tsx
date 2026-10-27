@@ -24,10 +24,10 @@ const text = (html: string) =>
 afterEach(() => vi.unstubAllEnvs());
 
 describe("sessionCookieOptions (Keep me logged in)", () => {
-  it("keeps the session for 30 days when ticked, and only for the browser session when not", async () => {
+  it("keeps the session as long as browsers allow (400 days) when ticked, and only for the browser session when not", async () => {
     const { REMEMBER_ME_MAX_AGE, sessionCookieOptions } = await import("@/server/supabase");
     const cookie = { name: "sb-x-auth-token", value: "abc", options: { path: "/", maxAge: 400 * 86400, expires: new Date(0) } };
-    expect(REMEMBER_ME_MAX_AGE).toBe(30 * 24 * 60 * 60);
+    expect(REMEMBER_ME_MAX_AGE).toBe(400 * 24 * 60 * 60);
     expect(sessionCookieOptions(cookie, false)).toMatchObject({ path: "/", maxAge: REMEMBER_ME_MAX_AGE });
     const browserOnly = sessionCookieOptions(cookie, true);
     expect(browserOnly).toEqual({ path: "/" });
@@ -56,11 +56,11 @@ describe("sessionCookieOptions (Keep me logged in)", () => {
 
     createSupabaseClientWithCookies(jar(false));
     captured.setAll!(refresh, {});
-    expect(written.pop()!.options.maxAge).toBe(30 * 24 * 60 * 60);
+    expect(written.pop()!.options.maxAge).toBe(400 * 24 * 60 * 60);
 
     createSupabaseClientWithCookies(jar(true), { sessionOnly: false });
     captured.setAll!(refresh, {});
-    expect(written.pop()!.options.maxAge).toBe(30 * 24 * 60 * 60);
+    expect(written.pop()!.options.maxAge).toBe(400 * 24 * 60 * 60);
   });
 });
 

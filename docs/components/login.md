@@ -20,7 +20,8 @@ wrong | locked | unverified | invalid | unavailable (dev only).
 - **Deep links:** `?next=` goes back with the form. `afterLoginPath` (#101) keeps it only if it's one of our pages
   the person may open; otherwise they go to their home. "Create an account" keeps it too.
 - **Keep me logged in** is ticked by default:
-  - **Ticked:** the session cookies last 30 days from the last visit.
+  - **Ticked:** the session cookies last 400 days from the last visit, the longest browsers allow (Matt: stay
+    logged in as long as possible). Anyone who comes back within 400 days stays logged in.
   - **Not ticked:** they're browser-session cookies.
   - **How the choice is kept:** a `tm-session-only` marker cookie, so the proxy's refreshes keep honouring it.
     `src/server/supabase.ts` (`sessionCookieOptions`) handles this.
@@ -31,7 +32,7 @@ wrong | locked | unverified | invalid | unavailable (dev only).
 ## Tests
 
 - `tests/unit/login.test.tsx` covers:
-  - the cookie options (30 days, browser session, deletions untouched, the marker on refresh);
+  - the cookie options (400 days, browser session, deletions untouched, the marker on refresh);
   - the messages;
   - the form's HTML in each state (email kept, password empty);
   - the page (one h1, the deep link only for our own paths).
@@ -44,8 +45,9 @@ wrong | locked | unverified | invalid | unavailable (dev only).
 ## Notes for review
 
 - **William (auth):**
-  - **Keep me logged in:** it changes the session cookie lifetime from @supabase/ssr's 400 days to 30 days (or
-    the browser session). Code: `sessionCookieOptions`, `createSupabaseClientWithCookies`,
+  - **Keep me logged in:** ticked keeps @supabase/ssr's 400 days (the browser maximum; Matt wants the longest
+    possible), unticked makes them browser-session cookies. Supabase's own session settings (Time-box user
+    sessions, Inactivity timeout) should stay off so it doesn't end sessions sooner. Code: `sessionCookieOptions`, `createSupabaseClientWithCookies`,
     `rememberSessionChoice`.
   - **No lockout after wrong passwords** (Matt's decision, in DECISIONS.md). The "Too many tries" banner shows
     only when Supabase's own rate limit answers. The wording doesn't promise 10 or 15 minutes, because the wait
