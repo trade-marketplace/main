@@ -1,0 +1,96 @@
+/* #85. Measured w-o-queues: 22px/12px sidebar inset, 26px mark, 42px rows + 2px gaps,
+   21px icons and 14px text. Width is the requested 240px (off-queues also uses 240, w-o-queues uses 248).
+   Below 1024 the spec requires a top menu; Menu supplies its keyboard/focus behaviour. */
+.shell { display: flex; flex-direction: column; min-height: 100dvh; }
+.frame { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.skip {
+  position: absolute; top: var(--trade-space-2); left: var(--trade-space-2); z-index: var(--trade-z-toast);
+  padding: var(--trade-space-3) var(--trade-space-4); border-radius: var(--trade-radius-action);
+  background: var(--trade-surface); color: var(--trade-text); font-size: var(--trade-fs-small); font-weight: 700;
+  transform: translateY(calc(-100% - var(--trade-space-4)));
+}
+.skip:focus { transform: none; }
+.shell .testBanner {
+  border-radius: 0; justify-content: center; padding: var(--trade-space-2) var(--trade-inset-browse);
+  font-size: var(--trade-fs-small);
+}
+.shell .testBanner > p { flex: 0 1 auto; }
+.main { flex: 1; min-width: 0; padding: var(--trade-space-6) var(--trade-inset-browse); background: color-mix(in srgb, var(--trade-waiting-bg) 55%, var(--trade-surface)); }
+.main:focus { outline: none; }
+.sidebar { display: none; }
+.mobileHeader {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--trade-space-2);
+  min-height: var(--trade-header-h); padding: var(--trade-space-1) var(--trade-inset-browse);
+  background: var(--trade-forest); color: var(--trade-text-on-dark); position: relative; z-index: var(--trade-z-nav);
+}
+.mobileHeader .menuButton { color: var(--trade-signature); padding-inline: var(--trade-space-2); }
+.mobileHeader .menuButton:hover { background: color-mix(in srgb, var(--trade-signature) 16%, transparent); }
+.mobileMenu [role="menu"] { max-height: calc(100dvh - var(--trade-header-h) - var(--trade-space-20)); overflow-y: auto; }
+.mobileMenu [role="menuitem"] { min-height: var(--trade-tap); }
+.mobileMenu [aria-current="page"] { background: var(--trade-tint); font-weight: 700; }
+.mobileLink { display: flex; align-items: center; gap: var(--trade-space-2); }
+.mobileLink > :first-child { flex: 1; }
+.accountButton {
+  display: flex; align-items: center; gap: 10px; min-height: var(--trade-tap); min-width: var(--trade-tap);
+  border: 0; padding: 0; background: transparent; color: var(--trade-text-on-dark); cursor: pointer;
+  font: inherit; font-size: 0.8125rem; text-align: left; border-radius: 10px;
+}
+.accountButton:hover { background: color-mix(in srgb, var(--trade-surface) 8%, transparent); }
+.accountLabel { display: none; min-width: 0; overflow-wrap: anywhere; }
+.avatar {
+  display: grid; place-items: center; flex-shrink: 0; width: var(--trade-space-8); height: var(--trade-space-8);
+  border-radius: var(--trade-radius-pill); background: var(--trade-signature); color: var(--trade-on-signature);
+  font-size: var(--trade-fs-caption); font-weight: 800; line-height: 1;
+}
+.menuName, .menuEmail { display: block; overflow-wrap: anywhere; }
+.visuallyHidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.count {
+  flex-shrink: 0; min-width: 0; height: auto; border: 0; border-radius: 9px; padding: 1px 7px;
+  background: var(--trade-signature); color: var(--trade-on-signature); font-size: 0.6875rem; font-weight: 800; line-height: normal;
+}
+.shell :is(a, button):focus-visible { outline: 2px solid var(--trade-focus); outline-offset: 2px; }
+.sidebar :is(.link, .logo, .accountButton):focus-visible, .mobileHeader > nav .menuButton:focus-visible, .mobileHeader .accountButton:focus-visible {
+  outline-color: var(--trade-signature);
+}
+
+@media (min-width: 1024px) {
+  .frame { display: grid; grid-template-columns: calc(3 * var(--trade-space-20)) minmax(0, 1fr); }
+  .mobileHeader { display: none; }
+  .main { padding: var(--trade-space-6) var(--trade-space-8); }
+  .sidebar {
+    position: relative; display: flex; flex-direction: column; min-width: 0;
+    padding: calc(var(--trade-space-5) + var(--trade-space-1) / 2) var(--trade-space-3) calc(var(--trade-space-3) + var(--trade-space-1) / 2);
+    background: var(--trade-forest); color: var(--trade-text-on-dark);
+  }
+  .art { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+  .bolt { position: absolute; width: 320px; height: auto; left: var(--trade-space-5); top: 600px; fill: var(--trade-signature); opacity: .2; }
+  .logo { position: relative; display: block; width: fit-content; margin-inline: var(--trade-space-2); }
+  .wordmark { width: auto; height: 26px; }
+  .modeLabel {
+    position: relative; margin: var(--trade-space-2) var(--trade-space-2) var(--trade-space-5);
+    font-size: var(--trade-fs-caption); line-height: var(--trade-lh-caption); font-weight: 800;
+    letter-spacing: .12em; text-transform: uppercase; color: var(--trade-signature);
+  }
+  .links { position: relative; display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
+  .link {
+    display: flex; align-items: center; gap: var(--trade-space-3); min-height: 42px; padding: 0 var(--trade-space-3);
+    border-radius: 10px; color: var(--trade-text-on-dark-2); text-decoration: none;
+    font-size: var(--trade-fs-small); line-height: normal; font-weight: 400;
+    transition: background var(--trade-dur-fast);
+  }
+  .link:hover { background: color-mix(in srgb, var(--trade-signature) 8%, transparent); color: var(--trade-text-on-dark); }
+  .link[aria-current="page"] { background: color-mix(in srgb, var(--trade-signature) 16%, transparent); color: var(--trade-text-on-dark); font-weight: 700; }
+  .linkLabel { flex: 1; }
+  .navIcon { font-size: 21px; flex-shrink: 0; }
+  .indicatorHost { display: contents; }
+  .links .indicator {
+    top: 0; bottom: auto; width: 100%; height: calc(var(--tm-tab-scale, 0) * 100%); border-radius: 10px;
+    box-shadow: inset 3px 0 0 var(--trade-signature); transform: translateY(var(--tm-tab-y, 0px));
+    transition: transform var(--trade-dur-base) var(--trade-ease-in-out), height var(--trade-dur-base) var(--trade-ease-in-out);
+  }
+  .indicator[data-shown="false"] { visibility: hidden; }
+  .sidebarAccount { position: relative; margin-top: auto; padding-top: var(--trade-space-8); }
+  .sidebarAccount .accountMenu { display: block; }
+  .sidebarAccount .accountButton { width: 100%; }
+  .accountLabel { display: block; }
+}

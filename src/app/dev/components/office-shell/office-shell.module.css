@@ -1,0 +1,12 @@
+.content { max-width: var(--trade-content-max); }
+.title { margin: 0; font-family: var(--trade-font-heading); font-variation-settings: var(--trade-display-axes); font-size: 1.875rem; font-weight: 900; line-height: var(--trade-lh-title); }
+.lede { margin: var(--trade-space-3) 0 var(--trade-space-8); color: var(--trade-text-2); font-size: var(--trade-fs-small); }
+.panel { padding: var(--trade-space-6); border: 1px solid var(--trade-line); border-radius: var(--trade-radius-card); background: var(--trade-surface); }
+.panel h2, .controls h2 { font-size: var(--trade-fs-section); margin: 0 0 var(--trade-space-3); }
+.panel p { font-size: var(--trade-fs-small); color: var(--trade-text-2); }
+.panel code { overflow-wrap: anywhere; color: var(--trade-text); }
+.controls { margin-top: var(--trade-space-8); }
+.controls nav { display: flex; align-items: center; gap: var(--trade-space-2) var(--trade-space-3); flex-wrap: wrap; margin-bottom: var(--trade-space-2); font-size: var(--trade-fs-small); }
+.controls nav > span { font-weight: 700; min-width: 6rem; }
+.controls a { display: inline-flex; align-items: center; min-height: var(--trade-tap); color: var(--trade-link); padding: var(--trade-space-1); text-underline-offset: var(--trade-space-1); }
+.controls a[aria-current] { font-weight: 800; }

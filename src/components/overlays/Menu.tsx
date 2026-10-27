@@ -194,6 +194,8 @@ export function Menu({ trigger, children, header, align = "end", label, defaultO
 
 type MenuItemCommon = {
   children: ReactNode;
+  /** Navigation menus identify the current destination, without turning links into radio choices. */
+  "aria-current"?: "page";
   /** A Material Symbols name before the label. Decorative. */
   icon?: string;
   /** "danger" for log out, delete: red text. */
@@ -217,7 +219,7 @@ export type MenuItemProps = MenuItemCommon &
       }
   );
 
-export function MenuItem({ children, icon, tone = "default", checked, ...action }: MenuItemProps) {
+export function MenuItem({ children, icon, tone = "default", checked, "aria-current": current, ...action }: MenuItemProps) {
   const menu = useContext(MenuContext);
   const classes = [styles.menuItem, tone === "danger" && styles.menuDanger].filter(Boolean).join(" ");
   const choice = checked === undefined ? {} : { role: "menuitemradio" as const, "aria-checked": checked };
@@ -231,7 +233,7 @@ export function MenuItem({ children, icon, tone = "default", checked, ...action 
 
   if (typeof action.href === "string") {
     return (
-      <Link role="menuitem" {...choice} tabIndex={-1} href={action.href} className={classes} onClick={() => menu?.close(false)}>
+      <Link role="menuitem" {...choice} aria-current={current} tabIndex={-1} href={action.href} className={classes} onClick={() => menu?.close(false)}>
         {content}
       </Link>
     );
