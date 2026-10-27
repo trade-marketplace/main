@@ -69,6 +69,8 @@
   overflow-wrap: anywhere;
 }
 
+.lede { margin: calc(-1 * var(--trade-space-4)) 0 var(--trade-space-5); color: var(--trade-text-2); font-size: var(--trade-fs-small); }
+
 .form { display: grid; gap: var(--trade-space-4); }
 .row {
   display: flex;
@@ -161,5 +163,82 @@
   }
   .aside a { color: var(--trade-link); font-weight: 700; text-decoration: none; }
   .aside a:hover { text-decoration: underline; }
+  /* w-login breaks "Welcome / back"; w-signup keeps "Create account" on one line. */
   .title { font-size: 2.75rem; line-height: 1.05; max-width: 6em; }
+  .title[data-wide] { max-width: none; }
+}
+
+/* ---- Sign up: the role choice (#103; w-signup, pub-signup-1) ---- */
+/* Choosing "I'm a tradie" swaps the palette: these fade between the two (200ms). */
+.modeSwap :is(.brandBolt, .mark) { transition: fill var(--trade-dur-base) var(--trade-ease-in-out); }
+.modeSwap :is(.roleCard, .roleDot, .roleIcon, button, a) {
+  transition: background-color var(--trade-dur-base) var(--trade-ease-in-out), border-color var(--trade-dur-base) var(--trade-ease-in-out),
+    color var(--trade-dur-base) var(--trade-ease-in-out), box-shadow var(--trade-dur-base) var(--trade-ease-in-out);
+}
+@media (prefers-reduced-motion: reduce) {
+  .modeSwap :is(.brandBolt, .mark, .roleCard, .roleDot, .roleIcon, button, a) { transition: none; }
+}
+
+.roles { display: grid; gap: var(--trade-space-3); margin: 0; padding: 0; border: 0; min-width: 0; }
+.roles > legend { padding: 0; margin: calc(-1 * var(--trade-space-4)) 0 var(--trade-space-5); }
+
+/* Phone: a row with the radio dot, the words and the icon on the right. */
+.roleCard {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas: "dot text icon";
+  align-items: center;
+  gap: var(--trade-space-3);
+  min-height: 68px;
+  padding: var(--trade-space-3) var(--trade-space-4);
+  border: 1px solid var(--trade-line-strong);
+  border-radius: var(--trade-radius-card);
+  background: var(--trade-surface);
+  cursor: pointer;
+}
+.roleCard:hover { background: color-mix(in srgb, var(--trade-line) 35%, var(--trade-surface)); }
+.roleCard:has(:checked) { border: 2px solid var(--trade-action); padding: calc(var(--trade-space-3) - 1px) calc(var(--trade-space-4) - 1px); background: var(--trade-tint); }
+.roleCard:has(:focus-visible) { outline: 2px solid var(--trade-focus); outline-offset: 2px; }
+/* The real radio: covers the card (it's the hit area for touch and screen readers) but can't be seen. */
+.roleInput { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.roleDot {
+  grid-area: dot;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid var(--trade-text-2);
+  background: var(--trade-surface);
+}
+.roleCard:has(:checked) .roleDot { border-color: var(--trade-action); box-shadow: inset 0 0 0 4px var(--trade-surface); background: var(--trade-action); }
+.roleIcon { grid-area: icon; font-size: 28px; color: var(--trade-forest); }
+.roleCard[data-role="tradie"] .roleIcon { color: var(--trade-hivis); }
+.roleText { grid-area: text; display: grid; gap: 2px; min-width: 0; }
+.roleTitle { font-weight: 800; font-size: var(--trade-fs-body); overflow-wrap: anywhere; }
+.roleSub { font-size: var(--trade-fs-caption); line-height: var(--trade-lh-caption); color: var(--trade-text-2); overflow-wrap: anywhere; }
+
+.phoneOnly { margin: 0; text-align: center; color: var(--trade-text-2); font-size: var(--trade-fs-small); }
+.phoneOnly a { color: var(--trade-link); font-weight: 700; text-decoration: none; }
+.phoneOnly a:hover { text-decoration: underline; }
+
+/* Computer: two cards side by side, icon on top, no dot (w-signup). */
+@media (min-width: 1024px) {
+  .roles { grid-template-columns: 1fr 1fr; }
+  .roleCard {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "icon" "text";
+    align-content: start;
+    justify-items: start;
+    min-height: 118px;
+    padding: var(--trade-space-5) var(--trade-space-4);
+  }
+  .roleCard:has(:checked) { padding: calc(var(--trade-space-5) - 1px) calc(var(--trade-space-4) - 1px); }
+  .roleDot { display: none; }
+  .roleIcon { font-size: 26px; }
+  .phoneOnly { display: none; }
+}
+
+@media (forced-colors: active) {
+  .roleCard:has(:checked) { border-color: Highlight; }
+  .roleCard:has(:checked) .roleDot { background: Highlight; }
 }
