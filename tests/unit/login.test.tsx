@@ -24,10 +24,10 @@ const text = (html: string) =>
 afterEach(() => vi.unstubAllEnvs());
 
 describe("sessionCookieOptions (Keep me logged in)", () => {
-  it("keeps the session for 30 days when ticked, and only for the browser session when not", async () => {
+  it("keeps the session as long as browsers allow (400 days) when ticked, and only for the browser session when not", async () => {
     const { REMEMBER_ME_MAX_AGE, sessionCookieOptions } = await import("@/server/supabase");
     const cookie = { name: "sb-x-auth-token", value: "abc", options: { path: "/", maxAge: 400 * 86400, expires: new Date(0) } };
-    expect(REMEMBER_ME_MAX_AGE).toBe(30 * 24 * 60 * 60);
+    expect(REMEMBER_ME_MAX_AGE).toBe(400 * 24 * 60 * 60);
     expect(sessionCookieOptions(cookie, false)).toMatchObject({ path: "/", maxAge: REMEMBER_ME_MAX_AGE });
     const browserOnly = sessionCookieOptions(cookie, true);
     expect(browserOnly).toEqual({ path: "/" });
@@ -56,11 +56,11 @@ describe("sessionCookieOptions (Keep me logged in)", () => {
 
     createSupabaseClientWithCookies(jar(false));
     captured.setAll!(refresh, {});
-    expect(written.pop()!.options.maxAge).toBe(30 * 24 * 60 * 60);
+    expect(written.pop()!.options.maxAge).toBe(400 * 24 * 60 * 60);
 
     createSupabaseClientWithCookies(jar(true), { sessionOnly: false });
     captured.setAll!(refresh, {});
-    expect(written.pop()!.options.maxAge).toBe(30 * 24 * 60 * 60);
+    expect(written.pop()!.options.maxAge).toBe(400 * 24 * 60 * 60);
   });
 });
 
@@ -99,6 +99,16 @@ describe("LoginForm", () => {
     expect(html).toMatch(/<button[^>]*type="submit"[^>]*>[\s\S]*Log in/);
     expect(html).toContain('href="/signup"');
     expect(html).not.toContain('name="next"');
+  });
+
+  it("matches the mockup: placeholders, labels only for screen readers, and Sign up on a phone (Matt, #340)", () => {
+    // Vitest hashes CSS module class names ("_field_4f0108"); read them back as the names in the CSS file.
+    const html = renderToString(<LoginForm />).replace(/\b_([A-Za-z-]+)_[0-9a-f]{6}\b/g, "$1");
+    expect(html).toMatch(/<input[^>]*placeholder="Email"/);
+    expect(html).toMatch(/<input[^>]*placeholder="Password"/);
+    expect(html.match(/class="[^"]*\bfield quietLabel\b/g)).toHaveLength(2);
+    expect(html).toMatch(/<label[^>]*>Email<\/label>/);
+    expect(html).toMatch(/<span class="wideOnly">Create an account<\/span><span class="narrowOnly">Sign up<\/span>/);
   });
 
   it("sends the deep link back with the form, and keeps it on the way to sign-up", () => {

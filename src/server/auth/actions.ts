@@ -65,7 +65,7 @@ export async function signUpAction(_previous: SignUpState, formData: FormData): 
 
 /**
  * Log-in form fields: email, password, next (where to go back to), remember ("Keep me logged in": "on" keeps the
- * session for 30 days, anything else ends it with the browser). Goes to `next`, or to the role's home.
+ * session for 400 days from the last visit, anything else ends it with the browser). Goes to `next`, or to the role's home.
  */
 export async function logInAction(_previous: LogInState, formData: FormData): Promise<LogInState> {
   const sessionOnly = formData.get("remember") !== "on";
