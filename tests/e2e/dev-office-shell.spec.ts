@@ -38,7 +38,11 @@ test.describe("/dev/components/office-shell", () => {
         "?account=open&name=long",
         "?test=off&name=long",
       ]) {
-        await page.goto(url(query));
+        // These counts live inside the collapsed menu on phones/tablets. Open it so axe and the overflow
+        // check inspect the actual zero/99+ navigation states rather than an unchanged, closed top bar.
+        const countState = query.startsWith("?counts=");
+        const shownQuery = !desktop && countState ? `${query}&menu=open` : query;
+        await page.goto(url(shownQuery));
         await expect(page.getByRole("heading", { name: "Office shell", exact: true })).toBeVisible();
         await noOverflow(page);
         await expect(menuButton(page)).toBeVisible({ visible: !desktop });
@@ -46,7 +50,24 @@ test.describe("/dev/components/office-shell", () => {
           await expect(officeNav(page)).toBeVisible();
           await expect(officeNav(page).getByRole("link")).toHaveCount(9);
         }
-        if (!desktop && query === "?menu=open") await expect(page.getByRole("menu", { name: "Office" })).toBeVisible();
+        if (desktop && query === "?account=open&name=long") {
+          const accountMenu = page.getByRole("menu", { name: "Account", exact: true });
+          await expect(accountMenu.locator("..")).toBeInViewport({ ratio: 1 });
+          await expect(accountMenu.getByRole("menuitem", { name: "Log out", exact: true })).toBeInViewport({ ratio: 1 });
+          expect(await page.evaluate(() => window.scrollY)).toBe(0);
+        }
+        if (!desktop && (query === "?menu=open" || countState)) {
+          const menu = page.getByRole("menu", { name: "Office" });
+          await expect(menu).toBeVisible();
+          if (query.startsWith("?counts=many")) {
+            const tradies = menu.getByRole("menuitem", { name: /^Tradies\s*, 99\+ waiting$/ });
+            await expect(tradies).toBeVisible();
+            await expect(tradies).toHaveAttribute("aria-current", "page");
+            await expect(tradies.getByText("99+", { exact: true })).toBeVisible();
+          } else if (query === "?counts=none") {
+            await expect(menu.getByRole("menuitem", { name: /waiting/ })).toHaveCount(0);
+          }
+        }
         await expectNoA11yViolations(page);
       }
       await context.close();
@@ -79,7 +100,16 @@ test.describe("/dev/components/office-shell", () => {
     const items = menu.getByRole("menuitem");
     await expect(items).toHaveCount(9);
     for (const [index, name] of navNames.entries()) await expect(items.nth(index)).toHaveAccessibleName(name);
-    await expect(menu.getByRole("menuitem", { name: "Queues", exact: true })).toBeFocused();
+    const firstItem = menu.getByRole("menuitem", { name: "Queues", exact: true });
+    await expect(firstItem).toBeFocused();
+    // The menu is a scrolling container. An outward ring on its first row is clipped at the top and sides.
+    const focusRing = await firstItem.evaluate((element) => {
+      const style = getComputedStyle(element);
+      return { width: parseFloat(style.outlineWidth), offset: parseFloat(style.outlineOffset), style: style.outlineStyle };
+    });
+    expect(focusRing.style).toBe("solid");
+    expect(focusRing.width).toBeGreaterThanOrEqual(2);
+    expect(focusRing.offset).toBeLessThanOrEqual(-focusRing.width);
     await page.keyboard.press("ArrowDown");
     await expect(menu.getByRole("menuitem", { name: "All jobs", exact: true })).toBeFocused();
     await page.keyboard.press("End");
@@ -110,6 +140,7 @@ test.describe("/dev/components/office-shell", () => {
     await expect(page.getByRole("menu", { name: "Office" })).toBeHidden();
     await menuButton(page).click();
     await expect(page.getByRole("menuitem", { name: "All jobs", exact: true })).toHaveAttribute("aria-current", "page");
+    await expect(page).toHaveTitle(/Office shell/);
     await expectNoA11yViolations(page);
   });
 
@@ -118,6 +149,8 @@ test.describe("/dev/components/office-shell", () => {
     await page.goto(url("?counts=none&at=/admin/jobs/TM-1005"));
     const nav = officeNav(page);
     await expect(nav.getByRole("link", { name: "All jobs", exact: true })).toHaveAttribute("aria-current", "page");
+    const firstIcon = nav.getByRole("link").first().locator('span[aria-hidden="true"][translate="no"]');
+    await expect(firstIcon).toHaveCSS("font-size", "21px");
     const aligned = async () => nav.evaluate((element) => {
       const bar = element.querySelector<HTMLElement>("[data-tab-indicator]")?.getBoundingClientRect();
       const target = element.querySelector<HTMLElement>('[aria-current="page"]')?.getBoundingClientRect();
@@ -147,6 +180,11 @@ test.describe("/dev/components/office-shell", () => {
       await expect(items).toHaveCount(3);
       for (const [index, name] of ["Account", "Help", "Log out"].entries()) await expect(items.nth(index)).toHaveAccessibleName(name);
       await expect(items.first()).toBeFocused();
+      if (width === 1440) {
+        await expect(menu.locator("..")).toBeInViewport({ ratio: 1 });
+        await expect(menu.getByRole("menuitem", { name: "Log out", exact: true })).toBeInViewport({ ratio: 1 });
+        expect(await page.evaluate(() => window.scrollY)).toBe(0);
+      }
       await page.keyboard.press("End");
       await expect(menu.getByRole("menuitem", { name: "Log out", exact: true })).toBeFocused();
       await expectNoA11yViolations(page);

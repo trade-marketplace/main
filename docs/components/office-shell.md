@@ -68,7 +68,9 @@ Queues. Trailing slashes, query flags and fragments do not affect matching; unre
   destination is exposed in this menu too.
 - **Avatar:** initials come from the existing `initials()` helper. The menu header shows the full name and email;
   its three actions are Account, Help and Log out. Log out submits a hidden POST server-action form wired to
-  `logOutAction`, never a GET link. Long names wrap inside the menu.
+  `logOutAction`, never a GET link. Long names wrap inside the menu. The bottom sidebar avatar opens its menu
+  upwards before focus moves, keeping the complete panel in view without scrolling the document. The shared
+  Menu's automatic-placement issue is tracked separately in #337.
 - **Skip link:** the first focusable element targets `<main id="main" tabIndex={-1}>` and becomes visible on focus.
 - **Payment strip:** the existing `Banner` uses test tone and the exact message "Test mode. No real money moves."
   `OfficeShell` reuses `paymentsInTestMode()` from `src/server/app-shell.ts`; it remains true until the payments

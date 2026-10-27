@@ -49,6 +49,7 @@
   background: var(--trade-signature); color: var(--trade-on-signature); font-size: 0.6875rem; font-weight: 800; line-height: normal;
 }
 .shell :is(a, button):focus-visible { outline: 2px solid var(--trade-focus); outline-offset: 2px; }
+.shell [role="menuitem"]:focus-visible { outline-offset: -2px; }
 .sidebar :is(.link, .logo, .accountButton):focus-visible, .mobileHeader > nav .menuButton:focus-visible, .mobileHeader .accountButton:focus-visible {
   outline-color: var(--trade-signature);
 }
@@ -81,7 +82,7 @@
   .link:hover { background: color-mix(in srgb, var(--trade-signature) 8%, transparent); color: var(--trade-text-on-dark); }
   .link[aria-current="page"] { background: color-mix(in srgb, var(--trade-signature) 16%, transparent); color: var(--trade-text-on-dark); font-weight: 700; }
   .linkLabel { flex: 1; }
-  .navIcon { font-size: 21px; flex-shrink: 0; }
+  .link .navIcon { font-size: 21px; flex-shrink: 0; }
   .indicatorHost { display: contents; }
   .links .indicator {
     top: 0; bottom: auto; width: 100%; height: calc(var(--tm-tab-scale, 0) * 100%); border-radius: 10px;
@@ -91,6 +92,10 @@
   .indicator[data-shown="false"] { visibility: hidden; }
   .sidebarAccount { position: relative; margin-top: auto; padding-top: var(--trade-space-8); }
   .sidebarAccount .accountMenu { display: block; }
+  /* This trigger sits at the bottom of the sidebar: place its panel above before Menu focuses an item. */
+  .sidebarAccount .accountMenu > [data-align] {
+    top: auto; bottom: calc(100% + var(--trade-space-3) / 2); transform-origin: bottom center;
+  }
   .sidebarAccount .accountButton { width: 100%; }
   .accountLabel { display: block; }
 }
