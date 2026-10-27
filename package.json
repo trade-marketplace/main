@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build",
+    "vercel-build": "node scripts/migrate-on-deploy.mjs && npm run build",
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "prisma generate && next typegen && tsc --noEmit",
