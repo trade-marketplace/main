@@ -179,6 +179,18 @@ test.describe("/dev/components/data", () => {
     await expect(page).toHaveURL(/active=job-2/);
   });
 
+  test("opening a row keeps the list as it is now: filters and sort chosen after the page loaded stay", async ({ page }) => {
+    await page.goto(url());
+    await filters(page).getByRole("button", { name: "Region: All" }).click();
+    await page.getByRole("menuitemradio", { name: "Invercargill" }).click();
+    await jobs(page).getByRole("columnheader", { name: "Customer" }).getByRole("button").click();
+    await expect(page).toHaveURL(/region=invercargill.*sort=customer\.asc|sort=customer\.asc.*region=invercargill/);
+    await jobRows(page).first().locator("td").nth(4).click();
+    await expect(page).toHaveURL(/active=/);
+    await expect(page).toHaveURL(/region=invercargill/);
+    await expect(page).toHaveURL(/sort=customer\.asc/);
+  });
+
   test("tabs and segmented controls: arrows move and choose, Home/End jump, Tab goes into the panel", async ({ page }) => {
     await page.goto(url());
     const tradies = page.getByRole("tablist", { name: "Tradies" });
@@ -227,7 +239,10 @@ test.describe("/dev/components/data", () => {
   test("on a phone the table is cards, with Select all and a Sort menu instead of headers", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(url());
-    await expect(jobs(page).locator("thead")).toBeHidden();
+    // The headers are out of sight but still name each column for screen readers; their controls step aside.
+    await expect(jobs(page).getByRole("columnheader", { name: "Customer" })).toHaveCount(1);
+    expect(await jobs(page).locator("thead button, thead input").count()).toBeGreaterThan(0);
+    for (const control of await jobs(page).locator("thead button, thead input").all()) await expect(control).toBeHidden();
     await expect(jobRows(page).first().locator("td[data-label=Customer]")).toBeVisible();
     await page.getByRole("button", { name: /^Sort:/ }).first().click();
     await expect(page.getByRole("menu", { name: "Sort by" })).toBeVisible();

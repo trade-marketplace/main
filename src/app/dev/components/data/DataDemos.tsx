@@ -141,14 +141,9 @@ export function JobsTableDemo({ query, open }: { query: string; open: OpenId | n
   const [exported, setExported] = useState("");
   const active = initial.get("active");
 
-  // Keep the URL in step after every change (replace, not push: typing a search shouldn't fill the Back button).
-  const firstRender = useRef(true);
-  useEffect(() => {
-    if (firstRender.current) {
-      firstRender.current = false;
-      return;
-    }
-    const params = filtersToQuery(new URLSearchParams(window.location.search), filters, DEFAULTS);
+  /** The list's state on top of `base`: only what differs from the defaults is written. */
+  const listParams = (base: URLSearchParams) => {
+    const params = filtersToQuery(base, filters, DEFAULTS);
     if (q.trim()) params.set("q", q);
     else params.delete("q");
     if (sort) params.set("sort", `${sort.key}.${sort.direction}`);
@@ -156,17 +151,29 @@ export function JobsTableDemo({ query, open }: { query: string; open: OpenId | n
     if (page > 1) params.set("page", String(page));
     else params.delete("page");
     params.delete("open");
-    const search = params.toString();
+    return params;
+  };
+
+  // Keep the URL in step after every change (replace, not push: typing a search shouldn't fill the Back button).
+  const firstRender = useRef(true);
+  useEffect(() => {
+    if (firstRender.current) {
+      firstRender.current = false;
+      return;
+    }
+    const search = listParams(new URLSearchParams(window.location.search)).toString();
     window.history.replaceState(null, "", `${PATH}${search ? `?${search}` : ""}${window.location.hash}`);
+    // listParams reads exactly these.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters, q, sort, page]);
 
   const rows = useMemo(() => sortRows(EXAMPLE_JOBS.filter((job) => matches(job, filters, q)), sort, valueOf), [filters, q, sort]);
   const info = pageInfo(page, PAGE_SIZE, rows.length);
   const visible = pageSlice(rows, info.page, PAGE_SIZE);
+  // Opening a row keeps the list as it is now (filters, search, sort, page), so Back and refresh come back to it.
   const href = (job: ExampleJob) => {
-    const params = new URLSearchParams(query);
+    const params = listParams(new URLSearchParams(query));
     params.set("active", job.id);
-    params.delete("open");
     return `${PATH}?${params.toString()}#tables`;
   };
 

@@ -70,6 +70,8 @@
 .sortButton[data-sorted="false"]:hover .sortIcon,
 .sortButton[data-sorted="false"]:focus-visible .sortIcon { opacity: 1; }
 .th[aria-sort] { color: var(--trade-text); }
+/* The header's plain name, used instead of its controls when the table is laid out as cards (below). */
+.thText { display: none; }
 
 .td {
   padding: 13px 14px;
@@ -191,8 +193,19 @@ a.itemTitle:hover { text-decoration: underline; text-underline-offset: 3px; }
   }
   .cardTools > :last-child { margin-inline-start: auto; }
   .table, .table > tbody { display: block; }
-  /* The column names move into each card (the labels below); the select-all box and sort move to .cardTools. */
-  .table > thead { display: none; }
+  /* The header row stays in the page for screen readers (cells keep their column names as you move through
+     the table) but out of sight: the names show in each card instead (the labels below). Its controls step
+     aside so nothing invisible can be tabbed to; the select-all box and sort are in .cardTools. */
+  .table > thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .th .sortButton, .th .checkbox { display: none; }
+  .thText { display: inline; }
   .row {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr) auto;

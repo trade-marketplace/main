@@ -267,6 +267,7 @@ export function DataTable<Row>({
                   disabled={!showRows}
                   onChange={() => setTicked(toggleAll(ids, ticked))}
                 />
+                <span className={styles.thText}>Select</span>
               </th>
             )}
             {columns.map((column) => (
@@ -281,7 +282,10 @@ export function DataTable<Row>({
                 style={column.width ? { width: column.width } : undefined}
               >
                 {column.sortable && onSortChange ? (
-                  <SortButton column={column} sort={sort} onSortChange={onSortChange} />
+                  <>
+                    <SortButton column={column} sort={sort} onSortChange={onSortChange} />
+                    <span className={styles.thText}>{column.header}</span>
+                  </>
                 ) : (
                   column.header
                 )}
