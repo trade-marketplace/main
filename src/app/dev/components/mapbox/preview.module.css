@@ -1,6 +1,15 @@
 .page { min-height: 100vh; color: var(--trade-text); background: var(--trade-surface); }
 .header { padding: clamp(16px, 4vw, 40px); background: var(--trade-forest); color: var(--trade-text-on-dark); }
-.header h1 { margin: 0 0 12px; font: 900 var(--trade-fs-display) / 1.1 var(--trade-font-heading); overflow-wrap: anywhere; }
+.header h1 {
+  margin: 0 0 var(--trade-space-3);
+  font-family: var(--trade-font-heading);
+  font-weight: 900;
+  font-variation-settings: var(--trade-display-axes);
+  font-size: var(--trade-fs-title);
+  line-height: var(--trade-lh-title);
+  letter-spacing: 0;
+  overflow-wrap: anywhere;
+}
 .header p { max-width: 70ch; font-size: var(--trade-fs-small); }
 .header nav { display: flex; flex-wrap: wrap; gap: 8px; }
 .header a { display: inline-flex; align-items: center; min-height: var(--trade-tap); padding: 4px 12px; border-radius: var(--trade-radius-pill); color: var(--trade-text-on-dark); }
