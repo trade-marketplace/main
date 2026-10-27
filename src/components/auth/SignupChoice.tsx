@@ -16,8 +16,9 @@ import styles from "./auth.module.css";
 export type SignupRole = "customer" | "tradie";
 
 export const ROLE_CHOICES: readonly { value: SignupRole; title: string; text: string; icon: string }[] = [
-  { value: "customer", title: "I need a job done", text: "Post jobs, get a price, get it sorted.", icon: "home_repair_service" },
-  { value: "tradie", title: "I’m a tradie", text: "Pick up local jobs. We do the paperwork.", icon: "construction" },
+  // Short lines, as in w-signup. Never "we do the paperwork" (Matt, #341).
+  { value: "customer", title: "I need a job done", text: "Post jobs, get a price.", icon: "home_repair_service" },
+  { value: "tradie", title: "I’m a tradie", text: "Get local work.", icon: "construction" },
 ];
 
 /** Where Next goes: that side's details, keeping where they were headed (?next=). */

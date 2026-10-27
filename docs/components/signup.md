@@ -3,7 +3,8 @@
 Issue #103, sitemap B02. Page: `src/app/signup/page.tsx`. Component: `src/components/auth/SignupChoice.tsx`, inside
 the log-in page's `AuthLayout` (#102) with the envelope illustration.
 
-- **The question:** "What brings you here?", with two radio cards: "I need a job done" and "I'm a tradie".
+- **The question:** "What brings you here?", with two radio cards: "I need a job done" (Post jobs, get a
+  price.) and "I'm a tradie" (Get local work.). Never "we do the paperwork" (Matt, #341).
   - The whole card is the hit area.
   - Arrow keys move between them (native radios in a fieldset).
   - Selected: a 2px action-colour border and the tint. Hover: a light fill.

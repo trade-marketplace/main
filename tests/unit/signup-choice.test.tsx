@@ -27,6 +27,7 @@ describe("SignupChoice", () => {
     expect(html).toMatch(/<input type="radio"[^>]*name="role" checked="" value="customer"/);
     expect(html).not.toMatch(/checked="" value="tradie"/);
     for (const choice of ROLE_CHOICES) expect(text(html)).toContain(`${choice.title} ${choice.text}`);
+    expect(text(html)).not.toMatch(/paperwork/i);
   });
 
   it("paints the page in the chosen side's colours", () => {
