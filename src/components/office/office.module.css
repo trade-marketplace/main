@@ -20,7 +20,9 @@
 .sidebar { display: none; }
 .mobileHeader {
   display: flex; align-items: center; justify-content: space-between; gap: var(--trade-space-2);
-  min-height: var(--trade-header-h); padding: var(--trade-space-1) var(--trade-inset-browse);
+  min-height: var(--trade-header-h); padding-block: var(--trade-space-1);
+  /* Match the app shell: keep the normal inset, but clear landscape cutouts with viewport-fit=cover. */
+  padding-inline: max(var(--trade-inset-browse), env(safe-area-inset-left, 0px)) max(var(--trade-inset-browse), env(safe-area-inset-right, 0px));
   background: var(--trade-forest); color: var(--trade-text-on-dark); position: relative; z-index: var(--trade-z-nav);
 }
 .mobileHeader .menuButton { color: var(--trade-signature); padding-inline: var(--trade-space-2); }

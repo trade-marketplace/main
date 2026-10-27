@@ -174,6 +174,10 @@ test.describe("/dev/components/office-shell", () => {
     await expect.poll(aligned).toBe(true);
     const sidebarWidth = await nav.evaluate((element) => element.closest("aside")?.getBoundingClientRect().width);
     expect(sidebarWidth).toBe(240);
+    await page.goto(url("?counts=none&at=/admin/jobs/TM-1005/price"));
+    await expect(nav.getByRole("link", { name: "Queues", exact: true })).toHaveAttribute("aria-current", "page");
+    await expect(nav.getByRole("link", { name: "All jobs", exact: true })).not.toHaveAttribute("aria-current", "page");
+    await expect.poll(aligned).toBe(true);
     await expectNoA11yViolations(page);
   });
 

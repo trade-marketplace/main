@@ -66,9 +66,43 @@ describe("office navigation", () => {
     expect(currentOfficeLink("/admin/tradies/person-1")?.label).toBe("Tradies");
   });
 
-  it("keeps pricing work inside Queues", () => {
-    expect(currentOfficeLink("/admin/pricing")?.label).toBe("Queues");
-    expect(currentOfficeLink("/admin/pricing/example")?.label).toBe("Queues");
+  it("keeps the sitemap's pricing, extra-work, dispute and sign-off pages inside Queues", () => {
+    const sitemap = JSON.parse(read("docs/design/sitemap.json")) as { pages: { code: string; route: string }[] };
+    const queuePages = sitemap.pages.filter(({ code }) => ["F02", "F03", "F06", "F07", "F15"].includes(code));
+    expect(queuePages).toHaveLength(5);
+    for (const { route } of queuePages) {
+      const pathname = route.replace("[id]", "TM-1005");
+      expect(currentOfficeLink(pathname)?.label, pathname).toBe("Queues");
+    }
+  });
+
+  it("keeps queue-work descendants current after normalizing query, fragment and trailing slash", () => {
+    for (const pathname of [
+      "/admin/jobs/TM-1005/price/confirm",
+      "/admin/jobs/TM-1005/price/?tab=builder#total",
+      "/admin/variations",
+      "/admin/variations/variation-1/evidence",
+      "/admin/disputes/case-1",
+      "/admin/signoff/TM-1005",
+      "/admin/signoff/?tab=evidence#photos",
+      "/admin/pricing/example",
+    ]) {
+      expect(currentOfficeLink(pathname)?.label, pathname).toBe("Queues");
+    }
+  });
+
+  it("keeps ordinary job pages and similar-looking price paths under All jobs", () => {
+    for (const pathname of [
+      "/admin/jobs",
+      "/admin/jobs/TM-1005",
+      "/admin/jobs/TM-1005/payments",
+      "/admin/jobs/price",
+      "/admin/jobs/TM-1005/price-history",
+      "/admin/jobs/TM-1005/prices",
+      "/admin/jobs/TM-1005/other/price",
+    ]) {
+      expect(currentOfficeLink(pathname)?.label, pathname).toBe("All jobs");
+    }
   });
 
   it("ignores query flags and fragments when matching a section", () => {
@@ -77,7 +111,10 @@ describe("office navigation", () => {
   });
 
   it("does not mistake a route prefix or an unrelated page for a section", () => {
-    for (const pathname of [null, "/", "/profile", "/adminx", "/admin/jobs-other", "/admin/unknown"]) {
+    for (const pathname of [
+      null, "/", "/profile", "/adminx", "/admin/jobs-other", "/admin/unknown",
+      "/admin/pricing-guide", "/admin/variations-old", "/admin/disputes-resolved", "/admin/signoff-settings",
+    ]) {
       expect(currentOfficeLink(pathname), String(pathname)).toBeNull();
     }
   });
@@ -86,6 +123,12 @@ describe("office navigation", () => {
     const links = currentAnchors(shell({ at: "/admin/tradies/example" }));
     expect(links).toHaveLength(1);
     expect(links[0]).toContain("at=%2Fadmin%2Ftradies");
+  });
+
+  it("marks only Queues in each navigation layout for the nested job-pricing workspace", () => {
+    const links = currentAnchors(shell({ at: "/admin/jobs/TM-1005/price", menuOpen: true }));
+    expect(links).toHaveLength(2);
+    for (const link of links) expect(link).toContain('href="/dev/components/office-shell?at=%2Fadmin"');
   });
 
   it("keeps preview navigation local, preserves chosen states and closes preview menus", () => {

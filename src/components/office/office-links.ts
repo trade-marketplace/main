@@ -19,11 +19,15 @@ export const OFFICE_NAV: readonly OfficeLink[] = [
   { key: "settings", label: "Settings", href: "/admin/settings", icon: "settings" },
 ];
 
-/** Root queues is exact; individual records keep their section. Pricing is reached from Queues (F02/F15). */
+const QUEUE_ROUTES = ["/admin/pricing", "/admin/variations", "/admin/disputes", "/admin/signoff"] as const;
+
+/** Queue work (F02/F03/F06/F07/F15) takes precedence over general job details (F05). */
 export function currentOfficeLink(pathname: string | null): OfficeLink | null {
   if (!pathname) return null;
   const path = pathname.split(/[?#]/)[0].replace(/\/+$/, "") || "/";
-  if (path === "/admin" || path === "/admin/pricing" || path.startsWith("/admin/pricing/")) return OFFICE_NAV[0];
+  if (path === "/admin"
+    || QUEUE_ROUTES.some((route) => path === route || path.startsWith(`${route}/`))
+    || /^\/admin\/jobs\/[^/]+\/price(?:\/|$)/.test(path)) return OFFICE_NAV[0];
   return OFFICE_NAV.slice(1).find((link) => path === link.href || path.startsWith(`${link.href}/`)) ?? null;
 }
 

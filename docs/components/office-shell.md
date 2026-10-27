@@ -53,9 +53,13 @@ The order and URLs match `sitemap.json` → `navigation.office`:
 | `support` | Support | `/admin/support` |
 | `settings` | Settings | `/admin/settings` |
 
-`currentOfficeLink()` treats `/admin` as an exact match, so it does not stay current on every admin page. Nested
-records retain their section: `/admin/jobs/TM-1005` selects All jobs. `/admin/pricing` and its descendants select
-Queues. Trailing slashes, query flags and fragments do not affect matching; unrelated paths select nothing.
+`currentOfficeLink()` treats `/admin` as an exact match, so it does not stay current on every admin page. Queue
+work and its nested pages select Queues: `/admin/jobs/[id]/price`, `/admin/variations` (including individual
+variations), `/admin/disputes`, `/admin/signoff` and `/admin/pricing`. The job ID must be one nonempty path segment.
+These matches take priority over the general section match, so pricing a job selects Queues while
+`/admin/jobs/TM-1005` selects All jobs. Other nested records retain their section. Matches respect path boundaries:
+`/admin/jobs/TM-1005/price-history` remains All jobs, and `/admin/pricing-guide` selects nothing. Trailing slashes,
+query flags and fragments do not affect matching; unrelated paths select nothing.
 
 ## Behaviour and shared components
 
