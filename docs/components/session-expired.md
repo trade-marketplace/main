@@ -70,4 +70,5 @@ async function save(formData: FormData) {
 - **William:**
   - The dialog calls `logInAgainAction` (already in `src/server/auth/actions.ts` from #101). It answers
     `{ ok: true }` instead of redirecting. Nothing on the server changed.
-  - The 5-tries lock is still #111. Until then "Too many tries" comes only from Supabase's own rate limit.
+  - No lockout after wrong passwords (Matt's decision). "Too many tries" comes only from Supabase's own rate
+    limit.
