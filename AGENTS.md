@@ -64,6 +64,12 @@ that claims to be done is worse than none.
 | The full visual guides (PDF) | The `design-pdfs` branch (kept off `main` so clones stay small) |
 
 - Build **what** the spec describes; choose **how** to build it yourself.
+- **Every word has to fight to be on screen.** This is a modern, visual app, not a book or a tutorial. No helper
+  text, captions, hints, explainers or labels that repeat what the layout, icon or placeholder already says. Use
+  white space instead. If a screen works with no words, use none; if it needs words, use the fewest possible. The only
+  long text is what users write (job descriptions, messages, reviews). When the mockup and this rule disagree, cut
+  the words. Accessibility is invisible only: alt text and aria-labels are fine because nobody sees them, but never
+  add visible text for it.
 - Colours come from tokens, never hard-coded hex. Customer screens are green (Leaf/Lime), tradie screens orange
   (Hi-Vis/Amber), office screens Forest/Mint. Quote bounties are gold. Labels on coloured buttons are Forest `#0C251D`.
 - Type is self-hosted Roboto Flex (`Trade Display`, `Trade UI`); icons are Material Symbols Rounded. No SF Pro or

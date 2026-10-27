@@ -32,6 +32,7 @@ Decided by Matt (Co-Founder/CEO) on 23 October 2026. These override older wordin
 - **No "we do the paperwork"** (Matt, 27 Oct, #341, #344): never say it, anywhere, though older mockups and the spec do. The tradie line is **"You do the work. We find the jobs."**
 - **Worker pay labels** (Matt, 28 Oct): show **"Earn $…"**, rather than "You earn $…", on worker pay labels, map/list cards and their accessible names.
 - **Coverage area** (Matt, 26 Oct): **60 km around Invercargill** (centre -46.4132, 168.3538). Stored in office Settings (`settings.coverage_*`), so the office can change it without a deploy; editing it from the office Settings screen (F14, Coverage tab) comes with that page.
+- **Copy on screen** (Matt, 28 Oct): every word has to fight to be on screen. Minimal text, lots of white space, no helper text or explanations; only user-written content runs long. Accessibility stays invisible (alt text, aria-labels), never extra visible text. See AGENTS.md section 5.
 
 ## Still to decide
 
