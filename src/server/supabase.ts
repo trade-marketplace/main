@@ -17,6 +17,26 @@ export function authCookieOptions(env: Record<string, string | undefined> = proc
   return { path: "/", sameSite: "lax", httpOnly: true, secure: env.NODE_ENV === "production" };
 }
 
+/**
+ * "Keep me logged in" (#102). Ticked: the session cookies last 400 days from the last visit (each refresh
+ * re-sets them), the longest browsers allow: Matt wants people to stay logged in as long as possible. Not ticked: they're browser-session cookies, gone when the browser closes. The choice is kept in
+ * this marker cookie (itself a browser-session cookie), so the proxy's refreshes keep honouring it. Supabase
+ * still decides when a session ends; this only decides how long the browser keeps the cookies.
+ */
+export const SESSION_ONLY_COOKIE = "tm-session-only";
+export const REMEMBER_ME_MAX_AGE = 60 * 60 * 24 * 400;
+
+/** The options for one session cookie Supabase wants to set. Deletions (empty value or max age 0) pass as they are. */
+export function sessionCookieOptions(cookie: CookieToSet, sessionOnly: boolean): CookieOptions {
+  const { options, value } = cookie;
+  if (value === "" || options.maxAge === 0) return options;
+  if (!sessionOnly) return { ...options, maxAge: REMEMBER_ME_MAX_AGE };
+  const browserOnly = { ...options };
+  delete browserOnly.maxAge;
+  delete browserOnly.expires;
+  return browserOnly;
+}
+
 function projectConfig() {
   return supabaseConfig(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY);
 }
@@ -29,12 +49,23 @@ export type CookieJar = {
   setAll: (cookies: CookieToSet[], headers: Record<string, string>) => void;
 };
 
-/** A Supabase client acting as the visitor whose cookies are in `jar`. Throws SupabaseNotConfiguredError. */
-export function createSupabaseClientWithCookies(jar: CookieJar) {
+/**
+ * A Supabase client acting as the visitor whose cookies are in `jar`. Throws SupabaseNotConfiguredError.
+ * `sessionOnly`: whether the session cookies it writes end with the browser session. Default: what the
+ * visitor chose at log-in (the SESSION_ONLY_COOKIE marker in `jar`).
+ */
+export function createSupabaseClientWithCookies(jar: CookieJar, { sessionOnly }: { sessionOnly?: boolean } = {}) {
   const { url, publishableKey } = projectConfig();
+  const browserSession = () => sessionOnly ?? jar.getAll().some((cookie) => cookie.name === SESSION_ONLY_COOKIE);
   return createServerClient(url, publishableKey, {
     cookieOptions: authCookieOptions(),
-    cookies: { getAll: jar.getAll, setAll: jar.setAll },
+    cookies: {
+      getAll: jar.getAll,
+      setAll: (cookies, headers) => {
+        const only = browserSession();
+        jar.setAll(cookies.map((cookie) => ({ ...cookie, options: sessionCookieOptions(cookie, only) })), headers);
+      },
+    },
   });
 }
 
@@ -42,7 +73,7 @@ export function createSupabaseClientWithCookies(jar: CookieJar) {
  * Supabase client for Server Components, Server Actions and Route Handlers, signed in as the current visitor
  * through their cookies. Throws SupabaseNotConfiguredError until the keys are set.
  */
-export async function createSupabaseServerClient() {
+export async function createSupabaseServerClient(options: { sessionOnly?: boolean } = {}) {
   projectConfig(); // Fail with the "how to connect" message before touching the request's cookies.
   const cookieStore = await cookies();
   return createSupabaseClientWithCookies({
@@ -55,5 +86,15 @@ export async function createSupabaseServerClient() {
         // session before the page started rendering, and actions and route handlers can set them.
       }
     },
-  });
+  }, options);
+}
+
+/**
+ * Remembers the "Keep me logged in" choice for the proxy's later refreshes (log-in only, so call it from an
+ * action). Not ticked: sets the browser-session marker. Ticked: removes it.
+ */
+export async function rememberSessionChoice(sessionOnly: boolean): Promise<void> {
+  const cookieStore = await cookies();
+  if (sessionOnly) cookieStore.set(SESSION_ONLY_COOKIE, "1", authCookieOptions());
+  else cookieStore.delete(SESSION_ONLY_COOKIE);
 }
