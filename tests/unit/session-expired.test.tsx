@@ -10,6 +10,7 @@ import {
   afterLogInAgain,
   LOG_IN_AGAIN_MESSAGES,
   logInAgainMessages,
+  resendThenRefresh,
   SESSION_EXPIRED_COPY,
   SessionExpiredDialog,
   type SessionExpiredDialogProps,
@@ -80,6 +81,27 @@ describe("afterLogInAgain: stay, or go somewhere else", () => {
     expect(afterLogInAgain("TRADIE", "CUSTOMER")).toEqual({ stay: false, goTo: "/jobs" });
     expect(afterLogInAgain("ADMIN", "CUSTOMER")).toEqual({ stay: false, goTo: "/admin" });
     expect(afterLogInAgain("CUSTOMER", "TRADIE")).toEqual({ stay: false, goTo: "/" });
+  });
+});
+
+describe("resendThenRefresh: the page refreshes after the form is sent again", () => {
+  it("waits for a resend that takes time, then refreshes", async () => {
+    const order: string[] = [];
+    let finish = () => {};
+    const resend = () => new Promise<void>((resolve) => (finish = () => (order.push("saved"), resolve())));
+    const done = resendThenRefresh(resend, () => order.push("refresh"));
+    await Promise.resolve();
+    expect(order).toEqual([]);
+    finish();
+    await done;
+    expect(order).toEqual(["saved", "refresh"]);
+  });
+
+  it("still refreshes when the resend fails, or when there's nothing to resend", async () => {
+    const refresh = vi.fn();
+    await expect(resendThenRefresh(() => Promise.reject(new Error("offline")), refresh)).rejects.toThrow("offline");
+    await resendThenRefresh(undefined, refresh);
+    expect(refresh).toHaveBeenCalledTimes(2);
   });
 });
 

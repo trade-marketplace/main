@@ -10,8 +10,8 @@ When a protected server action finds the session gone, it answers `session-expir
    here. Your draft is saved." and one button, **Log in again**.
 2. **Log in again** turns it into a log-in form in the same dialog. The person's email is already known, so it asks
    only for the password ("Logging in as sarah@email.co.nz"). If the email isn't known, it asks for that too.
-3. Once they're logged in, the dialog closes, the page refreshes its server data (`router.refresh()`) and the form
-   that failed is sent again. The page and anything typed stay as they were, and focus goes back to the button
+3. Once they're logged in, the dialog closes and the form that failed is sent again. When that has finished, the
+   page refreshes its server data (`router.refresh()`), so it shows what was saved. The page and anything typed stay as they were, and focus goes back to the button
    that sent the form.
 
 Esc, a click on the scrim and swiping do nothing; there is no ×. Focus is trapped inside (the kit's `<Dialog>`, #78).

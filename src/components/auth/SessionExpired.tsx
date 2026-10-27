@@ -88,6 +88,14 @@ export function afterLogInAgain(loggedInAs: Role, expected: Role | undefined): {
   return { stay: false, goTo: homeForRole(loggedInAs) };
 }
 
+/**
+ * Sends the form that failed again, then refreshes the page's server components once it has finished (even if it
+ * failed), so they show the new session and whatever the resend saved. This page's own state (the draft) stays.
+ */
+export function resendThenRefresh(resend: (() => unknown) | undefined, refresh: () => void): Promise<unknown> {
+  return Promise.resolve(resend?.()).finally(refresh);
+}
+
 // ---------------------------------------------------------------- the dialog
 
 export type SessionExpiredStep = "notice" | "form";
@@ -280,9 +288,7 @@ export function SessionExpiredProvider({ children, logIn, email, role }: Session
       router.push(next.goTo);
       return;
     }
-    // The server components re-read the new session; this page's own state (the draft) stays as it is.
-    router.refresh();
-    done.resend?.();
+    void resendThenRefresh(done.resend, () => router.refresh());
   };
 
   return (
