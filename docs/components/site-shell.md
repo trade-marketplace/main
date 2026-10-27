@@ -91,7 +91,7 @@ taller than the screen).
 ## Footer
 
 Four columns from the mockup (Customers, Tradies, Company, Legal), linking every public and legal page at its
-planned route, then "© year Trade Marketplace · Made in Aotearoa". The mockup's "Careers" and "Press" (no page in the
+planned route, then "© year Trade Marketplace · Made in New Zealand". The mockup's "Careers" and "Press" (no page in the
 sitemap), NZBN and social links (no real values yet) are left out until there is something real to link to.
 
 ## Tests

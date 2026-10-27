@@ -36,7 +36,7 @@ export function SiteFooter({ year = new Date().getFullYear() }: { year?: number 
           ))}
         </nav>
       </div>
-      <p className={styles.footerBase}>{`© ${year} Trade Marketplace · Made in Aotearoa`}</p>
+      <p className={styles.footerBase}>{`© ${year} Trade Marketplace · Made in New Zealand`}</p>
     </footer>
   );
 }
