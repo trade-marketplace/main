@@ -19,7 +19,7 @@ test.describe("404", () => {
       const response = await page.goto("/this-page-is-missing");
       expect(response?.status()).toBe(404);
       await expect(page).toHaveTitle("Page not found | Trade Marketplace");
-      await expect(page.getByRole("heading", { level: 1, name: "Can’t find that page." })).toBeVisible();
+      await expect(page.getByRole("heading", { level: 1, name: "Wrong address." })).toBeVisible();
       await expect(page.locator("footer")).toBeVisible();
       expect(await overflow(page)).toBe(0);
       await expectNoA11yViolations(page);

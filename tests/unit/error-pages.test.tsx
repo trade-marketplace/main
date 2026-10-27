@@ -51,6 +51,11 @@ describe("NotFoundView", () => {
     expect(html).toMatch(/<p[^>]*aria-hidden="true"[^>]*>404<\/p>/);
   });
 
+  it("says just “Wrong address.”, with no explaining underneath (Matt, #339)", () => {
+    expect(NOT_FOUND_TITLE).toBe("Wrong address.");
+    expect(text(html)).toBe("404 Wrong address. Go home Help centre");
+  });
+
   it("offers Go home and the help centre", () => {
     expect(html).toMatch(/<a[^>]*href="\/"[^>]*>[\s\S]*?Go home/);
     expect(html).toMatch(/<a[^>]*href="\/help"[^>]*>[\s\S]*?Help centre/);

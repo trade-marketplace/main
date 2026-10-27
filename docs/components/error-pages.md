@@ -6,7 +6,7 @@ address, for example `/this-page-is-missing`.
 
 | Page | Where it shows | Mockup |
 |---|---|---|
-| 404, "Can't find that page." | `src/app/not-found.tsx`: any missing address, inside the public site's header and footer. `(app)/not-found.tsx` and `admin/not-found.tsx`: `notFound()` on a page in those groups, inside their own shell. | pages.html w-errors, "404 · not found" |
+| 404, "Wrong address." | `src/app/not-found.tsx`: any missing address, inside the public site's header and footer. `(app)/not-found.tsx` and `admin/not-found.tsx`: `notFound()` on a page in those groups, inside their own shell. | pages.html w-errors, "404 · not found" |
 | 500, "Something broke on our end." | `error.tsx` in `(site)`, `(app)` and `admin`: a page threw, so it shows inside that group's shell and the nav still works. `src/app/error.tsx`: anything else. `global-error.tsx`: the root layout itself threw (it brings its own `<html>` and styles). | pages.html w-errors, "500 · something broke"; screens.html sys-error |
 
 ## Rules
@@ -32,8 +32,8 @@ address, for example `/this-page-is-missing`.
 
 ## Notes for review (Matt)
 
-- **404 wording:** the mockup says "It might have moved. Try searching.", but there's no search box yet (global
-  search is #243). So it says "It might have moved, or the link might be wrong."
+- **404 wording (Matt, 27 Oct):** "Wrong address." and nothing else: short, tradie, no explaining. The mockup's
+  "It might have moved. Try searching." is gone (there's no search yet anyway, #243).
 - **"404" colour:** the mockup's code paints it in the signature colour (Lime), matching the spec note, though
   the rendered mockup looks white. It's Lime here.
 - **500 Try again button:** it uses the kit's page-error layout (#79), so it's wider than in the mockup and has

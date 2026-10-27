@@ -57,13 +57,13 @@
   line-height: var(--trade-lh-heading);
   overflow-wrap: anywhere;
 }
-.message { margin: 6px 0 0; color: var(--trade-text-on-dark-2); }
 .actions {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
   gap: 10px;
-  margin-top: 14px;
+  /* The mockup's 14px came after a line of text; with just the title, a little more room. */
+  margin-top: var(--trade-space-5);
 }
 /* Go home is the signature colour in Display type (the kit's hero look, at the small size the mockup uses). */
 .actions .goHome {
