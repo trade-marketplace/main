@@ -6,7 +6,8 @@
 // of that this file adds what the spec asks for (WEBAPP_SPEC "Dialogs", FRONTEND_SPEC "Sheet"):
 // - focus moves to the title when it opens (no accidental Enter on a button), or to `initialFocusRef`;
 // - Tab and Shift+Tab wrap inside it (the focus trap); focus goes back to whatever opened it on close;
-// - Esc, a click on the scrim, the close button and (sheets) a swipe down ask to close, unless not dismissible;
+// - Esc, a click on the scrim, the close button and (sheets) a swipe down ask to close, unless not dismissible
+//   (or only the close button, with dismissible="close-button");
 // - the page behind doesn't scroll while it is open;
 // - M12 / M13 / sheet motion in and out (src/styles/motion.css), instant under prefers-reduced-motion.
 import {
@@ -38,7 +39,7 @@ export type ModalProps = {
   open: boolean;
   /**
    * Asked to close: Esc, the scrim, the close button or a swipe (the reason says which). Set `open` to false here.
-   * Never called when `dismissible` is false.
+   * Never called when `dismissible` is false; only for the close button when it is "close-button".
    */
   onClose?: (reason: CloseReason) => void;
   /** The heading. It names the overlay for screen readers and takes focus when it opens. */
@@ -55,7 +56,8 @@ export type ModalProps = {
    * Default true. False: no close button, and Esc, the scrim and swiping do nothing, so the only way out is a
    * button in it. Only for things that can't be skipped, like “You’ve been logged out” (B07).
    */
-  dismissible?: boolean;
+  /** "close-button": the × closes it, but Esc, the scrim and swiping still do nothing (session expired, B07). */
+  dismissible?: boolean | "close-button";
   /** Focus this instead of the title when it opens (e.g. the first field of a form drawer). */
   initialFocusRef?: RefObject<HTMLElement | null>;
   /** The close button's name. Default “Close”. */
@@ -162,7 +164,7 @@ function ModalSurface({
   });
   const requestClose = (reason: CloseReason) => {
     const { onClose: close, dismissible: canClose, exiting: leaving } = live.current;
-    if (canClose && !leaving) close?.(reason);
+    if ((canClose === true || (canClose === "close-button" && reason === "close-button")) && !leaving) close?.(reason);
   };
 
   // Our own close() also fires the dialog's (async) close event: that one isn't a request to close.
@@ -221,7 +223,7 @@ function ModalSurface({
     const ours = closedByUs.current;
     closedByUs.current = false;
     if (ours || !dialog?.isConnected || dialog.open || live.current.exiting) return;
-    if (live.current.dismissible) requestClose("escape");
+    if (live.current.dismissible === true) requestClose("escape");
     else dialog.showModal();
   };
 
@@ -239,7 +241,7 @@ function ModalSurface({
   const drag = useRef<{ y: number; t: number; id: number } | null>(null);
   const [dragging, setDragging] = useState(false);
   const dragHandlers =
-    layout === "sheet" && dismissible
+    layout === "sheet" && dismissible === true
       ? {
           onPointerDown: (event: PointerEvent<HTMLElement>) => {
             if (event.button !== 0 || (event.target as Element).closest("button, a, input, select, textarea")) return;

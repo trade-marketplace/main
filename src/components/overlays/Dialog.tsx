@@ -13,8 +13,8 @@
 //     It hasn’t been paid for yet, so cancelling is free.
 //   </ConfirmDialog>
 //
-//   Session expired (B07, #108): <Dialog dismissible={false} …> with one “Log in again” button in the footer.
-//   No close button; Esc and the scrim do nothing.
+//   Session expired (B07, #108): <Dialog dismissible="close-button" …> with one “Log in again” button in the footer.
+//   The × closes it; Esc and the scrim do nothing.
 import { type ReactNode, useState, useSyncExternalStore } from "react";
 
 import { Button } from "@/components/Button";

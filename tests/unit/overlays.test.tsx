@@ -214,6 +214,7 @@ describe("<Dialog>", () => {
     expect(dialog()).toContain('aria-label="Close"');
     expect(dialog({ closeLabel: "Close estimate" })).toContain('aria-label="Close estimate"');
     expect(dialog({ dismissible: false })).not.toContain("aria-label=");
+    expect(dialog({ dismissible: "close-button" })).toContain('aria-label="Close"');
   });
 
   it("reads the description as the dialog's description", () => {

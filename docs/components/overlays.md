@@ -52,7 +52,7 @@ const [open, setOpen] = useState(false);
 | `footer` | The buttons, in reading order: the other choice first, the main action last. On a phone they stack full width with the main action on top. |
 | `size` | `"sm"` 460px, `"md"` 520px (default), `"lg"` 620px. Never wider than the screen less 16px each side. |
 | `phoneLayout` | Below 600px: `"sheet"` (default) slides up from the bottom; `"dialog"` stays a centred box. |
-| `dismissible` | Default `true`. `false`: no ×; Esc, the scrim and swiping do nothing. The only way out is a footer button. |
+| `dismissible` | Default `true`. `false`: no ×; Esc, the scrim and swiping do nothing. The only way out is a footer button. `"close-button"`: only the × closes it. |
 | `initialFocusRef` | Focus this instead of the title when it opens (e.g. the first field). |
 | `closeLabel` | The ×'s name. Default “Close”. |
 | `role` | `"alertdialog"` for decisions that interrupt. `<ConfirmDialog>` sets it. |
@@ -99,19 +99,8 @@ What it does for you (WEBAPP_SPEC "Dialogs", AGENTS.md §3):
 
 ### Session expired (B07, #108)
 
-Build it from `<Dialog>` with `dismissible={false}` and one button. Keep the page and any draft underneath.
-
-```tsx
-<Dialog
-  open={expired}
-  dismissible={false}
-  size="sm"
-  phoneLayout="dialog"
-  title="You’ve been logged out"
-  description="It’s been a while. Log in again to carry on: this page and anything you’ve typed are kept."
-  footer={<Button onClick={logInAgain}>Log in again</Button>}
-/>
-```
+It's built: `useSessionExpired()` from `src/components/auth/SessionExpired.tsx` (docs/components/session-expired.md).
+It uses `<Dialog dismissible="close-button">`: the × closes it, Esc and the scrim don't.
 
 ## Drawer
 

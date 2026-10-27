@@ -26,7 +26,12 @@ import { DatabaseNotConfiguredError } from "@/server/db";
 // The shell reads the signed-in visitor on the server. Tests choose who that is; nobody by default.
 vi.mock("@/server/auth/viewer", () => ({ getViewer: vi.fn(async () => null) }));
 // Log out is a server action; the shell only hands it to a form.
-vi.mock("@/server/auth/actions", () => ({ logOutAction: vi.fn() }));
+vi.mock("@/server/auth/actions", () => ({ logInAgainAction: vi.fn(), logOutAction: vi.fn() }));
+// The session-expired dialog (#108) in the shell refreshes the page after logging in again.
+vi.mock("next/navigation", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("next/navigation")>()),
+  useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }),
+}));
 // No test talks to a database: the shell's one query gets a fake row.
 const findUnique = vi.fn();
 vi.mock("@/server/db", async (importOriginal) => ({
