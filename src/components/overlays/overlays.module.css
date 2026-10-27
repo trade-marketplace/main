@@ -210,6 +210,7 @@
 .menuItem[aria-disabled="true"] { color: var(--trade-text-3); background: transparent; cursor: not-allowed; }
 .menuDanger { color: var(--trade-danger); }
 .menuLabel { flex: 1; min-width: 0; overflow-wrap: break-word; }
+.menuCheck { flex: none; }
 .menuSeparator { margin: 6px 0; border-top: 1px solid var(--trade-line); }
 
 /* ---- Toast (.w-toast / .tm-toast): Forest, bottom right on a computer, the full width on a phone ----

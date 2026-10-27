@@ -62,7 +62,7 @@ export type MenuProps = {
 type MenuContextValue = { close: (returnFocus: boolean) => void };
 const MenuContext = createContext<MenuContextValue | null>(null);
 
-const ITEM = '[role="menuitem"]:not([aria-disabled="true"])';
+const ITEM = '[role^="menuitem"]:not([aria-disabled="true"])';
 
 export function Menu({ trigger, children, header, align = "end", label, defaultOpen = false, className }: MenuProps) {
   const [open, setOpen] = useState(defaultOpen);
@@ -198,6 +198,11 @@ type MenuItemCommon = {
   icon?: string;
   /** "danger" for log out, delete: red text. */
   tone?: "default" | "danger";
+  /**
+   * For a menu that picks one option (a filter chip's dropdown): true on the current one, false on the others.
+   * The items become menuitemradio and the current one shows a tick. Leave it out for plain actions.
+   */
+  checked?: boolean;
 };
 
 export type MenuItemProps = MenuItemCommon &
@@ -212,19 +217,21 @@ export type MenuItemProps = MenuItemCommon &
       }
   );
 
-export function MenuItem({ children, icon, tone = "default", ...action }: MenuItemProps) {
+export function MenuItem({ children, icon, tone = "default", checked, ...action }: MenuItemProps) {
   const menu = useContext(MenuContext);
   const classes = [styles.menuItem, tone === "danger" && styles.menuDanger].filter(Boolean).join(" ");
+  const choice = checked === undefined ? {} : { role: "menuitemradio" as const, "aria-checked": checked };
   const content = (
     <>
       {icon && <Icon name={icon} size="sm" decorative />}
       <span className={styles.menuLabel}>{children}</span>
+      {checked && <Icon name="check" size="sm" decorative className={styles.menuCheck} />}
     </>
   );
 
   if (typeof action.href === "string") {
     return (
-      <Link role="menuitem" tabIndex={-1} href={action.href} className={classes} onClick={() => menu?.close(false)}>
+      <Link role="menuitem" {...choice} tabIndex={-1} href={action.href} className={classes} onClick={() => menu?.close(false)}>
         {content}
       </Link>
     );
@@ -233,6 +240,7 @@ export function MenuItem({ children, icon, tone = "default", ...action }: MenuIt
     <button
       type="button"
       role="menuitem"
+      {...choice}
       tabIndex={-1}
       className={classes}
       aria-disabled={action.disabled || undefined}

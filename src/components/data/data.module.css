@@ -1,0 +1,486 @@
+/* Tables, tabs, pagination and filters (#80). Values ported from docs/design/web.css (.w-table, .w-tablecard,
+   .w-pager) and components.css (.tm-tabs, .tm-seg, .tm-chip), written with tokens only so each mode recolours
+   them (office: Forest actions and Mint tints). The greys the mockups use (#fafbfa header, #f6f8f7 hover) are
+   Forest mixed into white. Every variant and state: /dev/components/data. */
+
+/* ---- Table card ------------------------------------------------------------------------------------------ */
+.tableCard {
+  /* The card is the container the card layout below responds to, so a table in a narrow pane becomes cards too. */
+  container: table / inline-size;
+  position: relative;
+  min-width: 0;
+  border: 1px solid var(--trade-line);
+  border-radius: var(--trade-radius-card);
+  background: var(--trade-surface);
+  color: var(--trade-text);
+  /* No overflow here: row menus must be able to hang out of the card, and the header must be able to stick. */
+}
+
+.table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: var(--trade-fs-small);
+  line-height: var(--trade-lh-small);
+}
+
+.th {
+  position: sticky;
+  top: calc(var(--tm-table-top, 0px) + var(--tm-bulk-height, 0px));
+  z-index: 1;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--trade-line);
+  background: color-mix(in srgb, var(--trade-forest) 2%, var(--trade-surface));
+  color: var(--trade-text-2);
+  font-size: var(--trade-fs-caption);
+  line-height: var(--trade-lh-caption);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: start;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+/* The first row of the card keeps the card's corners (the bulk bar takes them when it shows). */
+.tableCard:not([data-bulk]) .th:first-child { border-top-left-radius: calc(var(--trade-radius-card) - 1px); }
+.tableCard:not([data-bulk]) .th:last-child { border-top-right-radius: calc(var(--trade-radius-card) - 1px); }
+.th[data-align="end"], .td[data-align="end"] { text-align: end; }
+.th[data-align="end"] .sortButton { flex-direction: row-reverse; }
+
+.sortButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: var(--trade-space-6);
+  margin: -4px -6px;
+  padding: 4px 6px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+.sortButton:hover { color: var(--trade-text); background: color-mix(in srgb, var(--trade-forest) 6%, transparent); }
+.sortIcon { font-size: 16px; }
+/* Unsorted columns show the two-way arrow only while pointed at or focused, so the header reads like the mockup. */
+.sortButton[data-sorted="false"] .sortIcon { opacity: 0; color: var(--trade-text-3); transition: opacity var(--trade-dur-fast); }
+.sortButton[data-sorted="false"]:hover .sortIcon,
+.sortButton[data-sorted="false"]:focus-visible .sortIcon { opacity: 1; }
+.th[aria-sort] { color: var(--trade-text); }
+/* The header's plain name, used instead of its controls when the table is laid out as cards (below). */
+.thText { display: none; }
+
+.td {
+  padding: 13px 14px;
+  border-bottom: 1px solid var(--trade-line);
+  vertical-align: middle;
+  overflow-wrap: anywhere;
+  transition: background var(--trade-dur-fast);
+}
+.table > tbody > .row:last-child > .td { border-bottom: 0; }
+.tableCard:not([data-footer]) .table > tbody > .row:last-child > .td:first-child { border-bottom-left-radius: calc(var(--trade-radius-card) - 1px); }
+.tableCard:not([data-footer]) .table > tbody > .row:last-child > .td:last-child { border-bottom-right-radius: calc(var(--trade-radius-card) - 1px); }
+.row:hover > .td { background: color-mix(in srgb, var(--trade-forest) 3.5%, var(--trade-surface)); }
+/* Ticked for a bulk action, or the one open in the detail view (aria-current): the mode tint, as .is-selected. */
+.row[data-checked] > .td,
+.row[aria-current="true"] > .td { background: var(--trade-tint); }
+.row[data-href] { cursor: pointer; }
+/* The link that opens the row keeps its own focus ring; the row shows it is the one in focus too. */
+.row[data-href]:focus-within > .td { background: color-mix(in srgb, var(--trade-forest) 3.5%, var(--trade-surface)); }
+.row[data-href][aria-current="true"]:focus-within > .td,
+.row[data-href][data-checked]:focus-within > .td { background: var(--trade-tint); }
+
+.truncate { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.td[data-truncate] { max-width: 0; } /* lets the ellipsis kick in inside an auto-width table */
+.td[data-nowrap] { white-space: nowrap; overflow-wrap: normal; }
+
+.selectCell { width: 48px; padding-inline-end: 0; line-height: 0; }
+.th.selectCell { padding-block: 8px; }
+.checkboxLabel { display: inline-flex; align-items: center; gap: var(--trade-space-3); cursor: pointer; }
+.checkboxLabel > .checkbox { margin: -11px 0 -11px -11px; }
+.actionsCell { width: 1%; white-space: nowrap; text-align: end; }
+.actions { display: inline-flex; align-items: center; justify-content: flex-end; gap: var(--trade-space-2); }
+/* The 44px tap targets (⋯, Price it) overhang the 40px row content a little rather than making rows taller. */
+.actions { margin-block: -2px; }
+
+/* Checkbox: the kit's 22px box (forms.module.css .check), with the native input over it for the hit area. */
+.checkbox { position: relative; vertical-align: middle; display: inline-grid; place-items: center; width: var(--trade-tap); height: var(--trade-tap); margin: -11px; cursor: pointer; }
+.checkboxInput { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.checkboxBox {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--trade-field-border);
+  border-radius: 5px;
+  background: var(--trade-surface);
+  color: transparent;
+  pointer-events: none;
+}
+.checkboxInput:checked + .checkboxBox,
+.checkboxInput:indeterminate + .checkboxBox { background: var(--trade-action); border-color: var(--trade-action); color: var(--trade-on-action); }
+.checkboxInput:focus-visible + .checkboxBox { outline: 2px solid var(--trade-focus); outline-offset: 2px; }
+.checkboxInput:disabled + .checkboxBox { background: var(--trade-waiting-bg); }
+
+/* A thumbnail, title and line under it: the Job column in the office mockups. */
+.item { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.itemThumb { flex: none; width: 40px; height: 40px; border-radius: var(--trade-radius-job-tile); object-fit: cover; background: var(--trade-waiting-bg); }
+.itemText { display: grid; min-width: 0; }
+.itemTitle { font-weight: 700; color: var(--trade-text); text-decoration: none; overflow-wrap: anywhere; }
+a.itemTitle:hover { text-decoration: underline; text-underline-offset: 3px; }
+.itemMeta { font-size: var(--trade-fs-caption); line-height: var(--trade-lh-caption); color: var(--trade-text-2); overflow-wrap: anywhere; }
+.muted { color: var(--trade-text-3); }
+
+/* Loading rows (M15 skeletons) and the empty / error states, which take the whole table width. */
+.skeletonCell { padding-block: 17px; }
+.messageCell { padding: var(--trade-space-6) var(--trade-space-4); border-bottom: 0; }
+.messageCell:hover { background: transparent; }
+
+/* ---- Bulk bar: what you can do with the ticked rows ----------------------------------------------------- */
+.bulkBar {
+  position: sticky;
+  top: var(--tm-table-top, 0px);
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--trade-space-2) var(--trade-space-3);
+  min-height: 56px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--trade-line);
+  border-radius: calc(var(--trade-radius-card) - 1px) calc(var(--trade-radius-card) - 1px) 0 0;
+  background: color-mix(in srgb, var(--trade-signature) 28%, var(--trade-surface));
+}
+.bulkCount { font-weight: 800; font-size: var(--trade-fs-small); margin-inline-end: auto; }
+.bulkActions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--trade-space-2); }
+
+.caption { padding: var(--trade-space-4) 14px var(--trade-space-2); text-align: start; font-weight: 800; font-size: var(--trade-fs-section); }
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ---- Card tools: the select-all box and sort menu, shown only when the table is laid out as cards -------- */
+.cardTools { display: none; }
+
+/* ---- Footer (pagination) inside the card ----------------------------------------------------------------- */
+.footer { border-top: 1px solid var(--trade-line); }
+
+/* Between 640 and 960px wide, columns marked optional step aside so the rest fit without sideways scroll. */
+@container table (min-width: 640px) and (max-width: 959px) {
+  .table [data-optional] { display: none; }
+}
+
+/* Below 640px the table becomes a list of cards (WEBAPP_SPEC: "on a phone tables become cards"). The roles on
+   the table keep it a table for screen readers whatever the display. */
+@container table (max-width: 639px) {
+  .cardTools {
+    display: flex;
+    align-items: center;
+    gap: var(--trade-space-3);
+    min-height: 56px;
+    padding: 6px 14px 6px 16px;
+    border-bottom: 1px solid var(--trade-line);
+    font-size: var(--trade-fs-small);
+    font-weight: 700;
+  }
+  .cardTools > :last-child { margin-inline-start: auto; }
+  .table, .table > tbody { display: block; }
+  /* The header row stays in the page for screen readers (cells keep their column names as you move through
+     the table) but out of sight: the names show in each card instead (the labels below). Its controls step
+     aside so nothing invisible can be tabbed to; the select-all box and sort are in .cardTools. */
+  .table > thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .th .sortButton, .th .checkbox { display: none; }
+  .thText { display: inline; }
+  .row {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas: "select primary actions";
+    gap: 6px var(--trade-space-3);
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--trade-line);
+  }
+  .table > tbody > .row:last-child { border-bottom: 0; }
+  .row > .td { display: block; padding: 0; border: 0; background: transparent; max-width: none; }
+  .row:hover, .row[data-href]:focus-within { background: color-mix(in srgb, var(--trade-forest) 3.5%, var(--trade-surface)); }
+  .row:hover > .td, .row[data-href]:focus-within > .td { background: transparent; }
+  .row[data-checked], .row[aria-current="true"] { background: var(--trade-tint); }
+  .row[data-checked] > .td, .row[aria-current="true"] > .td { background: transparent; }
+  .selectCell { grid-area: select; align-self: start; width: auto; padding-top: 9px; }
+  .td[data-primary] { grid-area: primary; }
+  .actionsCell { grid-area: actions; align-self: start; width: auto; }
+  /* Every other cell: its column name, then the value, on one line under the title. */
+  .td[data-field] {
+    grid-column: 2 / -1;
+    display: flex;
+    justify-content: space-between;
+    gap: var(--trade-space-4);
+    text-align: end;
+  }
+  .row:not(:has(.selectCell)) > .td[data-field] { grid-column: 1 / -1; }
+  .row:not(:has(.selectCell)) { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "primary actions"; }
+  .td[data-field]::before {
+    content: attr(data-label);
+    flex: none;
+    max-width: 50%;
+    color: var(--trade-text-2);
+    font-size: var(--trade-fs-caption);
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    text-align: start;
+  }
+  .td[data-field][data-truncate] { max-width: none; min-width: 0; }
+  .td[data-field] .truncate { min-width: 0; }
+  .messageCell { display: block; }
+  .row:has(.messageCell) { display: block; padding: 0; }
+  .row:has(.messageCell):hover { background: transparent; }
+  .skeletonRow { display: grid; gap: 8px; }
+}
+
+/* ---- Pagination (.w-pager) ------------------------------------------------------------------------------- */
+.pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--trade-space-2) var(--trade-space-3);
+  padding: 12px 14px;
+  font-size: var(--trade-fs-small);
+  color: var(--trade-text-2);
+}
+.pager b { color: var(--trade-text); font-variant-numeric: tabular-nums; }
+.pagerButtons { display: flex; gap: 6px; margin-inline-start: auto; }
+
+/* ---- Tabs (.tm-tabs) with the sliding underline (M16) ---------------------------------------------------- */
+.tabs { min-width: 0; } /* so a long tab bar scrolls inside its own width rather than widening the page */
+.tabList {
+  position: relative;
+  display: flex;
+  gap: var(--trade-space-6);
+  /* The 1px rule is a shadow so the indicator, painted after it, covers it; a border would sit outside the
+     scroll area and clip the indicator. Many tabs on a phone scroll sideways inside the bar, never the page. */
+  box-shadow: inset 0 -1px 0 var(--trade-line);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+.tabList::-webkit-scrollbar { display: none; }
+.tab {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: var(--trade-tap);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--trade-text-2);
+  font: inherit;
+  font-weight: 700;
+  font-size: var(--trade-fs-small);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.tab:hover { color: var(--trade-text); }
+.tab[aria-selected="true"] { color: var(--trade-text); }
+.tab:focus-visible { outline-offset: -2px; border-radius: 4px; }
+.tabIndicator { height: 3px; border-radius: 3px 3px 0 0; background: var(--trade-action); }
+.tabPanel:focus-visible { outline-offset: 4px; border-radius: 4px; }
+.tabPanel[data-spaced] { padding-top: var(--trade-space-4); }
+
+/* ---- Segmented control (.tm-seg) with a thumb that slides (M16) ------------------------------------------ */
+.seg {
+  position: relative;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  padding: 4px;
+  border-radius: var(--trade-radius-action);
+  background: var(--trade-waiting-bg);
+}
+.seg[data-width="auto"] { display: inline-grid; }
+.segThumb {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  width: calc((100% - 8px) / var(--seg-count));
+  border-radius: 8px;
+  background: var(--trade-surface);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 12%);
+  transform: translateX(calc(var(--seg-index) * 100%));
+  transition: transform var(--trade-dur-base) var(--trade-ease-in-out);
+  pointer-events: none;
+}
+.segItem {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 38px;
+  padding: 6px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--trade-text-2);
+  font: inherit;
+  font-weight: 700;
+  font-size: var(--trade-fs-small);
+  line-height: var(--trade-lh-small);
+  text-align: center;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+.segItem:hover { color: var(--trade-text); }
+.segItem[aria-selected="true"] { color: var(--trade-text); }
+.segItem[data-icon] { flex-direction: column; gap: 2px; padding-block: 6px; }
+.segItem:focus-visible { outline-offset: 0; }
+@media (prefers-reduced-motion: reduce) {
+  .segThumb { transition: none; }
+}
+
+/* ---- Filters (.tm-chip with a dropdown, search, saved filters) ------------------------------------------ */
+.filterBar {
+  container: filters / inline-size;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 10px;
+}
+.filterChips { display: contents; }
+
+.search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--trade-space-2);
+  flex: 0 1 300px;
+  min-width: 0;
+  height: var(--trade-tap);
+  padding: 0 4px 0 12px;
+  border: 1px solid var(--trade-line);
+  border-radius: 10px;
+  background: var(--trade-surface);
+  color: var(--trade-text-2);
+}
+.search:focus-within { outline: 2px solid var(--trade-focus); outline-offset: 2px; }
+.searchInput {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--trade-text);
+  font: inherit;
+  font-size: var(--trade-fs-body); /* never under 16px on an input: phones zoom in otherwise */
+  outline: none;
+}
+.searchInput::placeholder { color: var(--trade-text-3); }
+.searchInput::-webkit-search-cancel-button { display: none; }
+.searchClear {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--trade-text-2);
+  cursor: pointer;
+}
+.searchClear:hover { background: color-mix(in srgb, var(--trade-forest) 6%, transparent); color: var(--trade-text); }
+
+/* The chip is 32px tall like the mockup; the button around it is 44px so it's easy to hit. */
+.chipButton {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  max-width: 100%;
+  min-height: var(--trade-tap);
+  padding: 6px 0;
+  border: 0;
+  background: transparent;
+  color: var(--trade-ink);
+  font: inherit;
+  cursor: pointer;
+}
+.chipButton:focus-visible { outline: none; }
+.chipButton:focus-visible > .chip { outline: 2px solid var(--trade-focus); outline-offset: 2px; }
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 32px;
+  padding: 5px 10px 5px 14px;
+  border-radius: var(--trade-radius-pill);
+  background: var(--trade-surface);
+  box-shadow: inset 0 0 0 1px var(--trade-line-strong);
+  color: var(--trade-ink);
+  font-size: var(--trade-fs-small);
+  line-height: var(--trade-lh-small);
+  text-align: start;
+  transition: background var(--trade-dur-base), color var(--trade-dur-base);
+}
+.chip[data-plain] { padding-inline-end: 14px; }
+.chipButton:hover > .chip { background: color-mix(in srgb, var(--trade-forest) 5%, var(--trade-surface)); }
+.chip[data-on] { background: var(--trade-action); color: var(--trade-on-action); box-shadow: none; font-weight: 700; }
+.chipButton:hover > .chip[data-on] { background: var(--trade-action); filter: brightness(1.06); }
+.chipLabel { min-width: 0; overflow-wrap: anywhere; }
+.chipIcon { flex: none; font-size: 16px; }
+.chipButton[aria-expanded="true"] .chipChevron { transform: rotate(180deg); }
+.chipChevron { transition: transform var(--trade-dur-base) var(--trade-ease-in-out); }
+.clear { margin-inline-start: auto; }
+
+@container filters (max-width: 599px) {
+  .search { flex: 1 1 100%; }
+  .clear { margin-inline-start: 0; }
+}
+
+/* ---- Quick filters: one-tap chips across the top of a list (tr-all: Ready to claim, Needs estimate…) ---- */
+.quick {
+  display: flex;
+  gap: var(--trade-space-2);
+  margin: 0;
+  padding: 0;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  list-style: none;
+}
+.quick::-webkit-scrollbar { display: none; }
+@media (min-width: 600px) {
+  .quick[data-wrap] { flex-wrap: wrap; overflow: visible; }
+}
+.quick > li { flex: none; }
+.quickChip { padding: 4px 0; }
+.quickChip > .chip { min-height: 36px; padding-inline: 16px; background: var(--trade-chip-bg); box-shadow: inset 0 0 0 1px var(--trade-chip-line); font-weight: 600; white-space: nowrap; }
+.quickChip:hover > .chip { background: color-mix(in srgb, var(--trade-forest) 8%, var(--trade-surface)); }
+.quickChip[aria-pressed="true"] > .chip { background: var(--trade-action); color: var(--trade-on-action); box-shadow: none; font-weight: 700; }
+.quickChip[data-tone="gold"] > .chip { box-shadow: inset 0 0 0 1px var(--trade-gold); }
+.quickChip[data-tone="gold"][aria-pressed="true"] > .chip { background: var(--trade-gold); color: var(--trade-forest); box-shadow: none; }
+.quickCount { font-weight: 600; opacity: 0.8; font-variant-numeric: tabular-nums; }
+
+@media (forced-colors: active) {
+  .chip[data-on], .quickChip[aria-pressed="true"] > .chip, .segItem[aria-selected="true"] { outline: 2px solid Highlight; }
+  .tabIndicator, .segThumb { background: Highlight; }
+}

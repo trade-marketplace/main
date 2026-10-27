@@ -1,0 +1,167 @@
+/* /dev/components/data (dev only). The page around the tables, tabs, pagination and filters, with the same
+   header band as /dev/components/overlays. Tokens only: no hex values. The components themselves are styled by
+   src/components/data/data.module.css. */
+
+.page {
+  min-height: 100dvh;
+  background: var(--trade-surface);
+  color: var(--trade-text);
+  overflow-x: clip;
+}
+
+.wrap {
+  position: relative;
+  max-width: var(--trade-content-max);
+  margin: 0 auto;
+  padding: 0 var(--trade-inset-browse);
+}
+
+/* ---- Header band ---- */
+.band {
+  position: relative;
+  overflow: hidden;
+  background: var(--trade-forest);
+  color: var(--trade-text-on-dark);
+  padding: var(--trade-space-10) 0 var(--trade-space-8);
+}
+.bandBolt {
+  position: absolute;
+  width: 520px;
+  top: -200px;
+  right: -180px;
+  fill: var(--trade-signature);
+  opacity: 0.2;
+  pointer-events: none;
+}
+.eyebrow {
+  margin: 0 0 var(--trade-space-2);
+  font-size: var(--trade-fs-caption);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 800;
+  color: var(--trade-signature);
+}
+.title {
+  margin: 0;
+  font-family: var(--trade-font-heading);
+  font-weight: 900;
+  font-variation-settings: var(--trade-display-axes);
+  font-size: var(--trade-fs-title);
+  line-height: var(--trade-lh-title);
+}
+.lede { margin: var(--trade-space-3) 0 0; max-width: var(--trade-read-max); color: var(--trade-text-on-dark-2); }
+.lede code { color: var(--trade-text-on-dark); }
+.modeNav { display: flex; flex-wrap: wrap; gap: var(--trade-space-2); margin-top: var(--trade-space-6); }
+.modeLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--trade-tap);
+  padding: 0 var(--trade-space-5);
+  border-radius: var(--trade-radius-pill);
+  color: var(--trade-text-on-dark);
+  font-weight: 700;
+  font-size: var(--trade-fs-small);
+  text-decoration: none;
+  box-shadow: inset 0 0 0 2px var(--trade-text-on-dark-2);
+}
+.modeLink:hover { background: var(--trade-forest-2); }
+.modeLink[aria-current="page"] { background: var(--trade-signature); color: var(--trade-on-signature); box-shadow: none; }
+
+.toc {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--trade-space-2) var(--trade-space-4);
+  padding: var(--trade-space-6) 0;
+  border-bottom: 1px solid var(--trade-line);
+  font-size: var(--trade-fs-small);
+}
+.toc a { display: inline-flex; align-items: center; min-height: var(--trade-space-6); color: var(--trade-link); font-weight: 700; }
+
+.page code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.8125rem; }
+
+/* ---- Sections and rows ---- */
+.section { padding: var(--trade-space-8) 0 0; scroll-margin-top: var(--trade-space-4); }
+.section:last-child { padding-bottom: var(--trade-space-16); }
+.sectionTitle {
+  margin: 0;
+  font-family: var(--trade-font-heading);
+  font-weight: 900;
+  font-variation-settings: var(--trade-display-axes);
+  font-size: var(--trade-fs-heading);
+  line-height: var(--trade-lh-heading);
+}
+.intro { margin: var(--trade-space-2) 0 var(--trade-space-4); max-width: var(--trade-read-max); color: var(--trade-text-2); font-size: var(--trade-fs-small); }
+
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--trade-space-3);
+  padding: var(--trade-space-4) 0;
+  border-top: 1px solid var(--trade-line);
+}
+@media (min-width: 1024px) {
+  .row { grid-template-columns: 240px minmax(0, 1fr); gap: var(--trade-space-6); }
+}
+.rowHead { min-width: 0; }
+.rowName { margin: 0; font-size: var(--trade-fs-small); font-weight: 700; }
+.note { margin: var(--trade-space-1) 0 0; font-size: var(--trade-fs-caption); line-height: var(--trade-lh-caption); color: var(--trade-text-2); }
+
+/* Room above each stage so a tooltip on the first row of buttons has space to open. */
+.stage {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--trade-space-3);
+  min-width: 0;
+  padding: var(--trade-space-12) var(--trade-space-4) var(--trade-space-4);
+  border-radius: var(--trade-radius-card);
+  background: var(--trade-paper);
+}
+.state { display: inline-flex; flex-direction: column; align-items: flex-start; gap: var(--trade-space-1); max-width: 100%; }
+.stateName { font-size: var(--trade-fs-caption); color: var(--trade-text-2); }
+.inlineReason { margin: 0; font-size: var(--trade-fs-small); color: var(--trade-text-2); }
+.para { margin: 0; max-width: var(--trade-read-max); }
+
+/* ---- Demo bits ---- */
+.subTitle { margin: var(--trade-space-8) 0 0; font-size: var(--trade-fs-section); font-weight: 800; }
+.stack { display: grid; gap: var(--trade-space-4); width: 100%; min-width: 0; }
+
+/* The office page around the big example: the mockup's soft grey main area (web.css .w-page--soft). */
+.canvas {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--trade-space-4);
+  min-width: 0;
+  padding: var(--trade-space-6) var(--trade-space-8) var(--trade-space-8);
+  border-radius: var(--trade-radius-card);
+  background: color-mix(in srgb, var(--trade-forest) 3.5%, var(--trade-surface));
+}
+@media (max-width: 599.98px) {
+  .canvas { padding: var(--trade-space-4) 0 var(--trade-space-6); margin-inline: calc(-1 * var(--trade-inset-browse)); padding-inline: var(--trade-inset-browse); border-radius: 0; }
+}
+.pageHead { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--trade-space-3); }
+.pageTitle {
+  margin: 0;
+  font-family: var(--trade-font-heading);
+  font-weight: 900;
+  font-variation-settings: var(--trade-display-axes);
+  font-size: var(--trade-fs-title);
+  line-height: var(--trade-lh-title);
+}
+.pageHeadActions { display: flex; flex-wrap: wrap; gap: var(--trade-space-2); }
+
+/* A narrow box, to show how a table, tabs or filters look on a phone (and in a side panel) on a big screen. */
+.narrow { width: 100%; max-width: 360px; }
+.medium { width: 100%; max-width: 760px; }
+.grow { flex: 1 1 100%; min-width: 0; }
+.status { margin: 0; font-size: var(--trade-fs-caption); color: var(--trade-text-2); }
+.panelText { margin: 0; color: var(--trade-text-2); font-size: var(--trade-fs-small); }
+.code {
+  max-width: 100%;
+  margin: var(--trade-space-6) 0 0;
+  padding: var(--trade-space-4);
+  overflow-x: auto;
+  border-radius: var(--trade-radius-card);
+  background: var(--trade-forest);
+  color: var(--trade-text-on-dark);
+}
