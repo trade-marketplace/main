@@ -27,14 +27,17 @@ export function OfficeShellView({ viewer, counts = EMPTY_OFFICE_COUNTS, testMode
   return (
     <div data-mode="office" className={styles.shell}>
       <a href="#main" className={styles.skip}>Skip to content</a>
-      {testMode && (
-        <aside aria-label="Payments">
-          <Banner tone="test" title="Test mode." className={styles.testBanner}>No real money moves.</Banner>
-        </aside>
-      )}
       <div className={styles.frame}>
         <OfficeNav viewer={viewer} counts={counts} preview={preview} />
-        <main id="main" tabIndex={-1} className={styles.main}>{children}</main>
+        {/* The banner sits over the page column, not the sidebar, so the sidebar can stay a full screen tall. */}
+        <div className={styles.column}>
+          {testMode && (
+            <aside aria-label="Payments">
+              <Banner tone="test" title="Test mode." className={styles.testBanner}>No real money moves.</Banner>
+            </aside>
+          )}
+          <main id="main" tabIndex={-1} className={styles.main}>{children}</main>
+        </div>
       </div>
     </div>
   );

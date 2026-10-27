@@ -15,6 +15,7 @@
   font-size: var(--trade-fs-small);
 }
 .shell .testBanner > p { flex: 0 1 auto; }
+.column { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .main { flex: 1; min-width: 0; padding: var(--trade-space-6) var(--trade-inset-browse); background: color-mix(in srgb, var(--trade-waiting-bg) 55%, var(--trade-surface)); }
 .main:focus { outline: none; }
 .sidebar { display: none; }
@@ -23,7 +24,9 @@
   min-height: var(--trade-header-h); padding-block: var(--trade-space-1);
   /* Match the app shell: keep the normal inset, but clear landscape cutouts with viewport-fit=cover. */
   padding-inline: max(var(--trade-inset-browse), env(safe-area-inset-left, 0px)) max(var(--trade-inset-browse), env(safe-area-inset-right, 0px));
-  background: var(--trade-forest); color: var(--trade-text-on-dark); position: relative; z-index: var(--trade-z-nav);
+  background: var(--trade-forest); color: var(--trade-text-on-dark);
+  /* Stays at the top while the page scrolls, like the app nav (WEBAPP_SPEC: app nav sticky). */
+  position: sticky; top: 0; z-index: var(--trade-z-nav);
 }
 .mobileHeader .menuButton { color: var(--trade-signature); padding-inline: var(--trade-space-2); }
 .mobileHeader .menuButton:hover { background: color-mix(in srgb, var(--trade-signature) 16%, transparent); }
@@ -60,13 +63,18 @@
   .frame { display: grid; grid-template-columns: calc(3 * var(--trade-space-20)) minmax(0, 1fr); }
   .mobileHeader { display: none; }
   .main { padding: var(--trade-space-6) var(--trade-space-8); }
+  /* A full screen tall and stuck to the top, so the links and the avatar stay in view on long pages. If the
+     window is too short for every link, the links scroll inside the sidebar (not the whole sidebar, which would
+     clip the account menu that opens above the avatar). */
   .sidebar {
-    position: relative; display: flex; flex-direction: column; min-width: 0;
+    position: sticky; top: 0; align-self: start; height: 100dvh;
+    display: flex; flex-direction: column; min-width: 0;
     padding: calc(var(--trade-space-5) + var(--trade-space-1) / 2) var(--trade-space-3) calc(var(--trade-space-3) + var(--trade-space-1) / 2);
     background: var(--trade-forest); color: var(--trade-text-on-dark);
   }
   .art { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
-  .bolt { position: absolute; width: 320px; height: auto; left: var(--trade-space-5); top: 600px; fill: var(--trade-signature); opacity: .2; }
+  /* Anchored to the bottom so it always bleeds off the edge, as in the mockup, whatever the window height. */
+  .bolt { position: absolute; width: 320px; height: auto; left: var(--trade-space-5); bottom: -330px; fill: var(--trade-signature); opacity: .2; }
   .logo { position: relative; display: block; width: fit-content; margin-inline: var(--trade-space-2); }
   .wordmark { width: auto; height: 26px; }
   .modeLabel {
@@ -74,6 +82,7 @@
     font-size: var(--trade-fs-caption); line-height: var(--trade-lh-caption); font-weight: 800;
     letter-spacing: .12em; text-transform: uppercase; color: var(--trade-signature);
   }
+  .sidebarNav { position: relative; flex: 0 1 auto; min-height: 0; overflow-y: auto; margin: -4px; padding: 4px; }
   .links { position: relative; display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
   .link {
     display: flex; align-items: center; gap: var(--trade-space-3); min-height: 42px; padding: 0 var(--trade-space-3);
@@ -92,7 +101,7 @@
     transition: transform var(--trade-dur-base) var(--trade-ease-in-out), height var(--trade-dur-base) var(--trade-ease-in-out);
   }
   .indicator[data-shown="false"] { visibility: hidden; }
-  .sidebarAccount { position: relative; margin-top: auto; padding-top: var(--trade-space-8); }
+  .sidebarAccount { position: relative; flex-shrink: 0; margin-top: auto; padding-top: var(--trade-space-8); }
   .sidebarAccount .accountMenu { display: block; }
   /* This trigger sits at the bottom of the sidebar: place its panel above before Menu focuses an item. */
   .sidebarAccount .accountMenu > [data-align] {

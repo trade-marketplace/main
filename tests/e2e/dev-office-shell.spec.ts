@@ -236,4 +236,42 @@ test.describe("/dev/components/office-shell", () => {
       await expectNoA11yViolations(page);
     }
   });
+
+  test("on a long page the sidebar, its links and the avatar stay in view, and the phone bar stays on top", async ({ page }) => {
+    // After hydration: content added before it would be thrown away when React takes over the page.
+    const makeLong = async () => {
+      await page.waitForLoadState("networkidle");
+      await page.evaluate(() => {
+        const filler = document.createElement("div");
+        filler.style.height = "4000px";
+        filler.textContent = "Long page";
+        document.querySelector("main")!.append(filler);
+        window.scrollTo(0, document.documentElement.scrollHeight);
+      });
+    };
+
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto(url());
+    await makeLong();
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(3000);
+    await expect(officeNav(page).getByRole("link", { name: /^Queues/ })).toBeInViewport();
+    await expect(officeNav(page).getByRole("link", { name: "Settings", exact: true })).toBeInViewport();
+    await expect(page.locator("aside").getByRole("button", { name: /^Account:/ })).toBeInViewport();
+    await noOverflow(page);
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(url());
+    await makeLong();
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(3000);
+    await expect(menuButton(page)).toBeInViewport();
+    await noOverflow(page);
+  });
+
+  test("before scrolling, the avatar is on screen even with the test-mode banner (short windows scroll the links)", async ({ page }) => {
+    await page.setViewportSize({ width: 1024, height: 600 });
+    await page.goto(url());
+    await expect(page.getByText("Test mode.")).toBeVisible();
+    await expect(page.locator("aside").getByRole("button", { name: /^Account:/ })).toBeInViewport({ ratio: 1 });
+    await expect(officeNav(page).getByRole("link", { name: /^Queues/ })).toBeInViewport();
+  });
 });

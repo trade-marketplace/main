@@ -81,7 +81,11 @@ query flags and fragments do not affect matching; unrelated paths select nothing
   opens its menu upwards before focus moves, keeping the complete panel in view without scrolling the document.
   The shared Menu's automatic-placement issue is tracked separately in #337.
 - **Skip link:** the first focusable element targets `<main id="main" tabIndex={-1}>` and becomes visible on focus.
-- **Payment strip:** the existing `Banner` uses test tone and the exact message "Test mode. No real money moves."
+- **Stays in view:** from 1024px the sidebar is a full screen tall and sticks to the top. On long pages the links
+  and the avatar never scroll away. If the window is too short for every link, the links scroll inside the sidebar.
+  Below 1024px the Forest top bar sticks to the top. The decorative bolt is anchored to the sidebar's bottom edge,
+  so it always bleeds off it as in the mockup.
+- **Payment strip:** the existing `Banner` uses test tone and the exact message "Test mode. No real money moves." It sits over the page column (on a phone, under the top bar), not over the sidebar, so the sidebar can stay a full screen tall.
   `OfficeShell` reuses `paymentsInTestMode()` from `src/server/app-shell.ts`; it remains true until the payments
   work adds an approved live-mode switch. A preview flag only affects the preview.
 

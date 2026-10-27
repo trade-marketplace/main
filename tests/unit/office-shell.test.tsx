@@ -151,13 +151,13 @@ describe("office navigation", () => {
 });
 
 describe("OfficeShellView", () => {
-  it("puts the skip link before the banner and navigation, with a focusable main after them", () => {
+  it("puts the skip link first, then the navigation, the banner and a focusable main", () => {
     const html = shell();
     const firstAnchor = html.match(/<a\b[^>]*>/)?.[0];
     expect(firstAnchor).toContain('href="#main"');
-    expect(html.indexOf("Skip to content")).toBeLessThan(html.indexOf("Test mode."));
-    expect(html.indexOf("Test mode.")).toBeLessThan(html.indexOf("<nav"));
-    expect(html.indexOf("<nav")).toBeLessThan(html.indexOf("<main"));
+    expect(html.indexOf("Skip to content")).toBeLessThan(html.indexOf("<nav"));
+    expect(html.indexOf("<nav")).toBeLessThan(html.indexOf("Test mode."));
+    expect(html.indexOf("Test mode.")).toBeLessThan(html.indexOf("<main"));
     expect(html).toMatch(/<main\b(?=[^>]*id="main")(?=[^>]*tabindex="-1")[^>]*>/);
     expect(html.match(/<main\b/g)).toHaveLength(1);
     expect(html).toContain("Office page content");

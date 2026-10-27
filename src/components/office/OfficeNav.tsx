@@ -63,7 +63,7 @@ export function OfficeNav({ viewer, counts, preview }: Props) {
           <Wordmark label={null} className={styles.wordmark} />
         </Link>
         <div className={styles.modeLabel}>Office</div>
-        <nav aria-label="Office">
+        <nav aria-label="Office" className={styles.sidebarNav}>
           <ul ref={linksRef} className={styles.links}>
             {OFFICE_NAV.map((link) => {
               const count = link.count ? counts[link.count] : 0;
