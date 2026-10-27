@@ -40,8 +40,10 @@ Used for (DECISIONS.md #58–#61):
 | `DATABASE_URL` (pooled) / `DIRECT_URL` | server, migrations | **yes** |
 
 ## Vercel (hosting, preview links)
-Not connected yet. The repo is private and owned by an organization, so Vercel needs the Pro plan (about US$20/month)
-or the repo must be public. Functions region: **Sydney (`syd1`)**, next to the database.
+Connected. Production deploys from `main` at https://main-ashy-tau.vercel.app/ (Hobby plan while the repo is public;
+Pro before launch). Every PR gets a preview link. Environment variables (Production + Preview) are set in Vercel.
+Production deploys run `scripts/migrate-on-deploy.mjs` first (`vercel-build`), which applies pending Prisma migrations
+to Supabase. Preview deploys never change the database schema.
 
 ## Other
 - **Email:** Resend, from `hello@trademarketplace.nz` (domain not bought yet).
