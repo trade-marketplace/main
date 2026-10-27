@@ -91,8 +91,8 @@ the refresh happens in the proxy. The proxy reads `profiles` only for non-public
 database read.
 
 **Cookies** (`authCookieOptions()` in `src/server/supabase.ts`): `HttpOnly`, `Secure` (except `next dev` on plain
-http), `SameSite=Lax`, path `/`. Supabase decides when a session ends, not the cookie. "Keep me logged in" (30 days
-vs browser session) is the log-in page's (#102).
+http), `SameSite=Lax`, path `/`. Supabase decides when a session ends, not the cookie. "Keep me logged in" (400 days,
+the browser maximum, vs browser session) is the log-in page's (#102).
 
 **CSRF.** Forms post to **server actions**, never to GET links or our own POST endpoints. That's safe without a
 token because (1) Next.js only runs an action on POST and refuses one whose `Origin` header doesn't match the host,
@@ -123,7 +123,8 @@ Supabase's email confirmation time to `profiles.email_verified_at`. A Supabase u
 out until then.
 
 **Not here yet:** the log-in and sign-up pages (#102–#105), the verify-email link handler (#106), password reset
-(#107), the dialog (#108), lockout after 5 tries (#102), log out other devices (#113).
+(#107), the dialog (#108), log out other devices (#113). Accounts are never locked after wrong passwords
+(DECISIONS.md).
 
 **Supabase project settings** (William, in the dashboard; nothing in this repo changes them): Authentication →
 Providers → Email: minimum password length **10**; leaked-password protection once on Pro. Whether email must be

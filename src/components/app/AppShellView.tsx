@@ -8,6 +8,7 @@
 // shell (#85).
 import type { ReactNode } from "react";
 
+import { TextLink } from "@/components/TextLink";
 import { Banner } from "@/components/overlays/Banner";
 import { modeForRole } from "@/lib/mode";
 
@@ -24,6 +25,8 @@ export type ShellViewer = {
   lastName: string | null;
   /** Shown only to its owner, in their avatar menu. */
   email: string;
+  /** False until they confirm their email: a banner asks them to (#102). Posting and claiming check it too. */
+  emailVerified?: boolean;
   counts: Readonly<Record<CountKey, number>>;
 };
 
@@ -46,6 +49,22 @@ export function AppShellView({ viewer, testMode, children, preview }: AppShellVi
         <aside aria-label="Payments">
           <Banner tone="test" title="Test mode." className={styles.testBanner}>
             No real money moves.
+          </Banner>
+        </aside>
+      )}
+      {viewer.emailVerified === false && (
+        <aside aria-label="Your email">
+          <Banner
+            tone="info"
+            title="Confirm your email."
+            className={styles.testBanner}
+            action={
+              <TextLink href="/verify" inline>
+                Send the link again
+              </TextLink>
+            }
+          >
+            Open the link we emailed you to post or claim jobs.
           </Banner>
         </aside>
       )}
