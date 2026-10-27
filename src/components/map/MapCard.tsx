@@ -126,7 +126,7 @@ export function MapCard({ job, serverNow, id, headingLevel = 3, onClose, href, a
 function footLabel(job: MapJob, expired: boolean): string {
   switch (job.kind) {
     case "claim":
-      return "You earn";
+      return "Earn";
     case "estimate":
       return "Quote from the photos. Private.";
     case "visit":

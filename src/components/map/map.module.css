@@ -405,3 +405,29 @@
   white-space: nowrap;
   border: 0;
 }
+
+/* Mapbox owns the canvas, pan/zoom and attribution. The existing kit owns every interactive pin. */
+/* The SDK adds .mapboxgl-map (position: relative) after loading its CSS. Keep this selector more specific so
+   the provider container fills the surface even when the vendor stylesheet arrives last. */
+.surface > .mapboxCanvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.mapboxCanvas :global(.mapboxgl-canvas):focus-visible { outline: 3px solid var(--trade-focus); outline-offset: -3px; }
+.mapboxLayer { pointer-events: none; }
+.mapboxLayer button { pointer-events: auto; }
+.providerControls { position: absolute; top: 12px; right: 12px; z-index: 4; display: grid; gap: 4px; }
+.providerControls button {
+  display: grid; place-items: center; width: var(--trade-tap); height: var(--trade-tap); padding: 0;
+  border: 1px solid var(--trade-line); border-radius: var(--trade-radius-card);
+  background: var(--trade-surface); color: var(--trade-text); cursor: pointer; box-shadow: var(--trade-shadow-pop);
+}
+.providerControls button:disabled { opacity: .5; cursor: default; }
+.providerControls button:focus-visible { outline: 3px solid var(--trade-focus); outline-offset: 3px; }
+.locationNotice {
+  position: absolute; left: 12px; top: 12px; max-width: calc(100% - 88px); z-index: 4; margin: 0;
+  padding: 10px 12px; border-radius: var(--trade-radius-card); font-size: var(--trade-fs-small);
+  background: var(--trade-surface); color: var(--trade-text); box-shadow: var(--trade-shadow-pop);
+}
+.providerNotice { font-size: var(--trade-fs-small); color: var(--trade-text-2); }
+.listCard { margin-top: var(--trade-space-4); }
+.listOnly .grid { grid-template-areas: "list"; grid-template-columns: minmax(0, 1fr); height: auto; }
+.listOnly .listArea { overflow: visible; border-right: 0; }
+.listOnly .legendInList { display: grid; }

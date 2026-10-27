@@ -2,7 +2,8 @@
 // The map + list layout (#82): D03 on wide screens (list left, map right) and D18 on phones (map, then the list).
 // Hovering or focusing a row grows its pin, and the reverse (M21). Picking a pin or a row opens its card over the
 // map; Esc or the close control shuts it and puts focus back. Pins that would overlap merge into a cluster;
-// pressing one zooms in to fit its jobs, as Mapbox will once it's wired in (until then this is a placeholder map).
+// pressing one zooms in to fit its jobs. With mapbox config the canvas and camera are real; the kit preview
+// can still use the offline illustrated surface.
 //
 // Every job's point must come from jobPinFor() (#97): unclaimed jobs only ever have their approximate pin here.
 import { type KeyboardEvent, type RefObject, useEffect, useMemo, useRef, useState } from "react";
@@ -28,13 +29,19 @@ import type { Point } from "@/lib/geo/distance";
 import { MapCard } from "./MapCard";
 import { ApproxArea, ClusterPin, MapPin, pinLook, type Position, useBountyRemaining } from "./MapPin";
 import { MapLegend, MapSurface, YouAreHere } from "./MapSurface";
+import { MapboxSurface, type MapboxServices, type MapboxViewport } from "./MapboxSurface";
+import type { MapboxConfig } from "@/lib/map/mapbox";
 import styles from "./map.module.css";
 
 const cx = (...classes: (string | false | null | undefined)[]) => classes.filter(Boolean).join(" ");
 
 export type MapListState = "ready" | "loading" | "empty" | "error";
 
-type MapListLayoutProps = {
+export type MapListLayoutProps = {
+  /** Omit for the offline kit illustration. Pass server-loaded config for the real provider. */
+  mapbox?: MapboxConfig;
+  /** Offline test/preview adapter; production uses the pinned Mapbox loader and browser location. */
+  mapboxServices?: MapboxServices;
   jobs: readonly MapJob[];
   /** What the map shows at first. Default: fits every job. */
   bounds?: Bounds;
@@ -59,6 +66,8 @@ type MapListLayoutProps = {
 
 export function MapListLayout({
   jobs,
+  mapbox,
+  mapboxServices,
   bounds: initialBounds,
   serverNow,
   state = "ready",
@@ -74,11 +83,20 @@ export function MapListLayout({
     [initialBounds, jobs],
   );
   const [zoomed, setZoomed] = useState<Bounds | null>(null);
-  const bounds = zoomed ?? fitAll;
+  const cameraBounds = zoomed ?? fitAll;
+  const providerKey = mapbox ? JSON.stringify([mapbox.accessToken, mapbox.workArea]) : "";
+  type ProviderRequest = { key: string; loader: MapboxServices["load"] };
+  const [providerView, setProviderView] = useState<(ProviderRequest & { view: MapboxViewport }) | null>(null);
+  const [failedProvider, setFailedProvider] = useState<ProviderRequest | null>(null);
+  const currentProvider = (request: ProviderRequest | null) => request?.key === providerKey && request.loader === mapboxServices?.load;
+  const viewport = providerView && currentProvider(providerView) ? providerView.view : null;
+  const mapFailed = currentProvider(failedProvider);
+  const listOnly = !!mapbox && (!mapbox.accessToken || mapFailed);
+  const bounds = viewport?.bounds ?? cameraBounds;
   const [hotId, setHotId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(initialSelectedId);
   const mapRef = useRef<HTMLDivElement>(null);
-  const size = useElementSize(mapRef);
+  const size = useElementSize(mapRef, !listOnly);
   const returnFocus = useRef<HTMLElement | null>(null);
   const showAllRef = useRef<HTMLButtonElement>(null);
   // The cluster that was pressed is gone once zoomed in: keep focus on the map, on "Show all jobs".
@@ -88,12 +106,14 @@ export function MapListLayout({
 
   const ready = state === "ready";
   const placed = useMemo(() => {
-    if (!ready || !bounds) return [];
+    if (!ready) return [];
+    if (listOnly || (mapbox && !viewport)) return jobs.map((job) => ({ job, at: { x: 50, y: 50 } }));
+    if (!bounds) return [];
     return jobs.flatMap((job) => {
-      const at = projectPoint(job.point, bounds);
+      const at = mapbox && viewport && size ? viewport.project(job.point) : projectPoint(job.point, bounds);
       return at ? [{ job, at }] : [];
     });
-  }, [jobs, bounds, ready]);
+  }, [jobs, bounds, ready, listOnly, mapbox, viewport, size]);
 
   // Merge pins that would overlap at this size. Before the size is known (server HTML), every pin shows.
   type Shown = (typeof placed)[number] & { pos: Position };
@@ -120,7 +140,7 @@ export function MapListLayout({
   const listHeadingId = `${idPrefix}-heading`;
   const areaPct = bounds && approxRadiusMetres ? metresAsWidthPct(approxRadiusMetres * 2, bounds) : 0;
   const visibleCount = placed.length;
-  const title = heading ?? (state === "loading" ? "Finding jobs…" : `${visibleCount} ${visibleCount === 1 ? "job" : "jobs"} in view`);
+  const title = heading ?? (state === "loading" ? "Finding jobs…" : `${visibleCount} ${visibleCount === 1 ? "job" : "jobs"} ${listOnly ? "nearby" : "in view"}`);
   const Heading = `h${headingLevel}` as const;
 
   const select = (id: string, from: HTMLElement | null) => {
@@ -148,7 +168,7 @@ export function MapListLayout({
     groups.find((g) => g.members.length === 1 && g.lead.job.precision === "approximate" && hotOrSelected(g.lead.job.id))?.lead;
 
   return (
-    <div className={styles.layout} onKeyDown={onKeyDown}>
+    <div className={cx(styles.layout, listOnly && styles.listOnly)} onKeyDown={onKeyDown}>
       <div className={styles.grid}>
         <div className={styles.listArea}>
           <div className={styles.listHead}>
@@ -156,6 +176,7 @@ export function MapListLayout({
               {title}
             </Heading>
           </div>
+          {listOnly && <p role="status" className={styles.providerNotice}>Map unavailable. Showing jobs in a list.</p>}
           {state === "loading" && <ListSkeleton />}
           {state === "error" && (
             <div className={cx(styles.message, styles.messageError)} role="alert">
@@ -192,14 +213,19 @@ export function MapListLayout({
               <p>Zoom out or move the map to see jobs further away.</p>
             </div>
           )}
+          {listOnly && selected && (
+            <div className={styles.listCard}>
+              <MapCard job={selected} serverNow={serverNow} id={cardId} headingLevel={headingLevel === 2 ? 3 : 4} onClose={close} />
+            </div>
+          )}
           <MapLegend className={styles.legendInList} />
         </div>
 
-        <div className={styles.mapArea} ref={mapRef}>
-          <MapSurface label={`Map of ${title}`}>
+        {!listOnly && <div className={styles.mapArea} ref={mapRef}>
+          <ProviderSurface config={mapbox} services={mapboxServices} bounds={cameraBounds} label={`Map of ${title}`} onViewChange={(view) => setProviderView({ key: providerKey, loader: mapboxServices?.load, view })} onFailure={() => setFailedProvider({ key: providerKey, loader: mapboxServices?.load })}>
             {you && bounds && <YouDot you={you} bounds={bounds} />}
             {ringFor && <ApproxArea position={ringFor.pos} widthPct={areaPct} />}
-            {groups.map(({ lead, members }, i) =>
+            {(!mapbox || (viewport && size)) && groups.map(({ lead, members }, i) =>
               members.length === 1 ? (
                 <MapPin
                   key={lead.job.id}
@@ -228,7 +254,7 @@ export function MapListLayout({
             {(state === "empty" || (ready && placed.length === 0)) && (
               <p className={styles.mapMessage}>No jobs in view</p>
             )}
-          </MapSurface>
+          </ProviderSurface>
           {zoomed && (
             <button ref={showAllRef} type="button" className={styles.mapControl} onClick={() => setZoomed(null)}>
               <Icon name="zoom_out_map" decorative size="sm" />
@@ -241,10 +267,23 @@ export function MapListLayout({
               <MapCard job={selected} serverNow={serverNow} id={cardId} headingLevel={headingLevel === 2 ? 3 : 4} onClose={close} />
             </div>
           )}
-        </div>
+        </div>}
       </div>
     </div>
   );
+}
+
+function ProviderSurface({ config, services, children, ...props }: {
+  config?: MapboxConfig;
+  services?: MapboxServices;
+  children: React.ReactNode;
+  bounds?: Bounds;
+  label: string;
+  onViewChange: (view: MapboxViewport) => void;
+  onFailure: () => void;
+}) {
+  return config ? <MapboxSurface config={config} services={services} {...props}>{children}</MapboxSurface>
+    : <MapSurface label={props.label}>{children}</MapSurface>;
 }
 
 function YouDot({ you, bounds }: { you: Point; bounds: Bounds }) {
@@ -311,17 +350,19 @@ function ListSkeleton() {
 }
 
 /** The element's size in px, kept up to date. Null until measured (on the server and while hydrating). */
-function useElementSize(ref: RefObject<HTMLElement | null>): { width: number; height: number } | null {
+function useElementSize(ref: RefObject<HTMLElement | null>, active = true): { width: number; height: number } | null {
   const [size, setSize] = useState<{ width: number; height: number } | null>(null);
   useEffect(() => {
     const el = ref.current;
-    if (!el || typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver(([entry]) => {
-      const { width, height } = entry.contentRect;
+    if (!active || !el || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(() => {
+      // Read the current box, not a queued entry from an intermediate layout (e.g. full-page captures).
+      const width = el.clientWidth, height = el.clientHeight;
+      if (width <= 1 || height <= 1) return;
       setSize((old) => (old && old.width === width && old.height === height ? old : { width, height }));
     });
     observer.observe(el);
     return () => observer.disconnect();
-  }, [ref]);
+  }, [ref, active]);
   return size;
 }

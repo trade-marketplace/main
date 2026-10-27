@@ -119,7 +119,7 @@ export function DialogDemos({ initial }: { initial: OpenId | null }) {
             onCancel={confirm.hide}
             onConfirm={() => (confirm.hide(), setResult("Claimed."))}
           >
-            <p>Sub wiring in Windsor. You earn $96.00, and Sarah’s free weekdays after 5pm.</p>
+            <p>Sub wiring in Windsor. Earn $96.00, and Sarah’s free weekdays after 5pm.</p>
           </ConfirmDialog>
         </>,
       )}

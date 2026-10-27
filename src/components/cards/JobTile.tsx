@@ -4,7 +4,7 @@
 // Display type; a tag in the corner says what kind of job it is; Save is a bookmark in the other corner.
 //
 //   <JobTile href={`/jobs/${job.id}`} title="Sub wiring" photo={job.thumbUrl} meta="4 km · Windsor"
-//     tag={{ kind: "earn", text: "You earn $259" }} saved={saved} onSavedChange={setSaved} />
+//     tag={{ kind: "earn", text: "Earn $259" }} saved={saved} onSavedChange={setSaved} />
 //
 // The whole tile opens the job (one link: the title, stretched over the tile). Save is the only other control.
 // Hover: M03, the tile rises and the photo zooms. Saving: M23, the bookmark fills and pops once.
@@ -20,7 +20,7 @@ import { useBump } from "@/lib/motion/hooks";
 import styles from "./cards.module.css";
 
 export type JobTileTag =
-  /** What the tradie earns: "You earn $259" (the signature colour). */
+  /** What the tradie earns: "Earn $259" (the signature colour). */
   | { kind: "earn"; text: string }
   /** No price yet: "Needs estimate". */
   | { kind: "estimate"; text?: string }

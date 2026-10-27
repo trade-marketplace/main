@@ -102,7 +102,7 @@ export default async function MapComponentsPage({ searchParams }: { searchParams
             The countdown on a pin ticks, but isn’t announced. Hover or focus a pin to grow it (M21).
           </p>
           <ul className={styles.tiles}>
-            <PinTile name="Ready to claim" note="Forest. What you earn." job={find("TM-1005")} now={now} />
+            <PinTile name="Ready to claim" note="Forest. Worker earnings." job={find("TM-1005")} now={now} />
             <PinTile name="Needs an estimate" note="White. Quote from photos." job={find("TM-1007")} now={now} />
             <PinTile name="Needs a site visit" note="Action colour. In person." job={find("TM-1011")} now={now} />
             <PinTile name="Bounty" note="Gold. Shimmers every 4s (M27)." job={find("TM-1012")} now={now} />

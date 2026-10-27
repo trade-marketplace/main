@@ -1,7 +1,7 @@
 "use client";
 // The Forest price block (components.css `.tm-pricebox`) in its two versions:
 // - customer: their fixed price, incl. GST (C08 "Job · price ready");
-// - tradie: what they earn (D06 "You earn"), never the customer's price.
+// - tradie: what they earn (D06 "Earn"), never the customer's price.
 // The props are a union on `audience`: each side only has a field for its own number, and the other side's is
 // typed `never`, so TypeScript refuses `<PriceBlock audience="tradie" priceCents={…}>` (and a spread object that
 // carries it). At run time each version reads only its own fields, so a smuggled number is never shown either.
@@ -73,7 +73,7 @@ export function PriceBlock(props: PriceBlockProps) {
     const { earnCents, breakdown, ticks, revealId, className } = props;
     return (
       <Block
-        caption="You earn"
+        caption="Earn"
         cents={earnCents}
         side={breakdown ? <span className={styles.breakdown}>{formatBreakdown(breakdown)}</span> : null}
         ticks={ticks}

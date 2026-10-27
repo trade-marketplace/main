@@ -88,7 +88,7 @@ This spec says **what** to build. How is the developer’s call. All prices, nam
 | [ ] | D27 | Book a time window | `/jobs/[id]/book` | Pick one of the customer’s windows; preset updates (On my way, Running late, Reschedule) instead of chat | Booked · rescheduled | P1 | Book a time window |
 | [ ] | D04 | Job · needs estimate | `/jobs/[id]` | Gallery, details, “Estimate now” opens drawer | Already estimated · not eligible | P1 | Job · estimate (drawer) |
 | [ ] | D05 | Estimate drawer | `(drawer)` | Hours stepper, materials, note, site visit; private banner | Saved · edit | P1 | Job · estimate (drawer) |
-| [ ] | D06 | Job · ready to claim | `/jobs/[id]` | You earn card, materials budget, needs, Claim job | — | P1 | Job · claim (+ result) |
+| [ ] | D06 | Job · ready to claim | `/jobs/[id]` | Earn card, materials budget, needs, Claim job | — | P1 | Job · claim (+ result) |
 | [ ] | D07 | Claim confirm + result | `(dialog)` | Confirm → It’s yours (bolt flash) / Too slow | Lost race | P1 | Job · claim (+ result) |
 | [ ] | D08 | My work | `/dashboard` | Columns: To book · On now · Waiting sign-off · Paid (read-only board), estimates tab | Empty | P1 | My work |
 | [ ] | D09 | Job workspace | `/jobs/[id]` | Customer + address + map, Telfer no., tracker, messages inline, Extra work / Finish job | Waiting on extra approval | P1 | Job workspace (+ extra work drawer) |
@@ -154,7 +154,7 @@ This spec says **what** to build. How is the developer’s call. All prices, nam
 | M06 | Hero bolt parallax + nav fill | Bolt in the Forest band moves at 0.3× scroll (max 60px). Transparent site nav turns solid Forest with shadow after the hero. | Scroll-linked · nav 200ms | Landing, For tradies, service pages |
 | M07 | Headline reveal | Hero headline lines rise 16px + fade, 70ms apart. Then sub-copy, then search bar. Runs once per visit. | 500ms · ease-out | Landing, For tradies hero |
 | M08 | Search suggestions | Dropdown fades in and scales .98→1 from the top edge. Results update as you type (debounce 150ms). | 160ms | Hero search, header search, address field |
-| M09 | Price reveal | Forest price block wipes in left→right (300ms), the number counts up from $0 (700ms, ease-out), then reassurance ticks appear one by one (60ms apart). Once per job. | ~1.1s total | Job · price ready (customer); You earn (tradie) |
+| M09 | Price reveal | Forest price block wipes in left→right (300ms), the number counts up from $0 (700ms, ease-out), then reassurance ticks appear one by one (60ms apart). Once per job. | ~1.1s total | Job · price ready (customer); Earn (tradie) |
 | M10 | Bolt flash | Signature circle pops (0.6→1.08→1, spring), the tick/bolt draws in, 8 sparks burst out 26px and fade, and a soft signature glow pulses behind. The brand’s celebration. | 600ms | Posted, Paid, It’s yours, Sorted, Estimate sent. Big wins only. |
 | M11 | Tracker progress | Line fills down to the next step (400ms), then the new dot pops (200ms) and its label fades in. | 600ms | Job trackers when status changes |
 | M12 | Drawer | Slides in from the right, scrim fades to 50%. Out: 200ms. Focus moves to the drawer title. | 320ms in · 200ms out | Estimate, extra work, filters on narrow screens |
@@ -198,7 +198,7 @@ This spec says **what** to build. How is the developer’s call. All prices, nam
 
 ### For tradies — `/for-tradies` (trade)
 1. Whole page in trade mode: Hi-Vis/Amber accents, Amber bolt. Hero CTA “Join as a tradie” → /signup/tradie.
-2. Right side: floating job cards showing “You earn” + an “It’s yours” toast. Cards float gently (3s loop); headline reveals with M07.
+2. Right side: floating job cards showing “Earn” + an “It’s yours” toast. Cards float gently (3s loop); headline reveals with M07.
 3. Four reasons in plain tradie talk. Icons in trade tint.
 4. Requirements box: the honest list. Licensed trades need their licence; “Other” work (any labour) needs ID only. Pull from the trade config.
 5. Below (not shown): earnings example, FAQ for tradies, testimonials from tradies once real, final CTA, footer.

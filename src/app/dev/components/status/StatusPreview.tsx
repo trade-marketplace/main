@@ -91,7 +91,7 @@ export function PriceRevealDemo({ ticks }: { ticks: readonly string[] }) {
           />
         </div>
         <div>
-          <h3 className={styles.subTitle}>Tradie: you earn</h3>
+          <h3 className={styles.subTitle}>Tradie: earnings</h3>
           <PriceBlock
             key={`t-${eventId}-${visit}`}
             audience="tradie"

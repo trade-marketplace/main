@@ -90,7 +90,7 @@ describe("pin names (what a screen reader hears)", () => {
   });
 
   it("names a claim pin with what the tradie earns, in full", () => {
-    expect(pinName(claim, null)).toBe("Ready to claim: Sub wiring, Windsor, you earn $259.20");
+    expect(pinName(claim, null)).toBe("Ready to claim: Sub wiring, Windsor, earn $259.20");
   });
 
   it("names estimate and visit pins", () => {
@@ -112,7 +112,7 @@ describe("captions and offers", () => {
   });
 
   it("says what the tradie gets for each kind", () => {
-    expect(jobOffer(claim, null)).toBe("You earn $259.20");
+    expect(jobOffer(claim, null)).toBe("Earn $259.20");
     expect(jobOffer(estimate, null)).toBe("Quote from photos");
     expect(jobOffer(visit, null)).toBe("Quote in person");
     expect(jobOffer(bounty, 17 * HOUR)).toBe("Bounty $30.00 · 17h left");

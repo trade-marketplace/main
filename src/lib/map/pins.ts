@@ -1,7 +1,6 @@
 // Map pins (#82): what each pin says, what a screen reader hears, where it sits on the map and which pins
 // merge into a cluster. Pure: safe on the server and in the browser. The components are in
-// src/components/map/. The map itself (Mapbox) is wired in by a later issue; until then pins sit on a
-// placeholder surface and are placed with projectPoint().
+// src/components/map/. Mapbox projects real camera coordinates; the offline kit surface uses projectPoint().
 import { formatKm, haversineKm, type Point } from "@/lib/geo/distance";
 import { formatCountdown } from "@/lib/motion/helpers";
 
@@ -107,13 +106,13 @@ export function pinText(job: MapJob, remainingMs: number | null): string {
 
 /**
  * The pin's accessible name: kind, title, suburb, then what matters for that kind.
- * "Bounty: Hot water cylinder, Gladstone, 3 h left" · "Ready to claim: Sub wiring, Windsor, you earn $259.20".
+ * "Bounty: Hot water cylinder, Gladstone, 3 h left" · "Ready to claim: Sub wiring, Windsor, earn $259.20".
  */
 export function pinName(job: MapJob, remainingMs: number | null): string {
   const base = `${KIND_NAMES[job.kind]}: ${job.title}, ${job.suburb}`;
   switch (job.kind) {
     case "claim":
-      return `${base}, you earn ${formatCents(job.earnCents)}`;
+      return `${base}, earn ${formatCents(job.earnCents)}`;
     case "bounty":
       return `${base}, ${formatTimeLeftSpoken(remainingMs ?? job.durationMs)}`;
     default:
@@ -126,11 +125,11 @@ export function jobCaption(job: Pick<MapJob, "distanceKm" | "suburb" | "trade">)
   return [job.distanceKm == null ? null : formatKm(job.distanceKm), job.suburb, job.trade].filter(Boolean).join(" · ");
 }
 
-/** What the list row and card say the tradie gets: "You earn $259.20", "Quote from photos", … */
+/** What the list row and card say the tradie gets: "Earn $259.20", "Quote from photos", … */
 export function jobOffer(job: MapJob, remainingMs: number | null): string {
   switch (job.kind) {
     case "claim":
-      return `You earn ${formatCents(job.earnCents)}`;
+      return `Earn ${formatCents(job.earnCents)}`;
     case "estimate":
       return "Quote from photos";
     case "visit":

@@ -163,7 +163,7 @@ export default async function CardsPage({ searchParams }: { searchParams: Search
           <Row name="No photo, long text" mode="trade" note="Forest with the bolt when there's no photo. Two lines of title, then “…”; the whole title is the tooltip.">
             <ul className={styles.grid2} aria-label="Edge cases">
               <li>
-                <SaveableTile href="/jobs/x1" title="Hang a door" meta="12 km · Bluff" tag={{ kind: "earn", text: "You earn $64" }} />
+                <SaveableTile href="/jobs/x1" title="Hang a door" meta="12 km · Bluff" tag={{ kind: "earn", text: "Earn $64" }} />
               </li>
               <li>
                 <SaveableTile href="/jobs/x2" title={LONG_TITLE} meta={`<1 km · ${LONG_WORD}`} photo={photo("board")} tag={{ kind: "bounty", text: "Bounty $30 · 2h" }} />

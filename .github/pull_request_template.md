@@ -4,6 +4,16 @@ Closes #
 
 <!-- One or two sentences. -->
 
+## Live links
+
+- [Live app](https://main-ashy-tau.vercel.app/)
+
+<!-- Verify the links before opening the PR. Add clickable URLs for each changed public screen.
+     Use the PR's Vercel preview deployment when available. Clearly label current production links
+     and routes that will only become available after merge and deployment.
+     For backend or component-only changes, link the app and explain that there is no standalone
+     public screen. Guarded /dev pages are not live Vercel routes; keep their screenshot routes below. -->
+
 ## Acceptance criteria and "What if…" cases
 
 <!-- Copy every checkbox from the issue and tick each one. Unticked = not done = don't open the PR yet. -->

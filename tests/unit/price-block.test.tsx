@@ -56,7 +56,7 @@ describe("<PriceBlock>", () => {
         <PriceBlock audience="tradie" earnCents={TRADIE_EARNS} breakdown={{ minutes: 240, rateCents: 6480, holidayPay: true }} />,
       ),
     );
-    expect(html).toContain("You earn");
+    expect(html).toContain("Earn");
     expect(html).toContain("$259.20");
     expect(html).toContain("4 hrs × $64.80 + holiday pay");
     expect(html).not.toContain("Your price");
@@ -78,7 +78,7 @@ describe("<PriceBlock>", () => {
     } as unknown as PriceBlockProps;
     const html = renderToString(<PriceBlock {...smuggled} />);
     expect(html).toContain("$372.00");
-    expect(html).not.toMatch(/259|64\.80|You earn|holiday/);
+    expect(html).not.toMatch(/259|64\.80|Earn|holiday/);
   });
 
   it("server-renders the final number with no reveal, so a refresh never replays M09", () => {

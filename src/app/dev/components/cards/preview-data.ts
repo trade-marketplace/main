@@ -8,14 +8,14 @@ const photo = (name: string) => `/images/examples/${name}.jpg`;
 
 /** Job tiles on the tradie's board: what they earn, needs an estimate, already estimated, a bounty. */
 export const BOARD_TILES = [
-  { id: "t1", title: "Sub wiring", meta: tileMeta(formatKm(3.6), "Windsor"), photo: photo("wires"), tag: { kind: "earn", text: "You earn $259" } },
-  { id: "t2", title: "Control panel", meta: tileMeta(formatKm(4), "Georgetown"), photo: photo("modules"), tag: { kind: "earn", text: "You earn $410" }, saved: true },
-  { id: "t3", title: "Power point", meta: tileMeta(formatKm(5), "Glengarry"), photo: photo("outlet"), tag: { kind: "earn", text: "You earn $96" } },
+  { id: "t1", title: "Sub wiring", meta: tileMeta(formatKm(3.6), "Windsor"), photo: photo("wires"), tag: { kind: "earn", text: "Earn $259" } },
+  { id: "t2", title: "Control panel", meta: tileMeta(formatKm(4), "Georgetown"), photo: photo("modules"), tag: { kind: "earn", text: "Earn $410" }, saved: true },
+  { id: "t3", title: "Power point", meta: tileMeta(formatKm(5), "Glengarry"), photo: photo("outlet"), tag: { kind: "earn", text: "Earn $96" } },
   { id: "t4", title: "Switchboard", meta: tileMeta(formatKm(7), "Richmond"), photo: photo("board"), tag: { kind: "estimate" } },
   { id: "t5", title: "Light switch", meta: tileMeta(formatKm(2), "Gladstone"), photo: photo("switch"), tag: { kind: "estimated" } },
-  { id: "t6", title: "Outdoor lights", meta: tileMeta(formatKm(9), "Otatara"), photo: photo("house"), tag: { kind: "earn", text: "You earn $188" } },
+  { id: "t6", title: "Outdoor lights", meta: tileMeta(formatKm(9), "Otatara"), photo: photo("house"), tag: { kind: "earn", text: "Earn $188" } },
   { id: "t7", title: "Hot water cylinder", meta: tileMeta(formatKm(6), "Waikiwi"), photo: photo("pipes"), tag: { kind: "bounty", text: "Bounty $30 · 17h" } },
-  { id: "t8", title: "Move a couch + boxes", meta: tileMeta(formatKm(3), "Rosedale"), photo: photo("furniture"), tag: { kind: "earn", text: "You earn $120" } },
+  { id: "t8", title: "Move a couch + boxes", meta: tileMeta(formatKm(3), "Rosedale"), photo: photo("furniture"), tag: { kind: "earn", text: "Earn $120" } },
 ] as const;
 
 /** Names and words of any length must truncate or wrap, never spill (the “What if…” cases). */

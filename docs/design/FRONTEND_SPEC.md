@@ -140,7 +140,7 @@ See `tokens.css` for every value. Key points:
 - **Button** `tm-btn` + `--primary` (action fill, Forest label) · `--secondary` (white, 2px action stroke) · `--hero` (signature, Display 24, 61h, one per screen) · `--ghost` · `--danger` · `--small` · `--loading` (spinner) · disabled (`aria-disabled`, explain why nearby). Full width on mobile. Press scale .98.
 - **Fields** underline `tm-input-line` (auth) and box `tm-input` (everything else). Label always visible, hint below, error below with icon (`tm-field__error`), 2px focus/error borders. Inputs 16px. Validate on blur + submit; focus first error; announce count.
 - **Choice cards** `tm-choice` (radio/checkbox as rows; selected = 2px action border + tint) · **chips** `tm-chip` / `--on` · **photo upload** `tm-upload` (3 per row, 5px radius, ×, progress, retry) · **form progress** `tm-progress`.
-- **Cards** `tm-card` · **category tile** `tm-cat` (159×162, 3D art on category tint) · **photo tile** `tm-tile` (gradient + Display text; trade tiles show “You earn $x”) · **job row** `tm-jobrow` · **price block** `tm-pricebox` (Forest + bolt) · **tradie card** (avatar, stars, `tm-verified`).
+- **Cards** `tm-card` · **category tile** `tm-cat` (159×162, 3D art on category tint) · **photo tile** `tm-tile` (gradient + Display text; trade tiles show “Earn $x”) · **job row** `tm-jobrow` · **price block** `tm-pricebox` (Forest + bolt) · **tradie card** (avatar, stars, `tm-verified`).
 - **Status pill** `tm-status--waiting|action|good|done|alert|info` — one `<StatusPill status audience>` component with a label map (section 2).
 - **Tracker** `tm-track` (done/now/todo) · **bubbles** `tm-bubble--them|me|system` · **composer** `tm-composer`.
 - **Sheet** `tm-sheet` + `tm-scrim` (22px radius, grab handle, focus trap, Escape/swipe closes, focus returns) · **banner** `tm-banner--brand|info|good|alert|test` · **toast** `tm-toast` (4s, Undo, role=status) · **empty** `tm-empty` · **skeleton** `tm-skel` (after 300ms).
@@ -341,7 +341,7 @@ See `tokens.css` for every value. Key points:
 #### Your estimate (blind) — `/jobs/[id]/estimate` (mode: trade)
 1. Blind estimate: hours (stepper, 0.5 steps, 0.5–40) + materials $ + optional note.
 2. Never show other estimates, the average or the final customer price here.
-3. Can edit until the job is priced (then read-only with “Priced at $x — you earn $y”).
+3. Can edit until the job is priced (then read-only with “Priced at $x — earn $y”).
 4. Site-visit tick flags the job for the office.
 
 #### Estimate sent — `/jobs/[id]` (mode: trade)
@@ -464,7 +464,7 @@ Short, straight, friendly. NZ English. Sentence case. Customer screens never exp
 | Tradie / someone local | Service provider, contractor |
 | Sorted | Resolved, completed |
 | Extra work | Variation (to customers) |
-| You earn | Payout amount, remuneration |
+| Earn | Payout amount, remuneration |
 | Claim job | Accept assignment |
 | Something’s not right | Raise a dispute |
 

@@ -194,7 +194,7 @@
    "mockup_key": "w-fortradies",
    "notes": [
     "Whole page in trade mode: Hi-Vis/Amber accents, Amber bolt. Hero CTA “Join as a tradie” → /signup/tradie.",
-    "Right side: floating job cards showing “You earn” + an “It’s yours” toast. Cards float gently (3s loop); headline reveals with M07.",
+    "Right side: floating job cards showing “Earn” + an “It’s yours” toast. Cards float gently (3s loop); headline reveals with M07.",
     "Four reasons in plain tradie talk. Icons in trade tint.",
     "Requirements box: the honest list. Licensed trades need their licence; “Other” work (any labour) needs ID only. Pull from the trade config.",
     "Below (not shown): earnings example, FAQ for tradies, testimonials from tradies once real, final CTA, footer."
@@ -1450,7 +1450,7 @@
    "mode": "trade",
    "name": "Job · ready to claim",
    "route": "/jobs/[id]",
-   "what": "You earn card, materials budget, needs, Claim job",
+   "what": "Earn card, materials budget, needs, Claim job",
    "states": "—",
    "priority": "P1",
    "mockup": "Job · claim (+ result)",
@@ -2386,7 +2386,7 @@
    "name": "Price reveal",
    "what": "Forest price block wipes in left→right (300ms), the number counts up from $0 (700ms, ease-out), then reassurance ticks appear one by one (60ms apart). Once per job.",
    "timing": "~1.1s total",
-   "where": "Job · price ready (customer); You earn (tradie)"
+   "where": "Job · price ready (customer); Earn (tradie)"
   },
   {
    "id": "M10",
