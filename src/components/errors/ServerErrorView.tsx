@@ -42,8 +42,8 @@ export function ServerErrorView({ error, onRetry, log = true }: ServerErrorViewP
             </Button>
           }
           reference={errorReference(error?.digest) ?? undefined}
-          // It's the page itself, there on arrival: the h1 says it; no need to interrupt.
-          announce={false}
+          // Said out loud: a page that breaks after it has loaded swaps to this without a route change, so the
+          // h1 alone wouldn't be read (and focus may have been on something that's gone).
           className={styles.serverErrorState}
         />
       </div>

@@ -80,6 +80,10 @@ describe("ServerErrorView", () => {
     expect(renderToString(<ServerErrorView error={new Error("x")} />)).not.toContain("Error ref");
   });
 
+  it("is said to screen readers, since it can replace a page that was already showing", () => {
+    expect(renderToString(<ServerErrorView />)).toMatch(/role="status"|aria-live/);
+  });
+
   it("is the page's h1", () => {
     expect(renderToString(<ServerErrorView />)).toMatch(/<h1\b[^>]*>Something broke on our end\.<\/h1>/);
   });
