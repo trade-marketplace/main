@@ -19,7 +19,8 @@
 }
 
 /* ---- Photo job tile (.tm-tile) --------------------------------------------------------------------------- */
-.tileWrap { border-radius: var(--trade-radius-job-tile); min-width: 0; }
+/* The wrapper holds the lift (M03) and Save; the tile inside clips the photo to its corners. */
+.tileWrap { position: relative; border-radius: var(--trade-radius-job-tile); min-width: 0; }
 .tile {
   position: relative;
   display: grid;
@@ -89,6 +90,7 @@
   pointer-events: none;
 }
 .tileTag[data-kind="earn"] { background: var(--trade-signature); color: var(--trade-on-signature); }
+.tileTag[data-kind="bounty"] { background: var(--trade-gold); color: var(--trade-on-gold); }
 .tileTag .tagIcon { font-size: 14px; color: var(--trade-signature); }
 .tileSave { position: absolute; right: 0; bottom: 0; z-index: 3; }
 .tileSave button { color: var(--trade-text-on-dark); }

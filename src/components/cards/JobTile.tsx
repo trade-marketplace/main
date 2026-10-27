@@ -26,7 +26,7 @@ export type JobTileTag =
   | { kind: "estimate"; text?: string }
   /** They've already sent an estimate: "Estimated", with the bolt. */
   | { kind: "estimated"; text?: string }
-  /** A quote bounty: "Bounty $30 · 17h". */
+  /** A quote bounty: "Bounty $30 · 17h". Gold (AGENTS.md: quote bounties are gold). */
   | { kind: "bounty"; text: string };
 
 export type JobTileProps = {
@@ -99,12 +99,13 @@ export function JobTile({ href, title, meta, photo, tag, saved, onSavedChange, s
             </Link>
           </Heading>
         </div>
-        {onSavedChange && (
-          <span ref={saveRef} className={styles.tileSave}>
-            <IconButton icon="bookmark" label={`Save ${title}`} pressed={Boolean(saved)} onClick={() => onSavedChange(!saved)} />
-          </span>
-        )}
       </div>
+      {/* Outside the tile's clipping box, so its focus ring and tooltip show in full. */}
+      {onSavedChange && (
+        <span ref={saveRef} className={styles.tileSave}>
+          <IconButton icon="bookmark" label={`Save ${title}`} pressed={Boolean(saved)} onClick={() => onSavedChange(!saved)} />
+        </span>
+      )}
     </article>
   );
 }

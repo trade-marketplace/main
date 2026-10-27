@@ -90,6 +90,11 @@ describe("<JobTile>", () => {
     expect(html).toContain("tileBolt");
   });
 
+  it("Save sits outside the tile's clipping box, so its focus ring and tooltip aren't cut off", () => {
+    const html = tile({ onSavedChange: () => {} });
+    expect(html).toMatch(/<\/div><\/div><span class="tileSave">.*Save Sub wiring/);
+  });
+
   it("Save is a toggle named after the job; without onSavedChange there's no Save", () => {
     expect(tile({ onSavedChange: () => {}, saved: true })).toMatch(/aria-label="Save Sub wiring" aria-pressed="true"/);
     expect(tile({ onSavedChange: () => {}, saved: false })).toMatch(/aria-label="Save Sub wiring" aria-pressed="false"/);
@@ -212,6 +217,10 @@ describe("the CSS", () => {
     expect(css).toMatch(/\.cat \{[^}]*width: 159px;[^}]*height: 162px;/);
     expect(css).toMatch(/\.rowThumb \{[^}]*width: 64px;[^}]*height: 64px;/);
     expect(css).toContain("aspect-ratio: 191 / 220");
+  });
+
+  it("bounty tags are gold (AGENTS.md: quote bounties are gold)", () => {
+    expect(css).toMatch(/\.tileTag\[data-kind="bounty"\] \{ background: var\(--trade-gold\); color: var\(--trade-on-gold\); \}/);
   });
 
   it("overdue KPIs get the red top edge", () => {

@@ -107,9 +107,9 @@ is the desktop sidebar card (bigger avatar and name); `plain` is the phone page.
 
 - **New tokens** (both `tokens.css` files, which must match): `--trade-cat-electrical`, `-plumbing`,
   `-construction`, `-gas`, `-gas-ink` and `-other`, the category tints the mockups use inline.
-- Tile tags follow the rendered mockup: "Needs estimate", "Estimated" and the bounty tag are Forest with white
-  text (the spec's prose says the bounty chip is gold; the w-t-board mockup shows Forest). "⚡ Estimated" uses the
-  bolt icon, not the emoji (FRONTEND_SPEC: no emoji in UI).
+- Tile tags: "Needs estimate" and "Estimated" are Forest with white text, as in w-t-board. The bounty tag is gold
+  (AGENTS.md: quote bounties are gold), although that mockup draws it Forest. "⚡ Estimated" uses the bolt icon,
+  not the emoji (FRONTEND_SPEC: no emoji in UI).
 - Distances use the app's `formatKm` (whole km, "<1 km"), so tiles say "4 km" where the mockup says "3.6km".
 - The phone stat card's big number is the title size (36px), the nearest token to the mockup's ~42px.
 - Category art in `public/images/categories` is resized copies of `docs/design/img` (meter, pipe, gun).

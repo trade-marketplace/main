@@ -130,7 +130,10 @@
 .grow { flex: 1 1 100%; min-width: 0; }
 /* The phone job grid (tr-all: 2 columns, 6px gaps) and the desktop board (w-t-board: 4 columns). */
 .grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; width: 100%; max-width: 390px; margin: 0; padding: 0; list-style: none; }
-.grid4 { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 180px), 1fr)); gap: var(--trade-space-3); width: 100%; margin: 0; padding: 0; list-style: none; }
+.grid4 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--trade-space-3); width: 100%; margin: 0; padding: 0; list-style: none; }
+@media (min-width: 768px) {
+  .grid4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
 .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); gap: var(--trade-space-3); width: 100%; }
 .split { display: grid; gap: var(--trade-space-6); width: 100%; align-items: start; }
 @media (min-width: 1024px) {
