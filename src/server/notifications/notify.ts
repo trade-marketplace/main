@@ -142,7 +142,7 @@ export function createNotify(db: NotificationDb, options: NotifyOptions = {}) {
         const adapter = options.channels![channel]!;
         await attempt(userId, channel, async () => {
           // A preference outage must never lose the in-app row or accidentally send an opted-out channel.
-          const preference = await db.notificationPreference.findUnique({ where: { userId_channel: { userId, channel } } });
+          const preference = await db.notificationPreference.findUnique({ where: { userId_event_channel: { userId, event, channel } } });
           if (preference?.enabled === false) return true;
           await adapter.send({ notification, eventId, idempotencyKey: `${id}:${channel}` });
           await db.notification.update({ where: { id }, data: { channelsSent: { push: channel } } });

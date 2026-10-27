@@ -831,16 +831,17 @@ model Notification {
   @@map("notifications")
 }
 
-// Optional-channel choices. In-app notifications are always kept (#98), so cannot be switched off here.
+// Event × optional-channel choices. In-app notifications are always kept (#98), so cannot be switched off here.
 // No email or push provider sends yet. A missing row follows the event catalogue's defaults.
 model NotificationPreference {
   userId    String              @map("user_id") @db.Uuid
   user      Profile             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event     String
   channel   NotificationChannel
   enabled   Boolean
   updatedAt DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
-  @@id([userId, channel])
+  @@id([userId, event, channel])
   @@map("notification_preferences")
 }
 

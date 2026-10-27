@@ -84,9 +84,11 @@ the subsequent `channelsSent` update can be lost, and concurrent retries can rea
 sends are added to the row's existing `channelsSent` array; replays skip those channels. No real adapters ship in
 this issue.
 
-The new `notification_preferences` table has one `enabled` choice per user and optional channel. No row follows
-the event's central defaults; `enabled: false` skips that channel. An explicit `true` permits a channel only when
-that event enables it. IN_APP cannot be switched off. Preference lookup happens after saving the in-app row, and
+The new `notification_preferences` table has one `enabled` choice per user, event and optional channel, matching
+the event × channel matrix in sitemap E06. Disabling email for `job.priced` leaves the user's `job.claimed` email
+choice unchanged. No row follows that event's central defaults; `enabled: false` skips that event/channel pair.
+An explicit `true` permits a channel only when that event enables it. IN_APP cannot be switched off.
+Preference lookup happens after saving the in-app row, and
 a lookup failure never sends an optional channel or removes in-app. At launch no optional provider is active, so
 the preference table is not queried at all.
 
@@ -114,6 +116,7 @@ callers, add a durable post-commit worker/outbox. This issue implements neither 
 path, channel opt-out while keeping in-app, replay/concurrent idempotency, preserving read state, private
 recipient payloads, retry/exhaustion, partial failures, optional-channel registration, preference outages and
 input validation. With `TEST_DATABASE_URL` set to a throwaway local Postgres, integration tests run the real
-migrations and cover concurrent deduplication, read-state preservation, persisted opt-outs, transaction rollback,
+migrations and cover concurrent deduplication, read-state preservation, persisted per-event opt-outs with another
+event kept enabled on the same channel, transaction rollback,
 preference uniqueness/cascade and RLS isolation with browser writes refused. The migration also has static checks.
 No Supabase database, secrets or provider credentials are used by these tests.

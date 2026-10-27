@@ -32,10 +32,10 @@ function fakeDb() {
     row.channelsSent.push(data.channelsSent.push);
     return row;
   });
-  const findUnique = vi.fn(async ({ where }: { where: { userId_channel: { userId: string; channel: string } } }) => {
-    const { userId, channel } = where.userId_channel;
-    const enabled = preferences.get(`${userId}:${channel}`);
-    return enabled === undefined ? null : { userId, channel, enabled, updatedAt: new Date() };
+  const findUnique = vi.fn(async ({ where }: { where: { userId_event_channel: { userId: string; event: string; channel: string } } }) => {
+    const { userId, event, channel } = where.userId_event_channel;
+    const enabled = preferences.get(`${userId}:${event}:${channel}`);
+    return enabled === undefined ? null : { userId, event, channel, enabled, updatedAt: new Date() };
   });
   const db = { notification: { upsert, update }, notificationPreference: { findUnique } } as unknown as NotificationDb;
   return { db, rows, preferences, upsert, update, findUnique, failNext: (times: number) => { failures = times; } };
@@ -174,11 +174,26 @@ describe("future optional adapters (all fake, not enabled at launch)", () => {
   });
 
   it("skips a channel the user turned off, while keeping in-app", async () => {
-    const fake = setup(); fake.preferences.set(`${userId}:EMAIL`, false);
+    const fake = setup(); fake.preferences.set(`${userId}:job.priced:EMAIL`, false);
     await fake.notify("job.priced", [userId], data);
     expect(fake.rows.size).toBe(1);
     expect(fake.send).not.toHaveBeenCalled();
     expect(fake.update).not.toHaveBeenCalled();
+  });
+
+  it("applies a channel opt-out only to its event, keeping the other event enabled", async () => {
+    const fake = fakeDb(); const send = vi.fn(async () => {});
+    fake.preferences.set(`${userId}:job.priced:EMAIL`, false);
+    fake.preferences.set(`${userId}:job.claimed:EMAIL`, true);
+    const notify = createNotify(fake.db, {
+      channels: { EMAIL: { send } },
+      eventChannels: { "job.priced": ["EMAIL"], "job.claimed": ["EMAIL"] },
+    });
+    await notify("job.priced", [userId], { eventId: "price-event" });
+    await notify("job.claimed", [userId], { eventId: "claim-event" });
+    expect(fake.rows.size).toBe(2);
+    expect(send).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ notification: expect.objectContaining({ type: "job.claimed" }) }));
+    expect(fake.findUnique.mock.calls.map(([call]) => call.where.userId_event_channel.event)).toEqual(["job.priced", "job.claimed"]);
   });
 
   it("retries then logs provider failures, keeps in-app, and resumes on replay", async () => {
@@ -212,9 +227,9 @@ describe("future optional adapters (all fake, not enabled at launch)", () => {
 });
 
 describe("preferences migration (static, never connects to Supabase)", () => {
-  it("has a unique user/channel choice with RLS and only an own-row read policy", () => {
+  it("has a unique user/event/channel choice with RLS and only an own-row read policy", () => {
     const migration = readFileSync(new URL("../../prisma/migrations/20261028010000_notification_preferences/migration.sql", import.meta.url), "utf8");
-    expect(migration).toMatch(/PRIMARY KEY \("user_id", "channel"\)/);
+    expect(migration).toMatch(/PRIMARY KEY \("user_id", "event", "channel"\)/);
     expect(migration).toMatch(/ON DELETE CASCADE/);
     expect(migration).toMatch(/ENABLE ROW LEVEL SECURITY/);
     expect(migration).toMatch(/FOR SELECT[\s\S]*"user_id" = \(SELECT auth.uid\(\)\)/);
@@ -259,18 +274,39 @@ describe.skipIf(!testDatabaseUrl)("notifications on throwaway local Postgres", (
 
   it("respects a stored channel opt-out while always saving in-app", async () => {
     const person = await createPerson();
-    await schema.db.notificationPreference.create({ data: { userId: person.id, channel: "EMAIL", enabled: false } });
+    await schema.db.notificationPreference.create({ data: { userId: person.id, event: "job.priced", channel: "EMAIL", enabled: false } });
     const send = vi.fn(async () => {});
     const options = { channels: { EMAIL: { send } }, eventChannels: { "job.priced": ["EMAIL"] as const } };
     const eventId = randomUUID();
     await createNotify(schema.db, options)("job.priced", [person.id], { eventId });
     expect(send).not.toHaveBeenCalled();
     expect(await schema.db.notification.count({ where: { userId: person.id } })).toBe(1);
-    await schema.db.notificationPreference.update({ where: { userId_channel: { userId: person.id, channel: "EMAIL" } }, data: { enabled: true } });
+    await schema.db.notificationPreference.update({ where: { userId_event_channel: { userId: person.id, event: "job.priced", channel: "EMAIL" } }, data: { enabled: true } });
     await createNotify(schema.db, options)("job.priced", [person.id], { eventId });
     await createNotify(schema.db, options)("job.priced", [person.id], { eventId });
     expect(send).toHaveBeenCalledTimes(1);
     expect((await schema.db.notification.findUniqueOrThrow({ where: { id: notificationId(eventId, person.id) } })).channelsSent).toEqual(["EMAIL"]);
+  });
+
+  it("persists opposite choices for two events on the same channel without cross-event effects", async () => {
+    const person = await createPerson();
+    await schema.db.notificationPreference.createMany({ data: [
+      { userId: person.id, event: "job.priced", channel: "EMAIL", enabled: false },
+      { userId: person.id, event: "job.claimed", channel: "EMAIL", enabled: true },
+    ] });
+    const send = vi.fn(async () => {});
+    const notify = createNotify(schema.db, {
+      channels: { EMAIL: { send } },
+      eventChannels: { "job.priced": ["EMAIL"], "job.claimed": ["EMAIL"] },
+    });
+    const pricedEventId = randomUUID(); const claimedEventId = randomUUID();
+    await notify("job.priced", [person.id], { eventId: pricedEventId });
+    await notify("job.claimed", [person.id], { eventId: claimedEventId });
+    expect(send).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ notification: expect.objectContaining({ type: "job.claimed" }) }));
+    expect(await schema.db.notificationPreference.count({ where: { userId: person.id, channel: "EMAIL" } })).toBe(2);
+    expect(await schema.db.notification.count({ where: { userId: person.id } })).toBe(2);
+    expect((await schema.db.notification.findUniqueOrThrow({ where: { id: notificationId(pricedEventId, person.id) } })).channelsSent).toEqual([]);
+    expect((await schema.db.notification.findUniqueOrThrow({ where: { id: notificationId(claimedEventId, person.id) } })).channelsSent).toEqual(["EMAIL"]);
   });
 
   it("rolls an in-app notification back with the caller's transaction", async () => {
@@ -282,10 +318,10 @@ describe.skipIf(!testDatabaseUrl)("notifications on throwaway local Postgres", (
     expect(await schema.db.notification.findUnique({ where: { id: notificationId(eventId, person.id) } })).toBeNull();
   });
 
-  it("enforces one preference per user/channel and cascades account deletion", async () => {
+  it("enforces one preference per user/event/channel and cascades account deletion", async () => {
     const person = await createPerson();
-    await schema.db.notificationPreference.create({ data: { userId: person.id, channel: "PUSH", enabled: false } });
-    await expect(schema.db.notificationPreference.create({ data: { userId: person.id, channel: "PUSH", enabled: true } })).rejects.toThrow();
+    await schema.db.notificationPreference.create({ data: { userId: person.id, event: "job.priced", channel: "PUSH", enabled: false } });
+    await expect(schema.db.notificationPreference.create({ data: { userId: person.id, event: "job.priced", channel: "PUSH", enabled: true } })).rejects.toThrow();
     await schema.db.profile.delete({ where: { id: person.id } });
     expect(await schema.db.notificationPreference.count({ where: { userId: person.id } })).toBe(0);
   });
@@ -293,8 +329,8 @@ describe.skipIf(!testDatabaseUrl)("notifications on throwaway local Postgres", (
   it("only lets a Data API user read their own preferences and refuses browser writes", async () => {
     const mine = await createPerson(); const theirs = await createPerson();
     await schema.db.notificationPreference.createMany({ data: [
-      { userId: mine.id, channel: "PUSH", enabled: false },
-      { userId: theirs.id, channel: "PUSH", enabled: true },
+      { userId: mine.id, event: "job.priced", channel: "PUSH", enabled: false },
+      { userId: theirs.id, event: "job.priced", channel: "PUSH", enabled: true },
     ] });
     await schema.db.$executeRawUnsafe(`DO $$ BEGIN CREATE ROLE tm_notification_rls_tester NOLOGIN;
       EXCEPTION WHEN duplicate_object OR unique_violation THEN NULL; END $$`);
@@ -309,6 +345,6 @@ describe.skipIf(!testDatabaseUrl)("notifications on throwaway local Postgres", (
     expect(await asUser(read)).toEqual([{ user_id: mine.id }]);
     expect(await asUser(read, null)).toEqual([]);
     expect(await asUser((tx) => tx.$queryRawUnsafe(`UPDATE "${schema.name}".notification_preferences SET enabled = true RETURNING user_id`))).toEqual([]);
-    await expect(asUser((tx) => tx.$executeRawUnsafe(`INSERT INTO "${schema.name}".notification_preferences (user_id, channel, enabled) VALUES ($1::uuid, 'EMAIL', true)`, mine.id))).rejects.toThrow(/row-level security/);
+    await expect(asUser((tx) => tx.$executeRawUnsafe(`INSERT INTO "${schema.name}".notification_preferences (user_id, event, channel, enabled) VALUES ($1::uuid, 'job.priced', 'EMAIL', true)`, mine.id))).rejects.toThrow(/row-level security/);
   });
 });
