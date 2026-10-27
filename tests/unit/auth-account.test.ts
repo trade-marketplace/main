@@ -70,6 +70,8 @@ const goodSignUp: SignUpInput = {
   firstName: " Sam ",
   lastName: "",
   role: "CUSTOMER",
+  phone: "021 555 0192",
+  terms: true,
 };
 
 describe("signUp", () => {
@@ -83,7 +85,7 @@ describe("signUp", () => {
     expect(auth.signUp).toHaveBeenCalledWith({
       email: "sam@example.nz",
       password: "korimako-gumboot-41",
-      options: { data: { first_name: "Sam", last_name: null, role: "CUSTOMER" } },
+      options: { data: { first_name: "Sam", last_name: null, role: "CUSTOMER", phone: "+64215550192", terms_accepted: true } },
     });
     expect(profiles.create).toHaveBeenCalledWith({
       id: user().id,
@@ -91,6 +93,7 @@ describe("signUp", () => {
       role: "CUSTOMER",
       firstName: "Sam",
       lastName: null,
+      phone: "+64215550192",
       emailVerifiedAt: null,
     });
   });
@@ -135,7 +138,7 @@ describe("signUp", () => {
   it("lists every wrong field at once and keeps what they typed, except the password", async () => {
     const result = await signUp(
       { auth: fakeAuth(), profiles: fakeProfiles() },
-      { email: "not-an-email", password: "short", firstName: " ", lastName: "Taylor", role: "CUSTOMER" },
+      { email: "not-an-email", password: "short", firstName: " ", lastName: "Taylor", role: "CUSTOMER", phone: "021 555 0192", terms: true },
     );
     expect(result).toEqual({
       ok: false,
@@ -145,7 +148,7 @@ describe("signUp", () => {
         firstName: "Enter your first name.",
         password: "Use at least 10 characters.",
       },
-      values: { email: "not-an-email", firstName: " ", lastName: "Taylor", role: "CUSTOMER" },
+      values: { email: "not-an-email", firstName: " ", lastName: "Taylor", role: "CUSTOMER", phone: "021 555 0192", terms: "on" },
     });
   });
 
@@ -330,6 +333,8 @@ describe("reading the forms", () => {
       firstName: "Sam",
       lastName: "",
       role: "CUSTOMER",
+      phone: "",
+      terms: false,
       next: "",
     });
   });
@@ -340,5 +345,42 @@ describe("reading the forms", () => {
     form.set("password", "pw");
     form.set("next", "/dashboard");
     expect(readLogInForm(form)).toEqual({ email: "", password: "pw", next: "/dashboard" });
+  });
+});
+
+describe("customer details (#104)", () => {
+  it("requires terms on the server, before Supabase can create an account", async () => {
+    const auth = fakeAuth();
+    expect(await signUp({ auth, profiles: fakeProfiles() }, { ...goodSignUp, terms: false })).toMatchObject({ ok: false, error: "invalid", fieldErrors: { terms: expect.any(String) } });
+    expect(auth.signUp).not.toHaveBeenCalled();
+  });
+
+  it("rejects a malformed mobile and keeps all non-secret fields when the email is taken", async () => {
+    const auth = fakeAuth({ signUp: vi.fn(async () => ({ data: { user: null, session: null }, error: { message: "Registered", code: "email_exists" } })) });
+    expect(await signUp({ auth, profiles: fakeProfiles() }, { ...goodSignUp, phone: "123" })).toMatchObject({ error: "invalid", fieldErrors: { phone: expect.any(String) } });
+    expect(auth.signUp).not.toHaveBeenCalled();
+    const result = await signUp({ auth, profiles: fakeProfiles() }, goodSignUp);
+    expect(result).toMatchObject({ error: "email-taken", values: { firstName: " Sam ", phone: "021 555 0192", email: "Sam@Example.NZ", terms: "on" } });
+    expect(result).not.toHaveProperty("values.password");
+  });
+
+  it("handles a network failure without losing account details", async () => {
+    const auth = fakeAuth({ signUp: vi.fn(async () => { throw new TypeError("network down"); }) });
+    expect(await signUp({ auth, profiles: fakeProfiles() }, goodSignUp)).toMatchObject({ error: "unavailable", values: { firstName: " Sam ", phone: "021 555 0192" } });
+  });
+
+  it("repairs a missing profile with the same normalized mobile", async () => {
+    const profiles = fakeProfiles();
+    await ensureProfile(profiles, user({ user_metadata: { first_name: "Aroha", phone: "021 555 0192" } }));
+    expect(profiles.create).toHaveBeenCalledWith(expect.objectContaining({ phone: "+64215550192" }));
+  });
+
+  it("reads a full name, mobile and explicit consent without losing the wizard return path", () => {
+    const data = new FormData();
+    data.set("name", "  Aroha   Te Rangi ");
+    data.set("phone", "021 555 0192");
+    data.set("terms", "on");
+    data.set("next", "/jobs/new?step=review&draft=demo");
+    expect(readSignUpForm(data)).toMatchObject({ firstName: "Aroha", lastName: "Te Rangi", phone: "021 555 0192", terms: true, next: "/jobs/new?step=review&draft=demo" });
   });
 });

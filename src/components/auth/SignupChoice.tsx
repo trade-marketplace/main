@@ -49,27 +49,7 @@ export function SignupChoice({ next, initialRole = "customer" }: { next?: string
         }
       >
         <form className={styles.form} onSubmit={onSubmit} action={detailsHref(role, next)}>
-          <fieldset className={styles.roles}>
-            <legend className={styles.lede}>What brings you here?</legend>
-            {ROLE_CHOICES.map((choice) => (
-              <label key={choice.value} className={styles.roleCard} data-role={choice.value}>
-                <input
-                  type="radio"
-                  name="role"
-                  value={choice.value}
-                  checked={role === choice.value}
-                  onChange={() => setRole(choice.value)}
-                  className={styles.roleInput}
-                />
-                <span className={styles.roleDot} aria-hidden="true" />
-                <Icon name={choice.icon} decorative className={styles.roleIcon} />
-                <span className={styles.roleText}>
-                  <span className={styles.roleTitle}>{choice.title}</span>
-                  <span className={styles.roleSub}>{choice.text}</span>
-                </span>
-              </label>
-            ))}
-          </fieldset>
+          <SignupRoleChoices role={role} onChange={setRole} />
           <Button type="submit" width="full" iconEnd="arrow_forward">
             Next
           </Button>
@@ -79,5 +59,32 @@ export function SignupChoice({ next, initialRole = "customer" }: { next?: string
         </form>
       </AuthLayout>
     </div>
+  );
+}
+
+/** Shared desktop choice cards for the details steps. */
+export function SignupRoleChoices({ role, onChange, name = "role" }: { role: SignupRole; onChange: (role: SignupRole) => void; name?: string }) {
+  return (
+    <fieldset className={styles.roles}>
+      <legend className={styles.lede}>What brings you here?</legend>
+      {ROLE_CHOICES.map((choice) => (
+        <label key={choice.value} className={styles.roleCard} data-role={choice.value}>
+          <input
+            type="radio"
+            name={name}
+            value={choice.value}
+            checked={role === choice.value}
+            onChange={() => onChange(choice.value)}
+            className={styles.roleInput}
+          />
+          <span className={styles.roleDot} aria-hidden="true" />
+          <Icon name={choice.icon} decorative className={styles.roleIcon} />
+          <span className={styles.roleText}>
+            <span className={styles.roleTitle}>{choice.title}</span>
+            <span className={styles.roleSub}>{choice.text}</span>
+          </span>
+        </label>
+      ))}
+    </fieldset>
   );
 }

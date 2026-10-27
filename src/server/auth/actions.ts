@@ -51,10 +51,14 @@ function refreshEverything() {
   revalidatePath("/", "layout");
 }
 
-/** Sign-up form fields: email, password, firstName, lastName, role (CUSTOMER | TRADIE), next. */
+/** Sign-up fields: name (or firstName/lastName), email, mobile phone, password, terms, role, next. */
 export async function signUpAction(_previous: SignUpState, formData: FormData): Promise<SignUpState> {
   const auth = await authClient();
-  if (!auth) return notSetUp(formData);
+  if (!auth) {
+    const unavailable = notSetUp(formData);
+    const input = readSignUpForm(formData);
+    return { ...unavailable, values: { email: input.email, firstName: input.firstName, lastName: input.lastName, phone: input.phone, role: input.role, terms: input.terms ? "on" : "" } };
+  }
   const result = await signUp({ auth, profiles }, readSignUpForm(formData));
   if (result.ok && result.status === "signed-in") {
     refreshEverything();

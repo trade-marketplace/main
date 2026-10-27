@@ -242,3 +242,32 @@
   .roleCard:has(:checked) { border-color: Highlight; }
   .roleCard:has(:checked) .roleDot { background: Highlight; }
 }
+
+/* Customer details (#104): desktop shares the choice cards; phone uses the compact step header. */
+.mobileHeading { display: none; }
+.desktopChoices { display: none; }
+.detailsProgress { display: flex; gap: var(--trade-space-2); margin: 0 0 var(--trade-space-6); }
+.detailsProgress span { flex: 1; height: 4px; background: var(--trade-action); border-radius: var(--trade-radius-pill); }
+.layout[data-details] .brand { min-height: 68px; display: flex; align-items: center; padding: var(--trade-space-3) var(--trade-space-16); background: var(--trade-surface); color: var(--trade-text); }
+.layout[data-details] .brand :is(.art, .brandBolt, .mark) { display: none; }
+.layout[data-details] .back { color: var(--trade-text); }
+.layout[data-details] .mobileHeading { display: grid; gap: 2px; }
+.mobileHeading strong { font-size: var(--trade-fs-body); }
+.mobileHeading span { font-size: var(--trade-fs-caption); color: var(--trade-text-2); }
+.layout[data-details] .title { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.layout[data-details] .main { padding-top: var(--trade-space-2); }
+.passwordGroup { display: grid; gap: var(--trade-space-2); min-width: 0; }
+.strength { display: flex; gap: var(--trade-space-2); }
+.strength span { flex: 1; height: 4px; border-radius: var(--trade-radius-pill); background: var(--trade-line); }
+.strength span[data-active] { background: var(--trade-action); }
+.passwordHint, .draftNote { margin: 0; font-size: var(--trade-fs-caption); color: var(--trade-text-2); overflow-wrap: anywhere; }
+.form :is(p, label) a { color: var(--trade-link); text-underline-offset: 3px; }
+@media (min-width: 1024px) {
+  .desktopChoices { display: block; margin-bottom: var(--trade-space-1); }
+  .detailsProgress { display: none; }
+  .layout[data-details] .brand { min-height: 100dvh; display: flex; align-items: initial; padding: 48px 56px 56px; background: var(--trade-forest); color: var(--trade-text-on-dark); }
+  .layout[data-details] .brand :is(.art, .brandBolt) { display: block; }
+  .layout[data-details] .brand .mobileHeading { display: none; }
+  .layout[data-details] .main { padding-top: var(--trade-space-16); }
+  .layout[data-details] .title { position: static; width: auto; height: auto; overflow: visible; clip-path: none; }
+}

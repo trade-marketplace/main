@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { PASSWORD_MESSAGES, passwordMessage } from "@/lib/auth/password";
 import { afterLoginPath } from "@/lib/auth/routes";
+import { normaliseMobile } from "@/lib/auth/signup";
 import { SupabaseNotConfiguredError } from "@/lib/supabase/config";
 import type { Role } from "@/lib/mode";
 import type { ProfileRow } from "@/server/auth/viewer";
@@ -47,6 +48,7 @@ export type NewProfile = {
   role: Role;
   firstName: string;
   lastName: string | null;
+  phone?: string | null;
   emailVerifiedAt: Date | null;
 };
 
@@ -62,7 +64,7 @@ export type AccountDeps = { auth: AuthClient; profiles: ProfileStore };
 
 type FieldErrors<Field extends string> = Partial<Record<Field, string>>;
 
-type SignUpField = "email" | "password" | "firstName" | "lastName" | "role";
+export type SignUpField = "email" | "password" | "firstName" | "lastName" | "role" | "phone" | "terms";
 type LogInField = "email" | "password";
 
 /**
@@ -116,6 +118,8 @@ const signUpSchema = z.object({
   lastName: z.string().trim().max(80, "That name is too long."),
   // Only customers and tradies can sign up. Office (ADMIN) accounts are only ever made by a founder.
   role: z.enum(["CUSTOMER", "TRADIE"], "Choose customer or tradie."),
+  phone: z.string().transform(normaliseMobile).refine((phone) => phone !== null, "Enter a New Zealand mobile number, like 021 555 0192."),
+  terms: z.literal(true, "Accept the terms and privacy policy to create an account."),
 });
 
 /** Raw form text: everything is checked by signUpSchema before use. */
@@ -125,15 +129,20 @@ export type SignUpInput = {
   firstName: string;
   lastName: string;
   role: string;
+  phone: string;
+  terms: boolean;
   next?: string;
 };
 
 export function readSignUpForm(formData: FormData): SignUpInput {
+  const fullName = text(formData, "name").trim().split(/\s+/);
   return {
     email: text(formData, "email"),
     password: text(formData, "password"),
-    firstName: text(formData, "firstName"),
-    lastName: text(formData, "lastName"),
+    firstName: text(formData, "firstName") || fullName[0] || "",
+    lastName: text(formData, "lastName") || fullName.slice(1).join(" "),
+    phone: text(formData, "phone"),
+    terms: text(formData, "terms") === "on",
     role: text(formData, "role") || "CUSTOMER",
     next: text(formData, "next"),
   };
@@ -179,7 +188,7 @@ function isUniqueViolation(error: unknown): boolean {
 export async function ensureProfile(
   profiles: ProfileStore,
   user: AuthUserLike,
-  fallback: Partial<Pick<NewProfile, "role" | "firstName" | "lastName">> = {},
+  fallback: Partial<Pick<NewProfile, "role" | "firstName" | "lastName" | "phone">> = {},
 ): Promise<ProfileRow> {
   const confirmedAt = user.email_confirmed_at ? new Date(user.email_confirmed_at) : null;
   let profile = await profiles.find(user.id);
@@ -193,6 +202,7 @@ export async function ensureProfile(
         role: fallback.role ?? (metadataRole === "TRADIE" ? "TRADIE" : "CUSTOMER"),
         firstName: fallback.firstName ?? metadataText(user.user_metadata, "first_name") ?? email.split("@")[0],
         lastName: fallback.lastName ?? metadataText(user.user_metadata, "last_name"),
+        phone: fallback.phone ?? normaliseMobile(metadataText(user.user_metadata, "phone") ?? ""),
         emailVerifiedAt: confirmedAt,
       });
     } catch (error) {
@@ -213,7 +223,7 @@ function isNotConfigured(error: unknown): boolean {
 // ---------------------------------------------------------------- sign up, log in, log out
 
 export async function signUp(deps: AccountDeps, input: SignUpInput): Promise<SignUpResult> {
-  const values = { email: input.email.trim(), firstName: input.firstName, lastName: input.lastName, role: input.role };
+  const values = { email: input.email.trim(), firstName: input.firstName, lastName: input.lastName, role: input.role, phone: input.phone, terms: input.terms ? "on" : "" };
   const parsed = signUpSchema.safeParse(input);
   const fieldErrors: FieldErrors<SignUpField> = parsed.success ? {} : fieldErrorsOf<SignUpField>(parsed.error);
   const weak = passwordMessage(input.password, parsed.success ? parsed.data.email : input.email);
@@ -221,15 +231,21 @@ export async function signUp(deps: AccountDeps, input: SignUpInput): Promise<Sig
   if (!parsed.success || Object.keys(fieldErrors).length > 0) {
     return { ok: false, error: "invalid", fieldErrors, values };
   }
-  const { email, password, firstName, role } = parsed.data;
+  const { email, password, firstName, role, phone } = parsed.data;
   const lastName = parsed.data.lastName || null;
 
-  const { data, error } = await deps.auth.signUp({
-    email,
-    password,
-    // Kept by Supabase with the user, so a profile can be rebuilt if saving it below fails (ensureProfile).
-    options: { data: { first_name: firstName, last_name: lastName, role } },
-  });
+  let response: AuthResponseLike;
+  try {
+    response = await deps.auth.signUp({
+      email,
+      password,
+      // Kept by Supabase with the user, so a profile can be rebuilt if saving it below fails (ensureProfile).
+      options: { data: { first_name: firstName, last_name: lastName, role, phone, terms_accepted: true } },
+    });
+  } catch {
+    return { ok: false, error: "unavailable", values };
+  }
+  const { data, error } = response;
   if (error) {
     if (error.code === "user_already_exists" || error.code === "email_exists") {
       return { ok: false, error: "email-taken", values };
@@ -248,7 +264,7 @@ export async function signUp(deps: AccountDeps, input: SignUpInput): Promise<Sig
   }
 
   try {
-    await ensureProfile(deps.profiles, data.user, { role, firstName, lastName });
+    await ensureProfile(deps.profiles, data.user, { role, firstName, lastName, phone });
   } catch (profileError) {
     console.error("Sign-up: saving the profile failed; it will be created on first log-in.", profileError);
     return { ok: false, error: "unavailable", values };
