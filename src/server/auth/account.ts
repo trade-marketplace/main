@@ -80,7 +80,7 @@ export type SignUpResult =
 
 /**
  * - `wrong-credentials`: one message for a wrong email or a wrong password, so it doesn't reveal who has an
- *   account. Locking after 5 tries is the log-in page's job (#102).
+ *   account. Accounts are never locked after wrong passwords (Matt, DECISIONS.md).
  * - `email-not-verified`: Supabase refuses log-in until the email is confirmed (a project setting; #102 wants
  *   log-in to work with a "please verify" banner instead).
  */

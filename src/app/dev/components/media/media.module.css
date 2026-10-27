@@ -1,0 +1,13 @@
+/* /dev/components/media (dev only). Page layout around the demos. Tokens only. */
+.page { max-width: var(--trade-content-max); margin: 0 auto; padding: var(--trade-space-8) var(--trade-inset-browse) var(--trade-space-16); }
+.eyebrow { margin: 0 0 var(--trade-space-2); font-size: var(--trade-fs-caption); letter-spacing: 0.12em; text-transform: uppercase; font-weight: 800; color: var(--trade-link); }
+.title { margin: 0; font-family: var(--trade-font-heading); font-weight: 900; font-variation-settings: var(--trade-display-axes); font-size: var(--trade-fs-title); line-height: var(--trade-lh-title); }
+.lede { max-width: var(--trade-read-max); color: var(--trade-text-2); }
+.section { margin-top: var(--trade-space-10); }
+.heading { margin: 0 0 var(--trade-space-4); font-size: var(--trade-fs-section); }
+.narrow { display: grid; gap: var(--trade-space-4); max-width: 410px; }
+.phone { display: grid; gap: var(--trade-space-4); max-width: 350px; }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--trade-space-6); }
+.stack { display: grid; gap: var(--trade-space-5); justify-items: start; }
+.figure { display: grid; gap: var(--trade-space-2); margin: 0; min-width: 0; width: min(100%, 320px); font-size: var(--trade-fs-caption); color: var(--trade-text-2); }
+.rings { display: flex; flex-wrap: wrap; gap: var(--trade-space-3); padding: var(--trade-space-3); border-radius: var(--trade-radius-card); background: var(--trade-waiting-bg); }

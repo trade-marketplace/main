@@ -222,6 +222,7 @@ describe("loadShellViewer", () => {
       firstName: "Sarah",
       lastName: "Thompson",
       email: "sarah@email.co.nz",
+      emailVerified: true,
       counts: { notifications: 4, messages: 0 },
     });
     expect(JSON.stringify(viewer)).not.toContain("user-1");
@@ -253,6 +254,13 @@ describe("paymentsInTestMode", () => {
 });
 
 describe("AppShellView", () => {
+  it("asks someone who hasn't confirmed their email to do it, and nobody else (#102)", () => {
+    expect(texts(shell({ ...SARAH, emailVerified: false }))).toContain("Confirm your email. Open the link we emailed you");
+    expect(shell({ ...SARAH, emailVerified: false })).toContain('href="/verify"');
+    expect(texts(shell(SARAH))).not.toContain("Confirm your email");
+    expect(texts(shell({ ...SARAH, emailVerified: true }))).not.toContain("Confirm your email");
+  });
+
   it("puts a skip link first, then the banner, the top nav, main and the bottom bar", () => {
     const html = shell(SARAH);
     expect(html.indexOf("Skip to content")).toBeLessThan(html.indexOf("Test mode."));
