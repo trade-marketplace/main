@@ -20,10 +20,32 @@ function fixtureLibrary(loading: boolean): MapboxLibrary {
       private bounds: Bounds = { north: -46.35, south: -46.46, east: 168.45, west: 168.29 };
       private zoom = 10;
       private element: HTMLElement;
+      private vendorStyle: HTMLStyleElement;
       private disposed = false;
       constructor({ container }: { container: HTMLElement }) {
         this.element = container;
-        container.classList.add(styles.fixtureMap);
+        // Match the SDK's DOM and its stylesheet arriving after the app's CSS. This catches CSS cascade bugs
+        // which a plain illustrated div misses (the real .mapboxgl-map rule sets position: relative).
+        this.vendorStyle = document.createElement("style");
+        this.vendorStyle.textContent = `.mapboxgl-map{position:relative;overflow:hidden}
+          .mapboxgl-canvas{position:absolute;left:0;top:0;width:100%;height:100%}
+          .mapboxgl-ctrl-bottom-right{position:absolute;right:0;bottom:0}
+          .mapboxgl-ctrl-attrib{font-size:12px}`;
+        document.head.append(this.vendorStyle);
+        container.classList.add("mapboxgl-map", styles.fixtureMap);
+        const canvasContainer = document.createElement("div");
+        canvasContainer.className = "mapboxgl-canvas-container";
+        const canvas = document.createElement("canvas");
+        canvas.className = "mapboxgl-canvas";
+        canvas.setAttribute("aria-label", "Offline map illustration");
+        canvasContainer.append(canvas);
+        const controls = document.createElement("div");
+        controls.className = "mapboxgl-ctrl-bottom-right";
+        const attribution = document.createElement("div");
+        attribution.className = "mapboxgl-ctrl-attrib";
+        attribution.textContent = "Offline map fixture";
+        controls.append(attribution);
+        container.append(canvasContainer, controls);
         if (!loading) window.setTimeout(() => this.emit("load"), 20);
       }
       on(event: string, listener: () => void) { const set = this.listeners.get(event) ?? new Set(); set.add(listener); this.listeners.set(event, set); }
@@ -52,7 +74,10 @@ function fixtureLibrary(loading: boolean): MapboxLibrary {
         this.emit("move");
       }
       resize() { this.emit("resize"); }
-      remove() { this.disposed = true; this.listeners.clear(); }
+      remove() {
+        this.disposed = true; this.listeners.clear(); this.vendorStyle.remove();
+        this.element.replaceChildren(); this.element.classList.remove("mapboxgl-map", styles.fixtureMap);
+      }
     },
   };
 }

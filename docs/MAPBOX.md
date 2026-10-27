@@ -30,7 +30,8 @@ with a readable status message. The map/list and zoom controls remain usable.
 
 ## Install the token
 
-There is no token installed yet. The list is the working default until William configures one:
+The list is the working default whenever the environment has no public token. Configure a dedicated token for
+each environment that needs live maps:
 
 1. Create a dedicated **public** (`pk.`) Mapbox token with the minimum map/style/font read scopes in the Mapbox console.
 2. Add **URL restrictions** for the actual deployed app origins, including `https://trademarketplace.nz/*`. Add the
@@ -61,3 +62,12 @@ and location handling as the real SDK. It does not claim to test Mapbox's tile s
 Unit tests cover configuration, secret-token rejection, coordinate order, work-area bounds, allowed/denied/timeout
 location and token-free rendering. Browser tests cover all preview states at 320, 390, 768, 1024 and 1440 px with
 axe, keyboard selection/closing, clustering, fit bounds, location success/denial and network-free fallback.
+
+The offline fixture includes the SDK's `.mapboxgl-map` / canvas / attribution DOM and loads its positioning rules
+after the app CSS. A regression checks full-height canvas geometry, visible pins and attribution at every width,
+so a late vendor stylesheet cannot silently collapse the map while the SDK reports a successful load.
+
+Live checks are opt-in: run the dev server with the authorized token in ignored `.env.local`, use a localhost
+`E2E_DEV_BASE_URL`, and set `E2E_MAPBOX_LIVE=1` for the `live Mapbox renders` browser tests. They wait for SDK idle,
+all tiles loaded and rendered features, then check real canvas dimensions, pins and attribution and save screenshots
+at every required width. They do not print or commit the token, and normal CI stays offline.

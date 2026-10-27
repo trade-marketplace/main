@@ -407,7 +407,9 @@
 }
 
 /* Mapbox owns the canvas, pan/zoom and attribution. The existing kit owns every interactive pin. */
-.mapboxCanvas { position: absolute; inset: 0; }
+/* The SDK adds .mapboxgl-map (position: relative) after loading its CSS. Keep this selector more specific so
+   the provider container fills the surface even when the vendor stylesheet arrives last. */
+.surface > .mapboxCanvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 .mapboxCanvas :global(.mapboxgl-canvas):focus-visible { outline: 3px solid var(--trade-focus); outline-offset: -3px; }
 .mapboxLayer { pointer-events: none; }
 .mapboxLayer button { pointer-events: auto; }

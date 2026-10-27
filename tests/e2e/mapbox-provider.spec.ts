@@ -42,6 +42,27 @@ test.describe("Mapbox provider", () => {
     expect(requests).toEqual([]);
   });
 
+  test("late vendor CSS leaves a full-height canvas, pins and attribution visible", async ({ page }) => {
+    for (const width of [320, 390, 768, 1024, 1440]) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto(url());
+      await expect(page.getByRole("button", { name: "Use my location" })).toBeEnabled();
+      const map = page.getByRole("region", { name: /^Map of/ });
+      const container = map.locator(".mapboxgl-map");
+      const canvas = map.locator("canvas.mapboxgl-canvas");
+      await expect(canvas).toBeVisible();
+      const outer = (await map.boundingBox())!;
+      const box = (await container.boundingBox())!;
+      const pixels = (await canvas.boundingBox())!;
+      expect(box.height).toBeGreaterThan(300);
+      expect(box.height).toBeCloseTo(outer.height, 0);
+      expect(pixels.height).toBeCloseTo(outer.height, 0);
+      expect(box.width).toBeCloseTo(outer.width, 0);
+      await expect(map.locator("button[data-pin-kind]").first()).toBeVisible();
+      await expect(map.locator(".mapboxgl-ctrl-attrib")).toBeVisible();
+    }
+  });
+
   test("real provider adapter projects our pins, clusters close jobs and fits cluster bounds", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(url());
@@ -85,10 +106,59 @@ test.describe("Mapbox provider", () => {
   });
 
   test("the live configuration falls back when no token is installed", async ({ page }) => {
+    test.skip(process.env.E2E_MAPBOX_LIVE === "1", "live run uses an explicitly configured token");
     await page.goto(url("live"));
     await expect(page.getByText("Map unavailable. Showing jobs in a list.")).toBeVisible();
     await expect(page.getByRole("list", { name: "13 jobs nearby" }).getByRole("button")).toHaveCount(13);
   });
+
+  for (const width of [320, 390, 768, 1024, 1440]) {
+    test(`live Mapbox renders tiles, pins and attribution at ${width}px`, async ({ page }, testInfo) => {
+      test.skip(process.env.E2E_MAPBOX_LIVE !== "1", "opt in only with an authorized local MAPBOX_ACCESS_TOKEN");
+      type LiveMap = { on(event: string, callback: () => void): void; loaded(): boolean; areTilesLoaded(): boolean; queryRenderedFeatures(): unknown[] };
+      type ProbeWindow = Window & { __mapboxRenderTest?: { map: LiveMap | null; idle: boolean } };
+      await page.addInitScript(() => {
+        const probe = { map: null as LiveMap | null, idle: false };
+        (window as ProbeWindow).__mapboxRenderTest = probe;
+        let library: { Map: new (options: unknown) => LiveMap };
+        Object.defineProperty(window, "mapboxgl", {
+          configurable: true,
+          get: () => library,
+          set(value: typeof library) {
+            library = value;
+            library.Map = new Proxy(value.Map, {
+              construct(target, args, newTarget) {
+                const map = Reflect.construct(target, args, newTarget) as LiveMap;
+                probe.map = map;
+                map.on("idle", () => { probe.idle = true; });
+                return map;
+              },
+            });
+          },
+        });
+      });
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto(url("live"));
+      await expect(page.getByRole("button", { name: "Use my location" })).toBeEnabled({ timeout: 30_000 });
+      const map = page.getByRole("region", { name: /^Map of/ });
+      const outer = (await map.boundingBox())!;
+      const container = (await map.locator(".mapboxgl-map").boundingBox())!;
+      const canvas = (await map.locator("canvas.mapboxgl-canvas").boundingBox())!;
+      expect(container.height).toBeGreaterThan(300);
+      expect(container.height).toBeCloseTo(outer.height, 0);
+      expect(canvas.height).toBeCloseTo(outer.height, 0);
+      await expect.poll(() => page.evaluate(() => {
+        const probe = (window as ProbeWindow).__mapboxRenderTest;
+        return !!(probe?.idle && probe.map?.loaded() && probe.map.areTilesLoaded() && probe.map.queryRenderedFeatures().length > 0);
+      }), { timeout: 30_000 }).toBe(true);
+      await expect(map.locator("button[data-pin-kind]").first()).toBeVisible();
+      await expect(map.locator(".mapboxgl-ctrl-attrib")).toBeVisible();
+      expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
+      const screenshot = testInfo.outputPath(`live-map-${width}.png`);
+      await page.screenshot({ path: screenshot, fullPage: true, animations: "disabled" });
+      await testInfo.attach(`live-map-${width}`, { path: screenshot, contentType: "image/png" });
+    });
+  }
 
   test("pins stay inside the map after resizing and switching through fallback states", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
