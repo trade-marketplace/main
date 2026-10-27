@@ -3,7 +3,7 @@
 // search, sort and page in the URL like the real office page will (?status=price&sort=price.desc&page=2), so
 // Back and refresh work. `?open=<id>` opens a menu on load (OPEN_IDS in preview-data.ts). Nothing is saved;
 // names, prices and suburbs are examples.
-import { type ReactNode, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 
 import { Button, IconButton } from "@/components/Button";
 import {
@@ -141,23 +141,24 @@ export function JobsTableDemo({ query, open }: { query: string; open: OpenId | n
   const [exported, setExported] = useState("");
   const active = initial.get("active");
 
-  // Keep the URL in step (replace, not push: typing a search shouldn't fill the Back button).
-  const sync = (next: { filters?: FilterValues; q?: string; sort?: SortState; page?: number }) => {
-    const f = next.filters ?? filters;
-    const s = next.sort === undefined ? sort : next.sort;
-    const params = filtersToQuery(new URLSearchParams(window.location.search), f, DEFAULTS);
-    const text = next.q ?? q;
-    if (text.trim()) params.set("q", text);
+  // Keep the URL in step after every change (replace, not push: typing a search shouldn't fill the Back button).
+  const firstRender = useRef(true);
+  useEffect(() => {
+    if (firstRender.current) {
+      firstRender.current = false;
+      return;
+    }
+    const params = filtersToQuery(new URLSearchParams(window.location.search), filters, DEFAULTS);
+    if (q.trim()) params.set("q", q);
     else params.delete("q");
-    if (s) params.set("sort", `${s.key}.${s.direction}`);
+    if (sort) params.set("sort", `${sort.key}.${sort.direction}`);
     else params.delete("sort");
-    const p = next.page ?? page;
-    if (p > 1) params.set("page", String(p));
+    if (page > 1) params.set("page", String(page));
     else params.delete("page");
     params.delete("open");
     const search = params.toString();
     window.history.replaceState(null, "", `${PATH}${search ? `?${search}` : ""}${window.location.hash}`);
-  };
+  }, [filters, q, sort, page]);
 
   const rows = useMemo(() => sortRows(EXAMPLE_JOBS.filter((job) => matches(job, filters, q)), sort, valueOf), [filters, q, sort]);
   const info = pageInfo(page, PAGE_SIZE, rows.length);
@@ -173,7 +174,6 @@ export function JobsTableDemo({ query, open }: { query: string; open: OpenId | n
     setFilters(next);
     setPage(1);
     setTicked(new Set());
-    sync({ filters: next, page: 1 });
   };
 
   return (
@@ -195,7 +195,6 @@ export function JobsTableDemo({ query, open }: { query: string; open: OpenId | n
           onChange: (text) => {
             setQ(text);
             setPage(1);
-            sync({ q: text, page: 1 });
           },
         }}
         filters={JOB_FILTERS}
@@ -216,7 +215,6 @@ export function JobsTableDemo({ query, open }: { query: string; open: OpenId | n
         sort={sort}
         onSortChange={(next) => {
           setSort(next);
-          sync({ sort: next });
         }}
         selectable
         selected={ticked}
@@ -235,7 +233,7 @@ export function JobsTableDemo({ query, open }: { query: string; open: OpenId | n
             title="No jobs match that."
             message="Try fewer filters, or search for a job number."
             action={
-              <Button variant="secondary" width="auto" onClick={() => { changeFilters({ ...DEFAULTS }); setQ(""); sync({ filters: { ...DEFAULTS }, q: "", page: 1 }); }}>
+              <Button variant="secondary" width="auto" onClick={() => { changeFilters({ ...DEFAULTS }); setQ(""); }}>
                 Clear filters
               </Button>
             }
@@ -250,7 +248,6 @@ export function JobsTableDemo({ query, open }: { query: string; open: OpenId | n
             onPageChange={(next) => {
               setPage(next);
               setTicked(new Set());
-              sync({ page: next });
             }}
           />
         }

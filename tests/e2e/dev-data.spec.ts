@@ -42,6 +42,7 @@ test.describe("/dev/components/data", () => {
 
   for (const viewport of VIEWPORTS) {
     test(`${viewport.name} (${viewport.width}px): no axe violations and no sideways scroll`, async ({ browser }) => {
+      test.setTimeout(120_000); // three modes of a long page, each checked by axe
       const context = await browser.newContext({ viewport: { width: viewport.width, height: viewport.height } });
       const page = await context.newPage();
       for (const mode of ["", "?mode=customer", "?mode=trade"]) {
@@ -211,9 +212,15 @@ test.describe("/dev/components/data", () => {
     await page.setViewportSize({ width: 320, height: 640 });
     await page.goto(url());
     const list = page.getByRole("tablist", { name: "Queues on a phone" });
-    const chosen = list.getByRole("tab", { name: "Sign-off (3)" });
-    await expect(chosen).toBeInViewport();
-    expect(await list.evaluate((el) => el.scrollLeft)).toBeGreaterThan(0);
+    await list.scrollIntoViewIfNeeded();
+    // The chosen tab (4th of 5) has been scrolled into the bar's own view.
+    const where = () =>
+      list.evaluate((el) => {
+        const bar = el.getBoundingClientRect();
+        const tab = el.querySelector('[aria-selected="true"]')!.getBoundingClientRect();
+        return { scrolled: el.scrollLeft > 0, inside: tab.left >= bar.left - 1 && tab.right <= bar.right + 1 };
+      });
+    await expect.poll(where).toEqual({ scrolled: true, inside: true }); // once the page has hydrated
     expect(await overflows(page)).toEqual({ page: 0, spilled: [] });
   });
 
@@ -251,10 +258,12 @@ test.describe("/dev/components/data", () => {
     const context = await browser.newContext({ reducedMotion: "reduce" });
     const page = await context.newPage();
     await page.goto(url());
+    // "0s", or the 0.01ms the global reduced-motion rule uses: either way nothing visibly slides.
+    const seconds = (el: Element) => parseFloat(getComputedStyle(el).transitionDuration);
     const thumb = page.getByRole("tablist", { name: "My jobs" }).locator("span").first();
-    expect(await thumb.evaluate((el) => getComputedStyle(el).transitionDuration)).toMatch(/^0s/);
+    expect(await thumb.evaluate(seconds)).toBeLessThan(0.001);
     const bar = page.getByRole("tablist", { name: "Tradies" }).locator("[data-tab-indicator]");
-    expect(await bar.evaluate((el) => getComputedStyle(el).transitionDuration)).toMatch(/^0s/);
+    expect(await bar.evaluate(seconds)).toBeLessThan(0.001);
     await context.close();
   });
 });
