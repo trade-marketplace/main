@@ -206,11 +206,13 @@ export function useSwap<T>(value: T, ms: number = MOTION_MS.base): { current: T;
 /**
  * M16: moves the `.tm-tab-indicator` (marked `data-tab-indicator`) inside the tab list to the active tab.
  * The list must be positioned. Re-measures when `activeKey` changes and when the list resizes.
+ * Pass axis="y" for a sidebar: --tm-tab-y is its top offset and --tm-tab-scale its fraction of the list's height.
  */
 export function useTabIndicator<T extends HTMLElement>(
   listRef: RefObject<T | null>,
   activeKey: unknown,
   activeSelector = '[aria-selected="true"], [aria-current="page"]',
+  axis: "x" | "y" = "x",
 ): void {
   useLayoutEffect(() => {
     const list = listRef.current;
@@ -218,9 +220,10 @@ export function useTabIndicator<T extends HTMLElement>(
     if (!list || !bar) return;
     const measure = () => {
       const active = list.querySelector<HTMLElement>(activeSelector);
-      if (!active || list.clientWidth === 0) return;
-      bar.style.setProperty("--tm-tab-x", `${active.offsetLeft}px`);
-      bar.style.setProperty("--tm-tab-scale", String(active.offsetWidth / list.clientWidth));
+      const size = axis === "y" ? list.clientHeight : list.clientWidth;
+      if (!active || size === 0) return;
+      bar.style.setProperty(`--tm-tab-${axis}`, `${axis === "y" ? active.offsetTop : active.offsetLeft}px`);
+      bar.style.setProperty("--tm-tab-scale", String((axis === "y" ? active.offsetHeight : active.offsetWidth) / size));
     };
     measure();
     let raf = 0;
@@ -231,7 +234,7 @@ export function useTabIndicator<T extends HTMLElement>(
       cancelAnimationFrame(raf);
       observer?.disconnect();
     };
-  }, [listRef, activeKey, activeSelector]);
+  }, [listRef, activeKey, activeSelector, axis]);
 }
 
 /**
