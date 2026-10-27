@@ -47,9 +47,9 @@ wrong | locked | unverified | invalid | unavailable (dev only).
   - **Keep me logged in:** it changes the session cookie lifetime from @supabase/ssr's 400 days to 30 days (or
     the browser session). Code: `sessionCookieOptions`, `createSupabaseClientWithCookies`,
     `rememberSessionChoice`.
-  - **"Lock after 5 tries" isn't counted here.** That's #111 (rate limits, yours). Until then the "Too many
-    tries" banner shows when Supabase's own rate limit answers. The wording doesn't promise 10 or 15 minutes,
-    because the wait depends on that limit.
+  - **No lockout after wrong passwords** (Matt's decision, in DECISIONS.md). The "Too many tries" banner shows
+    only when Supabase's own rate limit answers. The wording doesn't promise 10 or 15 minutes, because the wait
+    depends on that limit.
   - **"Log in works before the email is confirmed"** needs Supabase's "Confirm email" setting off. With it on,
     Supabase refuses the log-in and the page says "Confirm your email first." Posting and claiming would then
     need to check `emailVerified` themselves. The app shell's banner is ready for either choice.

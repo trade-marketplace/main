@@ -123,7 +123,8 @@ Supabase's email confirmation time to `profiles.email_verified_at`. A Supabase u
 out until then.
 
 **Not here yet:** the log-in and sign-up pages (#102–#105), the verify-email link handler (#106), password reset
-(#107), the dialog (#108), lockout after 5 tries (#102), log out other devices (#113).
+(#107), the dialog (#108), log out other devices (#113). Accounts are never locked after wrong passwords
+(DECISIONS.md).
 
 **Supabase project settings** (William, in the dashboard; nothing in this repo changes them): Authentication →
 Providers → Email: minimum password length **10**; leaked-password protection once on Pro. Whether email must be
