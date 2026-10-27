@@ -64,14 +64,14 @@ describe("the rules", () => {
 
 describe("<JobTile>", () => {
   const tile = (props: Partial<Parameters<typeof JobTile>[0]> = {}) =>
-    renderToString(<JobTile href="/jobs/1" title="Sub wiring" meta="4 km · Windsor" photo="/p.jpg" tag={{ kind: "earn", text: "You earn $259" }} {...props} />);
+    renderToString(<JobTile href="/jobs/1" title="Sub wiring" meta="4 km · Windsor" photo="/p.jpg" tag={{ kind: "earn", text: "Earn $259" }} {...props} />);
 
   it("is one link, the title in a heading, stretched over the tile, with the tag as its description", () => {
     const html = tile();
     expect(html.match(/<a /g)).toHaveLength(1);
     expect(html).toMatch(/<h3 class="tileHeading"><a class="tileTitle stretched" title="Sub wiring" aria-describedby="([^"]+)" href="\/jobs\/1">Sub wiring<\/a><\/h3>/);
     const id = /aria-describedby="([^"]+)"/.exec(html)![1];
-    expect(html).toContain(`data-kind="earn" id="${id}">You earn $259`);
+    expect(html).toContain(`data-kind="earn" id="${id}">Earn $259`);
     expect(html).toContain("4 km · Windsor");
     expect(html).toMatch(/<img class="tm-zoom__img tilePhoto" src="\/p.jpg" alt=""/);
     expect(html).toContain('class="tm-lift tileWrap"');

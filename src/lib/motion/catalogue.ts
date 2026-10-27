@@ -83,7 +83,7 @@ export const MOTION: readonly MotionEntry[] = [
     name: "Price reveal",
     what: "Forest price block wipes in left→right (300ms), the number counts up from $0 (700ms, ease-out), then reassurance ticks appear one by one (60ms apart). Once per job.",
     timing: "~1.1s total",
-    where: "Job · price ready (customer); You earn (tradie)",
+    where: "Job · price ready (customer); Earn (tradie)",
     uses: [".tm-anim-wipe", "<CountUp>", ".tm-anim-underline", ".tm-anim-tick", "useCelebration()"],
   },
   {

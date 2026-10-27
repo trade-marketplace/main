@@ -1,0 +1,14 @@
+.page { min-height: 100vh; color: var(--trade-text); background: var(--trade-surface); }
+.header { padding: clamp(16px, 4vw, 40px); background: var(--trade-forest); color: var(--trade-text-on-dark); }
+.header h1 { margin: 0 0 12px; font: 900 var(--trade-fs-display) / 1.1 var(--trade-font-heading); overflow-wrap: anywhere; }
+.header p { max-width: 70ch; font-size: var(--trade-fs-small); }
+.header nav { display: flex; flex-wrap: wrap; gap: 8px; }
+.header a { display: inline-flex; align-items: center; min-height: var(--trade-tap); padding: 4px 12px; border-radius: var(--trade-radius-pill); color: var(--trade-text-on-dark); }
+.header a[aria-current] { background: var(--trade-signature); color: var(--trade-forest); font-weight: 800; }
+.fixtureMap {
+  background-color: color-mix(in srgb, var(--trade-success) 10%, var(--trade-surface));
+  background-image: linear-gradient(8deg, transparent 42%, var(--trade-surface) 42%, var(--trade-surface) 44%, transparent 44%),
+    linear-gradient(95deg, transparent 29%, var(--trade-surface) 29%, var(--trade-surface) 31%, transparent 31%),
+    linear-gradient(83deg, transparent 67%, var(--trade-surface) 67%, var(--trade-surface) 69%, transparent 69%),
+    linear-gradient(-4deg, transparent 69%, var(--trade-surface) 69%, var(--trade-surface) 71%, transparent 71%);
+}

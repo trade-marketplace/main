@@ -87,7 +87,7 @@ test.describe("/dev/components/map on the dev server", () => {
     await page.keyboard.press("Enter");
     const card = page.getByRole("article", { name: "Control panel" });
     await expect(card).toBeVisible();
-    await expect(card).toContainText("You earn");
+    await expect(card).toContainText("Earn");
     await expect(card).toContainText("$410.00");
     await expectNoA11yViolations(page);
     await page.keyboard.press("Escape");

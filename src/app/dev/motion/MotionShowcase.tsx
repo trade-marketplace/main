@@ -1094,7 +1094,7 @@ function M22({ entry }: DemoProps) {
             <span className={styles.rowText}>
               <span className={styles.caption}>5 km · Glengarry</span>
               <b>New power point</b>
-              <span className={styles.caption}>You earn {formatNzd(96)}</span>
+              <span className={styles.caption}>Earn {formatNzd(96)}</span>
             </span>
             <button type="button" className={cx(styles.btnPrimary, styles.btnSmall)} disabled={lost}>
               Claim

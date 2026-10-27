@@ -4,8 +4,8 @@
 // every job. Motion is the shared M21/M27 classes from src/styles/motion.css: .tm-pin (hover grow),
 // .tm-anim-pin (drop in), .tm-glint (bounty shimmer). Reduced motion is handled there.
 //
-// Positions are percentages (or px) of the map surface. Until Mapbox is wired in they come from
-// projectPoint(); with Mapbox, render the same element inside a marker. The point must come from jobPinFor()
+// Positions are percentages (or px) of the map surface: projectPoint() on the kit illustration, Mapbox.project()
+// over the real canvas. The same accessible button is used on both. The point must come from jobPinFor()
 // (#97): the approximate pin unless this viewer claimed the job.
 import type { CSSProperties } from "react";
 

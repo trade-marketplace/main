@@ -30,6 +30,7 @@ Decided by Matt (Co-Founder/CEO) on 23 October 2026. These override older wordin
 - **Stay logged in as long as possible** (Matt, 27 Oct, #340): "Keep me logged in" (ticked by default) keeps people logged in for 400 days from their last visit, the longest browsers allow. Unticked, it ends when the browser closes.
 - **Log in before confirming email** (Matt, 27 Oct, #340): yes. People can log in straight after signing up and see a "Confirm your email" banner; they **can't post a job or take one** until they've clicked the link. William turns off Supabase's "Confirm email" setting for this.
 - **No "we do the paperwork"** (Matt, 27 Oct, #341, #344): never say it, anywhere, though older mockups and the spec do. The tradie line is **"You do the work. We find the jobs."**
+- **Worker pay labels** (Matt, 28 Oct): show **"Earn $…"**, rather than "You earn $…", on worker pay labels, map/list cards and their accessible names.
 - **Coverage area** (Matt, 26 Oct): **60 km around Invercargill** (centre -46.4132, 168.3538). Stored in office Settings (`settings.coverage_*`), so the office can change it without a deploy; editing it from the office Settings screen (F14, Coverage tab) comes with that page.
 
 ## Still to decide

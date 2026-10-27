@@ -70,7 +70,7 @@ test.describe("/dev/components/cards", () => {
 
     await page.goto(url());
     const tile = page.getByRole("list", { name: "Jobs near you", exact: true }).getByRole("article").first();
-    await expect(tile.getByRole("link", { name: "Sub wiring" })).toHaveAccessibleDescription("You earn $259");
+    await expect(tile.getByRole("link", { name: "Sub wiring" })).toHaveAccessibleDescription("Earn $259");
     await tile.scrollIntoViewIfNeeded();
     const tileBox = (await tile.boundingBox())!;
     await page.mouse.click(tileBox.x + tileBox.width / 2, tileBox.y + tileBox.height / 2);
