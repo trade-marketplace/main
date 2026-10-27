@@ -25,23 +25,27 @@ export type AuthLayoutProps = {
   art?: keyof typeof ART;
   /** Top right on a computer: "New here? Sign up". */
   aside?: ReactNode;
+  /** Details steps use the compact phone app bar from pub-signup-2. */
+  detailsStep?: boolean;
+  backHref?: string;
   children: ReactNode;
 };
 
-export function AuthLayout({ title, lede, art = "phone", wideTitle, aside, children }: AuthLayoutProps) {
+export function AuthLayout({ title, lede, art = "phone", wideTitle, aside, detailsStep, backHref = "/", children }: AuthLayoutProps) {
   return (
-    <div className={styles.layout}>
+    <div className={styles.layout} data-details={detailsStep || undefined}>
       <a href="#main" className={styles.skip}>
         Skip to content
       </a>
       <header className={styles.brand}>
         <BoltMark variant="hero" className={styles.brandBolt} />
-        <Link href="/" className={styles.back} aria-label="Back to home">
+        <Link href={backHref} className={styles.back} aria-label={detailsStep ? "Back to account choice" : "Back to home"}>
           <Icon name="arrow_back" decorative />
         </Link>
         <Link href="/" className={styles.logo} aria-label="Trade Marketplace home">
           <Wordmark label={null} className={styles.wordmark} />
         </Link>
+        {detailsStep && <div className={styles.mobileHeading}><strong>{title}</strong><span>Step 2 of 2</span></div>}
         <BoltMark className={styles.mark} />
         <Image src={ART[art]} alt="" width={500} height={500} priority className={styles.art} sizes="(min-width: 1024px) 320px, 220px" />
         <div className={styles.line}>

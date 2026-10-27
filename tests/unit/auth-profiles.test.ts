@@ -34,11 +34,11 @@ describe.skipIf(!testDatabaseUrl)("profiles for sign-in", () => {
     const user = await authUser(email.toLowerCase());
     const result = await signUp(
       { auth: fakeAuth(user), profiles: profiles() },
-      { email, password: "korimako-gumboot-41", firstName: "Aroha", lastName: "Ngata", role: "TRADIE" },
+      { email, password: "korimako-gumboot-41", firstName: "Aroha", lastName: "Ngata", role: "TRADIE", phone: "0215550192", terms: true },
     );
     expect(result).toMatchObject({ ok: true, status: "check-email" });
     const row = await schema.db.profile.findUniqueOrThrow({ where: { id: user.id } });
-    expect(row).toMatchObject({ email: email.toLowerCase(), role: "TRADIE", firstName: "Aroha", lastName: "Ngata" });
+    expect(row).toMatchObject({ email: email.toLowerCase(), role: "TRADIE", firstName: "Aroha", lastName: "Ngata", phone: "+64215550192" });
   });
 
   it("can't create a profile for someone Supabase doesn't know", async () => {

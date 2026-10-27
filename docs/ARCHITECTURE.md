@@ -482,3 +482,21 @@ E2E_DEV_BASE_URL=http://127.0.0.1:3000 npx playwright test tests/e2e/dev-fields.
 Optionally set `FORM_FIELD_SCREENSHOTS_DIR` to a local folder to capture the full preview at 1440 and 390 in
 each palette/state, plus keyboard, validation-error and 200% zoom views. The production screenshot bot cannot
 review a development-only page; attach these local captures to the PR instead.
+
+### Customer sign-up details (#104)
+
+`/signup/customer` reuses `AuthLayout`, `SignupRoleChoices` and `signUpAction`. The phone layout is the compact
+second step; the desktop shows the two role cards above the details. The server requires a mobile number and
+explicit terms/privacy acceptance before creating an account, normalizes the mobile to E.164, and saves it in the
+existing `profiles.phone` column. Supabase metadata retains the mobile so interrupted profile creation can be
+repaired on login. Password rules remain the shared rules from #101 (minimum 10 characters).
+
+The form retains name, email, mobile and consent after errors; passwords clear after each response. Duplicate
+email offers both login and reset. Creation disables offline and resumes on reconnection. Preview routes are
+`/dev/components/signup-customer?state=email-taken|weak-password|invalid|unavailable|try-later|loading|offline|success|draft`,
+behind `guardDevPage()` as usual. Previews render states only; submission still calls the real action.
+
+The exact safe `?next=` path survives the choice page, details, login and recovery links. Signup never clears or
+rewrites the job wizard's browser storage. Automatic draft publication after email confirmation belongs to the
+later verification/job-posting work (#106, #116–#120), as Matt clarified on #104. A signup session may proceed
+before confirmation; existing server guards still require confirmed email to post or take a job.

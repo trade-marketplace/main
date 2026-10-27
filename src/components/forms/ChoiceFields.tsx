@@ -1,13 +1,14 @@
 "use client";
 
-import { type InputHTMLAttributes, type Ref, useId } from "react";
+import { type InputHTMLAttributes, type ReactNode, type Ref, useId } from "react";
 
 import { Icon } from "@/components/Icon";
 
 import { FieldMessages, type FieldMessageProps, useField } from "./Field";
 import styles from "./forms.module.css";
 
-export type CheckboxFieldProps = Omit<InputHTMLAttributes<HTMLInputElement>, "type" | "size"> & FieldMessageProps & {
+export type CheckboxFieldProps = Omit<InputHTMLAttributes<HTMLInputElement>, "type" | "size"> & Omit<FieldMessageProps, "label"> & {
+  label: ReactNode;
   card?: boolean;
   ref?: Ref<HTMLInputElement>;
 };
