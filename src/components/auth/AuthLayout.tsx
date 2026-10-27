@@ -12,15 +12,23 @@ import { Wordmark } from "@/components/Wordmark";
 
 import styles from "./auth.module.css";
 
+const ART = { phone: "/images/auth/phone.png", mail: "/images/auth/mail.png" } as const;
+
 export type AuthLayoutProps = {
   /** The page's h1: "Welcome back". */
   title: ReactNode;
+  /** A line under the title: "What brings you here?". */
+  lede?: ReactNode;
+  /** Keep the title on one line on a computer (sign-up); log-in's breaks after the first word. */
+  wideTitle?: boolean;
+  /** The 3D illustration: the phone (log in) or the envelope (sign up). */
+  art?: keyof typeof ART;
   /** Top right on a computer: "New here? Sign up". */
   aside?: ReactNode;
   children: ReactNode;
 };
 
-export function AuthLayout({ title, aside, children }: AuthLayoutProps) {
+export function AuthLayout({ title, lede, art = "phone", wideTitle, aside, children }: AuthLayoutProps) {
   return (
     <div className={styles.layout}>
       <a href="#main" className={styles.skip}>
@@ -35,7 +43,7 @@ export function AuthLayout({ title, aside, children }: AuthLayoutProps) {
           <Wordmark label={null} className={styles.wordmark} />
         </Link>
         <BoltMark className={styles.mark} />
-        <Image src="/images/auth/phone.png" alt="" width={500} height={500} priority className={styles.art} sizes="(min-width: 1024px) 320px, 220px" />
+        <Image src={ART[art]} alt="" width={500} height={500} priority className={styles.art} sizes="(min-width: 1024px) 320px, 220px" />
         <div className={styles.line}>
           <p className={styles.lineTitle}>
             Sorted in
@@ -47,7 +55,10 @@ export function AuthLayout({ title, aside, children }: AuthLayoutProps) {
       <main id="main" tabIndex={-1} className={styles.main}>
         {aside && <p className={styles.aside}>{aside}</p>}
         <div className={styles.panel}>
-          <h1 className={styles.title}>{title}</h1>
+          <h1 className={styles.title} data-wide={wideTitle || undefined}>
+            {title}
+          </h1>
+          {lede && <p className={styles.lede}>{lede}</p>}
           {children}
         </div>
       </main>
