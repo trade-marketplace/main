@@ -1,0 +1,390 @@
+/* Cards, tiles and rows (#76). Values ported from docs/design/components.css (.tm-card, .tm-cat, .tm-tile,
+   .tm-jobrow, .tm-empty) and web.css (.w-kpi, .w-lift), written with tokens only so each mode recolours them.
+   M03 (hover lift, photo zoom) is .tm-lift / .tm-zoom__img from src/styles/motion.css, never re-made here.
+   Every variant and state: /dev/components/cards. */
+
+/* One link per card (FRONTEND_SPEC: "Card = one link; Save is the only nested button"). The title is the link;
+   its ::after covers the whole card so a click anywhere opens it, while screen readers hear just the title. */
+.stretched::after { content: ""; position: absolute; inset: 0; z-index: 1; border-radius: inherit; }
+.stretched:focus-visible { outline: none; }
+.stretched:focus-visible::after { outline: 2px solid var(--trade-focus); outline-offset: 2px; }
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ---- Photo job tile (.tm-tile) --------------------------------------------------------------------------- */
+.tileWrap { border-radius: var(--trade-radius-job-tile); min-width: 0; }
+.tile {
+  position: relative;
+  display: grid;
+  overflow: hidden;
+  aspect-ratio: 1;
+  border-radius: inherit;
+  background: var(--trade-forest);
+  color: var(--trade-text-on-dark);
+}
+.tile[data-shape="tall"] { aspect-ratio: 191 / 220; }
+.tilePhoto { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+/* No photo yet: Forest with the bolt (FRONTEND_SPEC "Missing photo"). */
+.tileBolt { position: absolute; top: 18%; left: 50%; width: 34%; translate: -50% 0; fill: var(--trade-signature); opacity: 0.9; }
+/* The dark fade under the words, so white text reads on any photo. */
+.tile::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, color-mix(in srgb, var(--trade-ink) 72%, transparent), transparent 62%);
+  pointer-events: none;
+}
+/* A grid item, not positioned: z-index lifts it over the photo, and the title link's ::after then covers the
+   whole tile (its box is .tile), not just the words. */
+.tileText {
+  align-self: end;
+  z-index: 2;
+  min-width: 0;
+  margin: 0 44px 9px 10px; /* clear of the Save button */
+  display: grid;
+  pointer-events: none;
+  font-family: var(--trade-font-heading);
+  font-weight: 900;
+  font-variation-settings: var(--trade-display-axes);
+  font-size: var(--trade-fs-small);
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+.tileText > * { pointer-events: auto; }
+/* FRONTEND_SPEC: clamp tile text to 3 lines (the whole title is in its tooltip and read in full). */
+.tileTitle {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  color: inherit;
+  text-decoration: none;
+}
+.tileHeading { margin: 0; min-width: 0; max-width: 100%; font: inherit; }
+.tileMeta { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.tileTag {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  max-width: calc(100% - 20px);
+  min-height: 24px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--trade-forest);
+  color: var(--trade-text-on-dark);
+  font-weight: 800;
+  font-size: var(--trade-fs-caption);
+  line-height: var(--trade-lh-caption);
+  pointer-events: none;
+}
+.tileTag[data-kind="earn"] { background: var(--trade-signature); color: var(--trade-on-signature); }
+.tileTag .tagIcon { font-size: 14px; color: var(--trade-signature); }
+.tileSave { position: absolute; right: 0; bottom: 0; z-index: 3; }
+.tileSave button { color: var(--trade-text-on-dark); }
+.tileSave button:hover { background: color-mix(in srgb, var(--trade-ink) 30%, transparent); }
+.tileWrap:has(.stretched:focus-visible) { outline: 2px solid var(--trade-focus); outline-offset: 2px; }
+.tileWrap .stretched:focus-visible::after { outline: none; }
+
+/* ---- Category tile (.tm-cat): 159 × 162 at 390 -------------------------------------------------------- */
+.cat {
+  position: relative;
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: center;
+  width: 159px;
+  height: 162px;
+  padding: 12px 8px 0;
+  border-radius: var(--trade-radius-category);
+  background: var(--trade-surface);
+  box-shadow: var(--trade-shadow-category);
+  text-align: center;
+  color: var(--trade-text);
+}
+.catArt {
+  position: relative;
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 110px;
+  height: 96px;
+  border-radius: 9px;
+}
+.catImage { position: absolute; width: 118px; height: auto; left: -4px; top: -10px; pointer-events: none; }
+.catImage[data-tall] { width: auto; height: 112px; left: 50%; top: -12px; translate: -50% 0; }
+.catIcon { font-size: 54px; color: var(--cat-ink); }
+.catName {
+  max-width: 100%;
+  margin: 10px 0 0;
+  font-weight: 800;
+  font-size: var(--trade-fs-label);
+  line-height: var(--trade-lh-label);
+  font-variation-settings: "wdth" 125;
+  color: var(--trade-text);
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+.catName a { color: inherit; text-decoration: none; }
+/* One line under the name; anything longer ends in "…" (the whole line is its tooltip). */
+.catSub {
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: var(--trade-fs-caption);
+  line-height: var(--trade-lh-caption);
+  color: var(--trade-text-2);
+}
+/* A trade the tradie isn't verified for: greyed, not a link, and the reason in place of the sub line. */
+.cat[data-disabled] { box-shadow: none; outline: 1px solid var(--trade-line); background: var(--trade-waiting-bg); cursor: not-allowed; }
+.cat[data-disabled] .catArt { filter: grayscale(1); opacity: 0.45; }
+.cat[data-disabled] .catName { color: var(--trade-text-2); }
+.cat:has(.stretched:focus-visible) { outline: 2px solid var(--trade-focus); outline-offset: 2px; }
+.cat .stretched:focus-visible::after { outline: none; }
+
+/* A row of category tiles that scrolls sideways on a phone (.tm-rail) and wraps on a computer. */
+.rail {
+  display: flex;
+  gap: var(--trade-gap-tile);
+  margin: 0;
+  padding: 4px 0 12px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  list-style: none;
+}
+.rail::-webkit-scrollbar { display: none; }
+.rail > li { flex: none; scroll-snap-align: start; }
+@media (min-width: 1024px) {
+  .rail { flex-wrap: wrap; overflow: visible; gap: var(--trade-space-4); }
+}
+
+/* ---- Job row (.tm-jobrow): My jobs, Your jobs, Needs you --------------------------------------------- */
+.row {
+  container: jobrow / inline-size;
+  position: relative;
+  border-radius: var(--trade-radius-card);
+  background: var(--trade-surface);
+  box-shadow: var(--trade-shadow-category);
+  color: var(--trade-text);
+}
+.rowInner { display: flex; align-items: center; gap: 12px; padding: 12px; }
+.rowThumb {
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 64px;
+  height: 64px;
+  overflow: hidden;
+  border-radius: var(--trade-radius-job-tile);
+  background: var(--trade-waiting-bg); /* while the photo loads */
+}
+.rowThumb[data-empty] { background: var(--trade-forest); }
+.rowThumb > img { width: 100%; height: 100%; object-fit: cover; }
+.rowThumb > svg { width: 40%; fill: var(--trade-signature); }
+.rowBody { display: grid; flex: 1; grid-template-columns: minmax(0, 1fr); gap: 1px; min-width: 0; justify-items: start; }
+.rowBody > * { max-width: 100%; min-width: 0; }
+.rowCat { font-size: var(--trade-fs-caption); line-height: var(--trade-lh-caption); color: var(--trade-text-2); }
+/* FRONTEND_SPEC: row titles stay on 1 line (the whole title is the tooltip and the link's name). */
+.rowTitle {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-weight: 700;
+  font-size: var(--trade-fs-label);
+  line-height: var(--trade-lh-label);
+  color: var(--trade-text);
+  text-decoration: none;
+}
+.rowMeta {
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: var(--trade-fs-caption);
+  line-height: var(--trade-lh-caption);
+  color: var(--trade-text-2);
+}
+.rowStatus { margin-top: 6px; max-width: 100%; }
+.rowEnd { display: grid; flex: none; gap: var(--trade-space-2); justify-items: end; align-self: center; max-width: 45%; }
+.rowPrice {
+  font-family: var(--trade-font-heading);
+  font-weight: 900;
+  font-variation-settings: var(--trade-display-axes);
+  font-size: var(--trade-fs-subheading);
+  line-height: var(--trade-lh-subheading);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.rowAction { position: relative; z-index: 2; }
+.row:has(.stretched:focus-visible) { outline: 2px solid var(--trade-focus); outline-offset: 2px; }
+.row .stretched:focus-visible::after { outline: none; }
+
+/* Little room for the words (a small phone, or text zoomed to 200%): the price and button go under the job,
+   lined up with the title, so nothing spills. In em so it follows the text size. */
+@container jobrow (max-width: 20em) {
+  .rowInner { flex-wrap: wrap; }
+  .rowEnd {
+    flex: 1 1 100%;
+    grid-auto-flow: column;
+    justify-content: space-between;
+    align-items: center;
+    max-width: none;
+    padding-inline-start: 76px;
+  }
+}
+
+/* On a computer (a row wider than 560px): the bigger photo, the pill above the title, the big price. */
+@container jobrow (min-width: 560px) {
+  .rowInner { gap: var(--trade-space-4); padding: var(--trade-space-4); }
+  .rowThumb { width: 112px; height: 72px; }
+  .rowBody { gap: 2px; }
+  .rowBody[data-pill-first] > .rowStatus { order: -1; margin: 0 0 6px; }
+  .rowTitle { font-size: var(--trade-fs-section); line-height: var(--trade-lh-section); }
+  .rowPrice { font-size: var(--trade-fs-price); line-height: var(--trade-lh-price); }
+}
+
+/* ---- KPI card (.w-kpi): office queues, earnings, the tradie scorecard --------------------------------- */
+.kpi {
+  position: relative;
+  display: grid;
+  align-content: start;
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid var(--trade-line);
+  border-radius: 12px;
+  background: var(--trade-surface);
+  color: var(--trade-text);
+}
+.kpiLabel { font-size: var(--trade-fs-small); line-height: var(--trade-lh-small); color: var(--trade-text-2); overflow-wrap: anywhere; text-decoration: none; }
+a.kpiLabel { color: var(--trade-text-2); }
+.kpiValue {
+  margin-top: 6px;
+  font-family: var(--trade-font-heading);
+  font-weight: 900;
+  font-variation-settings: var(--trade-display-axes);
+  font-size: var(--trade-fs-price);
+  line-height: var(--trade-lh-price);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.kpiNote { margin-top: 2px; font-size: var(--trade-fs-caption); line-height: var(--trade-lh-caption); color: var(--trade-text-2); overflow-wrap: anywhere; }
+/* Overdue (WEBAPP_SPEC F01: "red top edge + red text when anything is overdue"). */
+.kpi[data-alert] { border-top-color: var(--trade-danger); box-shadow: inset 0 2px 0 var(--trade-danger); }
+.kpi[data-alert] .kpiNote { color: var(--trade-danger); font-weight: 700; }
+.kpi:has(.stretched:focus-visible) { outline: 2px solid var(--trade-focus); outline-offset: 2px; }
+.kpi .stretched:focus-visible::after { outline: none; }
+
+/* ---- Stat card: the Forest money card at the top of Earnings (tr-earnings) ----------------------------- */
+.stat {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  min-width: 0;
+  padding: var(--trade-space-5);
+  border-radius: var(--trade-radius-card);
+  background: var(--trade-forest);
+  color: var(--trade-text-on-dark);
+}
+.statBolt { position: absolute; width: 260px; right: -70px; top: -60px; fill: var(--trade-signature); opacity: 0.2; pointer-events: none; }
+.statLabel { position: relative; font-size: var(--trade-fs-small); line-height: var(--trade-lh-small); color: var(--trade-text-on-dark-2); overflow-wrap: anywhere; }
+.statValue {
+  position: relative;
+  font-family: var(--trade-font-heading);
+  font-weight: 900;
+  font-variation-settings: var(--trade-display-axes);
+  font-size: var(--trade-fs-title);
+  line-height: var(--trade-lh-title);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.statNote { position: relative; margin-top: 2px; font-size: var(--trade-fs-caption); line-height: var(--trade-lh-caption); color: var(--trade-text-on-dark-2); overflow-wrap: anywhere; }
+
+/* ---- Stats strip: 4.9 rating · 32 jobs · 2024 joined (profiles) --------------------------------------- */
+.stats {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  margin: 0;
+  padding: 12px 0;
+  border-block: 1px solid var(--trade-line);
+  text-align: center;
+}
+.stats > div { display: flex; flex-direction: column-reverse; min-width: 0; }
+.stats dt { font-size: var(--trade-fs-caption); line-height: var(--trade-lh-caption); color: var(--trade-text-2); overflow-wrap: anywhere; }
+.stats dd {
+  margin: 0;
+  font-family: var(--trade-font-heading);
+  font-weight: 900;
+  font-variation-settings: var(--trade-display-axes);
+  font-size: var(--trade-fs-subheading);
+  line-height: var(--trade-lh-subheading);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Profile card (sh-tradie-public, w-profile-public) -------------------------------------------------- */
+.profile {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  min-width: 0;
+  text-align: center;
+  color: var(--trade-text);
+}
+.profile[data-variant="card"] {
+  padding: var(--trade-space-6) var(--trade-space-6) var(--trade-space-5);
+  border-radius: var(--trade-radius-card);
+  background: var(--trade-surface);
+  box-shadow: var(--trade-shadow-category);
+}
+.avatar {
+  display: grid;
+  place-items: center;
+  width: 96px;
+  height: 96px;
+  margin-bottom: 4px;
+  overflow: hidden;
+  border-radius: 50%;
+  background: var(--trade-forest);
+  color: var(--trade-signature);
+  font-family: var(--trade-font-heading);
+  font-weight: 900;
+  font-variation-settings: var(--trade-display-axes);
+  font-size: 2.25rem;
+  line-height: 1;
+}
+.avatar > img { width: 100%; height: 100%; object-fit: cover; }
+.profileName {
+  margin: 0;
+  max-width: 100%;
+  font-family: var(--trade-font-heading);
+  font-weight: 900;
+  font-variation-settings: var(--trade-display-axes);
+  font-size: var(--trade-fs-heading);
+  line-height: var(--trade-lh-heading);
+  overflow-wrap: anywhere;
+}
+.profileMeta { margin: 0; color: var(--trade-text-2); font-size: var(--trade-fs-small); overflow-wrap: anywhere; }
+.profileBadges { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 2px 0 8px; }
+.profile .stats { width: 100%; }
+/* The desktop card (w-profile-public) has the bigger avatar and name; the phone page (sh-tradie-public) the smaller. */
+.profile[data-variant="card"] .avatar { width: 120px; height: 120px; font-size: 3rem; }
+.profile[data-variant="card"] .profileName { font-size: var(--trade-fs-title); line-height: var(--trade-lh-title); }
+
+/* ---- Empty card (.tm-card--flat around .tm-empty) ----------------------------------------------------- */
+.emptyCard { border: 1px solid var(--trade-line); border-radius: var(--trade-radius-card); background: var(--trade-surface); }
