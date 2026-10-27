@@ -1,0 +1,91 @@
+/* 404 and 500 pages (#109). Values from the w-errors mockup in docs/design/pages.html: 620px cards, 12px corners,
+   the card shadow; the 404 card is Forest with the hero bolt at 20%. Tokens only. */
+
+.wrap {
+  display: grid;
+  place-items: center;
+  min-height: min(70dvh, 40rem);
+  padding: var(--trade-space-8) var(--trade-inset-browse);
+  /* web.css .w-page--soft (#f6f7f6): the divider grey, lightened. */
+  background: color-mix(in srgb, var(--trade-line) 30%, var(--trade-surface));
+}
+
+.notFound,
+.serverError {
+  position: relative;
+  width: min(100%, 620px);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgb(12 37 29 / 14%);
+}
+
+/* ---- 404 ---- */
+.notFound {
+  display: grid;
+  place-items: center;
+  min-height: 330px;
+  padding: var(--trade-space-10) var(--trade-space-6);
+  background: var(--trade-forest);
+  color: var(--trade-text-on-dark);
+  text-align: center;
+}
+.bolt {
+  position: absolute;
+  width: 420px;
+  top: -40px;
+  right: -150px;
+  fill: var(--trade-signature);
+  opacity: 0.2;
+  pointer-events: none;
+}
+.notFoundInner { position: relative; min-width: 0; }
+.code {
+  margin: 0;
+  font-family: var(--trade-font-heading);
+  font-weight: 900;
+  font-variation-settings: var(--trade-display-axes);
+  font-size: clamp(4.5rem, 18vw, 6rem); /* the mockup's 96px; smaller on a small phone */
+  line-height: 1;
+  color: var(--trade-signature);
+}
+.title {
+  margin: var(--trade-space-2) 0 0;
+  font-family: var(--trade-font-heading);
+  font-weight: 900;
+  font-variation-settings: var(--trade-display-axes);
+  font-size: var(--trade-fs-heading);
+  line-height: var(--trade-lh-heading);
+  overflow-wrap: anywhere;
+}
+.message { margin: 6px 0 0; color: var(--trade-text-on-dark-2); }
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 14px;
+}
+/* Go home is the signature colour in Display type (the kit's hero look, at the small size the mockup uses). */
+.actions .goHome {
+  background: var(--trade-signature);
+  color: var(--trade-on-signature);
+  font-family: var(--trade-font-heading);
+  font-variation-settings: var(--trade-display-axes);
+  font-size: 0.9375rem;
+}
+/* Help centre: a quiet button on Forest. */
+.actions .onDark {
+  background: rgb(255 255 255 / 12%);
+  color: var(--trade-text-on-dark);
+}
+
+/* ---- 500 ---- */
+.serverError { background: var(--trade-surface); }
+.serverError .serverErrorState { min-height: 330px; padding: var(--trade-space-10) var(--trade-space-6); }
+/* The mockup keeps the line on one row in the 620px card (the kit's page error stops at 48ch). */
+.serverError .serverErrorState > p { max-width: 62ch; }
+
+@media (forced-colors: active) {
+  .notFound,
+  .serverError { border: 1px solid CanvasText; }
+}
