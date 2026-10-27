@@ -1,0 +1,304 @@
+/* The signed-in app shell (#84). Values from docs/design/web.css (.w-appnav, .w-navbtn, .w-modeflag) and
+   components.css (.tm-nav, .tm-count, .tm-avatar), the mockups w-c-home / w-t-board (pages.html) and cus-home /
+   tr-home (screens.html), written with tokens only. Breakpoints from tokens.css: the top nav from 1024px (lg); below
+   that the bottom bar. */
+
+.shell {
+  /* The bottom bar: 64px plus the phone's home-indicator area (viewport-fit=cover makes it non-zero). */
+  --app-bottom-h: calc(var(--trade-nav-height) + env(safe-area-inset-bottom, 0px));
+
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+
+/* The sticky top nav never covers what has keyboard focus (WCAG 2.4.11); the bottom bar's room is already in
+   tokens.css (html scroll-padding-bottom). */
+@media (min-width: 1024px) {
+  :global(html):has(.shell) { scroll-padding-top: 84px; }
+}
+
+/* ---- Skip link: hidden until it has keyboard focus, then above everything, top left ---- */
+.skip {
+  position: absolute;
+  top: var(--trade-space-2);
+  left: var(--trade-space-2);
+  z-index: var(--trade-z-toast);
+  padding: var(--trade-space-3) var(--trade-space-4);
+  border-radius: var(--trade-radius-action);
+  background: var(--trade-surface);
+  color: var(--trade-text);
+  font-weight: 700;
+  font-size: var(--trade-fs-small);
+  text-decoration: underline;
+  transform: translateY(calc(-100% - var(--trade-space-4)));
+}
+.skip:focus { transform: none; }
+
+.main { flex: 1; min-width: 0; }
+/* Focused only by the skip link (tabIndex -1); it isn't something to click, so no ring. */
+.main:focus { outline: none; }
+
+/* ---- Test mode: a full-width gold strip above everything (the kit's test banner, squared off) ---- */
+.shell .testBanner {
+  border-radius: 0;
+  justify-content: center;
+  padding-block: var(--trade-space-2);
+  padding-inline: max(var(--trade-inset-browse), env(safe-area-inset-left, 0px)) max(var(--trade-inset-browse), env(safe-area-inset-right, 0px));
+  font-size: var(--trade-fs-small);
+}
+.shell .testBanner > p { flex: 0 1 auto; }
+
+/* ---- Top nav (.w-appnav), from 1024px ---- */
+.header { display: none; }
+
+@media (min-width: 1024px) {
+  .header {
+    position: sticky;
+    top: 0;
+    z-index: var(--trade-z-nav);
+    display: flex;
+    align-items: center;
+    gap: var(--trade-space-2);
+    min-height: 68px;
+    padding: var(--trade-space-1) var(--trade-space-8);
+    background: var(--trade-forest);
+    color: var(--trade-text-on-dark);
+  }
+}
+
+.logo {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  min-height: var(--trade-tap);
+  border-radius: 4px;
+}
+/* 28px tall, as in the mockup (the wordmark is 188 × 46). */
+.logoMark { width: 114px; }
+
+.modeFlag {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  margin-left: 10px;
+  padding: 0 9px;
+  border-radius: 6px;
+  background: var(--trade-signature);
+  color: var(--trade-on-signature);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.topNav { min-width: 0; margin-left: 28px; }
+
+/* Positioned: the sliding bar (M16) is measured against it. The links themselves aren't, so their inner box
+   measures from here too. */
+.topLinks {
+  position: relative;
+  display: flex;
+  gap: var(--trade-space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.topLink {
+  display: flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 10px;
+  color: rgb(255 255 255 / 78%);
+  font-weight: 600;
+  font-size: 0.90625rem; /* 14.5px, the mockup's */
+  line-height: var(--trade-lh-label);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background var(--trade-dur-fast);
+}
+.topLink:hover { background: rgb(255 255 255 / 8%); color: var(--trade-text-on-dark); }
+.topLink[aria-current="page"] { background: rgb(255 255 255 / 10%); color: var(--trade-text-on-dark); }
+.topLinkInner { display: inline-flex; align-items: center; gap: var(--trade-space-2); }
+.topIcon { font-size: 20px; }
+
+.indicatorHost { display: contents; }
+
+/* The bar under the current link: as wide as its icon and label, 14px below it (at the nav's bottom edge). It's
+   sized with width rather than scaleX so its rounded corners stay round. */
+.topLinks .topIndicator,
+.bottomLinks .bottomIndicator {
+  width: calc(var(--tm-tab-scale, 0) * 100%);
+  transform: translateX(var(--tm-tab-x, 0px));
+  transition: transform var(--trade-dur-base) var(--trade-ease-in-out), width var(--trade-dur-base) var(--trade-ease-in-out);
+}
+.topLinks .topIndicator {
+  top: auto;
+  bottom: -14px;
+  height: 3px;
+  border-radius: 3px 3px 0 0;
+  background: var(--trade-signature);
+}
+.topLinks .topIndicator[data-shown="false"],
+.bottomLinks .bottomIndicator[data-shown="false"] { visibility: hidden; }
+
+.headerEnd {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.postJob { white-space: nowrap; }
+
+/* ---- Bell and avatar (.w-navbtn) ---- */
+.navBtn {
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: var(--trade-tap);
+  height: var(--trade-tap);
+  border-radius: 10px;
+  color: var(--trade-text-on-dark);
+  text-decoration: none;
+}
+.navBtn:hover { background: rgb(255 255 255 / 8%); }
+.bellIcon { font-size: 22px; }
+.navBtn .navBtnCount { position: absolute; top: 6px; right: 4px; }
+
+.avatarBtn {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: var(--trade-tap);
+  height: var(--trade-tap);
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+}
+.avatar {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--trade-forest);
+  color: var(--trade-signature);
+  font-family: var(--trade-font-heading);
+  font-weight: 800;
+  font-size: var(--trade-fs-small);
+  line-height: 1;
+}
+.avatarBtn:hover .avatar,
+.avatarBtn[aria-expanded="true"] .avatar { background: rgb(255 255 255 / 10%); }
+
+.menuName { font-size: var(--trade-fs-body); }
+.menuEmail { overflow-wrap: anywhere; }
+
+/* ---- Count badge (.tm-count) ---- */
+.count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--trade-danger);
+  color: var(--trade-text-on-dark);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+}
+.inlineCount { margin-left: 2px; }
+
+/* ---- Bottom bar (.tm-nav), under 1024px ---- */
+.bottomSpacer { height: var(--app-bottom-h); flex-shrink: 0; }
+
+.bottomNav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: var(--trade-z-nav);
+  padding: 0 env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+  background: var(--trade-surface);
+  box-shadow: 0 -1px 0 var(--trade-line);
+}
+
+.bottomLinks {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  height: var(--trade-nav-height);
+  margin: 0 auto;
+  padding: 0;
+  max-width: 600px;
+  list-style: none;
+}
+.bottomItem { display: flex; min-width: 0; }
+
+.bottomLink {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  min-width: var(--trade-tap);
+  color: var(--trade-forest);
+  text-decoration: none;
+}
+/* An empty 28px box at the top: what the sliding bar lines up with. */
+.bottomTarget { width: 28px; height: 0; flex-shrink: 0; }
+.bottomIcon {
+  position: relative;
+  display: grid;
+  place-items: center;
+  margin: auto 0;
+}
+.bottomIcon > :first-child { font-size: 26px; }
+.bottomLink:hover .bottomIcon > :first-child { font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+.bottomIcon .bottomCount { position: absolute; top: -10px; left: calc(50% + 6px); }
+
+.bottomLinks .bottomIndicator {
+  top: 0;
+  bottom: auto;
+  height: 3px;
+  border-radius: 0 0 3px 3px;
+  background: var(--trade-action);
+}
+
+@media (min-width: 1024px) {
+  .bottomNav,
+  .bottomSpacer { display: none; }
+}
+
+/* Focus rings inside the Forest bar are white-on-Forest by the global rule; keep them off the rounded edge. */
+.topLink:focus-visible,
+.navBtn:focus-visible,
+.avatarBtn:focus-visible,
+.logo:focus-visible { outline-offset: 2px; }
+.bottomLink:focus-visible { outline-offset: -4px; border-radius: 10px; }
+
+/* Windows high contrast: the bars and the badge keep a visible shape. */
+@media (forced-colors: active) {
+  .topLinks .topIndicator,
+  .bottomLinks .bottomIndicator { background: Highlight; }
+  .count { border: 1px solid CanvasText; }
+}
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
