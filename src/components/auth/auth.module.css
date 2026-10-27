@@ -1,0 +1,149 @@
+/* Log-in and sign-up layout and form (#102). Values from w-login (pages.html) and pub-login (screens.html):
+   the 620/1440 Forest panel, the form max 440px, 55px buttons, underline fields. Tokens only. */
+
+.layout { min-height: 100dvh; display: flex; flex-direction: column; background: var(--trade-surface); }
+
+.skip {
+  position: absolute;
+  top: var(--trade-space-2);
+  left: var(--trade-space-2);
+  z-index: var(--trade-z-toast);
+  padding: var(--trade-space-3) var(--trade-space-4);
+  border-radius: var(--trade-radius-action);
+  background: var(--trade-surface);
+  color: var(--trade-text);
+  font-weight: 700;
+  font-size: var(--trade-fs-small);
+  text-decoration: underline;
+  transform: translateY(calc(-100% - var(--trade-space-4)));
+}
+.skip:focus { transform: none; }
+
+/* ---- Phone: the Forest band (pub-login) ---- */
+.brand {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  justify-items: center;
+  min-height: 256px;
+  padding: var(--trade-space-3) var(--trade-inset-browse) 0;
+  background: var(--trade-forest);
+  color: var(--trade-text-on-dark);
+}
+.brandBolt { position: absolute; width: 360px; right: -150px; top: -60px; fill: var(--trade-signature); opacity: 0.2; pointer-events: none; }
+.back {
+  position: absolute;
+  top: var(--trade-space-2);
+  left: var(--trade-space-2);
+  display: grid;
+  place-items: center;
+  width: var(--trade-tap);
+  height: var(--trade-tap);
+  border-radius: 50%;
+  color: var(--trade-text-on-dark);
+  text-decoration: none;
+}
+.mark { position: absolute; top: var(--trade-space-3); right: var(--trade-space-4); width: 22px; fill: var(--trade-signature); }
+.logo, .line { display: none; }
+.art { position: relative; width: 220px; height: auto; margin-top: var(--trade-space-2); align-self: end; }
+
+/* ---- The form side ---- */
+.main {
+  flex: 1;
+  position: relative;
+  display: grid;
+  align-content: start;
+  justify-items: center;
+  padding: var(--trade-space-8) var(--trade-inset-form) var(--trade-space-10);
+}
+.main:focus { outline: none; }
+.aside { display: none; }
+.panel { width: min(100%, 440px); min-width: 0; }
+.title {
+  margin: 0 0 var(--trade-space-6);
+  font-family: var(--trade-font-heading);
+  font-weight: 900;
+  font-variation-settings: var(--trade-display-axes);
+  font-size: var(--trade-fs-title);
+  line-height: var(--trade-lh-title);
+  overflow-wrap: anywhere;
+}
+
+.form { display: grid; gap: var(--trade-space-4); }
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--trade-space-2) var(--trade-space-4);
+}
+.row .remember { margin: 0; }
+.forgot {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--trade-tap);
+  margin-left: auto;
+  color: var(--trade-link);
+  font-weight: 700;
+  font-size: var(--trade-fs-small);
+  text-decoration: none;
+  text-underline-offset: 3px;
+}
+.forgot:hover { text-decoration: underline; }
+.submit { margin-top: var(--trade-space-2); }
+.or {
+  display: flex;
+  align-items: center;
+  gap: var(--trade-space-3);
+  margin: 0;
+  color: var(--trade-text-2);
+  font-size: var(--trade-fs-small);
+}
+.or::before,
+.or::after { content: ""; flex: 1; height: 1px; background: var(--trade-line-strong); }
+
+/* ---- Computer (w-login): the brand panel on the left ---- */
+@media (min-width: 1024px) {
+  .layout { flex-direction: row; }
+  .brand {
+    flex: 0 0 43%; /* 620 of 1440 */
+    min-height: 100dvh;
+    position: sticky;
+    top: 0;
+    align-self: flex-start;
+    display: flex;
+    flex-direction: column;
+    justify-items: initial;
+    padding: 48px 56px 56px;
+  }
+  .brandBolt { width: 560px; right: -180px; top: auto; bottom: -140px; }
+  .back, .mark { display: none; }
+  .logo { position: relative; display: inline-flex; align-self: flex-start; border-radius: 4px; }
+  .wordmark { width: 130px; }
+  .art { width: min(320px, 70%); margin: auto; align-self: center; }
+  .line { position: relative; display: block; }
+  .lineTitle {
+    margin: 0;
+    max-width: 8em;
+    font-family: var(--trade-font-heading);
+    font-weight: 900;
+    font-variation-settings: var(--trade-display-axes);
+    font-size: 2.75rem;
+    line-height: 1.05;
+  }
+  .lineText { margin: var(--trade-space-3) 0 0; color: var(--trade-text-on-dark-2); }
+
+  .main { align-content: center; padding: var(--trade-space-16) var(--trade-space-12); }
+  .aside {
+    position: absolute;
+    top: var(--trade-space-8);
+    right: var(--trade-space-10);
+    display: block;
+    margin: 0;
+    font-size: var(--trade-fs-small);
+    color: var(--trade-text-2);
+  }
+  .aside a { color: var(--trade-link); font-weight: 700; text-decoration: none; }
+  .aside a:hover { text-decoration: underline; }
+  .title { font-size: 2.75rem; line-height: 1.05; max-width: 6em; }
+}

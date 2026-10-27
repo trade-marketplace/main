@@ -44,6 +44,7 @@ export async function loadShellViewer(viewer: Viewer | null, sources: ShellSourc
     firstName: viewer.firstName,
     lastName: extras?.lastName ?? null,
     email: viewer.email,
+    emailVerified: viewer.emailVerified,
     counts: { notifications: extras?.unreadNotifications ?? 0, messages: 0 },
   };
 }

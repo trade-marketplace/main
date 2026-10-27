@@ -22,7 +22,7 @@ import {
   type SignUpResult,
 } from "@/server/auth/account";
 import { prismaProfiles } from "@/server/auth/profiles";
-import { createSupabaseServerClient } from "@/server/supabase";
+import { createSupabaseServerClient, rememberSessionChoice } from "@/server/supabase";
 
 /** `useActionState` starts with null: nothing sent yet. */
 export type SignUpState = SignUpResult | null;
@@ -31,9 +31,9 @@ export type LogInState = LogInResult | null;
 const profiles = prismaProfiles();
 
 /** Supabase Auth acting through this request's cookies, or null until sign-in is set up. */
-async function authClient(): Promise<AuthClient | null> {
+async function authClient(options: { sessionOnly?: boolean } = {}): Promise<AuthClient | null> {
   try {
-    return (await createSupabaseServerClient()).auth;
+    return (await createSupabaseServerClient(options)).auth;
   } catch (error) {
     if (error instanceof SupabaseNotConfiguredError) return null;
     throw error;
@@ -63,12 +63,17 @@ export async function signUpAction(_previous: SignUpState, formData: FormData): 
   return result;
 }
 
-/** Log-in form fields: email, password, next (where to go back to). Goes there, or to the role's home. */
+/**
+ * Log-in form fields: email, password, next (where to go back to), remember ("Keep me logged in": "on" keeps the
+ * session for 30 days, anything else ends it with the browser). Goes to `next`, or to the role's home.
+ */
 export async function logInAction(_previous: LogInState, formData: FormData): Promise<LogInState> {
-  const auth = await authClient();
+  const sessionOnly = formData.get("remember") !== "on";
+  const auth = await authClient({ sessionOnly });
   if (!auth) return notSetUp(formData);
   const result = await logIn({ auth, profiles }, readLogInForm(formData));
   if (result.ok) {
+    await rememberSessionChoice(sessionOnly);
     refreshEverything();
     redirect(result.redirectTo);
   }
@@ -92,6 +97,7 @@ export async function logInAgainAction(_previous: LogInState, formData: FormData
 export async function logOutAction(): Promise<void> {
   const auth = await authClient();
   if (auth) await logOut(auth);
+  await rememberSessionChoice(false);
   refreshEverything();
   redirect("/");
 }
