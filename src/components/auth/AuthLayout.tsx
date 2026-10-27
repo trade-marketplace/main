@@ -28,10 +28,15 @@ export type AuthLayoutProps = {
   /** Details steps use the compact phone app bar from pub-signup-2. */
   detailsStep?: boolean;
   backHref?: string;
+  onBack?: () => void;
+  stepLabel?: string;
+  eyebrow?: ReactNode;
+  brandTitle?: ReactNode;
+  brandText?: ReactNode;
   children: ReactNode;
 };
 
-export function AuthLayout({ title, lede, art = "phone", wideTitle, aside, detailsStep, backHref = "/", children }: AuthLayoutProps) {
+export function AuthLayout({ title, lede, art = "phone", wideTitle, aside, detailsStep, backHref = "/", onBack, stepLabel = "Step 2 of 2", eyebrow, brandTitle, brandText, children }: AuthLayoutProps) {
   return (
     <div className={styles.layout} data-details={detailsStep || undefined}>
       <a href="#main" className={styles.skip}>
@@ -39,26 +44,26 @@ export function AuthLayout({ title, lede, art = "phone", wideTitle, aside, detai
       </a>
       <header className={styles.brand}>
         <BoltMark variant="hero" className={styles.brandBolt} />
-        <Link href={backHref} className={styles.back} aria-label={detailsStep ? "Back to account choice" : "Back to home"}>
+        <Link href={backHref} onClick={onBack ? (event) => { event.preventDefault(); onBack(); } : undefined} className={styles.back} aria-label={detailsStep ? "Back to account choice" : "Back to home"}>
           <Icon name="arrow_back" decorative />
         </Link>
         <Link href="/" className={styles.logo} aria-label="Trade Marketplace home">
           <Wordmark label={null} className={styles.wordmark} />
         </Link>
-        {detailsStep && <div className={styles.mobileHeading}><strong>{title}</strong><span>Step 2 of 2</span></div>}
+        {detailsStep && <div className={styles.mobileHeading}><strong>{title}</strong><span>{stepLabel}</span></div>}
         <BoltMark className={styles.mark} />
         <Image src={ART[art]} alt="" width={500} height={500} priority className={styles.art} sizes="(min-width: 1024px) 320px, 220px" />
         <div className={styles.line}>
           <p className={styles.lineTitle}>
-            Sorted in
-            <br />a flash.
+            {brandTitle ?? <>Sorted in<br />a flash.</>}
           </p>
-          <p className={styles.lineText}>Post any job free. Accept the price. Someone local sorts it.</p>
+          <p className={styles.lineText}>{brandText ?? "Post any job free. Accept the price. Someone local sorts it."}</p>
         </div>
       </header>
       <main id="main" tabIndex={-1} className={styles.main}>
         {aside && <p className={styles.aside}>{aside}</p>}
         <div className={styles.panel}>
+          {eyebrow && <p className={styles.desktopEyebrow}>{eyebrow}</p>}
           <h1 className={styles.title} data-wide={wideTitle || undefined}>
             {title}
           </h1>
