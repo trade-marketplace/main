@@ -49,9 +49,9 @@ export function CustomerSignup({ next, initialState = null, previewPending = fal
 
   useEffect(() => {
     if (!problem || attempt.count === 0) return;
-    const field = problem.error === "email-taken" || errors.email ? "email" : errors.firstName ? "name" : errors.phone ? "phone" : errors.terms ? "terms" : "password";
+    const field = problem.error === "email-taken" || errors.email ? "email" : errors.firstName || errors.lastName ? "name" : errors.phone ? "phone" : errors.terms ? "terms" : "password";
     formRef.current?.querySelector<HTMLInputElement>(`input[name="${field}"]`)?.focus();
-  }, [attempt.count, problem, errors.email, errors.firstName, errors.phone, errors.terms]);
+  }, [attempt.count, problem, errors.email, errors.firstName, errors.lastName, errors.phone, errors.terms]);
 
   const success = attempt.result?.ok && attempt.result.status === "check-email" ? attempt.result : null;
 
