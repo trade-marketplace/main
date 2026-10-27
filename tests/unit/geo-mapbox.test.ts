@@ -149,3 +149,15 @@ describe("Mapbox address search", () => {
     ).rejects.toThrow(/wasn't a list of places/);
   });
 });
+
+describe("signup suburb search", () => {
+  it("requests suburb/town feature types and handles their different context shapes", async () => {
+    const fetch = fakeFetch(() => json({ features: [
+      feature({ feature_type: "locality", name: "Windsor", context: { place: { name: "Invercargill" } } }),
+      feature({ feature_type: "place", name: "Invercargill", context: {} }),
+    ] }));
+    const result = await createMapboxAddressSearch({ accessToken: "pk.test", fetch, featureTypes: ["locality", "neighborhood", "place"] }).suggest("Win", options);
+    expect(new URL(String(fetch.mock.calls[0][0])).searchParams.get("types")).toBe("locality,neighborhood,place");
+    expect(result.map((place) => [place.suburb, place.city])).toEqual([["Windsor", "Invercargill"], ["Invercargill", "Invercargill"]]);
+  });
+});
