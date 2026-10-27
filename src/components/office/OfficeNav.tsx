@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useRef } from "react";
 
 import { NavCount } from "@/components/app/AppNav";
-import { ACCOUNT_PATH, countText, fullName, HELP_PATH } from "@/components/app/app-links";
+import { countText, fullName, HELP_PATH } from "@/components/app/app-links";
 import { BoltMark } from "@/components/BoltMark";
 import { Button } from "@/components/Button";
 import { Icon } from "@/components/Icon";
@@ -16,10 +16,10 @@ import { useTabIndicator } from "@/lib/motion/hooks";
 import { logOutAction } from "@/server/auth/actions";
 
 import type { OfficeShellViewer } from "./OfficeShellView";
-import { currentOfficeLink, OFFICE_NAV, officeCountLabel, officeHref, type OfficeNavPreview } from "./office-links";
+import { currentOfficeLink, OFFICE_NAV, officeCountLabel, officeHref, type OfficeCounts, type OfficeNavPreview } from "./office-links";
 import styles from "./office.module.css";
 
-type Props = { viewer: OfficeShellViewer; preview?: OfficeNavPreview };
+type Props = { viewer: OfficeShellViewer; counts: OfficeCounts; preview?: OfficeNavPreview };
 
 function AccountMenu({ viewer, defaultOpen }: { viewer: OfficeShellViewer; defaultOpen?: boolean }) {
   const formRef = useRef<HTMLFormElement>(null);
@@ -40,8 +40,6 @@ function AccountMenu({ viewer, defaultOpen }: { viewer: OfficeShellViewer; defau
         )}
         header={<><b className={styles.menuName}>{name}</b><span className={styles.menuEmail}>{viewer.email}</span></>}
       >
-        {/* The office Account destination is awaiting the clarification on #85; retain the shared route meanwhile. */}
-        <MenuItem icon="person" href={ACCOUNT_PATH}>Account</MenuItem>
         <MenuItem icon="help" href={HELP_PATH}>Help</MenuItem>
         <MenuSeparator />
         <MenuItem icon="logout" tone="danger" onSelect={() => formRef.current?.requestSubmit()}>Log out</MenuItem>
@@ -51,7 +49,7 @@ function AccountMenu({ viewer, defaultOpen }: { viewer: OfficeShellViewer; defau
   );
 }
 
-export function OfficeNav({ viewer, preview }: Props) {
+export function OfficeNav({ viewer, counts, preview }: Props) {
   const pathname = usePathname();
   const current = currentOfficeLink(preview?.at ?? pathname);
   const linksRef = useRef<HTMLUListElement>(null);
@@ -67,17 +65,20 @@ export function OfficeNav({ viewer, preview }: Props) {
         <div className={styles.modeLabel}>Office</div>
         <nav aria-label="Office">
           <ul ref={linksRef} className={styles.links}>
-            {OFFICE_NAV.map((link) => (
-              <li key={link.key}>
-                <Link href={officeHref(preview, link.href)} className={styles.link}
-                  aria-current={link === current ? "page" : undefined}
-                  aria-label={officeCountLabel(link.label, viewer.counts[link.key])}>
-                  <Icon name={link.icon} fill={link === current} decorative className={styles.navIcon} />
-                  <span className={styles.linkLabel}>{link.label}</span>
-                  <NavCount count={viewer.counts[link.key]} className={styles.count} />
-                </Link>
-              </li>
-            ))}
+            {OFFICE_NAV.map((link) => {
+              const count = link.count ? counts[link.count] : 0;
+              return (
+                <li key={link.key}>
+                  <Link href={officeHref(preview, link.href)} className={styles.link}
+                    aria-current={link === current ? "page" : undefined}
+                    aria-label={officeCountLabel(link.label, count)}>
+                    <Icon name={link.icon} fill={link === current} decorative className={styles.navIcon} />
+                    <span className={styles.linkLabel}>{link.label}</span>
+                    <NavCount count={count} className={styles.count} />
+                  </Link>
+                </li>
+              );
+            })}
             <li aria-hidden="true" className={styles.indicatorHost}>
               <span className={`tm-tab-indicator ${styles.indicator}`} data-tab-indicator data-shown={Boolean(current)} />
             </li>
@@ -94,14 +95,17 @@ export function OfficeNav({ viewer, preview }: Props) {
                 Office
               </Button>
             )}>
-            {OFFICE_NAV.map((link) => (
-              <MenuItem key={link.key} icon={link.icon} href={officeHref(preview, link.href)} aria-current={link === current ? "page" : undefined}>
-                <span className={styles.mobileLink}>
-                  <span>{link.label}{countText(viewer.counts[link.key]) && <span className={styles.visuallyHidden}>, {countText(viewer.counts[link.key])} waiting</span>}</span>
-                  <NavCount count={viewer.counts[link.key]} className={styles.count} />
-                </span>
-              </MenuItem>
-            ))}
+            {OFFICE_NAV.map((link) => {
+              const count = link.count ? counts[link.count] : 0;
+              return (
+                <MenuItem key={link.key} icon={link.icon} href={officeHref(preview, link.href)} aria-current={link === current ? "page" : undefined}>
+                  <span className={styles.mobileLink}>
+                    <span>{link.label}{countText(count) && <span className={styles.visuallyHidden}>, {countText(count)} waiting</span>}</span>
+                    <NavCount count={count} className={styles.count} />
+                  </span>
+                </MenuItem>
+              );
+            })}
           </Menu>
         </nav>
         <AccountMenu viewer={viewer} defaultOpen={preview?.accountOpen} />

@@ -49,6 +49,12 @@ test.describe("/dev/components/office-shell", () => {
         if (desktop) {
           await expect(officeNav(page)).toBeVisible();
           await expect(officeNav(page).getByRole("link")).toHaveCount(9);
+          if (query.startsWith("?counts=many")) {
+            await expect(officeNav(page).getByRole("link", { name: /waiting/ })).toHaveCount(3);
+            for (const name of ["All jobs", "Customers", "Payouts", "Payments", "Reviews", "Settings"]) {
+              await expect(officeNav(page).getByRole("link", { name, exact: true })).not.toContainText(/\d/);
+            }
+          }
         }
         if (desktop && query === "?account=open&name=long") {
           const accountMenu = page.getByRole("menu", { name: "Account", exact: true });
@@ -64,6 +70,10 @@ test.describe("/dev/components/office-shell", () => {
             await expect(tradies).toBeVisible();
             await expect(tradies).toHaveAttribute("aria-current", "page");
             await expect(tradies.getByText("99+", { exact: true })).toBeVisible();
+            await expect(menu.getByRole("menuitem", { name: /waiting/ })).toHaveCount(3);
+            for (const name of ["All jobs", "Customers", "Payouts", "Payments", "Reviews", "Settings"]) {
+              await expect(menu.getByRole("menuitem", { name, exact: true })).not.toContainText(/\d/);
+            }
           } else if (query === "?counts=none") {
             await expect(menu.getByRole("menuitem", { name: /waiting/ })).toHaveCount(0);
           }
@@ -168,7 +178,7 @@ test.describe("/dev/components/office-shell", () => {
   });
 
   for (const width of [390, 1440]) {
-    test(`${width}px: the avatar menu has Account, Help and Log out and restores keyboard focus`, async ({ page }) => {
+    test(`${width}px: the avatar menu has only Help and Log out and restores keyboard focus`, async ({ page }) => {
       await page.setViewportSize({ width, height: 900 });
       await page.goto(url());
       const avatar = page.getByRole("button", { name: /^Account:/ });
@@ -177,8 +187,10 @@ test.describe("/dev/components/office-shell", () => {
       const menu = page.getByRole("menu", { name: "Account", exact: true });
       await expect(menu).toBeVisible();
       const items = menu.getByRole("menuitem");
-      await expect(items).toHaveCount(3);
-      for (const [index, name] of ["Account", "Help", "Log out"].entries()) await expect(items.nth(index)).toHaveAccessibleName(name);
+      await expect(items).toHaveCount(2);
+      for (const [index, name] of ["Help", "Log out"].entries()) await expect(items.nth(index)).toHaveAccessibleName(name);
+      await expect(menu.getByRole("menuitem", { name: "Account", exact: true })).toHaveCount(0);
+      await expect(menu.locator('a[href="/profile"], a[href="/admin/settings"]')).toHaveCount(0);
       await expect(items.first()).toBeFocused();
       if (width === 1440) {
         await expect(menu.locator("..")).toBeInViewport({ ratio: 1 });
@@ -202,9 +214,11 @@ test.describe("/dev/components/office-shell", () => {
     await expect(officeNav(page).getByRole("link", { name: /waiting/ })).toHaveCount(0);
     await page.goto(url("?counts=some"));
     await expect(officeNav(page).getByRole("link", { name: /Queues, \d+ waiting/ })).toBeVisible();
+    await expect(officeNav(page).getByRole("link", { name: /waiting/ })).toHaveCount(3);
     await page.goto(url("?counts=many&test=off"));
     await expect(page.getByText("Test mode.")).toHaveCount(0);
     await expect(officeNav(page).getByRole("link", { name: "Queues, 99+ waiting", exact: true })).toBeVisible();
+    await expect(officeNav(page).getByRole("link", { name: /waiting/ })).toHaveCount(3);
     await noOverflow(page);
     await expectNoA11yViolations(page);
   });

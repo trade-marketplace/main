@@ -6,11 +6,11 @@ import { OFFICE_NAV, type OfficeCounts } from "@/components/office/office-links"
 import styles from "./office-shell.module.css";
 
 const BASE = "/dev/components/office-shell";
-const NONE: OfficeCounts = { queues: 0, jobs: 0, tradies: 0, customers: 0, payouts: 0, payments: 0, reviews: 0, support: 0, settings: 0 };
+const NONE: OfficeCounts = { queues: 0, tradies: 0, support: 0 };
 const COUNTS: Record<string, OfficeCounts> = {
   none: NONE,
   some: { ...NONE, queues: 9, tradies: 3, support: 2 },
-  many: { ...NONE, queues: 135, tradies: 104, payouts: 101, support: 120 },
+  many: { queues: 135, tradies: 104, support: 120 },
 };
 
 type Props = { counts: "none" | "some" | "many"; at: string; menuOpen: boolean; accountOpen: boolean; testMode: boolean; longName: boolean };
@@ -27,10 +27,9 @@ export function OfficeShellDemo(props: Props) {
     role: "ADMIN", firstName: longName ? "Alexandria-Anahera" : "Matt",
     lastName: longName ? "Te Aho-Williams-Montgomery" : "Larsen",
     email: longName ? "alexandria.anahera.teaho.williams.montgomery@demo.test" : "office@demo.test",
-    counts: COUNTS[counts],
   };
   return (
-    <OfficeShellView viewer={viewer} testMode={testMode} preview={{ at, base: `${BASE}?${params}`, menuOpen, accountOpen }}>
+    <OfficeShellView viewer={viewer} counts={COUNTS[counts]} testMode={testMode} preview={{ at, base: `${BASE}?${params}`, menuOpen, accountOpen }}>
       <div className={styles.content}>
         <h1 className={styles.title}>Office shell</h1>
         <p className={styles.lede}>Navigation preview · example names and counts</p>
