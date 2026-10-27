@@ -66,12 +66,13 @@ export function PhotoViewer({ photos, index, onIndexChange, onClose, label = "Ph
         onClose();
       }}
       onClick={(event) => {
-        // A click on the dark area around the photo closes it.
-        if (event.target === event.currentTarget) onClose();
+        // A click on the dark area around the photo (the dialog, or the full-size layer inside it) closes it.
+        const target = event.target as HTMLElement;
+        if (target === event.currentTarget || target.dataset.backdrop === "true") onClose();
       }}
     >
       {open && photo && (
-        <div className={styles.viewerInner}>
+        <div className={styles.viewerInner} data-backdrop="true">
           <p className={styles.viewerCount} aria-live="polite">
             {current + 1} of {photos.length}
           </p>

@@ -53,7 +53,10 @@ test.describe("/dev/components/media", () => {
     await expect(region.getByRole("progressbar", { name: "Uploading kitchen.jpg" })).toBeVisible();
     await expect(region.getByRole("alert")).toContainText("“plan.pdf” isn’t a photo we can use.");
     await expect(region.getByText("5 of 6 · JPG, PNG or HEIC up to 10 MB each")).toBeVisible();
-    await expect(region.getByRole("progressbar", { name: "Uploading kitchen.jpg" })).toBeHidden({ timeout: 5000 });
+    // Done: the tick pops (M18), then the photo is clear.
+    await expect(region.getByRole("img", { name: "kitchen.jpg uploaded" })).toBeVisible({ timeout: 5000 });
+    await expect(region.getByRole("progressbar", { name: "Uploading kitchen.jpg" })).toBeHidden();
+    await expect(region.getByRole("img", { name: "kitchen.jpg uploaded" })).toBeHidden({ timeout: 3000 });
   });
 
   test("Retry starts a failed upload again; remove has Undo", async ({ page }) => {
@@ -97,6 +100,12 @@ test.describe("/dev/components/media", () => {
     await page.keyboard.press("Escape");
     await expect(viewer).toBeHidden();
     await expect(thumb).toBeFocused();
+
+    // A click on the dark area around the photo closes it too.
+    await thumb.click();
+    await expect(viewer).toBeVisible();
+    await page.mouse.click(30, 300);
+    await expect(viewer).toBeHidden();
   });
 
   test("star input works by keyboard and says the chosen words", async ({ page }) => {

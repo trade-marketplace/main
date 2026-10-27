@@ -6,7 +6,7 @@
 //
 // It holds no files itself: the page owns the list (and the uploading), and gets onAdd / onRemove / onRetry.
 //   <PhotoPicker photos={photos} onAdd={upload} onRemove={remove} onRetry={retry} problems={problems} />
-import { useId, useRef } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 import { Icon } from "@/components/Icon";
 import { MAX_PHOTOS, PHOTO_ACCEPT, photoCountLine } from "@/lib/media";
@@ -40,6 +40,30 @@ export type PhotoPickerProps = {
   className?: string;
 };
 
+/** How long the done tick stays after an upload finishes (M18: "a tick pops when done"). */
+export const DONE_TICK_MS = 1200;
+
+/** The ring while uploading; when it finishes, the tick pops and stays a moment, then the photo is clear. */
+function UploadOverlay({ photo }: { photo: PickedPhoto }) {
+  const [justDone, setJustDone] = useState(false);
+  const [previous, setPrevious] = useState(photo.status);
+  if (previous !== photo.status) {
+    setPrevious(photo.status);
+    setJustDone(previous === "uploading" && photo.status === "done");
+  }
+  useEffect(() => {
+    if (!justDone) return;
+    const timer = window.setTimeout(() => setJustDone(false), DONE_TICK_MS);
+    return () => window.clearTimeout(timer);
+  }, [justDone]);
+  if (photo.status !== "uploading" && !justDone) return null;
+  return (
+    <span className={styles.tileCover}>
+      <ProgressRing status={photo.status === "uploading" ? "uploading" : "done"} progress={photo.progress} label={photo.name} />
+    </span>
+  );
+}
+
 export function PhotoPicker({
   photos,
   onAdd,
@@ -62,11 +86,7 @@ export function PhotoPicker({
           <li key={photo.id} className={`${styles.tile} tm-anim-thumb`} data-status={photo.status}>
             {/* eslint-disable-next-line @next/next/no-img-element -- local previews (object URLs) */}
             <img src={photo.src} alt={`Photo ${index + 1}: ${photo.name}`} className={styles.tileImg} />
-            {photo.status === "uploading" && (
-              <span className={styles.tileCover}>
-                <ProgressRing status="uploading" progress={photo.progress} label={photo.name} />
-              </span>
-            )}
+            <UploadOverlay photo={photo} />
             {photo.status === "failed" && (
               <span className={styles.failed}>
                 <span>Failed ·</span>
