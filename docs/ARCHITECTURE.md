@@ -502,3 +502,38 @@ later verification/job-posting work (#106, #116–#120), as Matt clarified on #1
 before confirmation. The verification flow and future posting/claiming handlers must enforce confirmed email
 before job actions. The current role guards do not enforce that check; independent ownership confirmation and
 job-action enforcement are tracked in #353 alongside #106.
+
+### Tradie sign-up details (#105)
+
+`/signup/tradie` extends the shared signup form from #104. Account details come first; the trade step keeps them
+in React state while the worker selects one or more launch trades, enters restricted-trade numbers, picks a work
+suburb and a 10/25/50 km radius, and accepts linked worker terms. Going back, errors and offline/reconnect preserve
+the details. A failed account creation clears the password and returns to the account step; field validation
+before creation keeps the trade step open with its inline error/example.
+
+`src/lib/auth/worker-signup.ts` is the shared trade/format config and server/client validation. Syntax accepts
+spacing/case variations, EWRB class/registration numbers and EW practitioner IDs, PGDB's five-digit number (with
+optional PGD/PGDB), and the six-digit LBP number (with optional BP). Sources:
+[EWRB](https://www.ewrb.govt.nz/about-us/electron-newsletter/electron-issue-115/),
+[PGDB](https://www.pgdb.co.nz/manage_your_licence/),
+[LBP form](https://www.lbp.govt.nz/assets/lbp/documents/forms/site-application-form.pdf).
+These are syntax checks, not verification. Other has no licence field or licence record. The office checks
+restricted licences later; signup never grants a badge, availability or a verified licence.
+
+The existing `signUpAction` validates everything before Supabase creation. `prismaProfiles().ensureWorker()` writes
+`worker_profiles`, selected `worker_trades` and PENDING `licences` in one transaction using existing columns. Metadata
+keeps the validated signup details so login can repair an interrupted create. The write only creates missing worker
+data and never overwrites an existing worker's settings, licence decisions or verification from editable metadata.
+
+Public `searchSignupAreasAction` uses the existing server Mapbox provider with suburb/town feature types. Results
+include coordinates; editing a chosen suburb clears stale coordinates. Requests are debounced and late responses
+ignored. Without MAPBOX_ACCESS_TOKEN, or when lookup fails, the worker can type the suburb by hand with no invented
+location. Existing address-search callers still request address features. Tests use fakes; runtime browser checks
+use no token or Supabase connection.
+
+`/dev/components/signup-tradie?state=default|licence-error|other|all-trades|email-taken|invalid|unavailable|try-later|loading|offline|success`
+previews every state behind the shared guard. The all-trades preview provides example suggestions for keyboard QA;
+Other shows manual-area fallback and loading shows both the action and area-lookup loading state.
+
+Verification/setup/claim flows remain their own issues. Legal links use the canonical `/legal/tradie-terms` and
+`/legal/privacy` routes; actual lawyer-approved legal content remains #208/#216. Signup does not invent contracts.

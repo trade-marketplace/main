@@ -34,6 +34,7 @@ function fakeProfiles(initial: ProfileRow[] = []) {
       rows.set(row.id, row);
       return row;
     }),
+    ensureWorker: vi.fn(async () => {}),
     markEmailVerified: vi.fn(async (id: string, at: Date) => {
       const row = { ...rows.get(id)!, emailVerifiedAt: at };
       rows.set(id, row);
@@ -72,6 +73,7 @@ const goodSignUp: SignUpInput = {
   role: "CUSTOMER",
   phone: "021 555 0192",
   terms: true,
+  worker: { trades: ["OTHER"], licences: {}, baseSuburb: "Invercargill", radiusKm: "25", point: null },
 };
 
 describe("signUp", () => {
@@ -382,5 +384,33 @@ describe("customer details (#104)", () => {
     data.set("terms", "on");
     data.set("next", "/jobs/new?step=review&draft=demo");
     expect(readSignUpForm(data)).toMatchObject({ firstName: "Aroha", lastName: "Te Rangi", phone: "021 555 0192", terms: true, next: "/jobs/new?step=review&draft=demo" });
+  });
+});
+
+describe("tradie signup (#105)", () => {
+  it("saves the chosen trades, pending numbers and area through the existing account service", async () => {
+    const profiles = fakeProfiles();
+    const auth = fakeAuth();
+    const worker = { trades: ["ELECTRICAL", "OTHER"], licences: { ELECTRICAL: "e 12345" }, baseSuburb: "Windsor", radiusKm: "50", point: { lat: -46.391, lng: 168.367 } };
+    expect(await signUp({ auth, profiles }, { ...goodSignUp, role: "TRADIE", worker })).toMatchObject({ ok: true });
+    const details = { ...worker, radiusKm: 50, licences: { ELECTRICAL: "E 12345" } };
+    expect(profiles.ensureWorker).toHaveBeenCalledWith(user().id, details);
+    expect(auth.signUp).toHaveBeenCalledWith(expect.objectContaining({ options: { data: expect.objectContaining({ role: "TRADIE", worker_signup: details }) } }));
+  });
+
+  it("does not create an Auth user when a restricted trade's number is malformed", async () => {
+    const auth = fakeAuth();
+    expect(await signUp({ auth, profiles: fakeProfiles() }, { ...goodSignUp, role: "TRADIE", worker: { ...goodSignUp.worker!, trades: ["GAS"], licences: { GAS: "invalid" } } })).toMatchObject({ ok: false, error: "invalid", fieldErrors: { licence_GAS: expect.stringContaining("PGDB 44120") } });
+    expect(auth.signUp).not.toHaveBeenCalled();
+  });
+
+  it("repairs interrupted worker creation on the next login, without claiming signup succeeded prematurely", async () => {
+    const profiles = fakeProfiles();
+    profiles.ensureWorker.mockRejectedValueOnce(new Error("database failed"));
+    vi.spyOn(console, "error").mockImplementationOnce(() => {});
+    expect(await signUp({ auth: fakeAuth(), profiles }, { ...goodSignUp, role: "TRADIE" })).toMatchObject({ error: "unavailable" });
+    const auth = fakeAuth({ signInWithPassword: vi.fn(async () => ({ data: { user: user({ user_metadata: { worker_signup: goodSignUp.worker } }), session: {} }, error: null })) });
+    expect(await logIn({ auth, profiles }, { email: "sam@example.nz", password: goodSignUp.password })).toMatchObject({ ok: true, role: "TRADIE" });
+    expect(profiles.ensureWorker).toHaveBeenCalledTimes(2);
   });
 });

@@ -5,6 +5,7 @@ import { z } from "zod";
 import { PASSWORD_MESSAGES, passwordMessage } from "@/lib/auth/password";
 import { afterLoginPath } from "@/lib/auth/routes";
 import { normaliseMobile } from "@/lib/auth/signup";
+import { parseWorkerSignup, readWorkerSignupForm, workerSignupValues, type WorkerSignupDetails, type WorkerSignupField, type WorkerSignupInput } from "@/lib/auth/worker-signup";
 import { SupabaseNotConfiguredError } from "@/lib/supabase/config";
 import type { Role } from "@/lib/mode";
 import type { ProfileRow } from "@/server/auth/viewer";
@@ -56,6 +57,8 @@ export type ProfileStore = {
   find(id: string): Promise<ProfileRow | null>;
   create(profile: NewProfile): Promise<ProfileRow>;
   markEmailVerified(id: string, at: Date): Promise<ProfileRow>;
+  /** Creates pending worker details once. Never changes existing verification or licence decisions. */
+  ensureWorker?(id: string, details: WorkerSignupDetails): Promise<void>;
 };
 
 export type AccountDeps = { auth: AuthClient; profiles: ProfileStore };
@@ -64,7 +67,7 @@ export type AccountDeps = { auth: AuthClient; profiles: ProfileStore };
 
 type FieldErrors<Field extends string> = Partial<Record<Field, string>>;
 
-export type SignUpField = "email" | "password" | "firstName" | "lastName" | "role" | "phone" | "terms";
+export type SignUpField = "email" | "password" | "firstName" | "lastName" | "role" | "phone" | "terms" | WorkerSignupField;
 type LogInField = "email" | "password";
 
 /**
@@ -131,6 +134,7 @@ export type SignUpInput = {
   role: string;
   phone: string;
   terms: boolean;
+  worker?: WorkerSignupInput;
   next?: string;
 };
 
@@ -144,6 +148,7 @@ export function readSignUpForm(formData: FormData): SignUpInput {
     phone: text(formData, "phone"),
     terms: text(formData, "terms") === "on",
     role: text(formData, "role") || "CUSTOMER",
+    ...(text(formData, "role") === "TRADIE" ? { worker: readWorkerSignupForm(formData) } : {}),
     next: text(formData, "next"),
   };
 }
@@ -189,6 +194,7 @@ export async function ensureProfile(
   profiles: ProfileStore,
   user: AuthUserLike,
   fallback: Partial<Pick<NewProfile, "role" | "firstName" | "lastName" | "phone">> = {},
+  worker?: WorkerSignupDetails,
 ): Promise<ProfileRow> {
   const confirmedAt = user.email_confirmed_at ? new Date(user.email_confirmed_at) : null;
   let profile = await profiles.find(user.id);
@@ -213,6 +219,14 @@ export async function ensureProfile(
     }
   }
   if (confirmedAt && !profile.emailVerifiedAt) profile = await profiles.markEmailVerified(user.id, confirmedAt);
+  if (profile.role === "TRADIE") {
+    const fromMetadata = parseWorkerSignup(user.user_metadata?.worker_signup);
+    const details = worker ?? (fromMetadata.ok ? fromMetadata.details : null);
+    if (details) {
+      if (!profiles.ensureWorker) throw new Error("Worker profile storage is unavailable");
+      await profiles.ensureWorker(user.id, details);
+    }
+  }
   return profile;
 }
 
@@ -223,11 +237,13 @@ function isNotConfigured(error: unknown): boolean {
 // ---------------------------------------------------------------- sign up, log in, log out
 
 export async function signUp(deps: AccountDeps, input: SignUpInput): Promise<SignUpResult> {
-  const values = { email: input.email.trim(), firstName: input.firstName, lastName: input.lastName, role: input.role, phone: input.phone, terms: input.terms ? "on" : "" };
+  const values = { email: input.email.trim(), firstName: input.firstName, lastName: input.lastName, role: input.role, phone: input.phone, terms: input.terms ? "on" : "", ...(input.role === "TRADIE" ? workerSignupValues(input.worker) : {}) };
   const parsed = signUpSchema.safeParse(input);
   const fieldErrors: FieldErrors<SignUpField> = parsed.success ? {} : fieldErrorsOf<SignUpField>(parsed.error);
   const weak = passwordMessage(input.password, parsed.success ? parsed.data.email : input.email);
   if (weak) fieldErrors.password ??= weak;
+  const worker = input.role === "TRADIE" ? parseWorkerSignup(input.worker) : null;
+  if (worker && !worker.ok) Object.assign(fieldErrors, worker.errors);
   if (!parsed.success || Object.keys(fieldErrors).length > 0) {
     return { ok: false, error: "invalid", fieldErrors, values };
   }
@@ -240,7 +256,7 @@ export async function signUp(deps: AccountDeps, input: SignUpInput): Promise<Sig
       email,
       password,
       // Kept by Supabase with the user, so a profile can be rebuilt if saving it below fails (ensureProfile).
-      options: { data: { first_name: firstName, last_name: lastName, role, phone, terms_accepted: true } },
+      options: { data: { first_name: firstName, last_name: lastName, role, phone, terms_accepted: true, ...(worker?.ok ? { worker_signup: worker.details } : {}) } },
     });
   } catch {
     return { ok: false, error: "unavailable", values };
@@ -264,7 +280,7 @@ export async function signUp(deps: AccountDeps, input: SignUpInput): Promise<Sig
   }
 
   try {
-    await ensureProfile(deps.profiles, data.user, { role, firstName, lastName, phone });
+    await ensureProfile(deps.profiles, data.user, { role, firstName, lastName, phone }, worker?.ok ? worker.details : undefined);
   } catch (profileError) {
     console.error("Sign-up: saving the profile failed; it will be created on first log-in.", profileError);
     return { ok: false, error: "unavailable", values };

@@ -30,9 +30,10 @@ export const DEFAULT_TIMEOUT_MS = 3000;
 /** Address search from the environment: Mapbox when MAPBOX_ACCESS_TOKEN is set, else none (typed addresses). */
 export function getAddressSearchProvider(
   env: Record<string, string | undefined> = process.env,
+  featureTypes?: readonly ("address" | "locality" | "neighborhood" | "place")[],
 ): AddressSearchProvider | null {
   const { mapbox } = parseEnv(env);
-  return mapbox.enabled ? createMapboxAddressSearch({ accessToken: mapbox.accessToken }) : null;
+  return mapbox.enabled ? createMapboxAddressSearch({ accessToken: mapbox.accessToken, featureTypes }) : null;
 }
 
 /**

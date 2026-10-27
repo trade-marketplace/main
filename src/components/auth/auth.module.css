@@ -271,3 +271,13 @@
   .layout[data-details] .main { padding-top: var(--trade-space-16); }
   .layout[data-details] .title { position: static; width: auto; height: auto; overflow: visible; clip-path: none; }
 }
+
+/* Tradie details (#105): account then trade fields share one action and keep their client state between steps. */
+.accountFields, .workerFields { display: grid; gap: var(--trade-space-4); min-width: 0; }
+.accountFields[hidden], .tradeStepFields[hidden], .consent[hidden] { display: none; }
+.detailsProgress span { background: var(--trade-line); }
+.detailsProgress span[data-active] { background: var(--trade-action); }
+.desktopEyebrow { display: none; }
+@media (min-width: 1024px) {
+  .desktopEyebrow { display: block; margin: 0 0 var(--trade-space-2); color: var(--trade-text-2); font-size: var(--trade-fs-caption); font-weight: 700; }
+}

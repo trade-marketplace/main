@@ -20,6 +20,7 @@ const named = z.object({ name: z.string() }).nullish();
 const feature = z.object({
   properties: z.object({
     mapbox_id: z.string(),
+    feature_type: z.string().optional(),
     name: z.string(),
     full_address: z.string().nullish(),
     place_formatted: z.string().nullish(),
@@ -42,6 +43,7 @@ const response = z.object({ features: z.array(z.unknown()) });
 export function createMapboxAddressSearch(config: {
   accessToken: string;
   fetch?: typeof fetch;
+  featureTypes?: readonly ("address" | "locality" | "neighborhood" | "place")[];
 }): AddressSearchProvider {
   const fetchImpl = config.fetch ?? fetch;
 
@@ -54,7 +56,7 @@ export function createMapboxAddressSearch(config: {
         // Limited to NZ, nearest to the coverage area first.
         country: "nz",
         proximity: `${options.near.lng},${options.near.lat}`,
-        types: "address",
+        types: config.featureTypes?.join(",") || "address",
         autocomplete: "true",
         language: "en",
         limit: String(options.limit),
@@ -90,8 +92,8 @@ export function createMapboxAddressSearch(config: {
 }
 
 function toSuggestion({ properties: p }: z.infer<typeof feature>): AddressSuggestion[] {
-  const city = p.context?.place?.name;
-  const suburb = p.context?.locality?.name ?? p.context?.neighborhood?.name ?? city;
+  const city = p.context?.place?.name ?? (p.feature_type === "place" ? p.name : undefined);
+  const suburb = p.feature_type === "locality" || p.feature_type === "neighborhood" ? p.name : p.context?.locality?.name ?? p.context?.neighborhood?.name ?? city;
   if (!city || !suburb) return [];
   return [
     {
