@@ -1,0 +1,51 @@
+/* /dev/components/app-shell (dev only). Page content inside the app shell; the shell brings its own styles.
+   Tokens only: no hex values. */
+
+.wrap {
+  max-width: var(--trade-content-max);
+  margin: 0 auto;
+  padding: var(--trade-space-8) var(--trade-inset-browse) var(--trade-space-12);
+}
+
+.eyebrow {
+  margin: 0 0 var(--trade-space-2);
+  font-size: var(--trade-fs-caption);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 800;
+  color: var(--trade-link);
+}
+.title {
+  margin: 0;
+  font-family: var(--trade-font-heading);
+  font-weight: 900;
+  font-variation-settings: var(--trade-display-axes);
+  font-size: var(--trade-fs-title);
+  line-height: var(--trade-lh-title);
+  overflow-wrap: anywhere;
+}
+.lede { margin: var(--trade-space-3) 0 0; max-width: var(--trade-read-max); color: var(--trade-text-2); }
+.current { margin: var(--trade-space-4) 0 0; font-size: var(--trade-fs-small); overflow-wrap: anywhere; }
+
+.pickNav { display: flex; flex-wrap: wrap; align-items: center; gap: var(--trade-space-2); margin-top: var(--trade-space-4); }
+.pickLabel { min-width: 5.5rem; font-weight: 700; font-size: var(--trade-fs-small); }
+.pick {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--trade-tap);
+  padding: 0 var(--trade-space-5);
+  border-radius: var(--trade-radius-pill);
+  color: var(--trade-text);
+  font-weight: 700;
+  font-size: var(--trade-fs-small);
+  text-decoration: none;
+  box-shadow: inset 0 0 0 2px var(--trade-line-strong);
+}
+.pick:hover { text-decoration: underline; }
+.pick[aria-current="page"] { background: var(--trade-signature); color: var(--trade-on-signature); box-shadow: none; }
+
+.actions { display: flex; flex-wrap: wrap; gap: var(--trade-space-3); margin-top: var(--trade-space-6); }
+
+.heading { margin: var(--trade-space-8) 0 var(--trade-space-3); font-size: var(--trade-fs-section); }
+.list { margin: 0; padding-left: var(--trade-space-5); display: grid; gap: var(--trade-space-2); max-width: var(--trade-read-max); }
+.filler { max-width: var(--trade-read-max); color: var(--trade-text-2); }
