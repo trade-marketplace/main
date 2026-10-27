@@ -499,7 +499,9 @@ behind `guardDevPage()` as usual. Previews render states only; submission still 
 The exact safe `?next=` path survives the choice page, details, login and recovery links. Signup never clears or
 rewrites the job wizard's browser storage. Automatic draft publication after email confirmation belongs to the
 later verification/job-posting work (#106, #116–#120), as Matt clarified on #104. A signup session may proceed
-before confirmation; existing server guards still require confirmed email to post or take a job.
+before confirmation. The verification flow and future posting/claiming handlers must enforce confirmed email
+before job actions. The current role guards do not enforce that check; independent ownership confirmation and
+job-action enforcement are tracked in #353 alongside #106.
 
 ### Tradie sign-up details (#105)
 
