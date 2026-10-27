@@ -3,6 +3,10 @@
 /* 380px in the mockup. The kit's sm dialog is 460px: `dialog.` outranks its one-class width. */
 dialog.dialog { width: min(400px, calc(100% - 2 * var(--trade-inset-browse))); }
 
+/* The × sits in the corner beside the icon tile, as in the mockup, so the title keeps the full width (one line). */
+dialog.dialog > div { position: relative; }
+dialog.dialog span:has(> span > button[aria-label="Close"]) { position: absolute; top: 20px; right: 20px; margin: 0; }
+
 /* 22px in the mockup (24px is the nearest token), so the title fits on one line. `h2[tabindex]` outranks the kit's 28px `.dialog .title`. */
 .dialog h2[tabindex] { font-size: var(--trade-fs-heading); line-height: var(--trade-lh-heading); }
 

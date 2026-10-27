@@ -2,7 +2,8 @@
 // The session-expired dialog (B07, #108): mockup w-modals (“Dialogs”) in docs/design/pages.html. When a protected
 // server action answers `session-expired` (src/lib/auth/results.ts), the page shows this over itself instead of
 // leaving: “You’ve been logged out” → Log in again → email and password, right here. Logging in keeps the page
-// and whatever was typed, then sends the form that failed again. Esc, the scrim and swiping do nothing.
+// and whatever was typed, then sends the form that failed again. The × goes to the home page, signed out; Esc,
+// the scrim and swiping do nothing.
 // How to use it: docs/components/session-expired.md. Every state, live: /dev/components/session-expired.
 //
 //   <SessionExpiredProvider logIn={logInAgainAction} email={viewer.email} role={viewer.role}>  (the shells do this)
@@ -40,8 +41,6 @@ export type LogInAgain = (previous: LogInAgainState, formData: FormData) => Prom
 
 export const SESSION_EXPIRED_COPY = {
   title: "You’ve been logged out",
-  text: "For your security. Log in again and you’ll be right back here.",
-  draft: "Your draft is saved.",
   start: "Log in again",
   submit: "Log in",
   notYou: "Not you? Log in as someone else",
@@ -105,10 +104,10 @@ export type SessionExpiredDialogProps = {
   logIn: LogInAgain;
   /** Called once the person is logged in again, with the answer from `logIn`. Close the dialog here. */
   onLoggedIn: (result: Extract<LogInResult, { ok: true }>) => void;
+  /** The ×: they'd rather not log in. Close the dialog and leave the page here. */
+  onLeave: () => void;
   /** Who was logged in. The form logs in as them (only the password is asked for); without it, email too. */
   email?: string;
-  /** Say “Your draft is saved.” Default true: the dialog is nearly always over a form that was just sent. */
-  draft?: boolean;
   /** Previews only: open on the form, with this answer already showing. */
   initialStep?: SessionExpiredStep;
   initialState?: LogInAgainState;
@@ -118,8 +117,8 @@ export function SessionExpiredDialog({
   open,
   logIn,
   onLoggedIn,
+  onLeave,
   email,
-  draft = true,
   initialStep = "notice",
   initialState = null,
 }: SessionExpiredDialogProps) {
@@ -153,12 +152,11 @@ export function SessionExpiredDialog({
       (messages.email ? emailRef : passwordRef).current?.focus();
   }, [state, messages.email, messages.password]);
 
-  const description = `${SESSION_EXPIRED_COPY.text}${draft ? ` ${SESSION_EXPIRED_COPY.draft}` : ""}`;
-
   return (
     <Dialog
       open={open}
-      dismissible={false}
+      dismissible="close-button"
+      onClose={onLeave}
       size="sm"
       phoneLayout="dialog"
       className={styles.dialog}
@@ -168,7 +166,6 @@ export function SessionExpiredDialog({
         </span>
       }
       title={SESSION_EXPIRED_COPY.title}
-      description={description}
       footer={
         // Separate keys: if React reused the same <button>, the click on “Log in again” would also submit the
         // (empty) form, because it has become the submit button by the time the browser acts on the click.
@@ -233,8 +230,6 @@ export function SessionExpiredDialog({
 export type SessionExpiredOptions = {
   /** Run once they're logged in again: usually sends the form that failed again. */
   resend?: () => unknown;
-  /** Say “Your draft is saved.” Default true. */
-  draft?: boolean;
 };
 
 export type SessionExpiredApi = {
@@ -291,6 +286,12 @@ export function SessionExpiredProvider({ children, logIn, email, role }: Session
     void resendThenRefresh(done.resend, () => router.refresh());
   };
 
+  // The ×: they're signed out, so the home page is the public one.
+  const leave = () => {
+    setShowing((current) => ({ open: false, round: current.round }));
+    router.push("/");
+  };
+
   return (
     <SessionExpiredContext.Provider value={api}>
       {children}
@@ -299,8 +300,8 @@ export function SessionExpiredProvider({ children, logIn, email, role }: Session
         open={showing.open}
         logIn={logIn}
         onLoggedIn={loggedIn}
+        onLeave={leave}
         email={email}
-        draft={showing.draft ?? true}
       />
     </SessionExpiredContext.Provider>
   );

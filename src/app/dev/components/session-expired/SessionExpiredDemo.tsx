@@ -81,6 +81,7 @@ export function SessionExpiredDemo({ open, state, knownEmail }: Props) {
             open={previewOpen}
             logIn={logIn}
             onLoggedIn={() => setPreviewOpen(false)}
+            onLeave={() => setPreviewOpen(false)}
             email={email}
             initialStep={open}
             initialState={state ? PREVIEW_STATES[state] : null}

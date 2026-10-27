@@ -32,7 +32,7 @@ const EMAIL = "sarah@email.co.nz";
 const logIn = vi.fn(async () => null);
 
 function dialog(props: Partial<SessionExpiredDialogProps> = {}) {
-  return renderToString(<SessionExpiredDialog open logIn={logIn} onLoggedIn={() => {}} email={EMAIL} {...props} />);
+  return renderToString(<SessionExpiredDialog open logIn={logIn} onLoggedIn={() => {}} onLeave={() => {}} email={EMAIL} {...props} />);
 }
 
 describe("logInAgainMessages: what the form says for each answer", () => {
@@ -110,21 +110,16 @@ describe("<SessionExpiredDialog>", () => {
     expect(dialog({ open: false })).toBe("");
   });
 
-  it("first step: the mockup's icon, words and one button, and no way to close it", () => {
+  it("first step: the icon, the title, Log in again and the ×, and no small print (Matt, #343)", () => {
     const html = dialog();
     expect(html).toMatch(/<dialog\b/);
     expect(html).toContain("lock_clock");
     expect(html).toContain(`${SESSION_EXPIRED_COPY.title}</h2>`);
-    expect(text(html)).toContain(
-      "You’ve been logged out For your security. Log in again and you’ll be right back here. Your draft is saved. Log in again",
-    );
-    expect(html).not.toContain('aria-label="Close"');
+    expect(text(html)).toBe("lock_clock You’ve been logged out close Close Log in again");
+    expect(html).toContain('aria-label="Close"');
+    expect(html).not.toContain("aria-describedby");
     expect(html).not.toContain("<form");
-    expect(html).not.toMatch(/paperwork/i);
-  });
-
-  it("leaves out “Your draft is saved.” when there's no draft", () => {
-    expect(text(dialog({ draft: false }))).not.toContain("draft");
+    expect(html).not.toMatch(/security|draft|paperwork/i);
   });
 
   it("second step: only the password when the email is known, with a way out for someone else", () => {

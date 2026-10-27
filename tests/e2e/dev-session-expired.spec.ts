@@ -49,13 +49,14 @@ test.describe("/dev/components/session-expired", () => {
     });
   }
 
-  test("the mockup at 1440: icon tile, one-line title, the words, one full-width button, no ×", async ({ page }) => {
+  test("the mockup at 1440: icon tile, one-line title, no small print, a full-width button and the ×", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto(url("?open=notice"));
     const box = dialog(page);
-    await expect(box).toContainText("For your security. Log in again and you’ll be right back here. Your draft is saved.");
-    await expect(box.getByRole("button")).toHaveCount(1);
-    await expect(box.getByRole("button", { name: "Close" })).toHaveCount(0);
+    await expect(box).not.toContainText("security");
+    await expect(box).not.toContainText("draft");
+    await expect(box.getByRole("button")).toHaveCount(2);
+    await expect(box.getByRole("button", { name: "Close" })).toBeVisible();
     const title = box.getByRole("heading", { name: "You’ve been logged out" });
     const lineHeight = await title.evaluate((el) => parseFloat(getComputedStyle(el).lineHeight));
     expect((await title.boundingBox())!.height).toBeLessThan(lineHeight * 1.5);
@@ -63,6 +64,12 @@ test.describe("/dev/components/session-expired", () => {
     expect(width).toBeLessThanOrEqual(400);
     const button = (await box.getByRole("button", { name: "Log in again" }).boundingBox())!;
     expect(button.width).toBeGreaterThan(width - 2 * 28 - 2);
+  });
+
+  test("the × closes it and goes to the home page", async ({ page }) => {
+    await saveDraft(page);
+    await dialog(page).getByRole("button", { name: "Close" }).click();
+    await expect(page).toHaveURL(new URL("/", devUrl).href);
   });
 
   test("Esc and the scrim don't close it, and Tab stays inside", async ({ page }) => {

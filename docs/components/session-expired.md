@@ -6,15 +6,16 @@ Issue #108 (B07). Code: `src/components/auth/SessionExpired.tsx`. Mockup: `w-mod
 When a protected server action finds the session gone, it answers `session-expired` instead of redirecting
 (`withRole` in `src/server/auth/guard.ts`, #101). The page shows this dialog over itself:
 
-1. **"You've been logged out"** with the lock_clock tile, "For your security. Log in again and you'll be right back
-   here. Your draft is saved." and one button, **Log in again**.
+1. **"You've been logged out"** with the lock_clock tile, one button, **Log in again**, and a ×. No small print
+   (Matt, #343).
 2. **Log in again** turns it into a log-in form in the same dialog. The person's email is already known, so it asks
    only for the password ("Logging in as sarah@email.co.nz"). If the email isn't known, it asks for that too.
 3. Once they're logged in, the dialog closes and the form that failed is sent again. When that has finished, the
    page refreshes its server data (`router.refresh()`), so it shows what was saved. The page and anything typed stay as they were, and focus goes back to the button
    that sent the form.
 
-Esc, a click on the scrim and swiping do nothing; there is no ×. Focus is trapped inside (the kit's `<Dialog>`, #78).
+The × closes it and goes to the home page, signed out (Matt chose this on #343). Esc, a click on the scrim and
+swiping do nothing (the kit's `dismissible="close-button"`). Focus is trapped inside (the kit's `<Dialog>`, #78).
 
 ## Using it
 
@@ -34,8 +35,7 @@ async function save(formData: FormData) {
 - `check(result, options)` shows the dialog and returns true if `result` is `session-expired`. Otherwise it returns
   false and does nothing.
 - `show(options)` opens it for anything else that finds the session gone (e.g. a `fetch` that got a 401).
-- `options.resend` runs after logging in again. `options.draft: false` leaves out "Your draft is saved." for
-  pages with nothing typed.
+- `options.resend` runs after logging in again.
 - Only one at a time: a second call while it shows is ignored.
 - React clears a `<form action>` after it's sent. To keep what was typed, use controlled fields, or put
   `result.values` back as each field's `defaultValue` (`keptFormValues`, `src/lib/auth/results.ts`).
@@ -62,8 +62,8 @@ async function save(formData: FormData) {
 ## Notes for review
 
 - **Matt:**
-  - The mockup's card has a ×, but its notes say Esc doesn't close this dialog. I left the × out: closing it would
-    leave someone on a page that can't save anything.
+  - The × is in, as in the mockup: it goes to the home page, signed out. Esc and the scrim still do nothing.
+  - No small print under the title (Matt): just the title and **Log in again**.
   - The second step (password in the dialog) isn't in the mockup. It uses the kit's fields and the log-in page's
     wording.
   - The title is 24px (the nearest type token to the mockup's 22px), so it fits on one line on a computer.
