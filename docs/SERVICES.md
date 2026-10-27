@@ -1,7 +1,30 @@
 # Services and accounts
 
-What the web app runs on, and where to find it. **No secrets in this file, ever.** Keys and passwords live in
-Vercel's environment variables and the founders' password managers.
+What the web app runs on, who controls each account, and where to find it. **No secrets in this file, ever.** Keys
+and passwords live in Vercel's environment variables and the founders' password managers.
+
+## Who controls what
+
+| Service | What it does | Account / owner | Plan | Status |
+|---|---|---|---|---|
+| **GitHub** org `trade-marketplace`, repo `main` | Code, issues, CI, PR gate | Org owners: Matt (`mlarsen084`), William (`willimobro`) | Free (repo **public** for now so Vercel Hobby can deploy) | ✅ Live |
+| **Vercel** project `trade-marketplace/main` | Hosting, live site, preview link per PR | Matt's Vercel account (signed in with GitHub `mlarsen084`) | Hobby (free) → Pro before launch (~US$20/mo) | ✅ Live at https://main-ashy-tau.vercel.app/ |
+| **Supabase** project "Trade Marketplace Sydney" (`bwbwbpnqfxjdkbompsvg`) | Database, sign-in, file storage, timers | Supabase org owned by Matt; William to be invited as Owner | Free → Pro at launch (~US$25/mo) | ✅ Connected; tables created on each production deploy |
+| Supabase project "Trade Marketplace Main" (`tlqyzgvlkdtiwizisfmp`, Singapore) | Nothing (first attempt, paused) | Same org | Free | ⚠️ Unused; safe to delete |
+| **Mapbox** | Address search, maps | Matt's Mapbox account (`mlarsen084`) | Free tier | ✅ Token set in Vercel |
+| **Claude GitHub App** | Lets Claude agents push and open PRs | Installed on the org by Matt | — | ✅ |
+| **Domain** trademarketplace.nz (+ .co.nz redirect) | Real web address, email sender | Not bought yet | ~NZ$30–40/yr each | ⏳ |
+| **Resend** (email) | Sign-in and job emails from `hello@trademarketplace.nz` | Not set up yet (needs the domain) | Free tier | ⏳ |
+| **Firebase** (push) | Job alerts and pings | Not set up yet | Free tier | ⏳ |
+| **Stripe** (test mode) | Payments, Apple Pay | Not set up yet (#151, William) | — | ⏳ |
+| **Plausible or Fathom** | Privacy-friendly analytics | Not chosen yet | Paid (small) | ⏳ |
+
+When an account changes hands or a new service is added, update this table in the same PR.
+
+### Keys in Vercel (Production + Preview)
+`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `DATABASE_URL`, `DIRECT_URL`, `MAPBOX_ACCESS_TOKEN`.
+Not set (on purpose): `FIELD_ENCRYPTION_KEY` (needed before bank/tax details go live), `SUPABASE_SECRET_KEY`,
+`ALLOW_SEED`, `SEED_DEMO_PASSWORD` (seed/test only, never production).
 
 ## Supabase (database, sign-in, file storage, timers)
 
@@ -35,8 +58,9 @@ Used for (DECISIONS.md #58–#61):
 | Name | Where it's used | Secret? |
 |---|---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | browser + server | no |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` (or publishable key) | browser + server | no (public by design, protected by row-level security) |
-| `SUPABASE_SERVICE_ROLE_KEY` (or secret key) | server only | **yes** |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | browser + server | no (public by design, protected by row-level security) |
+| `SUPABASE_SECRET_KEY` | server only (seed scripts) | **yes** |
+| `MAPBOX_ACCESS_TOKEN` | server only | yes |
 | `DATABASE_URL` (pooled) / `DIRECT_URL` | server, migrations | **yes** |
 
 ## Vercel (hosting, preview links)
@@ -44,9 +68,3 @@ Connected. Production deploys from `main` at https://main-ashy-tau.vercel.app/ (
 Pro before launch). Every PR gets a preview link. Environment variables (Production + Preview) are set in Vercel.
 Production deploys run `scripts/migrate-on-deploy.mjs` first (`vercel-build`), which applies pending Prisma migrations
 to Supabase. Preview deploys never change the database schema.
-
-## Other
-- **Email:** Resend, from `hello@trademarketplace.nz` (domain not bought yet).
-- **Push notifications:** Firebase. **No SMS at launch.**
-- **Analytics:** Plausible or Fathom.
-- **Domain:** trademarketplace.nz (+ .co.nz redirect), not bought yet.
