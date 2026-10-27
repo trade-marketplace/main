@@ -1,0 +1,41 @@
+/* /dev/components/session-expired (dev only). Page content inside the app shell. Tokens only: no hex values. */
+
+.wrap {
+  max-width: var(--trade-content-max);
+  margin: 0 auto;
+  padding: var(--trade-space-8) var(--trade-inset-browse) var(--trade-space-12);
+}
+.eyebrow {
+  margin: 0 0 var(--trade-space-2);
+  font-size: var(--trade-fs-caption);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 800;
+  color: var(--trade-link);
+}
+.title {
+  margin: 0;
+  font-family: var(--trade-font-heading);
+  font-weight: 900;
+  font-variation-settings: var(--trade-display-axes);
+  font-size: var(--trade-fs-title);
+  line-height: var(--trade-lh-title);
+}
+.lede { margin: var(--trade-space-3) 0 0; max-width: var(--trade-read-max); color: var(--trade-text-2); }
+.links { display: flex; flex-wrap: wrap; gap: var(--trade-space-2) var(--trade-space-5); margin-top: var(--trade-space-4); }
+.links a { display: inline-flex; align-items: center; min-height: var(--trade-tap); color: var(--trade-link); font-weight: 700; }
+.hint { margin: var(--trade-space-2) 0 0; max-width: var(--trade-read-max); font-size: var(--trade-fs-small); color: var(--trade-text-2); }
+
+.card {
+  display: grid;
+  gap: var(--trade-space-4);
+  max-width: 560px;
+  margin-top: var(--trade-space-6);
+  padding: var(--trade-space-6) var(--trade-space-5);
+  border-radius: var(--trade-radius-card);
+  background: var(--trade-surface);
+  box-shadow: inset 0 0 0 1px var(--trade-line);
+}
+.cardTitle { margin: 0; font-size: var(--trade-fs-section); }
+.actions { display: flex; }
+.status { margin: 0; min-height: 1.5em; color: var(--trade-text-2); overflow-wrap: anywhere; }

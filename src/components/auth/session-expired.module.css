@@ -1,0 +1,26 @@
+/* The session-expired dialog (B07, #108): pages.html w-modals, third card. */
+
+/* 380px in the mockup. The kit's sm dialog is 460px: `dialog.` outranks its one-class width. */
+dialog.dialog { width: min(400px, calc(100% - 2 * var(--trade-inset-browse))); }
+
+/* 22px in the mockup (24px is the nearest token), so the title fits on one line. `h2[tabindex]` outranks the kit's 28px `.dialog .title`. */
+.dialog h2[tabindex] { font-size: var(--trade-fs-heading); line-height: var(--trade-lh-heading); }
+
+/* The 56px tile with the lock_clock icon over the title (14px above it, with the eyebrow's own 8px). */
+.tile {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  margin-bottom: 6px;
+  border-radius: 16px;
+  background: var(--trade-waiting-bg);
+  color: var(--trade-text);
+}
+.tileIcon { font-size: 30px; }
+
+.who { margin: 0; overflow-wrap: anywhere; }
+.form { display: grid; gap: var(--trade-space-4); min-width: 0; }
+
+/* TextLink is 14px bold; keep it a 44px target and at the start of the row. */
+.notYou { justify-self: start; display: inline-flex; align-items: center; min-height: 44px; }

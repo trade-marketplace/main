@@ -3,7 +3,9 @@
 import { unstable_rethrow } from "next/navigation";
 import type { ReactNode } from "react";
 
+import { SessionExpiredProvider } from "@/components/auth/SessionExpired";
 import { getShellViewer, paymentsInTestMode } from "@/server/app-shell";
+import { logInAgainAction } from "@/server/auth/actions";
 import { getViewer, type Viewer } from "@/server/auth/viewer";
 
 import { AppShellView, MAIN_ID } from "./AppShellView";
@@ -20,10 +22,13 @@ export async function AppShell({ children }: { children: ReactNode }) {
       </main>
     );
   }
+  // A protected action that finds the session gone shows "You've been logged out" over the page (#108).
   return (
-    <AppShellView viewer={viewer} testMode={paymentsInTestMode()}>
-      {children}
-    </AppShellView>
+    <SessionExpiredProvider logIn={logInAgainAction} email={viewer.email} role={viewer.role}>
+      <AppShellView viewer={viewer} testMode={paymentsInTestMode()}>
+        {children}
+      </AppShellView>
+    </SessionExpiredProvider>
   );
 }
 

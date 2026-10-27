@@ -11,7 +11,12 @@ import { requireRole } from "@/server/auth/guard";
 import { getOfficeShellViewer } from "@/server/office-shell";
 
 // Rendering the form must never perform a real sign-out.
-vi.mock("@/server/auth/actions", () => ({ logOutAction: vi.fn() }));
+vi.mock("@/server/auth/actions", () => ({ logInAgainAction: vi.fn(), logOutAction: vi.fn() }));
+// The session-expired dialog (#108) in the shell refreshes the page after logging in again.
+vi.mock("next/navigation", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("next/navigation")>()),
+  useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }),
+}));
 vi.mock("@/server/auth/guard", () => ({ requireRole: vi.fn() }));
 vi.mock("@/server/office-shell", () => ({ getOfficeShellViewer: vi.fn() }));
 
