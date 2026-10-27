@@ -55,6 +55,17 @@ test.describe("/login", () => {
     await expect(page.getByRole("link", { name: "Forgot password?" })).toHaveAttribute("href", "/recovery");
     await expect(page.getByRole("link", { name: "Create an account" })).toHaveAttribute("href", "/signup?next=%2Fjobs%2FTM-1005");
   });
+
+  test("as in the mockups: no labels showing, and Sign up on a phone", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/login");
+    await expect(page.getByRole("link", { name: "Sign up", exact: true })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Create an account" })).toHaveCount(0);
+    await expect(page.getByPlaceholder("Email")).toBeVisible();
+    const label = page.locator("label", { hasText: /^Email$/ });
+    expect((await label.boundingBox())?.width ?? 0).toBeLessThanOrEqual(1);
+    await expect(page.getByLabel("Email")).toBeVisible();
+  });
 });
 
 const devUrl = process.env.E2E_DEV_BASE_URL;

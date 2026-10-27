@@ -50,12 +50,13 @@ wrong | locked | unverified | invalid | unavailable (dev only).
   - **No lockout after wrong passwords** (Matt's decision, in DECISIONS.md). The "Too many tries" banner shows
     only when Supabase's own rate limit answers. The wording doesn't promise 10 or 15 minutes, because the wait
     depends on that limit.
-  - **"Log in works before the email is confirmed"** needs Supabase's "Confirm email" setting off. With it on,
-    Supabase refuses the log-in and the page says "Confirm your email first." Posting and claiming would then
-    need to check `emailVerified` themselves. The app shell's banner is ready for either choice.
+  - **Log in before the email is confirmed: yes** (Matt's decision, in DECISIONS.md). That needs Supabase's
+    "Confirm email" setting off; until it is, Supabase refuses the log-in and the page says "Confirm your email
+    first." Posting and claiming must check `emailVerified` themselves (their own issues). The app shell's
+    "Confirm your email." banner is ready.
 - **Matt:**
-  - **Field labels:** the fields keep the kit's visible labels ("Email", "Password") above the underline. The
-    mockup shows none, but a placeholder isn't a label for screen readers.
-  - **Phone wording:** the second button says "Create an account" on the phone too. The phone mockup says
-    "Sign up".
+  - **Field labels (Matt):** as in the mockup, no label above the fields, just "Email" and "Password" as
+    placeholders. The labels are still there for screen readers, out of sight.
+  - **Phone wording (Matt):** the second button says "Sign up" on a phone and "Create an account" on a computer,
+    as in each mockup.
   - **New illustration:** `public/images/auth/phone.png` is a copy of `docs/design/img/phone.png`.

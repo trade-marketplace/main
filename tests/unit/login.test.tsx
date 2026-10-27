@@ -101,6 +101,16 @@ describe("LoginForm", () => {
     expect(html).not.toContain('name="next"');
   });
 
+  it("matches the mockup: placeholders, labels only for screen readers, and Sign up on a phone (Matt, #340)", () => {
+    // Vitest hashes CSS module class names ("_field_4f0108"); read them back as the names in the CSS file.
+    const html = renderToString(<LoginForm />).replace(/\b_([A-Za-z-]+)_[0-9a-f]{6}\b/g, "$1");
+    expect(html).toMatch(/<input[^>]*placeholder="Email"/);
+    expect(html).toMatch(/<input[^>]*placeholder="Password"/);
+    expect(html.match(/class="[^"]*\bfield quietLabel\b/g)).toHaveLength(2);
+    expect(html).toMatch(/<label[^>]*>Email<\/label>/);
+    expect(html).toMatch(/<span class="wideOnly">Create an account<\/span><span class="narrowOnly">Sign up<\/span>/);
+  });
+
   it("sends the deep link back with the form, and keeps it on the way to sign-up", () => {
     const html = renderToString(<LoginForm next="/jobs/TM-1005?tab=price" />);
     expect(html).toMatch(/<input type="hidden" name="next" value="\/jobs\/TM-1005\?tab=price"/);

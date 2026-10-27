@@ -1,6 +1,7 @@
 "use client";
 // The log-in form (#102): pages.html w-login, screens.html pub-login. Underline fields with icons, show/hide
-// password, Keep me logged in, Forgot password?, Log in (Enter submits), or, Create an account.
+// password, Keep me logged in, Forgot password?, Log in (Enter submits), or, Create an account ("Sign up" on a phone).
+// The fields show placeholders, as in the mockup; their labels are there for screen readers only (Matt, #340).
 // After a failed try the email stays and the password is cleared, and focus goes to what needs fixing.
 import Link from "next/link";
 import { useActionState, useEffect, useRef } from "react";
@@ -65,6 +66,8 @@ export function LoginForm({ next, initialState = null }: LoginFormProps) {
         type="email"
         name="email"
         label="Email"
+        placeholder="Email"
+        className={styles.quietLabel}
         autoComplete="email"
         inputMode="email"
         spellCheck={false}
@@ -75,6 +78,8 @@ export function LoginForm({ next, initialState = null }: LoginFormProps) {
       <PasswordField
         name="password"
         label="Password"
+        placeholder="Password"
+        className={styles.quietLabel}
         autoComplete="current-password"
         key={`password-${attempt.count}`}
         error={messages.password}
@@ -91,8 +96,10 @@ export function LoginForm({ next, initialState = null }: LoginFormProps) {
       <p className={styles.or}>
         <span>or</span>
       </p>
+      {/* The phone mockup says "Sign up"; the computer's, "Create an account" (Matt, #340). */}
       <Button href={signUpHref} variant="secondary" width="full">
-        Create an account
+        <span className={styles.wideOnly}>Create an account</span>
+        <span className={styles.narrowOnly}>Sign up</span>
       </Button>
     </form>
   );
