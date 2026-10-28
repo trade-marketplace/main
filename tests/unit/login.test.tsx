@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+
 import { renderToString } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -158,5 +160,15 @@ describe("/login", () => {
     expect(await page("/dashboard")).toContain('name="next" value="/dashboard"');
     expect(await page("https://evil.example/")).not.toContain('name="next"');
     expect(await page(["/a", "/b"])).not.toContain('name="next"');
+  });
+});
+
+describe("auth.module.css: the computer layout (#364)", () => {
+  const css = readFileSync(new URL("../../src/components/auth/auth.module.css", import.meta.url), "utf8");
+  const desktop = css.slice(css.indexOf("@media (min-width: 1024px)"));
+
+  it("keeps the left column Forest the whole way down, the same width as the sticky panel", () => {
+    expect(desktop).toMatch(/\.layout \{[^}]*background: linear-gradient\(to right, var\(--trade-forest\) 43%, var\(--trade-surface\) 43%\)/);
+    expect(desktop).toMatch(/\.brand \{[^}]*flex: 0 0 43%;[^}]*position: sticky;/);
   });
 });

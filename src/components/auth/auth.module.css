@@ -122,7 +122,12 @@
 @media (min-width: 1024px) {
   .wideOnly { display: inline; }
   .narrowOnly { display: none; }
-  .layout { flex-direction: row; }
+  /* The Forest column runs the full height of the page. The panel itself stays a screen tall and sticky, so on a
+     long form (tradie sign-up) the column below it is still Forest, and a full-page screenshot shows it too. */
+  .layout {
+    flex-direction: row;
+    background: linear-gradient(to right, var(--trade-forest) 43%, var(--trade-surface) 43%);
+  }
   .brand {
     flex: 0 0 43%; /* 620 of 1440 */
     min-height: 100dvh;
