@@ -34,7 +34,7 @@ describe.skipIf(!testDatabaseUrl)("profiles for sign-in", () => {
     const user = await authUser(email.toLowerCase());
     const result = await signUp(
       { auth: fakeAuth(user), profiles: profiles() },
-      { email, password: "korimako-gumboot-41", firstName: "Aroha", lastName: "Ngata", role: "TRADIE", phone: "0215550192", terms: true },
+      { email, password: "korimako-gumboot-41", firstName: "Aroha", lastName: "Ngata", role: "TRADIE", phone: "0215550192", terms: true, worker: { trades: ["OTHER"], licences: {}, baseSuburb: "Invercargill", radiusKm: "25", point: null } },
     );
     expect(result).toMatchObject({ ok: true, status: "check-email" });
     const row = await schema.db.profile.findUniqueOrThrow({ where: { id: user.id } });

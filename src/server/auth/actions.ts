@@ -10,6 +10,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { workerSignupValues } from "@/lib/auth/worker-signup";
 import { SupabaseNotConfiguredError } from "@/lib/supabase/config";
 import {
   logIn,
@@ -21,6 +22,7 @@ import {
   type LogInResult,
   type SignUpResult,
 } from "@/server/auth/account";
+import { searchSignupAreas, type SignupAreaResult } from "@/server/auth/work-area";
 import { prismaProfiles } from "@/server/auth/profiles";
 import { createSupabaseServerClient, rememberSessionChoice } from "@/server/supabase";
 
@@ -57,7 +59,7 @@ export async function signUpAction(_previous: SignUpState, formData: FormData): 
   if (!auth) {
     const unavailable = notSetUp(formData);
     const input = readSignUpForm(formData);
-    return { ...unavailable, values: { email: input.email, firstName: input.firstName, lastName: input.lastName, phone: input.phone, role: input.role, terms: input.terms ? "on" : "" } };
+    return { ...unavailable, values: { email: input.email, firstName: input.firstName, lastName: input.lastName, phone: input.phone, role: input.role, terms: input.terms ? "on" : "", ...workerSignupValues(input.worker) } };
   }
   const result = await signUp({ auth, profiles }, readSignUpForm(formData));
   if (result.ok && result.status === "signed-in") {
@@ -104,4 +106,9 @@ export async function logOutAction(): Promise<void> {
   await rememberSessionChoice(false);
   refreshEverything();
   redirect("/");
+}
+
+/** Suburb autocomplete is available before sign-in. It never changes an account or verification. */
+export async function searchSignupAreasAction(query: string): Promise<SignupAreaResult> {
+  return searchSignupAreas(query);
 }

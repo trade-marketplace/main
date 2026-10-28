@@ -8,8 +8,8 @@ import { describe, expect, it } from "vitest";
 // A new action that skips the check fails here.
 
 const PUBLIC_ACTIONS: Record<string, string[]> = {
-  // Signing up, logging in and out can't require being signed in already.
-  "src/server/auth/actions.ts": ["signUpAction", "logInAction", "logInAgainAction", "logOutAction"],
+  // Signing up, logging in/out and signup suburb lookup must work before sign-in.
+  "src/server/auth/actions.ts": ["signUpAction", "logInAction", "logInAgainAction", "logOutAction", "searchSignupAreasAction"],
 };
 
 function sourceFiles(dir: string): string[] {
