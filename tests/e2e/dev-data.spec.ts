@@ -84,7 +84,7 @@ test.describe("/dev/components/data", () => {
     }
   });
 
-  test("ticking rows: the bulk bar counts them, Shift+click ticks a run, select-all and Clear selection", async ({ page }) => {
+  test("ticking rows: the bulk bar counts them, Shift+click ticks a run, select-all and Clear", async ({ page }) => {
     await page.goto(url());
     await jobs(page).getByRole("checkbox", { name: "Select Sub wiring" }).check();
     const bar = page.getByRole("region", { name: "Bulk actions for all jobs" });
@@ -95,12 +95,12 @@ test.describe("/dev/components/data", () => {
     expect(await all.evaluate((el: HTMLInputElement) => el.indeterminate)).toBe(true);
     await all.check();
     await expect(bar).toContainText("25 selected");
-    await bar.getByRole("button", { name: "Clear selection" }).click();
+    await bar.getByRole("button", { name: "Clear" }).click();
     await expect(bar).toBeHidden();
     // The header still sticks to the top while the long list scrolls.
     await page.mouse.wheel(0, 1200);
     const head = jobs(page).locator("thead th").first();
-    expect(Math.round((await head.boundingBox())?.y ?? -1)).toBe(0);
+    await expect.poll(async () => Math.round((await head.boundingBox())?.y ?? -1)).toBe(0);
   });
 
   test("filters: a chip's menu works by keyboard, fills the chip, lands in the URL; Clear filters undoes it", async ({ page }) => {
@@ -144,10 +144,10 @@ test.describe("/dev/components/data", () => {
   test("saving filters: name them in the dialog, then they're ticked under Saved filters", async ({ page }) => {
     await page.goto(url("?region=gore"));
     await filters(page).getByRole("button", { name: "Saved filters" }).click();
-    await page.getByRole("menuitem", { name: "Save these filters…" }).click();
-    const dialog = page.getByRole("dialog", { name: "Save these filters" });
+    await page.getByRole("menuitem", { name: "Save filters…" }).click();
+    const dialog = page.getByRole("dialog", { name: "Save filters" });
     await dialog.getByRole("button", { name: "Save filters" }).click();
-    await expect(dialog.getByText("Give it a name.")).toBeVisible();
+    await expect(dialog.getByText("Enter a name.")).toBeVisible();
     await dialog.getByRole("textbox", { name: "Name" }).fill("Gore jobs");
     await dialog.getByRole("button", { name: "Save filters" }).click();
     await expect(dialog).toBeHidden();

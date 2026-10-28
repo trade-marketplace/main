@@ -84,14 +84,14 @@ describe("logInMessages", () => {
   });
 
   it("shows too many tries, unconfirmed email and an outage as a banner", () => {
-    expect(logInMessages({ ok: false, error: "try-later", values: EMAIL }).banner).toMatchObject({ tone: "alert", title: "Too many tries." });
+    expect(logInMessages({ ok: false, error: "try-later", values: EMAIL }).banner).toMatchObject({ tone: "alert", title: "Try again shortly." });
     expect(logInMessages({ ok: false, error: "email-not-verified", values: EMAIL }).banner).toMatchObject({ tone: "info" });
     expect(logInMessages({ ok: false, error: "unavailable", values: EMAIL }).banner).toMatchObject({ tone: "alert" });
   });
 });
 
 describe("LoginForm", () => {
-  it("has the fields, Keep me logged in (ticked), Forgot password and Create an account", () => {
+  it("has the fields, Keep me logged in (ticked), Forgot password and Sign up", () => {
     const html = renderToString(<LoginForm />);
     expect(html).toMatch(/<input[^>]*type="email"[^>]*name="email"|<input[^>]*name="email"[^>]*type="email"/);
     expect(html).toMatch(/name="password"/);
@@ -110,7 +110,7 @@ describe("LoginForm", () => {
     expect(html).toMatch(/<input[^>]*placeholder="Password"/);
     expect(html.match(/class="[^"]*\bfield quietLabel\b/g)).toHaveLength(2);
     expect(html).toMatch(/<label[^>]*>Email<\/label>/);
-    expect(html).toMatch(/<span class="wideOnly">Create an account<\/span><span class="narrowOnly">Sign up<\/span>/);
+    expect(html).toMatch(/<span class="wideOnly">Sign up<\/span><span class="narrowOnly">Sign up<\/span>/);
   });
 
   it("sends the deep link back with the form, and keeps it on the way to sign-up", () => {
@@ -129,13 +129,13 @@ describe("LoginForm", () => {
 
   it("after too many tries: a banner the form is described by", () => {
     const html = renderToString(<LoginForm initialState={{ ok: false, error: "try-later", values: EMAIL }} />);
-    expect(text(html)).toContain("Too many tries. Wait a few minutes, or reset your password.");
+    expect(text(html)).toContain("Try again shortly.");
     expect(html).toContain('aria-describedby="login-banner"');
   });
 
   it("with an unconfirmed email: says to open the link", () => {
     const html = renderToString(<LoginForm initialState={{ ok: false, error: "email-not-verified", values: EMAIL }} />);
-    expect(text(html)).toContain("Confirm your email first.");
+    expect(text(html)).toContain("Confirm your email.");
   });
 });
 
@@ -152,7 +152,7 @@ describe("/login", () => {
     expect(html.indexOf("<header")).toBeLessThan(html.indexOf('<main id="main"'));
     expect(html.match(/<h1\b/g)).toHaveLength(1);
     expect(text(html)).toContain("Welcome back");
-    expect(text(html)).toContain("New here? Sign up");
+    expect(html).not.toContain("New here?");
     expect(html).toMatch(/<img[^>]*alt=""/);
   });
 

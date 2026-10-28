@@ -28,7 +28,7 @@ test.describe("customer sign-up details", () => {
     await page.getByLabel("Full name", { exact: false }).fill("Sarah Thompson");
     await page.getByLabel("Email", { exact: false }).fill("sarah@example.test");
     await page.getByLabel("Mobile", { exact: false }).fill("021 555 0192");
-    await page.getByLabel("Password (required)", { exact: true }).fill("korimako-gumboot-41");
+    await page.getByLabel("Password", { exact: true }).fill("korimako-gumboot-41");
     await expect(page.getByRole("meter", { name: "Password strength" })).toHaveAttribute("aria-valuenow", "3");
     await page.getByRole("button", { name: "Show password" }).click();
     await expect(page.locator('input[name="password"]')).toHaveAttribute("type", "text");
@@ -37,7 +37,7 @@ test.describe("customer sign-up details", () => {
     await terms.press("Space");
     await expect(terms).toBeChecked();
     await page.getByRole("button", { name: "Create account", exact: true }).press("Enter");
-    await expect(page.getByText("We can’t create your account right now.")).toBeVisible();
+    await expect(page.getByText("Sign-up unavailable. Try again.")).toBeVisible();
     await expect(page.getByLabel("Full name", { exact: false })).toHaveValue("Sarah Thompson");
     await expect(page.getByLabel("Mobile", { exact: false })).toHaveValue("021 555 0192");
     await expect(page.getByLabel("Email", { exact: false })).toHaveValue("sarah@example.test");
@@ -54,10 +54,10 @@ test.describe("customer sign-up details", () => {
     await page.getByLabel("Full name", { exact: false }).fill("Aroha");
     await page.getByRole("checkbox", { name: /I agree/ }).check();
     await context.setOffline(true);
-    await expect(page.getByText("You’re offline.")).toBeVisible();
+    await expect(page.getByText("Offline.")).toBeVisible();
     await expect(page.getByRole("button", { name: "Create account", exact: true })).toHaveAttribute("aria-disabled", "true");
     await context.setOffline(false);
-    await expect(page.getByText("You’re offline.")).toBeHidden();
+    await expect(page.getByText("Offline.")).toBeHidden();
     await expect(page.getByLabel("Full name", { exact: false })).toHaveValue("Aroha");
     await expect(page.getByRole("button", { name: "Create account", exact: true })).not.toHaveAttribute("aria-disabled");
   });
@@ -81,8 +81,8 @@ test.describe("customer sign-up preview states", () => {
     await page.goto(preview("email-taken"));
     await expect(page.getByLabel("Full name", { exact: false })).toHaveValue("Sarah Thompson");
     await expect(page.getByLabel("Mobile", { exact: false })).toHaveValue("021 555 0192");
-    await expect(page.getByRole("link", { name: "Log in instead?" })).toHaveAttribute("href", "/login");
-    await expect(page.getByRole("link", { name: "reset your password" })).toHaveAttribute("href", "/recovery");
+    await expect(page.getByRole("link", { name: "Log in instead" })).toHaveAttribute("href", "/login");
+    await expect(page.getByRole("link", { name: "Reset password" })).toHaveAttribute("href", "/recovery");
     await expect(page.getByLabel("Email", { exact: false })).toHaveAttribute("aria-invalid", "true");
   });
 

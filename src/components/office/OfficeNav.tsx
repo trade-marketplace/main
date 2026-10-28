@@ -35,7 +35,7 @@ function AccountMenu({ viewer, defaultOpen }: { viewer: OfficeShellViewer; defau
         trigger={(props) => (
           <button type="button" {...props} className={styles.accountButton} aria-label={`Account: ${name}`}>
             <span className={styles.avatar} aria-hidden="true">{initials(name)}</span>
-            <span className={styles.accountLabel}>{viewer.firstName} · Office</span>
+            <span className={styles.accountLabel}>{viewer.firstName}</span>
           </button>
         )}
         header={<><b className={styles.menuName}>{name}</b><span className={styles.menuEmail}>{viewer.email}</span></>}

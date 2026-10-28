@@ -86,7 +86,7 @@ for (const viewport of VIEWPORTS) {
         const menu = page.getByRole("navigation", { name: "Menu" });
         await expect(menu).toBeVisible();
         await expect(menu.getByRole("link", { name: "How it works" })).toBeFocused();
-        await expect(page.getByRole("link", { name: "For tradies Are you a tradie? Join Trade Marketplace" })).toBeVisible();
+        await expect(menu.getByRole("link", { name: "For tradies", exact: true })).toBeVisible();
         await expect(page.getByRole("link", { name: "Post a job" }).first()).toBeVisible();
         await expect.poll(() => headerIsSolid(page)).toBe(true);
         expect(await sidewaysScroll(page)).toBe(0);

@@ -45,11 +45,11 @@ const SECTIONS = [
 ] as const;
 
 const BANNERS: { tone: BannerTone; name: string; title: string; text: string; what: string }[] = [
-  { tone: "info", name: "Info", title: "", text: "Running late? Use “I’m on my way” on the job.", what: "Blue: neutral facts and tips." },
-  { tone: "good", name: "Good", title: "Check your inbox.", text: "The link works for 1 hour.", what: "Green: it worked." },
-  { tone: "alert", name: "Alert", title: "Card declined.", text: "Try another card. Nothing was charged.", what: "Red: something is wrong." },
-  { tone: "brand", name: "Brand", title: "Private.", text: "Nobody else sees your numbers.", what: "The mode tint: our own notes." },
-  { tone: "test", name: "Test mode", title: "Test mode.", text: "No real money moves. Use card 4242 4242 4242 4242.", what: "Gold: payments are in test mode (checkout, office)." },
+  { tone: "info", name: "Info", title: "", text: "Running late?", what: "Blue: neutral facts and tips." },
+  { tone: "good", name: "Good", title: "Check your inbox.", text: "", what: "Green: it worked." },
+  { tone: "alert", name: "Alert", title: "Card declined.", text: "Try another card.", what: "Red: something is wrong." },
+  { tone: "brand", name: "Brand", title: "Private.", text: "", what: "The mode tint: our own notes." },
+  { tone: "test", name: "Test mode", title: "Test mode.", text: "", what: "Gold: payments are in test mode (checkout, office)." },
 ];
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;

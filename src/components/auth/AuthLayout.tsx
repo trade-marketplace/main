@@ -23,7 +23,7 @@ export type AuthLayoutProps = {
   wideTitle?: boolean;
   /** The 3D illustration: the phone (log in) or the envelope (sign up). */
   art?: keyof typeof ART;
-  /** Top right on a computer: "New here? Sign up". */
+  /** Top right on a computer: the alternate auth action. */
   aside?: ReactNode;
   /** Details steps use the compact phone app bar from pub-signup-2. */
   detailsStep?: boolean;
@@ -36,7 +36,7 @@ export type AuthLayoutProps = {
   children: ReactNode;
 };
 
-export function AuthLayout({ title, lede, art = "phone", wideTitle, aside, detailsStep, backHref = "/", onBack, stepLabel = "Step 2 of 2", eyebrow, brandTitle, brandText, children }: AuthLayoutProps) {
+export function AuthLayout({ title, lede, art = "phone", wideTitle, aside, detailsStep, backHref = "/", onBack, eyebrow, brandTitle, brandText, children }: AuthLayoutProps) {
   return (
     <div className={styles.layout} data-details={detailsStep || undefined}>
       <a href="#main" className={styles.skip}>
@@ -50,20 +50,20 @@ export function AuthLayout({ title, lede, art = "phone", wideTitle, aside, detai
         <Link href="/" className={styles.logo} aria-label="Trade Marketplace home">
           <Wordmark label={null} className={styles.wordmark} />
         </Link>
-        {detailsStep && <div className={styles.mobileHeading}><strong>{title}</strong><span>{stepLabel}</span></div>}
+        {detailsStep && <div className={styles.mobileHeading}><strong>{title}</strong></div>}
         <BoltMark className={styles.mark} />
         <Image src={ART[art]} alt="" width={500} height={500} priority className={styles.art} sizes="(min-width: 1024px) 320px, 220px" />
         <div className={styles.line}>
           <p className={styles.lineTitle}>
             {brandTitle ?? <>Sorted in<br />a flash.</>}
           </p>
-          <p className={styles.lineText}>{brandText ?? "Post any job free. Accept the price. Someone local sorts it."}</p>
+          {brandText && <p className={styles.lineText}>{brandText}</p>}
         </div>
       </header>
       <main id="main" tabIndex={-1} className={styles.main}>
         {aside && <p className={styles.aside}>{aside}</p>}
         <div className={styles.panel}>
-          {eyebrow && <p className={styles.desktopEyebrow}>{eyebrow}</p>}
+          {eyebrow && <p hidden>{eyebrow}</p>}
           <h1 className={styles.title} data-wide={wideTitle || undefined}>
             {title}
           </h1>

@@ -118,7 +118,7 @@ describe("signUp", () => {
     expect(result).toMatchObject({
       ok: false,
       error: "invalid",
-      fieldErrors: { password: "Use at least 10 characters." },
+      fieldErrors: { password: "Use 10+ characters." },
     });
     expect(auth.signUp).not.toHaveBeenCalled();
   });
@@ -146,9 +146,9 @@ describe("signUp", () => {
       ok: false,
       error: "invalid",
       fieldErrors: {
-        email: "Enter a valid email address, like name@example.com.",
+        email: "Enter a valid email.",
         firstName: "Enter your first name.",
-        password: "Use at least 10 characters.",
+        password: "Use 10+ characters.",
       },
       values: { email: "not-an-email", firstName: " ", lastName: "Taylor", role: "CUSTOMER", phone: "021 555 0192", terms: "on" },
     });
@@ -259,7 +259,7 @@ describe("logIn", () => {
     expect(await logIn({ auth, profiles: fakeProfiles() }, { email: "", password: "" })).toMatchObject({
       ok: false,
       error: "invalid",
-      fieldErrors: { email: "Enter your email address.", password: "Enter your password." },
+      fieldErrors: { email: "Enter your email.", password: "Enter a password." },
     });
     expect(auth.signInWithPassword).not.toHaveBeenCalled();
   });

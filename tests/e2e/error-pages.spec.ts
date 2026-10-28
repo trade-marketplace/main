@@ -65,8 +65,8 @@ test.describe("500 (dev preview)", () => {
 
   test("says it's our fault, shows the reference, and Try again works by keyboard", async ({ page }) => {
     await page.goto(preview("?page=500"));
-    await expect(page.getByRole("heading", { level: 1, name: "Something broke on our end." })).toBeVisible();
-    await expect(page.getByText("Error ref 7F3A-91C2 (for support)")).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Something broke." })).toBeVisible();
+    await expect(page.getByText("Ref 7F3A-91C2")).toBeVisible();
     await expect(page.getByRole("link", { name: "Contact us" })).toHaveAttribute("href", "/contact");
     await page.getByRole("button", { name: "Try again" }).focus();
     await page.keyboard.press("Enter");
@@ -75,7 +75,7 @@ test.describe("500 (dev preview)", () => {
 
   test("an error from the browser shows no reference", async ({ page }) => {
     await page.goto(preview("?page=500&ref=off"));
-    await expect(page.getByRole("heading", { level: 1, name: "Something broke on our end." })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Something broke." })).toBeVisible();
     await expect(page.getByText(/Error ref/)).toHaveCount(0);
   });
 

@@ -97,7 +97,7 @@ export function MapCard({ job, serverNow, id, headingLevel = 3, onClose, href, a
           {job.precision === "approximate" && (
             <p className={cx(styles.caption, styles.approx)}>
               <Icon name="blur_circular" decorative className={styles.approxIcon} />
-              Approximate area until you claim it
+              Approximate area
             </p>
           )}
         </div>
@@ -128,10 +128,10 @@ function footLabel(job: MapJob, expired: boolean): string {
     case "claim":
       return "Earn";
     case "estimate":
-      return "Quote from the photos. Private.";
+      return "Private estimate.";
     case "visit":
-      return "Needs someone to look in person.";
+      return "Site visit.";
     case "bounty":
-      return expired ? "This bounty has ended. The office will decide what's next." : "Quote it in person, earn";
+      return expired ? "Expired." : "Earn";
   }
 }

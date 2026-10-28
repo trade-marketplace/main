@@ -109,20 +109,20 @@ const emailField = z
   .string()
   .trim()
   .toLowerCase()
-  .min(1, "Enter your email address.")
+  .min(1, "Enter your email.")
   .max(254, "That email address is too long.")
-  .pipe(z.email("Enter a valid email address, like name@example.com."));
+  .pipe(z.email("Enter a valid email."));
 
 const signUpSchema = z.object({
   email: emailField,
   // Not trimmed: spaces are allowed in passwords and must not be changed behind the person's back.
   password: z.string(),
-  firstName: z.string().trim().min(1, "Enter your first name.").max(80, "That name is too long."),
-  lastName: z.string().trim().max(80, "That name is too long."),
+  firstName: z.string().trim().min(1, "Enter your first name.").max(80, "Name too long."),
+  lastName: z.string().trim().max(80, "Name too long."),
   // Only customers and tradies can sign up. Office (ADMIN) accounts are only ever made by a founder.
   role: z.enum(["CUSTOMER", "TRADIE"], "Choose customer or tradie."),
-  phone: z.string().transform(normaliseMobile).refine((phone) => phone !== null, "Enter a New Zealand mobile number, like 021 555 0192."),
-  terms: z.literal(true, "Accept the terms and privacy policy to create an account."),
+  phone: z.string().transform(normaliseMobile).refine((phone) => phone !== null, "Enter a mobile, like 021 555 0192."),
+  terms: z.literal(true, "Accept the terms."),
 });
 
 /** Raw form text: everything is checked by signUpSchema before use. */
@@ -155,7 +155,7 @@ export function readSignUpForm(formData: FormData): SignUpInput {
 
 const logInSchema = z.object({
   email: emailField,
-  password: z.string().min(1, "Enter your password."),
+  password: z.string().min(1, "Enter a password."),
 });
 
 export type LogInInput = { email: string; password: string; next?: string };

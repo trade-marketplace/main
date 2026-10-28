@@ -182,8 +182,7 @@ export function DialogDemos({ initial }: { initial: OpenId | null }) {
             dismissible={false}
             size="sm"
             phoneLayout="dialog"
-            title="You’ve been logged out"
-            description="It’s been a while. Log in again to carry on: this page and anything you’ve typed are kept."
+            title="Logged out"
             footer={<Button onClick={() => (session.hide(), setResult("Logged in again."))}>Log in again</Button>}
           />
         </>,
@@ -517,8 +516,8 @@ export function LiveBannerDemo() {
         {offline ? "Go back online" : "Pretend to go offline"}
       </Button>
       {offline && (
-        <Banner tone="alert" icon="wifi_off" title="You’re offline." live>
-          We’ll keep trying. Anything you’ve typed is saved.
+        <Banner tone="alert" icon="wifi_off" title="Offline." live>
+
         </Banner>
       )}
     </div>
@@ -529,7 +528,7 @@ export function DismissibleBannerDemo() {
   const [shown, setShown] = useState(true);
   return shown ? (
     <Banner tone="info" onDismiss={() => setShown(false)}>
-      Running late? Use “I’m on my way” and “Running late” on the job. No texting needed.
+      Running late?
     </Banner>
   ) : (
     <Button width="auto" variant="secondary" onClick={() => setShown(true)}>
@@ -540,8 +539,8 @@ export function DismissibleBannerDemo() {
 
 export function ActionBannerDemo() {
   return (
-    <Banner tone="alert" icon="link_off" title="That link has expired." action={<TextLink href="/dev/components/overlays#banners" inline>Send a new one</TextLink>}>
-      Links last 1 hour.
+    <Banner tone="alert" icon="link_off" title="Link expired." action={<TextLink href="/dev/components/overlays#banners" inline>Resend</TextLink>}>
+
     </Banner>
   );
 }

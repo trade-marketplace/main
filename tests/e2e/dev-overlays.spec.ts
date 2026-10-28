@@ -61,7 +61,7 @@ async function settled(page: Page) {
 const OPEN_STATES: { id: string; what: string; name: string | RegExp }[] = [
   { id: "dialog", what: "dialog[open]", name: "Jack found extra work" },
   { id: "confirm", what: "dialog[open]", name: "Take this job?" },
-  { id: "session-expired", what: "dialog[open]", name: "You’ve been logged out" },
+  { id: "session-expired", what: "dialog[open]", name: "Logged out" },
   { id: "long-dialog", what: "dialog[open]", name: /^Book Wiremu/ },
   { id: "drawer", what: "dialog[open]", name: "Your estimate" },
   { id: "long-drawer", what: "dialog[open]", name: /^Add Wiremu/ },
@@ -189,14 +189,14 @@ test.describe("/dev/components/overlays on the dev server", () => {
   test("a dialog that isn't dismissible ignores Esc and the scrim and has no ×", async ({ page }) => {
     await page.goto(url());
     await page.getByRole("button", { name: "Pretend the session expired" }).click();
-    const dialog = page.getByRole("dialog", { name: "You’ve been logged out" });
-    await expect(dialog).toHaveAccessibleDescription(/Log in again to carry on/);
+    const dialog = page.getByRole("dialog", { name: "Logged out" });
+    await expect(dialog).toHaveAccessibleDescription("");
     await expect(dialog.getByRole("button", { name: "Close" })).toHaveCount(0);
     await page.keyboard.press("Escape");
     await page.keyboard.press("Escape");
     await page.mouse.click(5, 5);
     await expect(dialog).toBeVisible();
-    await dialog.getByRole("button", { name: "Log in again" }).click();
+    await dialog.getByRole("button", { name: "Log in" }).click();
     await expect(dialog).toBeHidden();
     await expect(page.getByText("Logged in again.")).toBeVisible();
   });
@@ -373,7 +373,7 @@ test.describe("/dev/components/overlays on the dev server", () => {
   test("a live banner is read out when it appears; a dismissible one can be closed", async ({ page }) => {
     await page.goto(url());
     await page.getByRole("button", { name: "Pretend to go offline" }).click();
-    await expect(page.getByRole("alert").filter({ hasText: "You’re offline." })).toBeVisible();
+    await expect(page.getByRole("alert").filter({ hasText: "Offline." })).toBeVisible();
     await page.getByRole("button", { name: "Dismiss" }).click();
     await expect(page.getByRole("button", { name: "Show the tip again" })).toBeVisible();
   });
@@ -386,7 +386,7 @@ test.describe("/dev/components/overlays on the dev server", () => {
     expect(await modal(page).evaluate((el) => getComputedStyle(el).animationName)).toBe("none");
     await page.keyboard.press("Escape");
     // Gone straight away: no 150ms exit to wait for.
-    expect(await page.locator("dialog").count()).toBe(0);
+    await expect(page.locator("dialog")).toHaveCount(0);
     await context.close();
   });
 

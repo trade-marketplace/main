@@ -75,7 +75,7 @@ export function TextAreaField({ label, hint, error, success, required, id, class
         aria-describedby={[field.describedBy, maxLength !== undefined && `${field.id}-counter`].filter(Boolean).join(" ") || undefined}
         className={styles.textarea} onChange={(event) => { setOwnValue(event.target.value); onChange?.(event); }} />
     </div>
-    {maxLength !== undefined && <p id={`${field.id}-counter`} className={styles.counter}>{current.length} / {maxLength} characters</p>}
+    {maxLength !== undefined && <p id={`${field.id}-counter`} className={styles.counter}>{current.length} / {maxLength}</p>}
   </Field>;
 }
 

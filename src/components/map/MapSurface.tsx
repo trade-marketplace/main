@@ -59,7 +59,6 @@ export function MapLegend({ className, card = false }: { className?: string; car
           </span>
           <span className={styles.legendText}>
             <b>{item.kind === "bounty" ? "Quote bounty" : KIND_NAMES[item.kind]}</b>
-            <span>{item.text}</span>
           </span>
         </li>
       ))}

@@ -214,7 +214,7 @@ test.describe("/dev/components/office-shell", () => {
   test("test mode can be shown and hidden and counts display none, some and 99+", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto(url("?counts=none"));
-    await expect(page.getByText("Test mode. No real money moves.")).toBeVisible();
+    await expect(page.getByText("Test mode.")).toBeVisible();
     await expect(officeNav(page).getByRole("link", { name: /waiting/ })).toHaveCount(0);
     await page.goto(url("?counts=some"));
     await expect(officeNav(page).getByRole("link", { name: /Queues, \d+ waiting/ })).toBeVisible();

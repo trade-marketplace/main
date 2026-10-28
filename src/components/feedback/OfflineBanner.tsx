@@ -120,32 +120,30 @@ export function OfflineBanner({ onRetry, online: forced, sticky = true, classNam
   let banner = null;
   let say: string | null = null;
   if (!online) {
-    say = hasRetry
-      ? "You’re offline. We’ll keep trying. Anything you’ve typed is saved."
-      : "You’re offline. Anything you’ve typed is saved.";
+    say = "Offline.";
     banner = (
       <div className={`${classes} ${styles.alert}`} data-offline="true">
         <span className={styles.bannerText}>
           <Icon name="wifi_off" decorative />
           <span>
-            <b>You’re offline.</b> {hasRetry && "We’ll keep trying. "}Anything you’ve typed is saved.
+            <b>Offline.</b>
           </span>
         </span>
         {hasRetry && (
           <Button variant="tertiary" onClick={() => retryRef.current?.()} className={styles.bannerAction}>
-            Retry now
+            Retry
           </Button>
         )}
       </div>
     );
   } else if (backSince !== null) {
-    say = "You’re back online.";
+    say = "Back online.";
     banner = (
       <div className={`${classes} ${styles.good}`}>
         <span className={styles.bannerText}>
           <Icon name="wifi" decorative />
           <span>
-            <b>You’re back online.</b>
+            <b>Back online.</b>
           </span>
         </span>
       </div>

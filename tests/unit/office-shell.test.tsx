@@ -173,7 +173,7 @@ describe("OfficeShellView", () => {
   });
 
   it("shows the required payment message only in test mode", () => {
-    expect(text(shell())).toContain("Test mode. No real money moves.");
+    expect(text(shell())).toContain("Test mode.");
     expect(text(shell({ testMode: false }))).not.toContain("Test mode.");
   });
 

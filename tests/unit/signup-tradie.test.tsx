@@ -19,10 +19,14 @@ describe("tradie signup", () => {
   });
   it("Other alone shows no licence field and includes all five chips and travel radii", () => {
     const html = renderToString(<WorkerSignupFields values={{ trades: "OTHER" }} attempt={0} />);
-    for (const name of ["Electrical", "Plumbing", "Gas fitting", "Construction", "Other / general labour", "10 km", "25 km", "50 km"]) expect(html).toContain(name);
+    for (const name of ["Electrical", "Plumbing", "Gas fitting", "Construction", "Other", "10 km", "25 km", "50 km"]) expect(html).toContain(name);
     expect(html).not.toMatch(/name="licence_/);
-    expect(html).toContain("needs no licence");
+    expect(html).not.toContain("Browse jobs straight away");
     expect(html).toContain('role="combobox"');
+    expect(html).toMatch(/<legend[^>]*>What do you do\?/);
+    // The question shows, and so does the email/licence note (Matt, #368).
+    expect(html).not.toMatch(/<legend[^>]*hidden=""/);
+    expect(html).toContain("Confirm your email before taking a job. Restricted work needs a licence checked by the office.");
   });
   it("each restricted trade has its own field, example and inline error association", () => {
     const html = renderToString(<WorkerSignupFields values={{ trades: "ELECTRICAL,GAS" }} errors={{ licence_ELECTRICAL: "Use a number like E 123456 or EW012345." }} attempt={0} />);

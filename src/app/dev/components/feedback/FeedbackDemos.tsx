@@ -131,7 +131,7 @@ export function RetryDemo() {
       ) : (
         <ErrorState
           title="Can’t load your jobs"
-          message="Check your connection and try again. If it keeps happening, let us know."
+
           onRetry={retry}
           secondaryAction={<TextLink href="/dev/components/feedback#errors">Contact support</TextLink>}
           headingLevel={4}
@@ -152,7 +152,7 @@ export function InlineRetryDemo() {
     </p>
   ) : (
     <InlineError
-      message="Couldn’t save your changes. Check your connection and try again."
+      message="Couldn’t save."
       onRetry={async () => {
         await wait(later, 1200);
         setSaved(true);
@@ -215,7 +215,7 @@ export function UsageExample({ initial }: { initial: UsageState }) {
             <EmptyState
               illustration="van"
               title="Nothing on yet."
-              message="Got something that needs doing? Post it free and we’ll get you a price."
+
               action={<Button href="/dev/components/feedback#usage">Post a job</Button>}
               headingLevel={4}
             />
@@ -223,7 +223,7 @@ export function UsageExample({ initial }: { initial: UsageState }) {
           {state === "error" && (
             <ErrorState
               title="Can’t load your jobs"
-              message="Check your connection and try again. If it keeps happening, let us know."
+
               onRetry={async () => {
                 await wait(later, 1000);
                 setState("jobs");

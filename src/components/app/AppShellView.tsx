@@ -48,7 +48,7 @@ export function AppShellView({ viewer, testMode, children, preview }: AppShellVi
       {testMode && (
         <aside aria-label="Payments">
           <Banner tone="test" title="Test mode." className={styles.testBanner}>
-            No real money moves.
+
           </Banner>
         </aside>
       )}
@@ -60,11 +60,11 @@ export function AppShellView({ viewer, testMode, children, preview }: AppShellVi
             className={styles.testBanner}
             action={
               <TextLink href="/verify" inline>
-                Send the link again
+                Resend
               </TextLink>
             }
           >
-            Open the link we emailed you to post or claim jobs.
+
           </Banner>
         </aside>
       )}

@@ -11,7 +11,7 @@ export default function Home() {
       <div className={styles.wrap}>
         <BoltMark className={styles.mark} />
         <h1 className={styles.wordmark}>Trade Marketplace</h1>
-        <p className={styles.line}>Sorted in a flash. The app is being built; launching in Invercargill.</p>
+        <p className={styles.line}>Sorted in a flash.</p>
       </div>
     </section>
   );

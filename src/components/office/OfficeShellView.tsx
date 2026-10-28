@@ -33,7 +33,7 @@ export function OfficeShellView({ viewer, counts = EMPTY_OFFICE_COUNTS, testMode
         <div className={styles.column}>
           {testMode && (
             <aside aria-label="Payments">
-              <Banner tone="test" title="Test mode." className={styles.testBanner}>No real money moves.</Banner>
+              <Banner tone="test" title="Test mode." className={styles.testBanner} />
             </aside>
           )}
           <main id="main" tabIndex={-1} className={styles.main}>{children}</main>

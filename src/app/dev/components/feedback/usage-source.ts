@@ -7,14 +7,14 @@ import { EmptyState, ErrorState, JobRowSkeleton, LoadingRegion } from "@/compone
   {error ? (
     <ErrorState
       title="Can’t load your jobs"
-      message="Check your connection and try again. If it keeps happening, let us know."
+
       onRetry={reload}
     />
   ) : jobs.length === 0 ? (
     <EmptyState
       illustration="van"
       title="Nothing on yet."
-      message="Got something that needs doing? Post it free and we’ll get you a price."
+
       action={<Button href="/jobs/new">Post a job</Button>}
     />
   ) : (

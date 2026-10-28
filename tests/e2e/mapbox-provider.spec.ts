@@ -18,9 +18,9 @@ test.describe("Mapbox provider", () => {
       test(`${state} at ${viewport.width}px is accessible without sideways scroll`, async ({ page }) => {
         await page.setViewportSize(viewport);
         await page.goto(url(state));
-        if (state === "error" || state === "missing-token") await expect(page.getByText("Map unavailable. Showing jobs in a list.")).toBeVisible();
+        if (state === "error" || state === "missing-token") await expect(page.getByText("Map unavailable.")).toBeVisible();
         else if (state === "loading") await expect(page.getByText("Loading map…")).toBeVisible();
-        else if (state === "location-denied") await expect(page.getByText("Location unavailable. Showing the Invercargill work area.")).toBeVisible();
+        else if (state === "location-denied") await expect(page.getByText("Location unavailable.")).toBeVisible();
         else await expect(page.getByRole("button", { name: "Use my location" })).toBeEnabled();
         await page.waitForTimeout(400);
         expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
@@ -87,7 +87,7 @@ test.describe("Mapbox provider", () => {
 
   test("denied permission recentres the full work area and keeps every job", async ({ page }) => {
     await page.goto(url("location-denied"));
-    await expect(page.getByText("Location unavailable. Showing the Invercargill work area.")).toBeVisible();
+    await expect(page.getByText("Location unavailable.")).toBeVisible();
     const bounds = await page.locator("[data-camera-bounds]").getAttribute("data-camera-bounds");
     const b = JSON.parse(bounds!);
     expect((b.north + b.south) / 2).toBeCloseTo(-46.4132, 4);
@@ -108,7 +108,7 @@ test.describe("Mapbox provider", () => {
   test("the live configuration falls back when no token is installed", async ({ page }) => {
     test.skip(process.env.E2E_MAPBOX_LIVE === "1", "live run uses an explicitly configured token");
     await page.goto(url("live"));
-    await expect(page.getByText("Map unavailable. Showing jobs in a list.")).toBeVisible();
+    await expect(page.getByText("Map unavailable.")).toBeVisible();
     await expect(page.getByRole("list", { name: "13 jobs nearby" }).getByRole("button")).toHaveCount(13);
   });
 
@@ -166,7 +166,7 @@ test.describe("Mapbox provider", () => {
     for (const width of [390, 1440, 320, 768]) {
       await page.setViewportSize({ width, height: 900 });
       await page.getByRole("link", { name: "Map failure" }).click();
-      await expect(page.getByText("Map unavailable. Showing jobs in a list.")).toBeVisible();
+      await expect(page.getByText("Map unavailable.")).toBeVisible();
       await page.getByRole("link", { name: "Jobs", exact: true }).click();
       await expect(page.getByRole("button", { name: "Use my location" })).toBeEnabled();
       const map = page.getByRole("region", { name: /^Map of/ });

@@ -22,6 +22,7 @@ describe("form fields: names, descriptions and form values", () => {
     expect(tag(html)).toContain('aria-describedby="form-help email-hint email-error"');
     expect(tag(html)).toContain('value="mistyped@"');
     expect(html).toContain('id="email-error"');
+    expect(html).toContain('id="email-hint" hidden=""');
   });
 
   it("makes unique label/control pairs when the caller doesn't supply ids", () => {
@@ -38,11 +39,12 @@ describe("form fields: names, descriptions and form values", () => {
     expect(html).toContain('value="12"');
   });
 
-  it("read-only values can still be read and copied, and successful fields have text as well as an icon", () => {
+  it("read-only values can still be read and copied, and successful fields keep their description invisible beside the tick", () => {
     const html = render(<TextField label="Job" id="job" readOnly defaultValue="TM-1005" success="Looks good." />);
     expect(tag(html)).toContain('readOnly=""');
     expect(tag(html)).not.toContain('disabled=""');
     expect(tag(html)).toContain('aria-describedby="job-success"');
+    expect(html).toContain('id="job-success" hidden=""');
     expect(html).toContain("Looks good.");
   });
 
@@ -81,7 +83,7 @@ describe("form fields: names, descriptions and form values", () => {
     const long = "Taumatawhakatangihangakoauauotamateaturipukakapikimaungahoronukupokaiwhenuakitanatahu";
     const html = render(<TextAreaField id="notes" label="Notes" hint="Directions help." maxLength={200} defaultValue={long} error="Please check." />);
     expect(tag(html, "textarea")).toContain('aria-describedby="notes-hint notes-error notes-counter"');
-    expect(html).toContain(`${long.length} / 200 characters`);
+    expect(html).toContain(`${long.length} / 200`);
     expect(html).toContain(long);
   });
 
@@ -134,7 +136,7 @@ describe("choices and time windows", () => {
 
   it("an empty set of windows explains itself and has no misleading select-all action", () => {
     const html = render(<TimeWindowPicker label="When?" name="windows" days={[]} />);
-    expect(html).toContain("No time windows are available yet.");
+    expect(html).toContain("No times available.");
     expect(html).not.toContain("Any time");
   });
 });
@@ -149,8 +151,8 @@ describe("address shell and validation example", () => {
   });
 
   it.each([
-    ["loading", "Looking for addresses…"], ["ready", "No matches. You can type the address by hand."],
-    ["error", "Address search is unavailable. You can type the address by hand."],
+    ["loading", "Searching…"], ["ready", "No matches."],
+    ["error", "Enter address manually."],
   ] as const)("announces the %s state without losing a typed address", (status, message) => {
     const html = render(<AddressField label="Address" name="address" defaultValue="12 Demo" suggestions={[]} status={status} />);
     expect(html).toContain('value="12 Demo"');

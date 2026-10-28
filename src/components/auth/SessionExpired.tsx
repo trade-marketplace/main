@@ -43,15 +43,15 @@ export const SESSION_EXPIRED_COPY = {
   title: "You’ve been logged out",
   start: "Log in again",
   submit: "Log in",
-  notYou: "Not you? Log in as someone else",
+  notYou: "Use another account",
 } as const;
 
 // The same words as the log-in page (#102), so a wrong password reads the same wherever it happens.
 export const LOG_IN_AGAIN_MESSAGES = {
-  wrongCredentials: "That email and password don’t match. Try again.",
-  locked: { title: "Too many tries.", text: "Wait a few minutes, then try again." },
-  notVerified: { title: "Confirm your email first.", text: "Open the link we emailed you, then log in." },
-  unavailable: { title: "We can’t log you in right now.", text: "Try again in a minute." },
+  wrongCredentials: "Incorrect email or password.",
+  locked: { title: "Try again shortly.", text: "" },
+  notVerified: { title: "Confirm your email.", text: "" },
+  unavailable: { title: "Log-in unavailable.", text: "" },
 } as const;
 
 type Problem = Exclude<LogInResult, { ok: true }>;
@@ -189,7 +189,7 @@ export function SessionExpiredDialog({
           )}
           {email ? (
             <p className={styles.who}>
-              Logging in as <strong>{email}</strong>
+              <strong>{email}</strong>
               {/* For password managers: which account this password is for. */}
               <input type="email" name="email" autoComplete="username" value={email} readOnly hidden />
             </p>

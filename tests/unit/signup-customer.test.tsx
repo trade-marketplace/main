@@ -27,7 +27,7 @@ describe("customer sign up", () => {
 
   it("email taken: offers log in and reset, preserving the other fields and return path", () => {
     const html = renderToString(<CustomerSignup next="/jobs/new?step=review" initialState={{ ok: false, error: "email-taken", values }} />);
-    expect(html).toContain("Log in instead?");
+    expect(html).toContain("Log in");
     expect(html).toContain('href="/recovery?next=%2Fjobs%2Fnew%3Fstep%3Dreview"');
     expect(html).toContain('value="Sarah Thompson"');
     expect(html).toContain('value="021 555 0192"');
@@ -40,7 +40,7 @@ describe("customer sign up", () => {
   it("success explains confirmation while allowing log in", () => {
     const html = renderToString(<CustomerSignup next="/jobs/new?step=review" initialState={{ ok: true, status: "check-email", email: values.email }} />);
     expect(html).toContain("Confirm your email");
-    expect(html).toContain("You can log in now");
+    expect(html).toContain("sarah@example.test");
     expect(html).toContain('href="/login?next=%2Fjobs%2Fnew%3Fstep%3Dreview"');
     expect(html).not.toContain('<form');
   });
@@ -61,7 +61,7 @@ describe("shared sign-up field rules", () => {
 
   it("uses the existing 10-character/password rules for a four-segment hint", () => {
     expect(passwordStrength("").segments).toBe(0);
-    expect(passwordStrength("Password123!")).toMatchObject({ segments: 1, hint: expect.stringContaining("too easy") });
+    expect(passwordStrength("Password123!")).toMatchObject({ segments: 1, hint: expect.stringContaining("stronger") });
     expect(passwordStrength("korimako-gumboot-41").segments).toBe(3);
     expect(passwordStrength("korimako-gumboot-tui-41").segments).toBe(4);
   });

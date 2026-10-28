@@ -12,10 +12,10 @@ export const PASSWORD_MAX_BYTES = 72;
 export type PasswordProblem = "too-short" | "too-long" | "common" | "looks-like-email";
 
 export const PASSWORD_MESSAGES: Readonly<Record<PasswordProblem, string>> = {
-  "too-short": `Use at least ${PASSWORD_MIN_LENGTH} characters.`,
-  "too-long": "That's too long. Use a shorter password.",
-  common: "That password is too easy to guess. Try a few unrelated words together.",
-  "looks-like-email": "Don't use your email address as your password.",
+  "too-short": `Use ${PASSWORD_MIN_LENGTH}+ characters.`,
+  "too-long": "Password too long.",
+  common: "Choose a stronger password.",
+  "looks-like-email": "Use a different password.",
 };
 
 /** Characters a person typed, not UTF-16 units: an emoji counts as one. */

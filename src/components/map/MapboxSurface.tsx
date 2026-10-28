@@ -145,7 +145,7 @@ export function MapboxSurface({ config, bounds, label, children, onViewChange, o
         <button type="button" onClick={() => void locate()} disabled={!loaded || location === "pending"} aria-label="Use my location"><Icon name="my_location" decorative /></button>
       </div>
       {location === "pending" && <p role="status" className={styles.locationNotice}>Finding your location…</p>}
-      {location === "denied" && <p role="status" className={styles.locationNotice}>Location unavailable. Showing the {workArea.name} work area.</p>}
+      {location === "denied" && <p role="status" className={styles.locationNotice}>Location unavailable.</p>}
       {location === "found" && <p role="status" className={styles.srOnly}>Map centred on your location.</p>}
     </div>
   );

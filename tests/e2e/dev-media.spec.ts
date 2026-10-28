@@ -44,15 +44,15 @@ test.describe("/dev/components/media", () => {
     await page.goto(url());
     const region = computer(page);
     const chooser = page.waitForEvent("filechooser");
-    await region.getByRole("button", { name: "choose files" }).click();
+    await region.getByRole("button", { name: "Choose files" }).click();
     await (await chooser).setFiles([
       { name: "kitchen.jpg", mimeType: "image/jpeg", buffer: JPEG },
       { name: "plan.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.4") },
     ]);
     await expect(region.getByRole("img", { name: "Photo 5: kitchen.jpg" })).toBeVisible();
     await expect(region.getByRole("progressbar", { name: "Uploading kitchen.jpg" })).toBeVisible();
-    await expect(region.getByRole("alert")).toContainText("“plan.pdf” isn’t a photo we can use.");
-    await expect(region.getByText("5 of 6 · JPG, PNG or HEIC up to 10 MB each")).toBeVisible();
+    await expect(region.getByRole("alert")).toContainText("“plan.pdf”: use JPG, PNG or HEIC.");
+    await expect(region.getByText("5 / 6")).toBeVisible();
     // Done: the tick pops (M18), then the photo is clear.
     await expect(region.getByRole("img", { name: "kitchen.jpg uploaded" })).toBeVisible({ timeout: 5000 });
     await expect(region.getByRole("progressbar", { name: "Uploading kitchen.jpg" })).toBeHidden();

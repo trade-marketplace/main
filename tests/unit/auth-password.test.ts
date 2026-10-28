@@ -55,8 +55,8 @@ describe("passwordProblems", () => {
 
 describe("passwordMessage", () => {
   it("gives one plain-English line for the first problem", () => {
-    expect(passwordMessage("short")).toBe("Use at least 10 characters.");
-    expect(passwordMessage("password123")).toMatch(/too easy to guess/);
+    expect(passwordMessage("short")).toBe("Use 10+ characters.");
+    expect(passwordMessage("password123")).toMatch(/stronger password/);
   });
 
   it("is null for a good password", () => {

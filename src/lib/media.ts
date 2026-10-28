@@ -29,9 +29,9 @@ export function checkPhotos<T extends FileLike>(
   for (const file of files) {
     const isPhoto = (PHOTO_TYPES as readonly string[]).includes(file.type) || (!file.type && PHOTO_EXTENSIONS.test(file.name));
     if (!isPhoto) {
-      problems.push(`“${file.name}” isn’t a photo we can use. Use JPG, PNG or HEIC.`);
+      problems.push(`“${file.name}”: use JPG, PNG or HEIC.`);
     } else if (file.size > maxBytes) {
-      problems.push(`“${file.name}” is too big (${formatBytes(file.size)}). Photos can be up to ${formatBytes(maxBytes)}.`);
+      problems.push(`“${file.name}”: max ${formatBytes(maxBytes)}.`);
     } else if (existing + accepted.length >= max) {
       tooMany += 1;
     } else {
@@ -39,7 +39,7 @@ export function checkPhotos<T extends FileLike>(
     }
   }
   if (tooMany > 0) {
-    problems.push(`You can add up to ${max} photos, so ${tooMany === 1 ? "1 wasn’t" : `${tooMany} weren’t`} added.`);
+    problems.push(`${max} photos maximum.`);
   }
   return { accepted, problems };
 }
@@ -54,7 +54,7 @@ export function formatBytes(bytes: number): string {
 
 /** "2 of 6 · JPG, PNG or HEIC up to 10 MB each" (cus-post-2). */
 export function photoCountLine(count: number, max = MAX_PHOTOS): string {
-  return `${count} of ${max} · ${PHOTO_HINT}`;
+  return `${count} / ${max}`;
 }
 
 /** A rating shown in whole and half stars: 4.3 → 4.5 → [4 full, 1 half, 0 empty]. Out of 5. */

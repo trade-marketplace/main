@@ -25,7 +25,7 @@ describe("worker signup", () => {
 
   it.each(["ELECTRICAL", "PLUMBING", "GAS", "CONSTRUCTION"])("%s malformed number gives an inline example", (trade) => {
     const result = parseWorkerSignup({ ...base, trades: [trade], licences: { [trade]: "wrong-number!" } });
-    expect(result).toMatchObject({ ok: false, errors: { [`licence_${trade}`]: expect.stringMatching(/like (?:E |PGDB |BP )/) } });
+    expect(result).toMatchObject({ ok: false, errors: { [`licence_${trade}`]: expect.stringMatching(/Use (?:E |PGDB |BP )/) } });
   });
 
   it("requires selected trade, work suburb and a supported travel radius", () => {

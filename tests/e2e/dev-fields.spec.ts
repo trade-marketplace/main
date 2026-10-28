@@ -12,6 +12,7 @@ const url = (query = "") => devUrl ? new URL(`/dev/components/fields${query}`, d
 async function noOverflow(page: Page) {
   expect(await page.evaluate(() => {
     const spilled = [...document.querySelectorAll<HTMLElement>("main label, main legend, main p, main button")]
+      .filter((element) => getComputedStyle(element).clipPath === "none")
       .filter((element) => element.scrollWidth > element.clientWidth + 1)
       .map((element) => element.textContent?.slice(0, 60));
     return { page: document.documentElement.scrollWidth - document.documentElement.clientWidth, spilled };
@@ -103,14 +104,14 @@ test.describe("form fields on the dev server", () => {
     await page.getByLabel("Hours", { exact: true }).fill("2.5");
     await page.getByLabel("Materials (NZD)", { exact: true }).fill("12.50");
     await page.getByLabel("Preferred date", { exact: true }).fill("2026-11-04");
-    await page.getByLabel("Trade (required)", { exact: true }).selectOption("other");
+    await page.getByLabel("Trade", { exact: true }).selectOption("other");
     const area = page.getByLabel("Tell us about the job", { exact: true });
     await area.fill("Fix my fence");
-    await expect(page.getByText("12 / 500 characters", { exact: true })).toBeVisible();
+    await expect(page.getByText("12 / 500", { exact: true })).toBeVisible();
     await expect(page.getByLabel("Materials (NZD)", { exact: true })).toHaveValue("12.50");
     await expect(page.getByLabel("Preferred date", { exact: true })).toHaveValue("2026-11-04");
     await expect(page.getByLabel("Hours", { exact: true })).toHaveValue("2.5");
-    await expect(page.getByLabel("Trade (required)", { exact: true })).toHaveValue("other");
+    await expect(page.getByLabel("Trade", { exact: true })).toHaveValue("other");
   });
 
   test("radio arrows, checkbox Space, switches and single/multiple chips work without a pointer", async ({ page }) => {
@@ -138,14 +139,14 @@ test.describe("form fields on the dev server", () => {
     await page.goto(url());
     const picker = page.getByRole("group", { name: "When are you free?", exact: true });
     await picker.getByRole("button", { name: "Any time", exact: true }).click();
-    await expect(picker.getByText("20 time windows selected", { exact: true })).toBeVisible();
+    await expect(picker.getByRole("status")).toHaveText("20 time windows selected");
     await expect(picker.getByRole("checkbox", { name: "Mon 2 Nov, Morning", exact: true })).not.toBeChecked();
     const tuesday = picker.getByRole("checkbox", { name: "Tue 3 Nov, Afternoon", exact: true });
     await tuesday.focus(); await tuesday.press("Space");
     await expect(tuesday).not.toBeChecked();
-    await expect(picker.getByText("19 time windows selected", { exact: true })).toBeVisible();
-    await picker.getByRole("button", { name: "Clear selection", exact: true }).click();
-    await expect(picker.getByText("0 time windows selected", { exact: true })).toBeVisible();
+    await expect(picker.getByRole("status")).toHaveText("19 time windows selected");
+    await picker.getByRole("button", { name: "Clear", exact: true }).click();
+    await expect(picker.getByRole("status")).toHaveText("0 time windows selected");
     await tuesday.focus(); await tuesday.press("Space");
     expect(await tuesday.inputValue()).toBe("2026-11-03:afternoon");
   });
@@ -185,7 +186,7 @@ test.describe("form fields on the dev server", () => {
     await input.fill("nowhere"); await expect(options).toHaveCount(0);
     await expect(input).toHaveValue("nowhere");
     await input.fill("offline");
-    await expect(page.locator("#address").getByText("Address search is unavailable. You can type the address by hand.", { exact: true })).toHaveCount(2);
+    await expect(page.locator("#address").getByText("Enter address manually.", { exact: true })).toHaveCount(2);
     await input.fill("An address typed by hand"); await expect(input).toHaveValue("An address typed by hand");
     await expectNoA11yViolations(page);
   });
@@ -206,21 +207,21 @@ test.describe("form fields on the dev server", () => {
     await page.setViewportSize({ width, height: width === 390 ? 844 : 900 });
     await page.goto(url());
     const form = page.getByRole("form", { name: "Form field usage example" });
-    await form.getByLabel("Your name (required)", { exact: true }).fill("Wiremu");
-    await form.getByLabel("Your email (required)", { exact: true }).fill("bad-email");
-    await form.getByLabel("What needs doing? (required)", { exact: true }).fill("Fix the fence");
-    await form.getByLabel("Type of job (required)", { exact: true }).selectOption("other");
+    await form.getByLabel("Your name", { exact: true }).fill("Wiremu");
+    await form.getByLabel("Your email", { exact: true }).fill("bad-email");
+    await form.getByLabel("What needs doing?", { exact: true }).fill("Fix the fence");
+    await form.getByLabel("Type of job", { exact: true }).selectOption("other");
     await form.getByRole("button", { name: "Check example", exact: true }).click();
-    const email = form.getByLabel("Your email (required)", { exact: true });
+    const email = form.getByLabel("Your email", { exact: true });
     await expect(email).toBeFocused();
     await expect(email).toHaveAccessibleDescription("Add a valid email address.");
-    await expect(form.getByLabel("Your name (required)", { exact: true })).toHaveValue("Wiremu");
-    await expect(form.getByLabel("What needs doing? (required)", { exact: true })).toHaveValue("Fix the fence");
-    await expect(form.getByLabel("Type of job (required)", { exact: true })).toHaveValue("other");
+    await expect(form.getByLabel("Your name", { exact: true })).toHaveValue("Wiremu");
+    await expect(form.getByLabel("What needs doing?", { exact: true })).toHaveValue("Fix the fence");
+    await expect(form.getByLabel("Type of job", { exact: true })).toHaveValue("other");
     await expectNoA11yViolations(page);
     await screenshot(page, `validation-error-${width}`);
     await email.fill("wiremu@example.co.nz");
-    const access = form.getByRole("checkbox", { name: "I can provide access to the property (required)", exact: true });
+    const access = form.getByRole("checkbox", { name: "I can provide access to the property", exact: true });
     await access.focus(); await access.press("Space");
     await form.getByRole("button", { name: "Check example", exact: true }).click();
     await expect(form).toHaveAttribute("aria-busy", "true");
@@ -231,7 +232,7 @@ test.describe("form fields on the dev server", () => {
     await screenshot(page, `validation-success-${width}`);
     await form.getByRole("button", { name: "Reset example", exact: true }).click();
     await expect(email).toHaveValue("");
-    await expect(form.getByText("0 / 500 characters", { exact: true })).toBeVisible();
+    await expect(form.getByText("0 / 500", { exact: true })).toBeVisible();
     await expect(access).not.toBeChecked();
   });
   }

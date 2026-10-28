@@ -94,11 +94,11 @@ export function LoginForm({ next, initialState = null }: LoginFormProps) {
         Log in
       </Button>
       <p className={styles.or}>
-        <span>or</span>
+        <span aria-hidden="true" />
       </p>
-      {/* The phone mockup says "Sign up"; the computer's, "Create an account" (Matt, #340). */}
+      {/* The same short alternate action on phone and desktop. */}
       <Button href={signUpHref} variant="secondary" width="full">
-        <span className={styles.wideOnly}>Create an account</span>
+        <span className={styles.wideOnly}>Sign up</span>
         <span className={styles.narrowOnly}>Sign up</span>
       </Button>
     </form>

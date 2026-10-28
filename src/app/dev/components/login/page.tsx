@@ -3,7 +3,6 @@
 // unverified | invalid (empty fields) | unavailable. No state: the page as it first loads (the real one is /login).
 // Pressing Log in here calls the real action. Dev only: the shared guard makes it a 404 in production.
 import type { Metadata } from "next";
-import Link from "next/link";
 
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import { LoginForm } from "@/components/auth/LoginForm";
@@ -21,7 +20,7 @@ const STATES: Record<string, LogInState> = {
   invalid: {
     ok: false,
     error: "invalid",
-    fieldErrors: { email: "Enter a valid email address, like name@example.com.", password: "Enter your password." },
+    fieldErrors: { email: "Enter a valid email.", password: "Enter a password." },
     values: { email: "sarah@" },
   },
   unavailable: { ok: false, error: "unavailable", values: EMAIL },
@@ -34,14 +33,7 @@ export default async function LoginPreview({ searchParams }: { searchParams: Sea
   const { state } = await searchParams;
   const initial = typeof state === "string" && Object.hasOwn(STATES, state) ? STATES[state] : null;
   return (
-    <AuthLayout
-      title="Welcome back"
-      aside={
-        <>
-          New here? <Link href="/signup">Sign up</Link>
-        </>
-      }
-    >
+    <AuthLayout title="Welcome back">
       <LoginForm initialState={initial} key={String(state)} />
     </AuthLayout>
   );

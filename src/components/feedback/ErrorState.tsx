@@ -114,7 +114,7 @@ export function ErrorState({
           {secondaryAction}
         </div>
       )}
-      {reference && <p className={styles.reference}>Error ref {reference} (for support)</p>}
+      {reference && <p className={styles.reference}>Ref {reference}</p>}
       {announce && <LiveMessage message={announcement(title, message)} />}
     </div>
   );

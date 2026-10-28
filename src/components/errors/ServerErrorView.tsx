@@ -11,8 +11,7 @@ import { errorReference } from "@/lib/error-ref";
 
 import styles from "./errors.module.css";
 
-export const SERVER_ERROR_TITLE = "Something broke on our end.";
-export const SERVER_ERROR_MESSAGE = "It’s not you. Try again in a minute. Anything you typed is saved.";
+export const SERVER_ERROR_TITLE = "Something broke.";
 
 export type ServerErrorViewProps = {
   /** The error Next.js caught. Only its digest is shown (as the reference); the message never is. */
@@ -34,7 +33,6 @@ export function ServerErrorView({ error, onRetry, log = true }: ServerErrorViewP
           size="page"
           icon="build"
           title={SERVER_ERROR_TITLE}
-          message={SERVER_ERROR_MESSAGE}
           onRetry={onRetry}
           secondaryAction={
             <Button href="/contact" variant="secondary" size="sm" width="auto">

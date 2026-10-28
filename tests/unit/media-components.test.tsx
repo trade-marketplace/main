@@ -29,8 +29,8 @@ describe("checkPhotos", () => {
     const { accepted, problems } = checkPhotos([file("plan.pdf", "application/pdf"), file("huge.jpg", "image/jpeg", 12.5 * MB)]);
     expect(accepted).toEqual([]);
     expect(problems).toEqual([
-      "“plan.pdf” isn’t a photo we can use. Use JPG, PNG or HEIC.",
-      "“huge.jpg” is too big (12.5 MB). Photos can be up to 10 MB.",
+      "“plan.pdf”: use JPG, PNG or HEIC.",
+      "“huge.jpg”: max 10 MB.",
     ]);
   });
 
@@ -38,9 +38,9 @@ describe("checkPhotos", () => {
     const four = Array.from({ length: 4 }, (_, i) => file(`p${i}.jpg`, "image/jpeg"));
     expect(checkPhotos(four, { existing: 3 })).toEqual({
       accepted: four.slice(0, 3),
-      problems: ["You can add up to 6 photos, so 1 wasn’t added."],
+      problems: ["6 photos maximum."],
     });
-    expect(checkPhotos(four, { existing: 6 }).problems).toEqual(["You can add up to 6 photos, so 4 weren’t added."]);
+    expect(checkPhotos(four, { existing: 6 }).problems).toEqual(["6 photos maximum."]);
   });
 
   it("allows exactly 10 MB", () => {
@@ -54,7 +54,7 @@ describe("formatting", () => {
     expect(formatBytes(2048)).toBe("2 KB");
     expect(formatBytes(2.5 * MB)).toBe("2.5 MB");
     expect(formatBytes(10 * MB)).toBe("10 MB");
-    expect(photoCountLine(2)).toBe("2 of 6 · JPG, PNG or HEIC up to 10 MB each");
+    expect(photoCountLine(2)).toBe("2 / 6");
   });
 
   it("rounds ratings to half stars, within 0–5", () => {
@@ -87,7 +87,7 @@ describe("ProgressRing", () => {
 describe("DropZone", () => {
   it("has a real button to choose files and a file input for photos", () => {
     const html = renderToString(<DropZone onFiles={() => {}} hint="JPG, PNG, HEIC up to 10 MB" />);
-    expect(html).toMatch(/<button type="button"[^>]*>choose files<\/button>/);
+    expect(html).toMatch(/<button type="button"[^>]*>Choose files<\/button>/);
     expect(html).toMatch(/<input type="file" accept="image\/jpeg,image\/png,image\/heic,image\/heif,image\/webp,.heic,.heif" multiple=""/);
     expect(html).toContain("tm-dropzone");
   });
@@ -113,12 +113,12 @@ describe("PhotoPicker", () => {
     const html = picker();
     expect(html).toContain('alt="Photo 1: wires.jpg"');
     expect(html).toContain('aria-label="Remove wires.jpg"');
-    expect(text(html)).toContain("Failed · Retry switch.jpg");
+    expect(text(html)).toContain("Retry switch.jpg");
     expect(html).toContain('aria-valuenow="50"');
   });
 
   it("shows the count and an Add photo tile until it's full", () => {
-    expect(text(picker())).toContain("3 of 6 · JPG, PNG or HEIC up to 10 MB each");
+    expect(text(picker())).toContain("3 / 6");
     expect(text(picker())).toContain("Add photo");
     expect(text(picker({ max: 3 }))).not.toContain("Add photo");
     expect(text(picker({ addTile: false }))).not.toContain("Add photo");

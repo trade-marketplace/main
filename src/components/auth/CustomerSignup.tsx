@@ -85,14 +85,14 @@ export function SignupDetails({ role, next, initialState = null, previewPending 
       <AuthLayout title={isTradie && tradeStep ? "Your trade" : "Create account"} wideTitle art={isTradie ? "phone" : "mail"} detailsStep backHref={signupLink("/signup", next)}
         onBack={isTradie && tradeStep ? () => setTradeStep(false) : undefined}
         stepLabel={isTradie ? `Step ${tradeStep ? 3 : 2} of 3` : "Step 2 of 2"} eyebrow={isTradie && tradeStep ? "Step 2 of 2" : undefined}
-        brandTitle={isTradie ? "You do the work. We find the jobs." : undefined} brandText={isTradie ? "Browse local jobs and choose your work area." : undefined}
+        brandTitle={isTradie ? "You do the work. We find the jobs." : undefined}
         aside={<>Already have an account? <Link href={login}>Log in</Link></>}>
         <div className={styles.detailsProgress} role="progressbar" aria-label="Sign-up progress" aria-valuemin={0} aria-valuemax={isTradie ? 3 : 2} aria-valuenow={isTradie && tradeStep ? 3 : 2} aria-valuetext={isTradie ? `Step ${tradeStep ? 3 : 2} of 3` : "Step 2 of 2"}>
           {Array.from({ length: isTradie ? 3 : 2 }, (_, index) => <span key={index} data-active={index < (isTradie && tradeStep ? 3 : 2) || undefined} />)}
         </div>
         {success ? (
           <div className={styles.form}>
-            <Banner tone="good" title="Confirm your email" live>Check {success.email} for your confirmation link. You can log in now; confirm your email before {isTradie ? "taking" : "posting"} a job.</Banner>
+            <Banner tone="good" title="Confirm your email" live>Check {success.email}. Confirm it before {isTradie ? "taking" : "posting"} a job.</Banner>
             <Button href={login} width="full">Log in</Button>
           </div>
         ) : (
@@ -111,9 +111,9 @@ export function SignupDetails({ role, next, initialState = null, previewPending 
             event.preventDefault();
             const invalid: Partial<Record<SignUpField, string>> = {};
             const parts = name.trim().split(/\s+/);
-            if (!parts[0] || parts[0].length > 80 || parts.slice(1).join(" ").length > 80) invalid.firstName = "Enter your name (up to 80 characters per part).";
-            if (!formRef.current?.querySelector<HTMLInputElement>('input[name="email"]')?.validity.valid || !email.trim()) invalid.email = "Enter a valid email address, like name@example.com.";
-            if (!normaliseMobile(phone)) invalid.phone = "Enter a New Zealand mobile number, like 021 555 0192.";
+            if (!parts[0] || parts[0].length > 80 || parts.slice(1).join(" ").length > 80) invalid.firstName = "Enter your name.";
+            if (!formRef.current?.querySelector<HTMLInputElement>('input[name="email"]')?.validity.valid || !email.trim()) invalid.email = "Enter a valid email.";
+            if (!normaliseMobile(phone)) invalid.phone = "Enter a mobile, like 021 555 0192.";
             const weak = passwordMessage(password, email);
             if (weak) invalid.password = weak;
             setStepErrors(invalid);
@@ -121,10 +121,9 @@ export function SignupDetails({ role, next, initialState = null, previewPending 
             else formRef.current?.querySelector<HTMLInputElement>(`input[name="${invalid.firstName ? "name" : invalid.email ? "email" : invalid.phone ? "phone" : "password"}"]`)?.focus();
           }}>
             {!tradeStep && <div className={styles.desktopChoices}><SignupRoleChoices role={role} name="signupRole" onChange={(choice) => { if (choice !== role) router.push(detailsHref(choice, next)); }} /></div>}
-            {!online && <Banner tone="alert" title="You’re offline." live>Your details are kept here. Connect to the internet to create your account.</Banner>}
-            {problem?.error === "unavailable" && <Banner tone="alert" title="We can’t create your account right now." live>Your details are kept. Please try again.</Banner>}
-            {problem?.error === "try-later" && <Banner tone="alert" title="Please try again shortly." live>Sign-up is busy right now. Your details are kept.</Banner>}
-            {!isTradie && next?.startsWith("/jobs/new") && <p className={styles.draftNote}>Your job draft stays saved while you sign up. Confirm your email before posting it.</p>}
+            {!online && <Banner tone="alert" title="Offline." live />}
+            {problem?.error === "unavailable" && <Banner tone="alert" title="Sign-up unavailable. Try again." live />}
+            {problem?.error === "try-later" && <Banner tone="alert" title="Try again shortly." live />}
             <input type="hidden" name="role" value={isTradie ? "TRADIE" : "CUSTOMER"} />
             {next && <input type="hidden" name="next" value={next} />}
             <div className={styles.accountFields} hidden={isTradie && tradeStep}>
@@ -133,8 +132,8 @@ export function SignupDetails({ role, next, initialState = null, previewPending 
             <TextField name="email" label="Email" placeholder="Email" type="email" variant="underline" icon="mail" autoComplete="email" inputMode="email" spellCheck={false} required maxLength={254}
               className={styles.quietLabel} value={email} onChange={(event) => setEmail(event.target.value)}
               aria-describedby={problem?.error === "email-taken" ? "signup-email-options" : undefined}
-              error={problem?.error === "email-taken" ? "That email is already in use." : errors.email} />
-            {problem?.error === "email-taken" && <p id="signup-email-options" className={styles.passwordHint}><Link href={login}>Log in instead?</Link> Or <Link href={signupLink("/recovery", next)}>reset your password</Link>.</p>}
+              error={problem?.error === "email-taken" ? "Email already in use." : errors.email} />
+            {problem?.error === "email-taken" && <p id="signup-email-options" className={styles.passwordHint}><Link href={login}>Log in instead</Link> · <Link href={signupLink("/recovery", next)}>Reset password</Link></p>}
             <TextField name="phone" label="Mobile" placeholder="Mobile" type="tel" variant="underline" icon="call" autoComplete="tel" inputMode="tel" required maxLength={24}
               className={styles.quietLabel} value={phone} onChange={(event) => setPhone(event.target.value)} error={errors.phone} />
             <div className={styles.passwordGroup}>
@@ -148,11 +147,11 @@ export function SignupDetails({ role, next, initialState = null, previewPending 
             </div>
             {isTradie && <div className={`${styles.tradeStepFields} tm-anim-rise`} hidden={!tradeStep}><WorkerSignupFields values={problemAtStart?.values} errors={errors} attempt={attempt.count} previewAreaState={previewAreaState} previewSuggestions={previewAreaSuggestions} /></div>}
             <div hidden={isTradie && !tradeStep} className={styles.consent}>
-            <CheckboxField key={`terms-${attempt.count}`} name="terms" label={<>I agree to the <Link href={isTradie ? "/legal/tradie-terms" : "/legal/terms"} target="_blank" rel="noopener">{isTradie ? "Worker terms" : "Terms of use"}</Link> and <Link href="/legal/privacy" target="_blank" rel="noopener">Privacy Policy</Link></>}
+            <CheckboxField key={`terms-${attempt.count}`} name="terms" label={<>I agree to <Link href={isTradie ? "/legal/tradie-terms" : "/legal/terms"} target="_blank" rel="noopener">{isTradie ? "Worker terms" : "Terms"}</Link> and <Link href="/legal/privacy" target="_blank" rel="noopener">Privacy</Link></>}
               checked={terms} onChange={(event) => setTerms(event.target.checked)} error={errors.terms} required />
             </div>
             <Button type="submit" width="full" loading={pending} disabled={!online || (!isTradie || tradeStep) && !terms} className={styles.submit}>{isTradie ? tradeStep ? "Finish sign-up" : "Next" : "Create account"}</Button>
-            {isTradie && tradeStep && <Button type="button" variant="tertiary" width="full" onClick={() => setTradeStep(false)}>Back to your details</Button>}
+            {isTradie && tradeStep && <Button type="button" variant="tertiary" width="full" onClick={() => setTradeStep(false)}>Back</Button>}
             <p className={styles.phoneOnly}>Already have an account? <Link href={login}>Log in</Link></p>
           </form>
         )}
