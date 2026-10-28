@@ -44,6 +44,8 @@ export function createMapboxAddressSearch(config: {
   accessToken: string;
   fetch?: typeof fetch;
   featureTypes?: readonly ("address" | "locality" | "neighborhood" | "place")[];
+  /** Results saved to a profile require permanent geocoding. */
+  permanent?: boolean;
 }): AddressSearchProvider {
   const fetchImpl = config.fetch ?? fetch;
 
@@ -58,6 +60,7 @@ export function createMapboxAddressSearch(config: {
         proximity: `${options.near.lng},${options.near.lat}`,
         types: config.featureTypes?.join(",") || "address",
         autocomplete: "true",
+        ...(config.permanent ? { permanent: "true" } : {}),
         language: "en",
         limit: String(options.limit),
       }).toString();

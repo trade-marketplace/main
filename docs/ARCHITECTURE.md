@@ -537,3 +537,5 @@ Other shows manual-area fallback and loading shows both the action and area-look
 
 Verification/setup/claim flows remain their own issues. Legal links use the canonical `/legal/tradie-terms` and
 `/legal/privacy` routes; actual lawyer-approved legal content remains #208/#216. Signup does not invent contracts.
+
+Work-area geocoding that is saved to a worker profile uses Mapbox permanent results (`permanent=true`). Mapbox requires billing eligibility for permanent storage; a denied request falls back to manual suburb entry. Verification uses fake HTTP responses and does not run live permanent-geocoding requests. See https://docs.mapbox.com/api/search/geocoding/#storing-geocoding-results.

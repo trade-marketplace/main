@@ -58,7 +58,7 @@ export function WorkerSignupFields({ values = {}, errors = {}, attempt, previewA
         options={SIGNUP_TRADES.map((trade) => ({ value: trade.value, label: trade.label }))} value={trades} onChange={setTrades} error={errors.trades} />
       {SIGNUP_TRADES.map((trade) => trade.licence && trades.includes(trade.value) && <TextField key={trade.value} name={`licence_${trade.value}`}
         label={trade.licence.label} placeholder={trade.licence.example} value={licences[trade.value]} onChange={(event) => setLicences({ ...licences, [trade.value]: event.target.value })}
-        maxLength={64} required error={errors[`licence_${trade.value}`]} hint="Saved for office checking. This does not verify your licence." autoComplete="off" />)}
+        maxLength={64} required error={errors[`licence_${trade.value}`]} autoComplete="off" />)}
       {onlyOther && <p className={styles.draftNote}>Other / general labour needs no licence. Confirm your email and phone before taking Other jobs.</p>}
       <AddressField name="baseSuburb" label="Where do you work?" placeholder="Suburb or town" value={suburb} required maxLength={120}
         error={errors.baseSuburb} ref={areaRef} suggestions={results} status={status} lookupError="Suburb search is unavailable. Type your suburb or town by hand."
