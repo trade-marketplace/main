@@ -40,8 +40,8 @@ export type LogInAgainState = LogInResult | null;
 export type LogInAgain = (previous: LogInAgainState, formData: FormData) => Promise<LogInAgainState>;
 
 export const SESSION_EXPIRED_COPY = {
-  title: "Logged out",
-  start: "Log in",
+  title: "You’ve been logged out",
+  start: "Log in again",
   submit: "Log in",
   notYou: "Use another account",
 } as const;

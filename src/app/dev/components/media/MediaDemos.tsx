@@ -87,7 +87,7 @@ function Uploader({ layout }: { layout: "computer" | "phone" }) {
   const picker = usePretendUploads(EXAMPLES);
   return (
     <>
-      {layout === "computer" && <DropZone onFiles={picker.add} hint={PHOTO_HINT} disabled={picker.photos.length >= 6 ? "Remove a photo." : undefined} />}
+      {layout === "computer" && <DropZone onFiles={picker.add} hint={PHOTO_HINT} disabled={picker.photos.length >= 6 ? "6 photos max." : undefined} />}
       <PhotoPicker
         photos={picker.photos}
         onAdd={picker.add}
@@ -128,5 +128,5 @@ export function StarInputDemo({ error }: { error?: boolean }) {
 
 /** The drop zone when it's full (a pretend handler: it can't take files). */
 export function FullDropZoneDemo() {
-  return <DropZone onFiles={() => {}} hint="JPG, PNG, HEIC up to 10 MB" disabled="Remove a photo." />;
+  return <DropZone onFiles={() => {}} hint="JPG, PNG, HEIC up to 10 MB" disabled="6 photos max." />;
 }

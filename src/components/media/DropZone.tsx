@@ -24,7 +24,7 @@ export type DropZoneProps = {
   className?: string;
 };
 
-export function DropZone({ onFiles, hint, title = "", accept = PHOTO_ACCEPT, multiple = true, disabled, className }: DropZoneProps) {
+export function DropZone({ onFiles, hint, title = "Drop photos here", accept = PHOTO_ACCEPT, multiple = true, disabled, className }: DropZoneProps) {
   const input = useRef<HTMLInputElement>(null);
   const hintId = useId();
   const drop = useDropZone((files) => !disabled && onFiles([...files]));
@@ -46,7 +46,7 @@ export function DropZone({ onFiles, hint, title = "", accept = PHOTO_ACCEPT, mul
         >
           Choose files
         </button>
-        {hint && <span id={disabled ? undefined : hintId} hidden>{hint}</span>}
+        {hint && <span id={disabled ? undefined : hintId}> · {hint}</span>}
       </p>
       {disabled && (
         <p className={styles.dropHint} id={hintId}>

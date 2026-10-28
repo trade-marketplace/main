@@ -81,7 +81,7 @@ test.describe("customer sign-up preview states", () => {
     await page.goto(preview("email-taken"));
     await expect(page.getByLabel("Full name", { exact: false })).toHaveValue("Sarah Thompson");
     await expect(page.getByLabel("Mobile", { exact: false })).toHaveValue("021 555 0192");
-    await expect(page.getByRole("link", { name: "Log in" })).toHaveAttribute("href", "/login");
+    await expect(page.getByRole("link", { name: "Log in instead" })).toHaveAttribute("href", "/login");
     await expect(page.getByRole("link", { name: "Reset password" })).toHaveAttribute("href", "/recovery");
     await expect(page.getByLabel("Email", { exact: false })).toHaveAttribute("aria-invalid", "true");
   });

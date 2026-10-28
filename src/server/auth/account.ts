@@ -121,7 +121,7 @@ const signUpSchema = z.object({
   lastName: z.string().trim().max(80, "Name too long."),
   // Only customers and tradies can sign up. Office (ADMIN) accounts are only ever made by a founder.
   role: z.enum(["CUSTOMER", "TRADIE"], "Choose customer or tradie."),
-  phone: z.string().transform(normaliseMobile).refine((phone) => phone !== null, "New Zealand mobile required."),
+  phone: z.string().transform(normaliseMobile).refine((phone) => phone !== null, "Enter a mobile, like 021 555 0192."),
   terms: z.literal(true, "Accept the terms."),
 });
 

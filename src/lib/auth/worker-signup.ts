@@ -6,7 +6,7 @@ export const SIGNUP_TRADES = [
   { value: "PLUMBING", label: "Plumbing", licence: { label: "Plumbing licence number", example: "PGDB 98211", pattern: /^(?:PGDB?)?\d{5}$/ } },
   { value: "GAS", label: "Gas fitting", licence: { label: "Gas fitting licence number", example: "PGDB 44120", pattern: /^(?:PGDB?)?\d{5}$/ } },
   { value: "CONSTRUCTION", label: "Construction", licence: { label: "LBP number", example: "BP 123456", pattern: /^(?:BP)?\d{6}$/ } },
-  { value: "OTHER", label: "Other", licence: null },
+  { value: "OTHER", label: "Other / general labour", licence: null },
 ] as const;
 export type SignupTrade = (typeof SIGNUP_TRADES)[number]["value"];
 export type RestrictedSignupTrade = Exclude<SignupTrade, "OTHER">;

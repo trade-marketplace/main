@@ -115,7 +115,7 @@ describe("<SessionExpiredDialog>", () => {
     expect(html).toMatch(/<dialog\b/);
     expect(html).toContain("lock_clock");
     expect(html).toContain(`${SESSION_EXPIRED_COPY.title}</h2>`);
-    expect(text(html)).toBe("lock_clock Logged out close Close Log in");
+    expect(text(html)).toBe("lock_clock You’ve been logged out close Close Log in again");
     expect(html).toContain('aria-label="Close"');
     expect(html).not.toContain("aria-describedby");
     expect(html).not.toContain("<form");

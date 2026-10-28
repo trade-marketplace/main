@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { AddressField } from "@/components/forms/AddressField";
 import { ChipGroup } from "@/components/forms/ChoiceFields";
 import { TextField } from "@/components/forms/TextFields";
+import { Banner } from "@/components/overlays/Banner";
 import { SIGNUP_TRADES, type WorkerSignupField } from "@/lib/auth/worker-signup";
 import { searchSignupAreasAction } from "@/server/auth/actions";
 import type { SignupAreaResult, SignupAreaSuggestion } from "@/server/auth/work-area";
@@ -52,7 +53,7 @@ export function WorkerSignupFields({ values = {}, errors = {}, attempt, previewA
 
   return (
     <div className={styles.workerFields}>
-      <ChipGroup key={`trades-${attempt}`} name="trades" label="What do you do?" hideLabel multiple required
+      <ChipGroup key={`trades-${attempt}`} name="trades" label="What do you do?" multiple required
         options={SIGNUP_TRADES.map((trade) => ({ value: trade.value, label: trade.label }))} value={trades} onChange={setTrades} error={errors.trades} />
       {SIGNUP_TRADES.map((trade) => trade.licence && trades.includes(trade.value) && <TextField key={trade.value} name={`licence_${trade.value}`}
         label={trade.licence.label} placeholder={trade.licence.example} value={licences[trade.value]} onChange={(event) => setLicences({ ...licences, [trade.value]: event.target.value })}
@@ -65,6 +66,7 @@ export function WorkerSignupFields({ values = {}, errors = {}, attempt, previewA
       <input type="hidden" name="areaLng" value={chosen ? String(chosen.point.lng) : ""} />
       <ChipGroup key={`radius-${attempt}`} name="radiusKm" label="Travel radius" options={[10, 25, 50].map((km) => ({ value: String(km), label: `${km} km` }))}
         value={radius} onChange={setRadius} required error={errors.radiusKm} />
+      <Banner tone="brand" icon="verified_user">Confirm your email before taking a job. Restricted work needs a licence checked by the office.</Banner>
     </div>
   );
 }

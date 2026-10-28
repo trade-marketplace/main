@@ -77,7 +77,7 @@ export function AddressField({ label, hint, error, success, required, id, classN
       </ul>}
       <p id={statusId} role="status" className={styles.lookupStatus}>
         {status === "loading" ? "Searching…" : status === "error" ? lookupError
-          : status === "ready" ? results.length === 0 ? "No matches." : "" : ""}
+          : status === "ready" ? results.length === 0 ? "No matches." : <span className={styles.visuallyHidden}>{`${results.length} suggestions. Use the arrow keys, then Enter.`}</span> : ""}
       </p>
     </div>
   </Field>;

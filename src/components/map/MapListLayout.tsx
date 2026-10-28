@@ -207,7 +207,7 @@ export function MapListLayout({
           )}
           {ready && placed.length === 0 && (
             <div className={styles.message}>
-              <b>No jobs</b>
+              <b>No jobs here. Zoom out.</b>
             </div>
           )}
           {listOnly && selected && (
@@ -249,7 +249,7 @@ export function MapListLayout({
             )}
             {state === "loading" && <p className={styles.mapMessage}>Finding jobs…</p>}
             {(state === "empty" || (ready && placed.length === 0)) && (
-              <p className={styles.mapMessage}>No jobs</p>
+              <p className={styles.mapMessage}>{state === "empty" ? "No jobs" : "No jobs here. Zoom out."}</p>
             )}
           </ProviderSurface>
           {zoomed && (

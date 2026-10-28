@@ -23,8 +23,10 @@ describe("tradie signup", () => {
     expect(html).not.toMatch(/name="licence_/);
     expect(html).not.toContain("Browse jobs straight away");
     expect(html).toContain('role="combobox"');
-    expect(html).toContain('aria-label="What do you do?"');
-    expect(html).toMatch(/<legend[^>]*hidden=""/);
+    expect(html).toMatch(/<legend[^>]*>What do you do\?/);
+    // The question shows, and so does the email/licence note (Matt, #368).
+    expect(html).not.toMatch(/<legend[^>]*hidden=""/);
+    expect(html).toContain("Confirm your email before taking a job. Restricted work needs a licence checked by the office.");
   });
   it("each restricted trade has its own field, example and inline error association", () => {
     const html = renderToString(<WorkerSignupFields values={{ trades: "ELECTRICAL,GAS" }} errors={{ licence_ELECTRICAL: "Use a number like E 123456 or EW012345." }} attempt={0} />);

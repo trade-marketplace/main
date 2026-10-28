@@ -44,7 +44,7 @@ export function SignupChoice({ next, initialRole = "customer" }: { next?: string
         art="mail"
         aside={
           <>
-            <Link href={logIn}>Log in</Link>
+            Already have an account? <Link href={logIn}>Log in</Link>
           </>
         }
       >
@@ -54,7 +54,7 @@ export function SignupChoice({ next, initialRole = "customer" }: { next?: string
             Next
           </Button>
           <p className={styles.phoneOnly}>
-            <Link href={logIn}>Log in</Link>
+            Already have an account? <Link href={logIn}>Log in</Link>
           </p>
         </form>
       </AuthLayout>

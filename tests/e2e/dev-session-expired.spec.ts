@@ -17,7 +17,7 @@ const devUrl = process.env.E2E_DEV_BASE_URL;
 const url = (query = "") => (devUrl ? new URL(`/dev/components/session-expired${query}`, devUrl).href : "");
 
 const DRAFT = "The kitchen tap drips all night. It's the mixer over the sink.";
-const dialog = (page: Page) => page.getByRole("dialog", { name: "Logged out" });
+const dialog = (page: Page) => page.getByRole("dialog", { name: "You’ve been logged out" });
 const sideways = (page: Page) => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
 
 /** Save the draft: the pretend server has lost the session, so the dialog opens over the page. */
@@ -58,7 +58,7 @@ test.describe("/dev/components/session-expired", () => {
     await expect(box).not.toContainText("draft");
     await expect(box.getByRole("button")).toHaveCount(2);
     await expect(box.getByRole("button", { name: "Close" })).toBeVisible();
-    const title = box.getByRole("heading", { name: "Logged out" });
+    const title = box.getByRole("heading", { name: "You’ve been logged out" });
     const lineHeight = await title.evaluate((el) => parseFloat(getComputedStyle(el).lineHeight));
     expect((await title.boundingBox())!.height).toBeLessThan(lineHeight * 1.5);
     const width = (await box.boundingBox())!.width;
@@ -75,7 +75,7 @@ test.describe("/dev/components/session-expired", () => {
 
   test("Esc and the scrim don't close it, and Tab stays inside", async ({ page }) => {
     await saveDraft(page);
-    await expect(dialog(page).getByRole("heading", { name: "Logged out" })).toBeFocused();
+    await expect(dialog(page).getByRole("heading", { name: "You’ve been logged out" })).toBeFocused();
     await page.keyboard.press("Escape");
     await expect(dialog(page)).toBeVisible();
     await page.mouse.click(5, 300);

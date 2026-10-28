@@ -86,13 +86,13 @@ export function SignupDetails({ role, next, initialState = null, previewPending 
         onBack={isTradie && tradeStep ? () => setTradeStep(false) : undefined}
         stepLabel={isTradie ? `Step ${tradeStep ? 3 : 2} of 3` : "Step 2 of 2"} eyebrow={isTradie && tradeStep ? "Step 2 of 2" : undefined}
         brandTitle={isTradie ? "You do the work. We find the jobs." : undefined}
-        aside={<><Link href={login}>Log in</Link></>}>
+        aside={<>Already have an account? <Link href={login}>Log in</Link></>}>
         <div className={styles.detailsProgress} role="progressbar" aria-label="Sign-up progress" aria-valuemin={0} aria-valuemax={isTradie ? 3 : 2} aria-valuenow={isTradie && tradeStep ? 3 : 2} aria-valuetext={isTradie ? `Step ${tradeStep ? 3 : 2} of 3` : "Step 2 of 2"}>
           {Array.from({ length: isTradie ? 3 : 2 }, (_, index) => <span key={index} data-active={index < (isTradie && tradeStep ? 3 : 2) || undefined} />)}
         </div>
         {success ? (
           <div className={styles.form}>
-            <Banner tone="good" title="Confirm your email" live>{success.email}</Banner>
+            <Banner tone="good" title="Confirm your email" live>Check {success.email}. Confirm it before {isTradie ? "taking" : "posting"} a job.</Banner>
             <Button href={login} width="full">Log in</Button>
           </div>
         ) : (
@@ -113,7 +113,7 @@ export function SignupDetails({ role, next, initialState = null, previewPending 
             const parts = name.trim().split(/\s+/);
             if (!parts[0] || parts[0].length > 80 || parts.slice(1).join(" ").length > 80) invalid.firstName = "Enter your name.";
             if (!formRef.current?.querySelector<HTMLInputElement>('input[name="email"]')?.validity.valid || !email.trim()) invalid.email = "Enter a valid email.";
-            if (!normaliseMobile(phone)) invalid.phone = "New Zealand mobile required.";
+            if (!normaliseMobile(phone)) invalid.phone = "Enter a mobile, like 021 555 0192.";
             const weak = passwordMessage(password, email);
             if (weak) invalid.password = weak;
             setStepErrors(invalid);
@@ -133,7 +133,7 @@ export function SignupDetails({ role, next, initialState = null, previewPending 
               className={styles.quietLabel} value={email} onChange={(event) => setEmail(event.target.value)}
               aria-describedby={problem?.error === "email-taken" ? "signup-email-options" : undefined}
               error={problem?.error === "email-taken" ? "Email already in use." : errors.email} />
-            {problem?.error === "email-taken" && <p id="signup-email-options" className={styles.passwordHint}><Link href={signupLink("/recovery", next)}>Reset password</Link></p>}
+            {problem?.error === "email-taken" && <p id="signup-email-options" className={styles.passwordHint}><Link href={login}>Log in instead</Link> · <Link href={signupLink("/recovery", next)}>Reset password</Link></p>}
             <TextField name="phone" label="Mobile" placeholder="Mobile" type="tel" variant="underline" icon="call" autoComplete="tel" inputMode="tel" required maxLength={24}
               className={styles.quietLabel} value={phone} onChange={(event) => setPhone(event.target.value)} error={errors.phone} />
             <div className={styles.passwordGroup}>
@@ -142,7 +142,7 @@ export function SignupDetails({ role, next, initialState = null, previewPending 
               <div className={styles.strength} role="meter" aria-label="Password strength" aria-valuemin={0} aria-valuemax={4} aria-valuenow={strength.segments} aria-valuetext={strength.hint}>
                 {[0, 1, 2, 3].map((segment) => <span key={segment} data-active={segment < strength.segments || undefined} />)}
               </div>
-              <p id="signup-password-hint" hidden>{strength.hint}</p>
+              <p id="signup-password-hint" className={styles.passwordHint}>{strength.hint}</p>
             </div>
             </div>
             {isTradie && <div className={`${styles.tradeStepFields} tm-anim-rise`} hidden={!tradeStep}><WorkerSignupFields values={problemAtStart?.values} errors={errors} attempt={attempt.count} previewAreaState={previewAreaState} previewSuggestions={previewAreaSuggestions} /></div>}
@@ -152,7 +152,7 @@ export function SignupDetails({ role, next, initialState = null, previewPending 
             </div>
             <Button type="submit" width="full" loading={pending} disabled={!online || (!isTradie || tradeStep) && !terms} className={styles.submit}>{isTradie ? tradeStep ? "Finish sign-up" : "Next" : "Create account"}</Button>
             {isTradie && tradeStep && <Button type="button" variant="tertiary" width="full" onClick={() => setTradeStep(false)}>Back</Button>}
-            <p className={styles.phoneOnly}><Link href={login}>Log in</Link></p>
+            <p className={styles.phoneOnly}>Already have an account? <Link href={login}>Log in</Link></p>
           </form>
         )}
       </AuthLayout>

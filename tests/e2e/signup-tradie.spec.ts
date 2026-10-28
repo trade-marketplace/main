@@ -44,7 +44,7 @@ test.describe("tradie signup", () => {
 
   test("Other needs no licence: manual area works with no token, and an outage keeps all details", async ({ page }) => {
     await accountStep(page);
-    const other = page.getByRole("checkbox", { name: "Other", exact: true });
+    const other = page.getByRole("checkbox", { name: "Other / general labour", exact: true });
     await other.press("Space");
     await expect(other).toBeChecked();
     await expect(page.locator('input[name^="licence_"]')).toHaveCount(0);
@@ -80,7 +80,7 @@ test.describe("tradie signup", () => {
     await expect(page.getByLabel("EWRB registration number", { exact: false })).toHaveAttribute("aria-invalid", "true");
     await expect(page.getByLabel("EWRB registration number", { exact: false })).toBeFocused();
     await expect(page.getByLabel("Gas fitting licence number", { exact: false })).toHaveValue("PGDB 44120");
-    await page.getByRole("checkbox", { name: "Other", exact: true }).check();
+    await page.getByRole("checkbox", { name: "Other / general labour", exact: true }).check();
     await page.getByRole("checkbox", { name: "Electrical", exact: true }).uncheck();
     await page.getByRole("checkbox", { name: "Gas fitting", exact: true }).uncheck();
     await expect(page.locator('input[name^="licence_"]')).toHaveCount(0);
@@ -88,14 +88,14 @@ test.describe("tradie signup", () => {
 
   test("offline pauses submission and retains both account and work details", async ({ page, context }) => {
     await accountStep(page);
-    await page.getByRole("checkbox", { name: "Other", exact: true }).check();
+    await page.getByRole("checkbox", { name: "Other / general labour", exact: true }).check();
     await page.getByRole("checkbox", { name: /I agree/ }).check();
     await context.setOffline(true);
     await expect(page.getByText("Offline.")).toBeVisible();
     await expect(page.getByRole("button", { name: "Finish sign-up" })).toHaveAttribute("aria-disabled", "true");
     await context.setOffline(false);
     await expect(page.getByText("Offline.")).toBeHidden();
-    await expect(page.getByRole("checkbox", { name: "Other", exact: true })).toBeChecked();
+    await expect(page.getByRole("checkbox", { name: "Other / general labour", exact: true })).toBeChecked();
     await expect(page.locator('input[name="next"]')).toHaveValue("/jobs?view=map");
   });
 });
