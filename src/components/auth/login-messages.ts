@@ -14,12 +14,12 @@ export type LogInMessages = {
 };
 
 export const LOGIN_MESSAGES = {
-  wrongCredentials: "That email and password don’t match. Try again or reset it.",
+  wrongCredentials: "Incorrect email or password.",
   // Only when Supabase's own rate limit answers: accounts are never locked after wrong passwords (DECISIONS.md).
   // The wait isn't promised: it depends on the limit.
-  locked: { title: "Too many tries.", text: "Wait a few minutes, or reset your password." },
-  notVerified: { title: "Confirm your email first.", text: "Open the link we emailed you, then log in." },
-  unavailable: { title: "We can’t log you in right now.", text: "Try again in a minute." },
+  locked: { title: "Try again shortly.", text: "" },
+  notVerified: { title: "Confirm your email.", text: "" },
+  unavailable: { title: "Log-in unavailable.", text: "" },
 } as const;
 
 export function logInMessages(result: LogInProblem | null): LogInMessages {

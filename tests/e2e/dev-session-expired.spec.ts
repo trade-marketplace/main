@@ -17,7 +17,7 @@ const devUrl = process.env.E2E_DEV_BASE_URL;
 const url = (query = "") => (devUrl ? new URL(`/dev/components/session-expired${query}`, devUrl).href : "");
 
 const DRAFT = "The kitchen tap drips all night. It's the mixer over the sink.";
-const dialog = (page: Page) => page.getByRole("dialog", { name: "You’ve been logged out" });
+const dialog = (page: Page) => page.getByRole("dialog", { name: "Logged out" });
 const sideways = (page: Page) => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
 
 /** Save the draft: the pretend server has lost the session, so the dialog opens over the page. */
@@ -39,6 +39,7 @@ test.describe("/dev/components/session-expired", () => {
       for (const query of ["?open=notice", "?state=wrong", "?state=locked", "?email=off&open=form"]) {
         await page.goto(url(query));
         await expect(dialog(page)).toBeVisible();
+        await expect(dialog(page)).toHaveCSS("opacity", "1");
         expect(await sideways(page), query).toBe(0);
         const box = (await dialog(page).boundingBox())!;
         expect(box.x, query).toBeGreaterThanOrEqual(0);
@@ -57,12 +58,12 @@ test.describe("/dev/components/session-expired", () => {
     await expect(box).not.toContainText("draft");
     await expect(box.getByRole("button")).toHaveCount(2);
     await expect(box.getByRole("button", { name: "Close" })).toBeVisible();
-    const title = box.getByRole("heading", { name: "You’ve been logged out" });
+    const title = box.getByRole("heading", { name: "Logged out" });
     const lineHeight = await title.evaluate((el) => parseFloat(getComputedStyle(el).lineHeight));
     expect((await title.boundingBox())!.height).toBeLessThan(lineHeight * 1.5);
     const width = (await box.boundingBox())!.width;
     expect(width).toBeLessThanOrEqual(400);
-    const button = (await box.getByRole("button", { name: "Log in again" }).boundingBox())!;
+    const button = (await box.getByRole("button", { name: "Log in" }).boundingBox())!;
     expect(button.width).toBeGreaterThan(width - 2 * 28 - 2);
   });
 
@@ -74,7 +75,7 @@ test.describe("/dev/components/session-expired", () => {
 
   test("Esc and the scrim don't close it, and Tab stays inside", async ({ page }) => {
     await saveDraft(page);
-    await expect(dialog(page).getByRole("heading", { name: "You’ve been logged out" })).toBeFocused();
+    await expect(dialog(page).getByRole("heading", { name: "Logged out" })).toBeFocused();
     await page.keyboard.press("Escape");
     await expect(dialog(page)).toBeVisible();
     await page.mouse.click(5, 300);
@@ -87,15 +88,15 @@ test.describe("/dev/components/session-expired", () => {
 
   test("logging in again keeps the page and the draft, sends it, and puts focus back", async ({ page }) => {
     await saveDraft(page);
-    await dialog(page).getByRole("button", { name: "Log in again" }).click();
+    await dialog(page).getByRole("button", { name: "Log in" }).click();
     // The email is known: only the password is asked for, and focus goes straight to it.
-    await expect(dialog(page)).toContainText("Logging in as sarah@email.co.nz");
+    await expect(dialog(page)).toContainText("sarah@email.co.nz");
     const password = dialog(page).getByLabel(/^Password/);
     await expect(password).toBeFocused();
 
     await password.fill("wrong");
     await page.keyboard.press("Enter");
-    await expect(dialog(page)).toContainText("That email and password don’t match. Try again.");
+    await expect(dialog(page)).toContainText("Incorrect email or password.");
     await expect(password).toHaveAttribute("aria-invalid", "true");
     await expect(password).toBeFocused();
     await expect(password).toHaveValue("");
@@ -111,30 +112,30 @@ test.describe("/dev/components/session-expired", () => {
 
   test("problems that aren't about the password show in a banner that's read out", async ({ page }) => {
     await saveDraft(page);
-    await dialog(page).getByRole("button", { name: "Log in again" }).click();
+    await dialog(page).getByRole("button", { name: "Log in" }).click();
     await dialog(page).getByLabel(/^Password/).fill("locked");
     await page.keyboard.press("Enter");
-    await expect(dialog(page).getByRole("alert")).toContainText("Too many tries.");
+    await expect(dialog(page).getByRole("alert")).toContainText("Try again shortly.");
     await dialog(page).getByLabel(/^Password/).fill("unavailable");
     await page.keyboard.press("Enter");
-    await expect(dialog(page).getByRole("alert")).toContainText("We can’t log you in right now.");
+    await expect(dialog(page).getByRole("alert")).toContainText("Log-in unavailable.");
   });
 
   test("when the email isn't known it's asked for first", async ({ page }) => {
     await page.goto(url("?email=off&open=notice"));
-    await dialog(page).getByRole("button", { name: "Log in again" }).click();
+    await dialog(page).getByRole("button", { name: "Log in" }).click();
     const email = dialog(page).getByRole("textbox", { name: "Email" });
     await expect(email).toBeFocused();
     await expect(dialog(page).getByText("Not you?")).toHaveCount(0);
     await email.fill("sam@example.com");
     await dialog(page).getByLabel(/^Password/).fill("wrong");
     await page.keyboard.press("Enter");
-    await expect(dialog(page)).toContainText("That email and password don’t match.");
+    await expect(dialog(page)).toContainText("Incorrect email or password.");
     await expect(email).toHaveValue("sam@example.com");
   });
 
   test("Not you? goes to the log-in page", async ({ page }) => {
     await page.goto(url("?open=form"));
-    await expect(dialog(page).getByRole("link", { name: "Not you? Log in as someone else" })).toHaveAttribute("href", "/login");
+    await expect(dialog(page).getByRole("link", { name: "Use another account" })).toHaveAttribute("href", "/login");
   });
 });

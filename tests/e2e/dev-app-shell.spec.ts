@@ -178,7 +178,7 @@ test.describe("/dev/components/app-shell", () => {
 
   test("the test-mode banner shows until payments are live", async ({ page }) => {
     await page.goto(url());
-    await expect(page.getByText("Test mode. No real money moves.")).toBeVisible();
+    await expect(page.getByText("Test mode.")).toBeVisible();
     await page.goto(url("?test=off"));
     await expect(page.getByText("Test mode.")).toHaveCount(0);
   });

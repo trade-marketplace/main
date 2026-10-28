@@ -21,7 +21,7 @@ export type AddressFieldProps = Omit<InputHTMLAttributes<HTMLInputElement>, "onC
 
 /** Accessible autocomplete shell. Fetching, debounce, coverage and stale-response protection belong to the caller. */
 export function AddressField({ label, hint, error, success, required, id, className, value, defaultValue = "",
-  suggestions, status = "idle", lookupError = "Address search is unavailable. You can type the address by hand.",
+  suggestions, status = "idle", lookupError = "Enter address manually.",
   onQueryChange, onSelect, onFocus, onBlur, onKeyDown, "aria-describedby": describedBy, ...input }: AddressFieldProps) {
   const field = useField({ id, hint, error, success, describedBy });
   const [ownValue, setOwnValue] = useState(defaultValue);
@@ -76,8 +76,8 @@ export function AddressField({ label, hint, error, success, required, id, classN
         </li>)}
       </ul>}
       <p id={statusId} role="status" className={styles.lookupStatus}>
-        {status === "loading" ? "Looking for addresses…" : status === "error" ? lookupError
-          : status === "ready" ? results.length === 0 ? "No matches. You can type the address by hand." : `${results.length} suggestions. Use up and down arrows, then Enter to choose.` : ""}
+        {status === "loading" ? "Searching…" : status === "error" ? lookupError
+          : status === "ready" ? results.length === 0 ? "No matches." : "" : ""}
       </p>
     </div>
   </Field>;

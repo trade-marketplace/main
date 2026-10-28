@@ -6,7 +6,7 @@ export const SIGNUP_TRADES = [
   { value: "PLUMBING", label: "Plumbing", licence: { label: "Plumbing licence number", example: "PGDB 98211", pattern: /^(?:PGDB?)?\d{5}$/ } },
   { value: "GAS", label: "Gas fitting", licence: { label: "Gas fitting licence number", example: "PGDB 44120", pattern: /^(?:PGDB?)?\d{5}$/ } },
   { value: "CONSTRUCTION", label: "Construction", licence: { label: "LBP number", example: "BP 123456", pattern: /^(?:BP)?\d{6}$/ } },
-  { value: "OTHER", label: "Other / general labour", licence: null },
+  { value: "OTHER", label: "Other", licence: null },
 ] as const;
 export type SignupTrade = (typeof SIGNUP_TRADES)[number]["value"];
 export type RestrictedSignupTrade = Exclude<SignupTrade, "OTHER">;
@@ -27,10 +27,10 @@ export type WorkerSignupDetails = {
 };
 
 const schema = z.object({
-  trades: z.array(z.enum(["ELECTRICAL", "PLUMBING", "GAS", "CONSTRUCTION", "OTHER"])).min(1, "Pick at least one trade.").max(5),
+  trades: z.array(z.enum(["ELECTRICAL", "PLUMBING", "GAS", "CONSTRUCTION", "OTHER"])).min(1, "Choose a trade.").max(5),
   licences: z.record(z.string(), z.string().trim().max(64)).default({}),
-  baseSuburb: z.string().trim().min(1, "Enter your work suburb.").max(120, "That suburb name is too long."),
-  radiusKm: z.union([z.string(), z.number()]).transform(Number).pipe(z.union([z.literal(10), z.literal(25), z.literal(50)], "Choose 10, 25 or 50 km.")),
+  baseSuburb: z.string().trim().min(1, "Enter a suburb.").max(120, "Suburb too long."),
+  radiusKm: z.union([z.string(), z.number()]).transform(Number).pipe(z.union([z.literal(10), z.literal(25), z.literal(50)], "Choose a radius.")),
   point: z.object({ lat: z.number().min(-90).max(90), lng: z.number().min(-180).max(180) }).nullable(),
 });
 
@@ -41,9 +41,9 @@ export function parseWorkerSignup(input: unknown): { ok: true; details: WorkerSi
     for (const issue of parsed.error.issues) {
       const field = issue.path[0];
       if (field === "baseSuburb" || field === "radiusKm") errors[field] ??= issue.message;
-      else if (field === "point") errors.baseSuburb ??= "Choose the suburb again, or type it by hand.";
-      else if (field === "licences" && typeof issue.path[1] === "string") errors[`licence_${issue.path[1]}` as WorkerSignupField] ??= "That licence number is too long.";
-      else errors.trades ??= "Pick at least one trade from the list.";
+      else if (field === "point") errors.baseSuburb ??= "Choose a suburb.";
+      else if (field === "licences" && typeof issue.path[1] === "string") errors[`licence_${issue.path[1]}` as WorkerSignupField] ??= "Licence number too long.";
+      else errors.trades ??= "Choose a trade.";
     }
     return { ok: false, errors };
   }
@@ -53,8 +53,8 @@ export function parseWorkerSignup(input: unknown): { ok: true; details: WorkerSi
   for (const trade of SIGNUP_TRADES) {
     if (!trade.licence || !data.trades.includes(trade.value)) continue;
     const number = data.licences[trade.value]?.trim().replace(/\s+/g, " ").toUpperCase() ?? "";
-    if (!number) errors[`licence_${trade.value}`] = `Enter your number, for example ${trade.licence.example}.`;
-    else if (!trade.licence.pattern.test(number.replace(/\s+/g, ""))) errors[`licence_${trade.value}`] = `Use a number like ${trade.licence.example}. The office checks the licence before restricted work.`;
+    if (!number) errors[`licence_${trade.value}`] = `Use ${trade.licence.example}.`;
+    else if (!trade.licence.pattern.test(number.replace(/\s+/g, ""))) errors[`licence_${trade.value}`] = `Use ${trade.licence.example}.`;
     else licences[trade.value] = number;
   }
   if (Object.keys(errors).length) return { ok: false, errors };

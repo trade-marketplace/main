@@ -70,10 +70,10 @@ describe("ServerErrorView", () => {
   it("owns the problem, offers Try again and Contact us, and shows the reference", () => {
     const error = Object.assign(new Error("db password is hunter2"), { digest: "1234567890" });
     const html = renderToString(<ServerErrorView error={error} onRetry={() => {}} />);
-    expect(text(html)).toContain(`${SERVER_ERROR_TITLE} It’s not you.`);
+    expect(text(html)).toContain(SERVER_ERROR_TITLE);
     expect(text(html)).toContain("Try again");
     expect(html).toMatch(/<a[^>]*href="\/contact"[^>]*>[\s\S]*?Contact us/);
-    expect(text(html)).toContain("Error ref 1234-5678-90 (for support)");
+    expect(text(html)).toContain("Ref 1234-5678-90");
   });
 
   it("never shows the error's own message", () => {
@@ -90,7 +90,7 @@ describe("ServerErrorView", () => {
   });
 
   it("is the page's h1", () => {
-    expect(renderToString(<ServerErrorView />)).toMatch(/<h1\b[^>]*>Something broke on our end\.<\/h1>/);
+    expect(renderToString(<ServerErrorView />)).toMatch(/<h1\b[^>]*>Something broke\.<\/h1>/);
   });
 });
 

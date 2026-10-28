@@ -204,7 +204,7 @@ export default async function FeedbackPage({ searchParams }: { searchParams: Sea
               <EmptyState
                 illustration="van"
                 title="Nothing on yet."
-                message="Got something that needs doing? Post it free and we’ll get you a price."
+
                 action={<Button href="/dev/components/feedback#empty">Post a job</Button>}
                 headingLevel={4}
               />
@@ -214,8 +214,8 @@ export default async function FeedbackPage({ searchParams }: { searchParams: Sea
             <div className={styles.card}>
               <EmptyState
                 icon="search_off"
-                title="No jobs match that."
-                message="Try fewer filters."
+                title="No matching jobs."
+
                 action={
                   <Button variant="secondary" href="/dev/components/feedback#empty">
                     Reset filters
@@ -227,7 +227,7 @@ export default async function FeedbackPage({ searchParams }: { searchParams: Sea
           </Row>
           <Row name="Nothing to do" note="No action: My jobs, Done tab." block>
             <div className={styles.card}>
-              <EmptyState icon="task_alt" title="Nothing finished yet." message="Jobs show up here once they’re sorted." headingLevel={4} />
+              <EmptyState icon="task_alt" title="Nothing finished."  headingLevel={4} />
             </div>
           </Row>
           <Row name="Two actions" note="One main action and a quieter link." block>
@@ -235,7 +235,7 @@ export default async function FeedbackPage({ searchParams }: { searchParams: Sea
               <EmptyState
                 icon="chat_bubble"
                 title="No messages yet."
-                message="They’ll show up here once a tradie takes your job."
+
                 action={<Button href="/dev/components/feedback#empty">See my jobs</Button>}
                 secondaryAction={<TextLink href="/dev/components/feedback#empty">How messages work</TextLink>}
                 headingLevel={4}
@@ -253,7 +253,7 @@ export default async function FeedbackPage({ searchParams }: { searchParams: Sea
             <div className={`${styles.card} ${styles.narrow}`}>
               <ErrorPreview
                 title="Can’t load your jobs"
-                message="Check your connection and try again. If it keeps happening, let us know."
+
                 secondaryAction={<TextLink href="/dev/components/feedback#errors">Contact support</TextLink>}
                 headingLevel={4}
                 announce={false}
@@ -262,7 +262,7 @@ export default async function FeedbackPage({ searchParams }: { searchParams: Sea
           </Row>
           <Row name="Retrying" note="While a retry runs: spinner, same width, more presses do nothing." block>
             <div className={`${styles.card} ${styles.narrow}`}>
-              <ErrorPreview title="Can’t load your jobs" message="Check your connection and try again." retrying headingLevel={4} announce={false} />
+              <ErrorPreview title="Can’t load your jobs"  retrying headingLevel={4} announce={false} />
             </div>
           </Row>
           <Row name="Try it" note="Press Try again: the first try fails, the second loads the list." block>
@@ -273,8 +273,8 @@ export default async function FeedbackPage({ searchParams }: { searchParams: Sea
               <ErrorPreview
                 size="page"
                 icon="build"
-                title="Something broke on our end."
-                message="It’s not you. Try again in a minute. Anything you typed is saved."
+                title="Something broke."
+
                 secondaryAction={
                   <Button variant="secondary" size="sm" href="/dev/components/feedback#errors">
                     Contact us
@@ -287,8 +287,8 @@ export default async function FeedbackPage({ searchParams }: { searchParams: Sea
             </div>
           </Row>
           <Row name="Inline" note="A red banner inside a card or above a form. Try again sits at the end." block>
-            <InlineErrorPreview message="Couldn’t save your changes. Check your connection and try again." announce={false} />
-            <InlineError message="We couldn’t load the photos for this job." announce={false} />
+            <InlineErrorPreview message="Couldn’t save." announce={false} />
+            <InlineError message="Couldn’t load photos." announce={false} />
           </Row>
           <Row name="Inline, try it" note="Try again saves after a moment." block>
             <InlineRetryDemo />
@@ -298,9 +298,9 @@ export default async function FeedbackPage({ searchParams }: { searchParams: Sea
         <Section
           id="offline"
           title="Offline"
-          intro="A persistent banner across the top of the page. It retries by itself with backoff (2s, 4s, 8s … 30s) and once more when the connection comes back, then says “You’re back online.” for 4 seconds. Skeletons stay. The real one is at the top of this page: switch DevTools › Network to Offline."
+          intro="A persistent banner across the top of the page. It retries by itself with backoff (2s, 4s, 8s … 30s) and once more when the connection comes back, then says “Back online.” for 4 seconds. Skeletons stay. The real one is at the top of this page: switch DevTools › Network to Offline."
         >
-          <Row name="Offline, with Retry now" block>
+          <Row name="Offline, with Retry" block>
             <div className={styles.frame}>
               <OfflinePreview />
               <div className={styles.frameBody}>

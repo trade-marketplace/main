@@ -35,7 +35,7 @@ test.describe("/login", () => {
     await expect(page.getByLabel("Password", { exact: true })).toHaveAttribute("type", "text");
     await page.getByLabel("Password", { exact: true }).press("Enter");
     // No Supabase in this build: the honest answer.
-    await expect(page.getByText("We can’t log you in right now.")).toBeVisible();
+    await expect(page.getByText("Log-in unavailable.")).toBeVisible();
     await expect(page.getByLabel("Email")).toHaveValue("sarah@email.co.nz");
     await expect(page.getByLabel("Password", { exact: true })).toHaveValue("");
     await expect(page.getByLabel("Password", { exact: true })).toBeFocused();
@@ -53,7 +53,7 @@ test.describe("/login", () => {
   test("links: forgot password, sign up (keeping the deep link), home", async ({ page }) => {
     await page.goto("/login?next=%2Fjobs%2FTM-1005");
     await expect(page.getByRole("link", { name: "Forgot password?" })).toHaveAttribute("href", "/recovery");
-    await expect(page.getByRole("link", { name: "Create an account" })).toHaveAttribute("href", "/signup?next=%2Fjobs%2FTM-1005");
+    await expect(page.getByRole("link", { name: "Sign up", exact: true })).toHaveAttribute("href", "/signup?next=%2Fjobs%2FTM-1005");
   });
 
   test("as in the mockups: no labels showing, and Sign up on a phone", async ({ page }) => {
@@ -88,16 +88,16 @@ test.describe("/dev/components/login (every answer)", () => {
 
   test("wrong password: one message under the password, which is red and empty", async ({ page }) => {
     await page.goto(preview("wrong"));
-    await expect(page.getByText("That email and password don’t match. Try again or reset it.")).toBeVisible();
+    await expect(page.getByText("Incorrect email or password.")).toBeVisible();
     await expect(page.getByLabel("Password", { exact: true })).toHaveAttribute("aria-invalid", "true");
     await expect(page.getByLabel("Email")).toHaveValue("sarah@email.co.nz");
   });
 
   test("too many tries and an unconfirmed email show as banners", async ({ page }) => {
     await page.goto(preview("locked"));
-    await expect(page.getByText("Too many tries.")).toBeVisible();
+    await expect(page.getByText("Try again shortly.")).toBeVisible();
     await page.goto(preview("unverified"));
-    await expect(page.getByText("Confirm your email first.")).toBeVisible();
+    await expect(page.getByText("Confirm your email.")).toBeVisible();
   });
 
   test("200% text still fits", async ({ page }) => {

@@ -20,13 +20,13 @@ describe("detailsHref", () => {
 });
 
 describe("SignupChoice", () => {
-  it("asks one question with two radio cards, customer chosen to start", () => {
+  it("names the account choices without extra descriptions, customer chosen to start", () => {
     const html = renderToString(<SignupChoice />);
-    expect(html).toMatch(/<fieldset[^>]*>[\s\S]*<legend[^>]*>What brings you here\?<\/legend>/);
+    expect(html).toMatch(/<fieldset[^>]*aria-label="Account type"/);
     expect(html.match(/type="radio"/g)).toHaveLength(2);
     expect(html).toMatch(/<input type="radio"[^>]*name="role" checked="" value="customer"/);
     expect(html).not.toMatch(/checked="" value="tradie"/);
-    for (const choice of ROLE_CHOICES) expect(text(html)).toContain(`${choice.title} ${choice.text}`);
+    for (const choice of ROLE_CHOICES) expect(text(html)).toContain(choice.title);
     expect(text(html)).not.toMatch(/paperwork/i);
   });
 

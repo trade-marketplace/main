@@ -10,7 +10,7 @@ import { StatusPill } from "@/components/status/StatusPill";
 </CategoryRail>
 
 {jobs.length === 0 ? (
-  <EmptyCard illustration="van" title="Nothing on yet." message="Got something that needs doing? Post it free."
+  <EmptyCard illustration="van" title="Nothing on yet."
     action={<Button href="/jobs/new" width="auto">Post a job</Button>} />
 ) : (
   <ul aria-label="Your jobs">

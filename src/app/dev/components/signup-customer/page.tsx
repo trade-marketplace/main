@@ -10,8 +10,8 @@ export const metadata: Metadata = { title: "Customer sign up (dev)", robots: { i
 const values = { firstName: "Sarah", lastName: "Thompson", email: "sarah@example.test", phone: "021 555 0192", role: "CUSTOMER", terms: "on" };
 const STATES: Record<string, SignUpState> = {
   "email-taken": { ok: false, error: "email-taken", values },
-  "weak-password": { ok: false, error: "invalid", fieldErrors: { password: "That password is too easy to guess. Try a few unrelated words together." }, values },
-  invalid: { ok: false, error: "invalid", fieldErrors: { firstName: "Enter your first name.", email: "Enter a valid email address, like name@example.com.", phone: "Enter a New Zealand mobile number, like 021 555 0192.", terms: "Accept the terms and privacy policy to create an account." }, values: { ...values, firstName: "", lastName: "", email: "sarah@", phone: "", terms: "" } },
+  "weak-password": { ok: false, error: "invalid", fieldErrors: { password: "Choose a stronger password." }, values },
+  invalid: { ok: false, error: "invalid", fieldErrors: { firstName: "Enter your first name.", email: "Enter a valid email.", phone: "New Zealand mobile required.", terms: "Accept the terms." }, values: { ...values, firstName: "", lastName: "", email: "sarah@", phone: "", terms: "" } },
   unavailable: { ok: false, error: "unavailable", values },
   "try-later": { ok: false, error: "try-later", values },
   success: { ok: true, status: "check-email", email: "sarah@example.test" },

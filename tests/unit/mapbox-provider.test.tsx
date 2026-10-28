@@ -97,14 +97,14 @@ describe("list fallback and preview states", () => {
   it("renders every job and its accessible row without a token or a network request", () => {
     const load = vi.fn();
     const html = renderToString(<MapListLayout jobs={[job]} serverNow={0} mapbox={{ accessToken: null, workArea: INVERCARGILL_COVERAGE }} mapboxServices={{ load }} />);
-    expect(html).toContain("Map unavailable. Showing jobs in a list.");
+    expect(html).toContain("Map unavailable.");
     expect(html).toContain("1 job nearby");
     expect(html).toContain("Ready to claim: Local work, Windsor, earn $100.00");
     expect(html).not.toContain("Map of");
     expect(load).not.toHaveBeenCalled();
   });
   it("keeps loading, empty and data-error states accessible when the provider is absent", () => {
-    for (const [state, message] of [["loading", "Loading jobs"], ["empty", "No jobs in view"], ["error", "Couldn’t load jobs"]] as const) {
+    for (const [state, message] of [["loading", "Loading jobs"], ["empty", "No jobs"], ["error", "Couldn’t load jobs"]] as const) {
       const html = renderToString(<MapListLayout jobs={[]} state={state} serverNow={0} mapbox={{ accessToken: null, workArea: INVERCARGILL_COVERAGE }} />);
       expect(html).toContain(message);
     }

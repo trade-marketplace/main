@@ -198,7 +198,7 @@ describe("<EmptyState>", () => {
   });
 
   it("can show an icon instead, a second action, or no action at all", () => {
-    const icon = render(<EmptyState icon="search_off" title="No jobs match that." />);
+    const icon = render(<EmptyState icon="search_off" title="No matching jobs." />);
     expect(icon).toMatch(/class="badge"><span class="icon" aria-hidden="true"[^>]*>search_off/);
     expect(icon).not.toContain("<img");
     expect(icon).not.toContain('class="actions"');
@@ -231,13 +231,13 @@ describe("<ErrorState>", () => {
 
   it("page: taller, an h1, small buttons as in the mockup, the support reference (never a raw error)", () => {
     const html = render(
-      <ErrorState size="page" icon="build" title="Something broke on our end." reference="7F3A-91" onRetry={() => {}} />,
+      <ErrorState size="page" icon="build" title="Something broke." reference="7F3A-91" onRetry={() => {}} />,
     );
     expect(html).toMatch(/^<div class="empty page">/);
     expect(html).toMatch(/<button type="button" class="btn primary sm /);
     expect(html).toContain("<h1 ");
     expect(html).toContain(">build<");
-    expect(html).toContain("Error ref 7F3A-91 (for support)");
+    expect(html).toContain("Ref 7F3A-91");
     expect(rule(".page")).toContain("min-height");
   });
 
@@ -256,14 +256,14 @@ describe("<ErrorState>", () => {
 
   it("is said as one sentence", () => {
     expect(announcement("Can’t load your jobs", "Check your connection.")).toBe("Can’t load your jobs. Check your connection.");
-    expect(announcement("Something broke on our end.", "Try again in a minute.")).toBe("Something broke on our end. Try again in a minute.");
+    expect(announcement("Something broke.", "Try again in a minute.")).toBe("Something broke. Try again in a minute.");
     expect(announcement("Can’t load your jobs", undefined)).toBe("Can’t load your jobs");
   });
 });
 
 describe("<InlineError>", () => {
   it("is a red banner with a decorative error icon and a tertiary Try again at the end", () => {
-    const html = render(<InlineError id="save-error" message="Couldn’t save your changes." onRetry={() => {}} />);
+    const html = render(<InlineError id="save-error" message="Couldn’t save." onRetry={() => {}} />);
     expect(html).toMatch(/^<div id="save-error" class="banner alert">/);
     expect(html).toMatch(/aria-hidden="true"[^>]*>error</);
     expect(html).toMatch(/class="btn tertiary[^"]*bannerAction"/);
@@ -283,18 +283,18 @@ describe("<OfflineBanner> and its hook", () => {
     );
   });
 
-  it("offline with a retry: wifi_off, the spec copy and Retry now, stuck to the top inside its own landmark", () => {
+  it("offline with a retry: wifi_off, the spec copy and Retry, stuck to the top inside its own landmark", () => {
     const html = render(<OfflineBanner online={false} onRetry={() => {}} />);
     expect(html).toMatch(/^<section aria-label="Connection" class="sticky"><div class="banner offline alert" data-offline="true">/);
     expect(html).toContain(">wifi_off<");
-    expect(html).toContain("<b>You’re offline.</b> We’ll keep trying. Anything you’ve typed is saved.");
-    expect(html).toMatch(/<button[^>]*>[\s\S]*Retry now/);
+    expect(html).toContain("<b>Offline.</b>");
+    expect(html).toMatch(/<button[^>]*>[\s\S]*Retry/);
     expect(rule(".sticky")).toContain("position: sticky");
   });
 
   it("offline with nothing to retry: the copy-sheet line and no button", () => {
     const html = render(<OfflineBanner online={false} sticky={false} />);
-    expect(html).toContain("<b>You’re offline.</b> Anything you’ve typed is saved.");
+    expect(html).toContain("<b>Offline.</b>");
     expect(html).not.toContain("<button");
     // A preview inside a page: not sticky, and not a landmark of its own (three would clash).
     expect(html).not.toContain("sticky");
@@ -351,13 +351,13 @@ describe("/dev/components/feedback", () => {
     }
     for (const text of [
       "Nothing on yet.",
-      "No jobs match that.",
-      "Nothing finished yet.",
+      "No matching jobs.",
+      "Nothing finished.",
       "Can’t load your jobs",
-      "Something broke on our end.",
-      "Error ref 7F3A-91 (for support)",
-      "Couldn’t save your changes.",
-      "Retry now",
+      "Something broke.",
+      "Ref 7F3A-91",
+      "Couldn’t save.",
+      "Retry",
       'role="progressbar"',
       "tm-skel",
     ]) {

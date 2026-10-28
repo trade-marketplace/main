@@ -309,7 +309,7 @@ export default async function CardsPage({ searchParams }: { searchParams: Search
               <EmptyCard
                 illustration="van"
                 title="Nothing on yet."
-                message="Got something that needs doing? Post it free and we'll get you a price."
+
                 action={
                   <Button href="/jobs/new" width="auto">
                     Post a job
@@ -320,7 +320,7 @@ export default async function CardsPage({ searchParams }: { searchParams: Search
           </Row>
           <Row name="Empty, small" mode="trade" note="With an icon instead of the van, for a section on a busy page.">
             <div className={styles.phone}>
-              <EmptyCard icon="search_off" title="Nothing ready to claim." message="New jobs near you show up here." />
+              <EmptyCard icon="search_off" title="Nothing available."  />
             </div>
           </Row>
           <Row name="Loading" note="The kit's skeletons (#79): rows and tiles.">

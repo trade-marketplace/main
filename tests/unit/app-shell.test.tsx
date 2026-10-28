@@ -255,7 +255,7 @@ describe("paymentsInTestMode", () => {
 
 describe("AppShellView", () => {
   it("asks someone who hasn't confirmed their email to do it, and nobody else (#102)", () => {
-    expect(texts(shell({ ...SARAH, emailVerified: false }))).toContain("Confirm your email. Open the link we emailed you");
+    expect(texts(shell({ ...SARAH, emailVerified: false }))).toContain("Confirm your email.");
     expect(shell({ ...SARAH, emailVerified: false })).toContain('href="/verify"');
     expect(texts(shell(SARAH))).not.toContain("Confirm your email");
     expect(texts(shell({ ...SARAH, emailVerified: true }))).not.toContain("Confirm your email");
@@ -272,7 +272,7 @@ describe("AppShellView", () => {
   });
 
   it("shows the test-mode banner only while payments are in test mode", () => {
-    expect(texts(shell(SARAH))).toContain("Test mode. No real money moves.");
+    expect(texts(shell(SARAH))).toContain("Test mode.");
     expect(texts(shell(SARAH, { testMode: false }))).not.toContain("Test mode");
   });
 

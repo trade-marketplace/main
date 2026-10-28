@@ -21,7 +21,7 @@ export function CheckboxField({ label, hint, error, success, required, id, class
       <input {...input} id={field.id} type="checkbox" required={required} className={styles.choiceInput}
         aria-invalid={error ? true : undefined} aria-describedby={field.describedBy} />
       <span className={styles.check} aria-hidden="true"><Icon name="check" size="sm" decorative /></span>
-      <span className={styles.choiceLabel}>{label}{required && <span className={styles.required}> (required)</span>}</span>
+      <span className={styles.choiceLabel}>{label}{required && <span className={styles.required} hidden> (required)</span>}</span>
     </label>
     <FieldMessages id={field.id} {...{ hint, error, success }} />
   </div>;
@@ -35,7 +35,7 @@ export function SwitchField({ label, hint, error, success, required, id, classNa
       <input {...input} id={field.id} type="checkbox" role="switch" required={required} className={styles.choiceInput}
         aria-invalid={error ? true : undefined} aria-describedby={field.describedBy} />
       <span className={styles.switchTrack} aria-hidden="true"><span /></span>
-      <span className={styles.choiceLabel}>{label}{required && <span className={styles.required}> (required)</span>}</span>
+      <span className={styles.choiceLabel}>{label}{required && <span className={styles.required} hidden> (required)</span>}</span>
     </label>
     <FieldMessages id={field.id} {...{ hint, error, success }} />
   </div>;
@@ -58,7 +58,7 @@ export function RadioGroup({ label, hint, error, success, required, name, option
   const field = useField({ id, hint, error, success });
   return <fieldset id={field.id} className={[styles.group, className].filter(Boolean).join(" ")} disabled={disabled}
     aria-describedby={field.describedBy} aria-invalid={error ? true : undefined}>
-    <legend className={styles.legend}>{label}{required && <span className={styles.required}> (required)</span>}</legend>
+    <legend className={styles.legend}>{label}{required && <span className={styles.required} hidden> (required)</span>}</legend>
     <div className={styles.optionStack}>
       {options.map((option) => <label key={option.value} className={styles.choiceCard} data-disabled={disabled || option.disabled || undefined}>
         <input type="radio" name={name} value={option.value} required={required} disabled={option.disabled}
@@ -66,7 +66,7 @@ export function RadioGroup({ label, hint, error, success, required, name, option
           defaultChecked={value === undefined ? defaultValue === option.value : undefined}
           onChange={() => onChange?.(option.value)} className={styles.choiceInput} aria-describedby={field.describedBy} />
         <span className={styles.radio} aria-hidden="true" />
-        <span className={styles.choiceLabel}>{option.label}{option.hint && <span className={styles.optionHint}>{option.hint}</span>}</span>
+        <span className={styles.choiceLabel}>{option.label}{option.hint && <span hidden>{option.hint}</span>}</span>
       </label>)}
     </div>
     <FieldMessages id={field.id} {...{ hint, error, success }} />
@@ -74,7 +74,7 @@ export function RadioGroup({ label, hint, error, success, required, name, option
 }
 
 type ChipCommon = FieldMessageProps & {
-  name?: string; options: readonly ChoiceOption[]; disabled?: boolean; id?: string; className?: string;
+  name?: string; hideLabel?: boolean; options: readonly ChoiceOption[]; disabled?: boolean; id?: string; className?: string;
 };
 export type ChipGroupProps = ChipCommon & (
   { multiple: true; value?: readonly string[]; defaultValue?: readonly string[]; onChange?: (values: string[]) => void } |
@@ -83,13 +83,13 @@ export type ChipGroupProps = ChipCommon & (
 
 /** Real radios/checkboxes styled as chips: arrow keys for one choice, Space for independent choices. */
 export function ChipGroup(props: ChipGroupProps) {
-  const { label, hint, error, success, required, options, disabled, id, className } = props;
+  const { label, hint, error, success, required, options, disabled, id, className, hideLabel } = props;
   const generatedName = useId();
   const name = props.name ?? `chips-${generatedName}`;
   const field = useField({ id, hint, error, success });
-  return <fieldset id={field.id} className={[styles.group, className].filter(Boolean).join(" ")} disabled={disabled}
+  return <fieldset aria-label={hideLabel ? label : undefined} id={field.id} className={[styles.group, className].filter(Boolean).join(" ")} disabled={disabled}
     aria-describedby={field.describedBy} aria-invalid={error ? true : undefined}>
-    <legend className={styles.legend}>{label}{required && <span className={styles.required}> (required)</span>}</legend>
+    <legend className={styles.legend} hidden={hideLabel}>{label}{required && <span className={styles.required} hidden> (required)</span>}</legend>
     <div className={styles.chips}>
       {options.map((option) => {
         const checked = props.value === undefined ? undefined : props.multiple ? props.value.includes(option.value) : props.value === option.value;

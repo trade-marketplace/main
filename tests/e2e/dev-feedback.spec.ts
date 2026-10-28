@@ -133,7 +133,7 @@ test.describe("/dev/components/feedback on the dev server", () => {
     await expect(retry).toHaveAttribute("aria-busy", "true");
     await page.keyboard.press("Enter"); // can't be pressed twice
     await expect(card.getByText("Tried 1 time.")).toBeVisible({ timeout: 4000 });
-    await expect(card.getByRole("status")).toHaveText("Can’t load your jobs. Check your connection and try again. If it keeps happening, let us know.");
+    await expect(card.getByRole("status")).toHaveText("Can’t load your jobs");
     await card.getByRole("button", { name: /^Try again/ }).press("Space");
     await expect(card.getByText("Loaded after 2 tries.")).toBeVisible({ timeout: 4000 });
   });
@@ -145,30 +145,30 @@ test.describe("/dev/components/feedback on the dev server", () => {
     await expect(inline.getByRole("status").filter({ hasText: "Saved." })).toBeVisible({ timeout: 4000 });
   });
 
-  test("the real offline banner follows the browser: offline, Retry now, then back online", async ({ page, context }) => {
+  test("the real offline banner follows the browser: offline, Retry, then back online", async ({ page, context }) => {
     await page.goto(url());
     const banner = page.locator("[data-offline]").first();
     await expect(page.locator("body > * [data-offline]")).toHaveCount(2); // the two static previews
     await context.setOffline(true);
     await expect(page.locator("[data-offline]")).toHaveCount(3);
-    await expect(banner).toContainText("You’re offline. We’ll keep trying. Anything you’ve typed is saved.");
-    await expect(banner.getByRole("button", { name: "Retry now" })).toBeVisible();
-    await expect(page.getByRole("region", { name: "Connection" })).toContainText("You’re offline.");
+    await expect(banner).toContainText("Offline.");
+    await expect(banner.getByRole("button", { name: "Retry" })).toBeVisible();
+    await expect(page.getByRole("region", { name: "Connection" })).toContainText("Offline.");
     expect(await banner.evaluate((el) => getComputedStyle(el.parentElement!).position)).toBe("sticky");
     // Said once, by the real banner only: the static previews were offline from the start, so they stay quiet.
-    await expect(page.getByRole("status").filter({ hasText: "You’re offline. We’ll keep trying." })).toHaveCount(1);
+    await expect(page.getByRole("status").filter({ hasText: "Offline." })).toHaveCount(1);
     await expectNoA11yViolations(page);
     // Retrying (by hand, or the automatic one after 2s) fetches again; it never reloads or leaves the page.
-    await banner.getByRole("button", { name: "Retry now" }).click();
+    await banner.getByRole("button", { name: "Retry" }).click();
     await page.waitForTimeout(2500);
     expect(new URL(page.url()).pathname).toBe("/dev/components/feedback");
     await expect(page.locator("[data-offline]")).toHaveCount(3);
 
     await context.setOffline(false);
     await expect(page.locator("[data-offline]")).toHaveCount(2);
-    const back = page.locator("b", { hasText: "You’re back online." });
+    const back = page.locator("b", { hasText: "Back online." });
     await expect(back).toBeVisible();
-    await expect(page.getByRole("status").filter({ hasText: "You’re back online." })).toHaveCount(1);
+    await expect(page.getByRole("status").filter({ hasText: "Back online." })).toHaveCount(1);
     await expect(back).toHaveCount(0, { timeout: 6000 }); // gone after 4s
 
   });
@@ -179,11 +179,11 @@ test.describe("/dev/components/feedback on the dev server", () => {
     await offline.getByRole("button", { name: "Pretend to go offline" }).click();
     await expect(offline.getByText("Retried 0 times")).toBeVisible();
     await expect(offline.getByText("Retried 1 time")).toBeVisible({ timeout: 3500 }); // after 2s
-    await offline.getByRole("button", { name: "Retry now" }).last().click();
+    await offline.getByRole("button", { name: "Retry" }).last().click();
     await expect(offline.getByText("Retried 2 times")).toBeVisible();
     await offline.getByRole("button", { name: "Come back online" }).click();
     await expect(offline.getByText("Retried 3 times")).toBeVisible(); // once more on reconnecting
-    await expect(offline.locator("b", { hasText: "You’re back online." })).toBeVisible();
+    await expect(offline.locator("b", { hasText: "Back online." })).toBeVisible();
   });
 
   test("progress bars have names and values; the upload demo fills to 100%", async ({ page }) => {

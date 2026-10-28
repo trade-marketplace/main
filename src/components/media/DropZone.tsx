@@ -24,7 +24,7 @@ export type DropZoneProps = {
   className?: string;
 };
 
-export function DropZone({ onFiles, hint, title = "Drop photos here", accept = PHOTO_ACCEPT, multiple = true, disabled, className }: DropZoneProps) {
+export function DropZone({ onFiles, hint, title = "", accept = PHOTO_ACCEPT, multiple = true, disabled, className }: DropZoneProps) {
   const input = useRef<HTMLInputElement>(null);
   const hintId = useId();
   const drop = useDropZone((files) => !disabled && onFiles([...files]));
@@ -35,9 +35,8 @@ export function DropZone({ onFiles, hint, title = "Drop photos here", accept = P
       {...(disabled ? {} : drop.props)}
     >
       <Icon name="cloud_upload" decorative className={styles.dropIcon} />
-      <p className={styles.dropTitle}>{title}</p>
+      {title && <p className={styles.dropTitle}>{title}</p>}
       <p className={styles.dropHint}>
-        or{" "}
         <button
           type="button"
           className={styles.chooseFiles}
@@ -45,9 +44,9 @@ export function DropZone({ onFiles, hint, title = "Drop photos here", accept = P
           aria-describedby={hint || disabled ? hintId : undefined}
           disabled={Boolean(disabled)}
         >
-          choose files
+          Choose files
         </button>
-        {hint && <span id={disabled ? undefined : hintId}> · {hint}</span>}
+        {hint && <span id={disabled ? undefined : hintId} hidden>{hint}</span>}
       </p>
       {disabled && (
         <p className={styles.dropHint} id={hintId}>

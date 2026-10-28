@@ -5,7 +5,6 @@ import { useEffect, useRef, useState } from "react";
 import { AddressField } from "@/components/forms/AddressField";
 import { ChipGroup } from "@/components/forms/ChoiceFields";
 import { TextField } from "@/components/forms/TextFields";
-import { Banner } from "@/components/overlays/Banner";
 import { SIGNUP_TRADES, type WorkerSignupField } from "@/lib/auth/worker-signup";
 import { searchSignupAreasAction } from "@/server/auth/actions";
 import type { SignupAreaResult, SignupAreaSuggestion } from "@/server/auth/work-area";
@@ -50,25 +49,22 @@ export function WorkerSignupFields({ values = {}, errors = {}, attempt, previewA
 
   const results = previewSuggestions ?? (lookup.result?.mode === "search" ? lookup.result.suggestions : []);
   const status = previewAreaState === "unavailable" ? "error" : previewAreaState === "loading" ? "loading" : previewSuggestions ? "ready" : suburb.length < 3 ? "idle" : lookup.status;
-  const onlyOther = trades.length === 1 && trades[0] === "OTHER";
 
   return (
     <div className={styles.workerFields}>
-      <ChipGroup key={`trades-${attempt}`} name="trades" label="What do you do?" hint="Pick all that apply." multiple required
+      <ChipGroup key={`trades-${attempt}`} name="trades" label="What do you do?" hideLabel multiple required
         options={SIGNUP_TRADES.map((trade) => ({ value: trade.value, label: trade.label }))} value={trades} onChange={setTrades} error={errors.trades} />
       {SIGNUP_TRADES.map((trade) => trade.licence && trades.includes(trade.value) && <TextField key={trade.value} name={`licence_${trade.value}`}
         label={trade.licence.label} placeholder={trade.licence.example} value={licences[trade.value]} onChange={(event) => setLicences({ ...licences, [trade.value]: event.target.value })}
         maxLength={64} required error={errors[`licence_${trade.value}`]} autoComplete="off" />)}
-      {onlyOther && <p className={styles.draftNote}>Other / general labour needs no licence. Confirm your email and phone before taking Other jobs.</p>}
       <AddressField name="baseSuburb" label="Where do you work?" placeholder="Suburb or town" value={suburb} required maxLength={120}
-        error={errors.baseSuburb} ref={areaRef} suggestions={results} status={status} lookupError="Suburb search is unavailable. Type your suburb or town by hand."
+        error={errors.baseSuburb} ref={areaRef} suggestions={results} status={status} lookupError="Enter suburb manually."
         onQueryChange={(query) => { setSuburb(query); setChosen(null); setLookup({ status: "idle" }); }}
         onSelect={(suggestion) => setChosen(results.find((place) => place.id === suggestion.id) ?? null)} />
       <input type="hidden" name="areaLat" value={chosen ? String(chosen.point.lat) : ""} />
       <input type="hidden" name="areaLng" value={chosen ? String(chosen.point.lng) : ""} />
       <ChipGroup key={`radius-${attempt}`} name="radiusKm" label="Travel radius" options={[10, 25, 50].map((km) => ({ value: String(km), label: `${km} km` }))}
         value={radius} onChange={setRadius} required error={errors.radiusKm} />
-      <Banner tone="brand" icon="verified_user">Browse jobs straight away. Confirm your email before taking a job. Restricted work also needs a licence checked by the office.</Banner>
     </div>
   );
 }

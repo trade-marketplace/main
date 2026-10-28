@@ -58,7 +58,7 @@ describe("/dev/components/map", () => {
   it("builds the loading, empty and error states with ?state=", async () => {
     vi.stubEnv("NODE_ENV", "development");
     expect(await render({ state: "loading" })).toContain("Loading jobs");
-    expect(await render({ state: "empty" })).toContain("No jobs in view");
+    expect(await render({ state: "empty" })).toContain("No jobs");
     expect(await render({ state: "error" })).toContain("Couldn’t load jobs");
   });
 
@@ -143,7 +143,7 @@ describe("<MapCard>", () => {
   });
 
   it("tells the tradie the pin is approximate until they claim", () => {
-    expect(renderToString(<MapCard job={bounty} serverNow={NOW} />)).toContain("Approximate area until you claim it");
+    expect(renderToString(<MapCard job={bounty} serverNow={NOW} />)).toContain("Approximate area");
     expect(renderToString(<MapCard job={{ ...bounty, precision: "exact" }} serverNow={NOW} />)).not.toContain(
       "Approximate area",
     );

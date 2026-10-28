@@ -5,7 +5,7 @@ import Link from "next/link";
 import { BoltMark } from "@/components/BoltMark";
 import { Wordmark } from "@/components/Wordmark";
 
-import { FOOTER_COLUMNS, FOOTER_PITCH } from "./site-links";
+import { FOOTER_COLUMNS } from "./site-links";
 import styles from "./site.module.css";
 
 export function SiteFooter({ year = new Date().getFullYear() }: { year?: number }) {
@@ -15,7 +15,6 @@ export function SiteFooter({ year = new Date().getFullYear() }: { year?: number 
       <div className={styles.footerInner}>
         <div className={styles.footerBrand}>
           <Wordmark className={styles.footerMark} />
-          <p className={styles.footerPitch}>{FOOTER_PITCH}</p>
         </div>
         <nav aria-label="Footer" className={styles.footerNav}>
           {FOOTER_COLUMNS.map((column) => (

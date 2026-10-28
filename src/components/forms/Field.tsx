@@ -29,17 +29,17 @@ export function useField({ id, hint, error, success, describedBy }: {
 
 export function FieldMessages({ id, hint, error, success }: Omit<FieldMessageProps, "label"> & { id: string }) {
   return <>
-    {hint && <p id={`${id}-hint`} className={styles.hint}>{hint}</p>}
+    {hint && <p id={`${id}-hint`} hidden>{hint}</p>}
     {error && <p id={`${id}-error`} className={styles.error}><Icon name="error" size="sm" decorative />{error}</p>}
-    {success && !error && <p id={`${id}-success`} className={styles.success}><Icon name="check_circle" size="sm" decorative />{success}</p>}
+    {success && !error && <p className={styles.success}><Icon name="check_circle" size="sm" decorative /><span id={`${id}-success`} hidden>{success}</span></p>}
   </>;
 }
 
-export function Field({ id, label, required, hint, error, success, children, className }: FieldMessageProps & {
+export function Field({ id, label, hint, error, success, children, className }: FieldMessageProps & {
   id: string; children: ReactNode; className?: string;
 }) {
   return <div className={[styles.field, className].filter(Boolean).join(" ")}>
-    <label className={styles.label} htmlFor={id}>{label}{required && <span className={styles.required}> (required)</span>}</label>
+    <label className={styles.label} htmlFor={id}>{label}</label>
     {children}
     <FieldMessages id={id} hint={hint} error={error} success={success} />
   </div>;

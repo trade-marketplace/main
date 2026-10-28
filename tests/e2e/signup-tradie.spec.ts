@@ -15,7 +15,7 @@ async function accountStep(page: Page) {
   await page.getByLabel("Full name", { exact: false }).fill("Jack Wilson");
   await page.getByLabel("Email", { exact: false }).fill("jack@example.test");
   await page.getByLabel("Mobile", { exact: false }).fill("027 555 0192");
-  await page.getByLabel("Password (required)", { exact: true }).fill("korimako-gumboot-41");
+  await page.getByLabel("Password", { exact: true }).fill("korimako-gumboot-41");
   await page.getByRole("button", { name: "Next", exact: true }).click();
   await expect(page.getByRole("checkbox", { name: "Electrical", exact: true })).toBeFocused();
 }
@@ -34,7 +34,7 @@ test.describe("tradie signup", () => {
       await accountStep(page);
       expect(await overflow(page)).toBe(0);
       await expectNoA11yViolations(page);
-      await page.getByRole("button", { name: "Back to your details" }).click();
+      await page.getByRole("button", { name: "Back" }).click();
       await expect(page.getByLabel("Full name", { exact: false })).toHaveValue("Jack Wilson");
       await expect(page.getByLabel("Full name", { exact: false })).toBeFocused();
       expect(await overflow(page)).toBe(0);
@@ -44,21 +44,20 @@ test.describe("tradie signup", () => {
 
   test("Other needs no licence: manual area works with no token, and an outage keeps all details", async ({ page }) => {
     await accountStep(page);
-    const other = page.getByRole("checkbox", { name: "Other / general labour", exact: true });
+    const other = page.getByRole("checkbox", { name: "Other", exact: true });
     await other.press("Space");
     await expect(other).toBeChecked();
     await expect(page.locator('input[name^="licence_"]')).toHaveCount(0);
-    await expect(page.getByText("Other / general labour needs no licence.", { exact: false })).toBeVisible();
     await page.getByRole("combobox", { name: "Where do you work?", exact: false }).fill("Invercargill");
-    await expect(page.getByText("Suburb search is unavailable. Type your suburb or town by hand.")).toBeVisible();
+    await expect(page.getByText("Enter suburb manually.")).toBeVisible();
     await page.getByRole("radio", { name: "50 km", exact: true }).check();
     await page.getByRole("checkbox", { name: /I agree/ }).check();
     await expect(page.getByRole("link", { name: "Worker terms" })).toHaveAttribute("href", "/legal/tradie-terms");
     await page.getByRole("button", { name: "Finish sign-up" }).click();
-    await expect(page.getByText("We can’t create your account right now.")).toBeVisible();
-    await expect(page.getByLabel("Password (required)", { exact: true })).toHaveValue("");
+    await expect(page.getByText("Sign-up unavailable. Try again.")).toBeVisible();
+    await expect(page.getByLabel("Password", { exact: true })).toHaveValue("");
     await expect(page.getByLabel("Full name", { exact: false })).toHaveValue("Jack Wilson");
-    await page.getByLabel("Password (required)", { exact: true }).fill("korimako-gumboot-41");
+    await page.getByLabel("Password", { exact: true }).fill("korimako-gumboot-41");
     await page.getByRole("button", { name: "Next", exact: true }).click();
     await expect(other).toBeChecked();
     await expect(page.getByRole("radio", { name: "50 km", exact: true })).toBeChecked();
@@ -77,11 +76,11 @@ test.describe("tradie signup", () => {
     await page.getByRole("combobox", { name: "Where do you work?", exact: false }).fill("Invercargill");
     await page.getByRole("checkbox", { name: /I agree/ }).check();
     await page.getByRole("button", { name: "Finish sign-up" }).click();
-    await expect(page.getByText("Use a number like E 123456 or EW012345.", { exact: false })).toBeVisible();
+    await expect(page.getByText("Use E 123456 or EW012345.", { exact: false })).toBeVisible();
     await expect(page.getByLabel("EWRB registration number", { exact: false })).toHaveAttribute("aria-invalid", "true");
     await expect(page.getByLabel("EWRB registration number", { exact: false })).toBeFocused();
     await expect(page.getByLabel("Gas fitting licence number", { exact: false })).toHaveValue("PGDB 44120");
-    await page.getByRole("checkbox", { name: "Other / general labour", exact: true }).check();
+    await page.getByRole("checkbox", { name: "Other", exact: true }).check();
     await page.getByRole("checkbox", { name: "Electrical", exact: true }).uncheck();
     await page.getByRole("checkbox", { name: "Gas fitting", exact: true }).uncheck();
     await expect(page.locator('input[name^="licence_"]')).toHaveCount(0);
@@ -89,14 +88,14 @@ test.describe("tradie signup", () => {
 
   test("offline pauses submission and retains both account and work details", async ({ page, context }) => {
     await accountStep(page);
-    await page.getByRole("checkbox", { name: "Other / general labour", exact: true }).check();
+    await page.getByRole("checkbox", { name: "Other", exact: true }).check();
     await page.getByRole("checkbox", { name: /I agree/ }).check();
     await context.setOffline(true);
-    await expect(page.getByText("You’re offline.")).toBeVisible();
+    await expect(page.getByText("Offline.")).toBeVisible();
     await expect(page.getByRole("button", { name: "Finish sign-up" })).toHaveAttribute("aria-disabled", "true");
     await context.setOffline(false);
-    await expect(page.getByText("You’re offline.")).toBeHidden();
-    await expect(page.getByRole("checkbox", { name: "Other / general labour", exact: true })).toBeChecked();
+    await expect(page.getByText("Offline.")).toBeHidden();
+    await expect(page.getByRole("checkbox", { name: "Other", exact: true })).toBeChecked();
     await expect(page.locator('input[name="next"]')).toHaveValue("/jobs?view=map");
   });
 });

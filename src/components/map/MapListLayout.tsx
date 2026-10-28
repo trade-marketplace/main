@@ -176,18 +176,16 @@ export function MapListLayout({
               {title}
             </Heading>
           </div>
-          {listOnly && <p role="status" className={styles.providerNotice}>Map unavailable. Showing jobs in a list.</p>}
+          {listOnly && <p role="status" className={styles.providerNotice}>Map unavailable.</p>}
           {state === "loading" && <ListSkeleton />}
           {state === "error" && (
             <div className={cx(styles.message, styles.messageError)} role="alert">
               <b>Couldn’t load jobs</b>
-              <p>Check your connection, then move the map to try again.</p>
             </div>
           )}
           {state === "empty" && (
             <div className={styles.message}>
-              <b>No jobs in view</b>
-              <p>Zoom out or move the map to see jobs further away.</p>
+              <b>No jobs</b>
             </div>
           )}
           {ready && placed.length > 0 && (
@@ -209,8 +207,7 @@ export function MapListLayout({
           )}
           {ready && placed.length === 0 && (
             <div className={styles.message}>
-              <b>No jobs in view</b>
-              <p>Zoom out or move the map to see jobs further away.</p>
+              <b>No jobs</b>
             </div>
           )}
           {listOnly && selected && (
@@ -252,7 +249,7 @@ export function MapListLayout({
             )}
             {state === "loading" && <p className={styles.mapMessage}>Finding jobs…</p>}
             {(state === "empty" || (ready && placed.length === 0)) && (
-              <p className={styles.mapMessage}>No jobs in view</p>
+              <p className={styles.mapMessage}>No jobs</p>
             )}
           </ProviderSurface>
           {zoomed && (

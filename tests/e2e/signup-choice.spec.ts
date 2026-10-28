@@ -44,7 +44,7 @@ test.describe("/signup", () => {
   test("clicking anywhere on a card chooses it", async ({ page }) => {
     await page.goto("/signup");
     // The radio covers its whole card, so a click on the words lands on it.
-    const card = page.locator("label").filter({ hasText: "Get local work." });
+    const card = page.locator("label").filter({ hasText: "I’m a tradie" });
     const box = (await card.boundingBox())!;
     await page.mouse.click(box.x + box.width - 12, box.y + box.height - 12);
     await expect(page.getByRole("radio", { name: /I’m a tradie/ })).toBeChecked();

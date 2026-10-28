@@ -192,9 +192,9 @@ export function SavedFilters({ filters, onSave, values, defaults, onApply, defau
   const submit = (event: FormEvent) => {
     event.preventDefault();
     const trimmed = name.trim();
-    if (!trimmed) return setError("Give it a name.");
-    if (trimmed.length > SAVED_NAME_MAX) return setError(`Keep it under ${SAVED_NAME_MAX} letters.`);
-    if (filters.some((saved) => saved.name.toLowerCase() === trimmed.toLowerCase())) return setError("You already have one with that name.");
+    if (!trimmed) return setError("Enter a name.");
+    if (trimmed.length > SAVED_NAME_MAX) return setError(`Max ${SAVED_NAME_MAX} characters.`);
+    if (filters.some((saved) => saved.name.toLowerCase() === trimmed.toLowerCase())) return setError("Name already used.");
     onSave(trimmed);
     setNaming(false);
   };
@@ -205,7 +205,7 @@ export function SavedFilters({ filters, onSave, values, defaults, onApply, defau
         align="start"
         label="Saved filters"
         defaultOpen={defaultOpen}
-        header={filters.length === 0 ? <span>None saved yet. Pick some filters, then save them here.</span> : undefined}
+        header={filters.length === 0 ? <span>Nothing saved.</span> : undefined}
         trigger={(props) => (
           <button
             type="button"
@@ -236,15 +236,14 @@ export function SavedFilters({ filters, onSave, values, defaults, onApply, defau
             setNaming(true);
           }}
         >
-          {current ? "These filters are saved" : canSave ? "Save these filters…" : "Save these filters (pick a filter first)"}
+          {current ? "Saved" : "Save filters…"}
         </MenuItem>
       </Menu>
       <Dialog
         open={naming}
         onClose={() => setNaming(false)}
         size="sm"
-        title="Save these filters"
-        description="They’ll be under Saved filters, just for you."
+        title="Save filters"
         footer={
           <>
             <Button variant="secondary" width="auto" onClick={() => setNaming(false)}>
@@ -262,7 +261,6 @@ export function SavedFilters({ filters, onSave, values, defaults, onApply, defau
             value={name}
             maxLength={SAVED_NAME_MAX + 10}
             error={error ?? undefined}
-            hint="For example, Overdue to price"
             onChange={(event) => {
               setName(event.target.value);
               setError(null);

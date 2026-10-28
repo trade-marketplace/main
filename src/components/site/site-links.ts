@@ -69,9 +69,6 @@ export const FOOTER_COLUMNS: readonly FooterColumn[] = [
   },
 ];
 
-/** The footer's one-line pitch, from the mockup. */
-export const FOOTER_PITCH = "Post any job free. Accept the price. Someone local sorts it.";
-
 /** The signed-in header's main button: where this person's app starts (sitemap `navigation`). */
 const APP_LINK: Readonly<Record<Role, SiteLink>> = {
   CUSTOMER: { label: "My jobs", href: "/dashboard" },
