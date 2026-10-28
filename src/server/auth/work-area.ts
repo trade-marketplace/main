@@ -10,7 +10,7 @@ export type SignupAreaResult = { mode: "search"; suggestions: SignupAreaSuggesti
 /** Public signup lookup. Without a token, typing a suburb by hand always remains available. */
 export async function searchSignupAreas(query: string, deps?: { provider: AddressSearchProvider | null; coverage: Coverage }): Promise<SignupAreaResult> {
   if (typeof query !== "string" || query.trim().length < 3) return { mode: "search", suggestions: [] };
-  const provider = deps ? deps.provider : getAddressSearchProvider(process.env, ["locality", "neighborhood", "place"]);
+  const provider = deps ? deps.provider : getAddressSearchProvider(process.env, ["locality", "neighborhood", "place"], true);
   // No provider means no reason to read settings or call any external service.
   if (!provider) return { mode: "manual", reason: "not-configured" };
   const coverage = deps?.coverage ?? await loadCoverage();
