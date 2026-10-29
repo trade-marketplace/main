@@ -1,3 +1,5 @@
+import { generateKeyPairSync, sign } from "node:crypto";
+
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const requestCookies = vi.hoisted(() => new Map<string, string>());
@@ -13,9 +15,14 @@ const { loadViewer, readUserIdFromCookies } = await import("@/server/auth/viewer
 
 const user = { id: "11111111-1111-4111-8111-111111111111", email: "sarah@example.test", aud: "authenticated", app_metadata: {}, user_metadata: {}, created_at: "2026-10-29T00:00:00Z" };
 const base64url = (value: object) => Buffer.from(JSON.stringify(value)).toString("base64url");
-const accessToken = (session: string) => `${base64url({ alg: "RS256", kid: "stub-key", typ: "JWT" })}.${base64url({ sub: user.id, session_id: session, exp: Math.floor(Date.now() / 1000) + 3600, role: "authenticated" })}.stub-signature`;
-const session = (id: string) => ({ access_token: accessToken(id), refresh_token: `${id}-refresh`, expires_at: Math.floor(Date.now() / 1000) + 3600, expires_in: 3600, token_type: "bearer", user });
-const encoded = (id: string) => `base64-${base64url(session(id))}`;
+const { privateKey, publicKey } = generateKeyPairSync("ec", { namedCurve: "prime256v1" });
+const jwk = { ...publicKey.export({ format: "jwk" }), alg: "ES256", kid: "stub-key", use: "sig" };
+const accessToken = (sessionId: string, expiresAt: number) => {
+  const payload = `${base64url({ alg: "ES256", kid: "stub-key", typ: "JWT" })}.${base64url({ sub: user.id, session_id: sessionId, exp: expiresAt, role: "authenticated" })}`;
+  return `${payload}.${sign("sha256", Buffer.from(payload), { key: privateKey, dsaEncoding: "ieee-p1363" }).toString("base64url")}`;
+};
+const session = (id: string, expiresAt = Math.floor(Date.now() / 1000) + 3600) => ({ access_token: accessToken(id, expiresAt), refresh_token: `${id}-refresh`, expires_at: expiresAt, expires_in: 3600, token_type: "bearer", user });
+const encoded = (id: string, expiresAt?: number) => `base64-${base64url(session(id, expiresAt))}`;
 const password = "korimako-gumboot-41";
 
 beforeEach(() => {
@@ -27,7 +34,7 @@ beforeEach(() => {
 afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
 
 describe("the real SDK with a fake Auth boundary, never a Supabase project", () => {
-  it("keeps recovery separate, consumes its link once, retries real revocation, and blocks unexpired old-device JWTs", async () => {
+  it("keeps recovery separate, consumes its link once, retries revocation, and ends old-device access at token expiry", async () => {
     const active = new Set(["device-one", "device-two", "recovery"]);
     let used = false;
     let failLogout = true;
@@ -38,6 +45,8 @@ describe("the real SDK with a fake Auth boundary, never a Supabase project", () 
       if (url.origin !== "https://auth.example.test") throw new Error("Unexpected network request");
       const method = init?.method ?? "GET";
       calls.push(`${method} ${url.pathname}${url.search}`);
+      if (url.pathname.endsWith("/.well-known/jwks.json")) return Response.json({ keys: [jwk] });
+      if (url.pathname === "/auth/v1/token") return Response.json({ error_code: "refresh_token_not_found", msg: "Refresh session revoked" }, { status: 400 });
       if (url.pathname === "/auth/v1/verify") {
         const body = JSON.parse(String(init?.body));
         expect(body).toMatchObject({ type: "recovery", token_hash: "one-time-proof" });
@@ -92,12 +101,19 @@ describe("the real SDK with a fake Auth boundary, never a Supabase project", () 
     expect(updates).toBe(1);
     expect(active.size).toBe(0);
 
-    const findProfile = vi.fn();
+    const findProfile = vi.fn(async () => ({ id: user.id, email: user.email, role: "CUSTOMER" as const, firstName: "Sarah", emailVerifiedAt: null }));
+    expect(await loadViewer({ readUserId: readUserIdFromCookies, findProfile })).toMatchObject({ userId: user.id });
+    const deviceTwo = { getAll: () => [{ name: "sb-auth-auth-token", value: encoded("device-two") }], setAll: () => {} };
+    expect(await defaultRefreshSources.readUserId(deviceTwo)).toBe(user.id);
+    const expiredAt = Math.floor(Date.now() / 1000) - 60;
+    requestCookies.set("sb-auth-auth-token", encoded("device-one", expiredAt));
+    findProfile.mockClear();
     expect(await loadViewer({ readUserId: readUserIdFromCookies, findProfile })).toBeNull();
     expect(findProfile).not.toHaveBeenCalled();
-    const deviceTwo = { getAll: () => [{ name: "sb-auth-auth-token", value: encoded("device-two") }], setAll: () => {} };
+    deviceTwo.getAll = () => [{ name: "sb-auth-auth-token", value: encoded("device-two", expiredAt) }];
     expect(await defaultRefreshSources.readUserId(deviceTwo)).toBeNull();
     expect(calls).toContain("POST /auth/v1/logout?scope=global");
-    expect(calls.some((call) => call.includes("jwks"))).toBe(false);
+    expect(calls).toContain("POST /auth/v1/token?grant_type=refresh_token");
+    expect(calls.some((call) => call.includes("jwks"))).toBe(true);
   });
 });

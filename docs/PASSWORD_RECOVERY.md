@@ -18,7 +18,8 @@ changes. Nothing here runs against Supabase during tests.
   requesting browser's cookies. A query flag alone cannot open the password form or authorize an update.
 - Saving validates the current proof session with Auth `getUser`, then applies the shared 10-character/72-byte,
   common-password and email checks plus confirmation. No password is logged, returned, or stored in cookies.
-- After saving, Auth's global logout endpoint revokes every session. Completion is not shown until this succeeds. If revocation
+- After saving, Auth's global logout endpoint revokes every refresh session. Issued access tokens may remain valid
+  until normal expiry, as Matt decided in DECISIONS.md. Completion is not shown until revocation succeeds. If revocation
   fails, the screen says the password is saved and offers **Finish reset**, including after reload; retry does not
   write the password twice. `tm-recovery-saved` is only a workflow hint; it authorizes no account changes.
   This calls the SDK's underlying `auth.admin.signOut(jwt, "global")` with the recovery session's own access token
@@ -30,19 +31,19 @@ changes. Nothing here runs against Supabase during tests.
   marker blocks a later Forgot password attempt. Reloading starts a fresh request.
 - Recovery does not change the app's independent `profiles.email_verified_at` ownership flag (#106/#353).
 
-## Immediate old-device rejection
+## Other-device sessions (Matt's decision)
 
-`getClaims` alone validates an unexpired JWT, which can outlive logout. The proxy and viewer now use `getUser`,
-which asks Auth to validate the active session. A globally revoked session is rejected on its next protected
-request even if its JWT has time left. Role data still comes only from `profiles`, and the viewer remains cached
-for one request. Auth outages fail closed. This adds an Auth round trip to signed-in requests.
+Matt explicitly chose normal access-token expiry rather than immediate rejection after reset (#107, 29 October
+2026). The shared proxy/viewer keep their existing `getClaims` validation; no extra active-session lookup or
+per-request Auth round trip is added. Role data still comes only from `profiles`.
 
-This covers application requests through our server. Already-rendered pages cannot be erased from another
-device; that device's next request must log in again. Direct Storage/Realtime authorization is separate and must
-not be assumed to provide the same immediate-revocation guarantee.
+Global logout prevents every affected refresh token from issuing a new access token. An already-issued JWT may
+authorize requests until expiry; when it expires, refresh fails and the device must log in again. Neither the
+completion screen nor the PR should claim other devices lose access immediately. No live JWT expiry setting is
+changed by this PR.
 
-Sources: [Auth session validation](https://github.com/supabase/auth/blob/master/internal/api/auth.go),
-[Supabase sessions](https://supabase.com/docs/guides/auth/sessions),
+Sources: [Supabase sessions](https://supabase.com/docs/guides/auth/sessions),
+[signOut](https://supabase.com/docs/reference/javascript/auth-signout),
 [resetPasswordForEmail](https://supabase.com/docs/reference/javascript/auth-resetpasswordforemail).
 
 ## Email and redirect configuration (William)
@@ -72,4 +73,5 @@ reset, mismatch, complete, expired, invalid, unavailable, finish, loading, reset
 send-error and save-error. `/dev` remains unavailable on Vercel, including preview deployments.
 
 Run the recovery unit tests and browser tests with database and Supabase credentials empty. The real SDK is
-also tested against a fake fetch boundary for cookie isolation, one-time proof and immediate session revocation.
+also tested against a fake fetch boundary for cookie isolation, one-time proof, global refresh-session revocation
+and old-device rejection after access-token expiry.

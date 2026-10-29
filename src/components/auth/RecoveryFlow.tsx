@@ -160,7 +160,7 @@ export function RecoveryFlow({ initialState = "request", initialEmail = "", init
       {state === "sent" && <p className={styles.lede}>If an account uses <strong>{email}</strong>, you’ll get a reset link. Check your spam folder too.</p>}
       {resetting && <p className={styles.lede}>For <strong>{email}</strong>. Use 10+ characters.</p>}
       {finish && <p className={styles.lede}>Finish signing out other devices, then log in again.</p>}
-      {complete && <p className={styles.lede}>You’re signed out on all devices. Log in with your new password.</p>}
+      {complete && <p className={styles.lede}>Log in with your new password. Other devices will need to log in again.</p>}
       <div className={styles.feedback}>
         {previewOffline ? <Banner tone="alert" title="Offline.">Reconnect to continue.</Banner> : <OfflineBanner sticky={false} />}
         {state === "expired" && <Banner tone="alert" icon="link_off" title="That link has expired or was already used.">Send a new one below.</Banner>}
