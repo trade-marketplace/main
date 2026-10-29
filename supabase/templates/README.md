@@ -20,8 +20,9 @@ expired/reused links. See [EMAIL_VERIFICATION.md](../../docs/EMAIL_VERIFICATION.
 
 ## Design and compatibility
 
-The header uses the exact bolt and outlined lettering from `docs/design/brand/wordmark.svg`, exported to
-`docs/design/brand/wordmark-email.png` at 752×184px and displayed at 188×46px (4× resolution). It does not
+The header uses Matt's supplied **Trade Marketplace.svg**, preserved byte for byte in
+`assets/trade-marketplace.svg`. This is the source for the email logo, including its exact lettering and bolt.
+It is exported to `assets/trade-marketplace.png` at 752×188px and displayed at 188×47px (4× resolution). It does not
 recreate the wordmark with a font. The PNG is flattened on the Forest token for readability in dark-mode clients
 and has `alt="Trade Marketplace"` for image-blocked views. The body uses one prominent lime action and
 concise copy. Inspiration: the clear hierarchy and single-action layouts in [Typeform's verification email](https://reallygoodemails.com/emails/please-verify-your-email-for-typeform)
@@ -37,9 +38,9 @@ import { readFileSync } from 'node:fs';
 import sharp from 'sharp';
 const tokens = readFileSync('src/styles/tokens.css', 'utf8');
 const forest = tokens.match(/--trade-forest:\s*(#[0-9a-f]{6})/i)[1];
-await sharp('docs/design/brand/wordmark.svg', { density: 288 })
-  .resize(752, 184).flatten({ background: forest }).png()
-  .toFile('docs/design/brand/wordmark-email.png');
+await sharp('supabase/templates/assets/trade-marketplace.svg', { density: 384 })
+  .resize(752, 188).flatten({ background: forest }).png()
+  .toFile('supabase/templates/assets/trade-marketplace.png');
 JS
 ```
 
