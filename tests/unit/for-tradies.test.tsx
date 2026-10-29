@@ -35,6 +35,8 @@ describe("For tradies", () => {
     findUnique.mockRejectedValue(new Error("private database error"));
     expect(await loadTradieData(db)).toEqual({ status: "error" });
     expect(log).not.toHaveBeenCalledWith(expect.stringContaining("private"));
+    findUnique.mockResolvedValue(settings);
+    expect(await loadTradieData(db)).toEqual(tradieEarnings(settings));
     log.mockRestore();
   });
 
