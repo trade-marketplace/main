@@ -136,4 +136,18 @@ test.describe("signed-in account security", () => {
     await expect(settings).toBeFocused();
     await expectNoA11yViolations(page);
   });
+  test("reauthentication ends only this session and returns through login to Security", async ({ page }) => {
+    await login(page); auth.requireRecentLogin(true);
+    const form = page.getByRole("form", { name: "Change password" });
+    await form.getByLabel("Current password", { exact: true }).fill(SECURITY_PASSWORD);
+    await form.getByLabel("New password", { exact: true }).fill("new isolated password");
+    await form.getByLabel("Confirm new password", { exact: true }).fill("new isolated password");
+    await form.getByRole("button", { name: "Change password", exact: true }).click();
+    await expect(form.getByRole("alert")).toContainText("Log in again, then retry");
+    await form.getByRole("button", { name: "Log in again" }).click();
+    await expect(page).toHaveURL(`${appUrl}/login?next=%2Fprofile%2Fsecurity`);
+    expect(auth.events.filter(event => event.path === "/auth/v1/logout").every(event => event.scope === "local")).toBe(true);
+    auth.requireRecentLogin(false); await login(page);
+    await expect(page.getByRole("form", { name: "Change password" })).toBeVisible();
+  });
 });

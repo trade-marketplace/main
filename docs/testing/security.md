@@ -44,3 +44,7 @@ proof, the profile becomes unverified and the existing `/verify` banner supplies
 `/profile` currently redirects to Security so the existing desktop Account menu and phone Account icon have a
 working destination. The profile editor in #112 replaces that entry route; its other account pages retain their
 planned URLs. This task does not implement those pages.
+
+If Auth requires recent login, the recovery button ends only the current browser session and returns through
+`/login?next=/profile/security`. It does not point a still-signed-in visitor at the guest-only login route. Other
+devices stay signed in until the requested password change succeeds.

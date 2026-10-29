@@ -14,6 +14,7 @@ export async function startSecurityAuthStub(port: number) {
   const sessions = new Map<string, string>();
   const events: Array<{ method: string; path: string; userId: string; scope?: string }> = [];
   let failLogout = false;
+  let requireRecentLogin = false;
   const userJson = (id: string) => {
     const user = users.get(id)!;
     return { id, email: user.email, new_email: user.new_email, aud: "authenticated", role: "authenticated", email_confirmed_at: "2026-01-01T00:00:00Z", app_metadata: { provider: "email", providers: ["email"] }, user_metadata: {}, identities: [], created_at: "2026-01-01T00:00:00Z" };
@@ -58,6 +59,7 @@ export async function startSecurityAuthStub(port: number) {
         const user = users.get(id)!;
         if (request.method === "PUT") {
           if (body.password) {
+            if (requireRecentLogin) return send(400, { error_code: "reauthentication_needed", msg: "Please log in again" });
             if (body.current_password !== user.password) return send(400, { error_code: "invalid_current_password", msg: "Wrong current password" });
             user.password = body.password;
           }
@@ -72,9 +74,10 @@ export async function startSecurityAuthStub(port: number) {
   return {
     events,
     setLogoutFailure: (value: boolean) => { failLogout = value; },
+    requireRecentLogin: (value: boolean) => { requireRecentLogin = value; },
     confirmationCode: () => users.get(SECURITY_USER.id)!.code,
     password: () => users.get(SECURITY_USER.id)!.password,
-    reset: () => { failLogout = false; events.length = 0; sessions.clear(); for (const original of [SECURITY_USER, SECURITY_TRADIE]) users.set(original.id, { ...original, password: SECURITY_PASSWORD, new_email: "", challenge: "", code: "" }); },
+    reset: () => { failLogout = false; requireRecentLogin = false; events.length = 0; sessions.clear(); for (const original of [SECURITY_USER, SECURITY_TRADIE]) users.set(original.id, { ...original, password: SECURITY_PASSWORD, new_email: "", challenge: "", code: "" }); },
     close: () => new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve())),
   };
 }

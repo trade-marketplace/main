@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const fakes = vi.hoisted(() => ({ authorize: vi.fn(), deps: vi.fn(), change: vi.fn(), revalidate: vi.fn() }));
+const fakes = vi.hoisted(() => ({ authorize: vi.fn(), deps: vi.fn(), change: vi.fn(), revalidate: vi.fn(), signOut: vi.fn() }));
+vi.mock("@/server/supabase", () => ({ createSupabaseServerClient: async () => ({ auth: { signOut: fakes.signOut } }) }));
 vi.mock("@/server/auth/guard", async (original) => {
   const real = await original<typeof import("@/server/auth/guard")>();
   return { ...real, withRole: real.createGuards(async () => fakes.authorize()).withRole };
@@ -9,16 +10,21 @@ vi.mock("@/server/auth/security-deps", () => ({ securityDeps: fakes.deps }));
 vi.mock("@/server/auth/security", () => ({ changeSecurity: fakes.change }));
 vi.mock("next/cache", () => ({ revalidatePath: fakes.revalidate }));
 vi.mock("next/headers", () => ({ headers: async () => new Headers({ origin: "https://preview.example.test" }) }));
-const { securityAction } = await import("@/server/auth/security-actions");
+const { securityAction, endSecuritySessionAction } = await import("@/server/auth/security-actions");
 
 beforeEach(() => {
   vi.clearAllMocks();
   fakes.authorize.mockResolvedValue({ userId: "verified-user", role: "CUSTOMER" });
   fakes.deps.mockResolvedValue({ auth: "fake" });
   fakes.change.mockResolvedValue({ ok: true, status: "password-changed" });
+  fakes.signOut.mockResolvedValue({ error: null });
 });
 
 describe("security server action", () => {
+  it("reauthentication clears only this browser's session", async () => {
+    expect(await endSecuritySessionAction()).toEqual({ ok: true });
+    expect(fakes.signOut).toHaveBeenCalledWith({ scope: "local" });
+  });
   it("takes identity from the server and preserves the preview origin for email confirmation", async () => {
     const form = new FormData(); form.set("userId", "forged"); form.set("currentPassword", "current");
     await securityAction("password", null, form);

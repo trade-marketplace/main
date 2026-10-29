@@ -1,14 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 
 import { Button } from "@/components/Button";
 import { PasswordField, TextField } from "@/components/forms/TextFields";
 import { Banner } from "@/components/overlays/Banner";
 import { useOptionalSessionExpired } from "@/components/auth/SessionExpired";
 import { SECURITY_MESSAGES, type SecurityOperation, type SecurityResult } from "@/lib/auth/security";
-import { securityAction } from "@/server/auth/security-actions";
+import { endSecuritySessionAction, securityAction } from "@/server/auth/security-actions";
 
 import styles from "./account.module.css";
 
@@ -31,6 +32,9 @@ function SecurityForm({ operation, email, action, initial, offline, previewPendi
   const formRef = useRef<HTMLFormElement>(null);
   const messageRef = useRef<HTMLDivElement>(null);
   const sessionExpired = useOptionalSessionExpired();
+  const router = useRouter();
+  const [reloginPending, startRelogin] = useTransition();
+  const [reloginFailed, setReloginFailed] = useState(false);
   const [attempt, submit, pending] = useActionState(async (previous: { result: SecurityResult | null; count: number; email: string }, form: FormData) => {
     let result: SecurityResult;
     try { result = await action(operation, previous.result, form); }
@@ -57,7 +61,14 @@ function SecurityForm({ operation, email, action, initial, offline, previewPendi
     <form ref={formRef} action={submit} className={styles.form} noValidate aria-label={BUTTONS[operation]}>
       {result && <div ref={messageRef} tabIndex={-1} className={styles.message}>
         <Banner tone={result.ok ? "good" : "alert"} live>{resultMessage(result)}</Banner>
-        {!result.ok && ["session-expired", "reauthenticate"].includes(result.error) && <Link href="/login?next=%2Fprofile%2Fsecurity">Log in again</Link>}
+        {!result.ok && ["session-expired", "reauthenticate"].includes(result.error) && <Button variant="tertiary" loading={reloginPending} onClick={() => startRelogin(async () => {
+          try {
+            const ended = await endSecuritySessionAction();
+            if (ended.ok || ended.error === "session-expired") router.push("/login?next=%2Fprofile%2Fsecurity");
+            else setReloginFailed(true);
+          } catch { setReloginFailed(true); }
+        })}>Log in again</Button>}
+        {reloginFailed && <Banner tone="alert" live>Couldn’t log out of this device. Try again.</Banner>}
         {result.ok && result.status === "email-changed" && <Link href="/verify?next=%2Fprofile%2Fsecurity">Confirm email</Link>}
       </div>}
       <fieldset disabled={busy} className={styles.fields} key={attempt.count}>
