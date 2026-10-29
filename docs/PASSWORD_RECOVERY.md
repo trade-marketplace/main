@@ -57,8 +57,8 @@ Templates → Reset password, the link must go to our token-hash callback, not r
 ```
 
 `RedirectTo` always includes `?next=…`. The app uses Vercel's trusted `VERCEL_PROJECT_PRODUCTION_URL` when present,
-so the current live Vercel hostname works before the primary domain is bought. Outside Vercel it falls back to
-the decided primary domain. Add the exact production callback URL/path to the Auth redirect allowlist. Never
+so the callback follows the project's configured production hostname. The Vercel connector confirms the live
+primary domain is `trademarketplace.nz`; outside Vercel this is also the fallback. Add the exact production callback URL/path to the Auth redirect allowlist. Never
 derive this security-sensitive origin from a submitted form, request Host header or `next` value.
 
 Keep password login, the existing SMTP decision (Resend), and Confirm Email off as DECISIONS.md requires. This PR

@@ -157,7 +157,7 @@ describe("recovery destinations and shared form validation", () => {
     expect(recoveryLoginPath(next)).toBe("/login");
   });
 
-  it("uses the configured Vercel production host instead of an unbought canonical domain", () => {
+  it("uses the configured Vercel production host instead of hard-coding the callback origin", () => {
     expect(recoveryEmailUrl("/jobs/new", { VERCEL_PROJECT_PRODUCTION_URL: "main-ashy-tau.vercel.app" })).toBe("https://main-ashy-tau.vercel.app/recovery/confirm?next=%2Fjobs%2Fnew");
     expect(recoveryEmailUrl("//evil.example", {})).toBe("https://trademarketplace.nz/recovery/confirm?next=%2F");
     expect(recoveryEmailUrl(null, { VERCEL_PROJECT_PRODUCTION_URL: "evil.example/path" })).toBe("https://trademarketplace.nz/recovery/confirm?next=%2F");
