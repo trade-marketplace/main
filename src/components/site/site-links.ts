@@ -14,6 +14,7 @@ export type SiteViewer = { firstName: string; role: Role };
 
 export const POST_JOB_PATH = "/jobs/new";
 export const SIGNUP_PATH = "/signup";
+export const TRADIE_SIGNUP_PATH = "/signup/tradie";
 export const FOR_TRADIES_PATH = "/for-tradies";
 
 /** The header's nav, in the mockup's order (w-landing). "For tradies" is shown in Amber. */
@@ -49,7 +50,7 @@ export const FOOTER_COLUMNS: readonly FooterColumn[] = [
       { label: "For tradies", href: FOR_TRADIES_PATH },
       { label: "Tradie terms", href: "/legal/tradie-terms" },
       { label: "Tradie help", href: "/help" },
-      { label: "Join", href: "/signup/tradie" },
+      { label: "Join", href: TRADIE_SIGNUP_PATH },
     ],
   },
   {

@@ -10,12 +10,14 @@ This spec says **what** to build. How is the developer’s call. All prices, nam
 2. **Content max 1200px, centred.** 12 columns, 24px gutters. Reading text max 680px. Forms max 560–760px, one column.
 3. **One main action per view.** One primary or hero button per screen or card. Everything else is secondary, ghost or a link.
 4. **Sticky where it helps.** App nav sticky. On job pages the status card sticks to the right as you scroll. Wizard summary sticks.
-5. **Everything clickable shows it.** Pointer cursor, a hover state and a focus ring. Cards lift (M03), rows tint, links underline.
+5. **Everything clickable shows it.** Pointer cursor and a hover state; M05 focus rings for keyboard navigation only. Clicks and taps leave no focus box or tap highlight (DECISIONS.md, #378). Cards lift (M03), rows tint, links underline.
 6. **Hover never hides information.** Nothing important only appears on hover (touch screens and keyboards can’t hover). Hover only adds polish.
 7. **Keyboard first-class.** / focuses search, Esc closes overlays, Enter submits, arrows move in galleries and steppers. Tab order follows reading order.
 8. **Drawers for side tasks, dialogs for decisions.** Estimate and extra work open in a right drawer (keep context). Confirms and money decisions use a dialog.
 9. **Brand device on every big moment.** Forest band + bolt at 20% on heroes, headers and success screens. Bolt flash (M10) only for real wins.
 10. **Same URL, every device.** Every page works from 320px to 2560px. Same routes; layout adapts.
+
+Keep useful approved supporting copy. Remove extra section taglines that repeat headings and generic AI filler; word counts are measurements, not cutting targets. See DECISIONS.md and AGENTS.md section 5.
 
 ## Shells
 
