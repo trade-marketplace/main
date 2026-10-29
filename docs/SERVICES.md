@@ -1,7 +1,7 @@
 # Services and accounts
 
 What the web app runs on, who controls each account, and where to find it. **No secrets in this file, ever.** Keys
-and passwords live in Vercel's environment variables and the founders' password managers.
+and passwords live in Vercel's environment variables, Supabase Auth's encrypted SMTP settings and the founders' password managers.
 
 ## Who controls what
 
@@ -62,6 +62,24 @@ Used for (DECISIONS.md #58–#61):
 | `SUPABASE_SECRET_KEY` | server only (seed scripts) | **yes** |
 | `MAPBOX_ACCESS_TOKEN` | server only | yes |
 | `DATABASE_URL` (pooled) / `DIRECT_URL` | server, migrations | **yes** |
+
+
+### Auth email configuration (30 October 2026)
+
+Matt owns the Sydney project and handled the SMTP credential step. Resend verifies `trademarketplace.nz` through
+Cloudflare DNS. Supabase Auth sends from **Trade Marketplace <hello@trademarketplace.nz>** using `smtp.resend.com`,
+port **465** (TLS), username `resend`; the restricted sending credential is stored only in Supabase's encrypted
+SMTP settings. No secret belongs in this repository or a PR description.
+
+- Site URL: `https://trademarketplace.nz`.
+- Allowed callbacks: `/verify/confirm`, `/recovery/confirm` and `/profile/security/confirm` on that exact origin.
+- Confirm Email stays **off**, Secure email change stays **on**, minimum password length is **10**.
+- Confirm signup and Magic link/OTP use the token-hash template in `docs/EMAIL_VERIFICATION.md`.
+- Reset password uses the token-hash template in PR #384's `docs/PASSWORD_RECOVERY.md`; the route becomes live
+  when that PR is merged and deployed. Code checks use disposable localhost Postgres and Auth doubles; a founder
+  checks real delivery separately.
+
+This configures Supabase Auth email only; it does not implement the app notification provider in #110.
 
 ## Vercel (hosting, preview links)
 Connected. Production deploys from `main` at https://trademarketplace.nz/ (Hobby plan while the repo is public;
