@@ -1,0 +1,42 @@
+[
+  {
+    "state": "unread",
+    "desktop": 35,
+    "phone": 35
+  },
+  {
+    "state": "read",
+    "desktop": 32,
+    "phone": 32
+  },
+  {
+    "state": "empty",
+    "desktop": 6,
+    "phone": 6
+  },
+  {
+    "state": "loading",
+    "desktop": 7,
+    "phone": 7
+  },
+  {
+    "state": "error",
+    "desktop": 9,
+    "phone": 9
+  },
+  {
+    "state": "many",
+    "desktop": 63,
+    "phone": 63
+  },
+  {
+    "state": "long",
+    "desktop": 48,
+    "phone": 48
+  },
+  {
+    "state": "saving",
+    "desktop": 35,
+    "phone": 35
+  }
+]

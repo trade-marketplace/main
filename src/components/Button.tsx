@@ -287,6 +287,9 @@ export function Button(props: ButtonProps) {
 export type IconButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children" | "disabled" | "aria-label"> & {
   /** A Material Symbols name, e.g. "close", "favorite". */
   icon: string;
+  /** Decorative content such as an unread badge, inside the same tap target. */
+  badge?: ReactNode;
+  iconFill?: boolean;
   /** What it does, in words: "Close", "Save job". It is the accessible name and the hover tooltip. */
   label: string;
   /**
@@ -301,6 +304,8 @@ export type IconButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "chi
 
 export function IconButton({
   icon,
+  badge,
+  iconFill,
   label,
   variant = "plain",
   pressed,
@@ -329,7 +334,8 @@ export function IconButton({
         className={[styles.iconBtn, styles[variant], "tm-press", press, className].filter(Boolean).join(" ")}
         onClick={guard(Boolean(disabled), reason ? tooltip.tap : null, onClick)}
       >
-        <Icon name={icon} fill={pressed} decorative />
+        <Icon name={icon} fill={iconFill ?? pressed} decorative />
+        {badge}
       </button>
       <Tip open={tooltip.open} name={label} reason={reason} reasonId={reasonId} />
     </span>

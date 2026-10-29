@@ -8,6 +8,7 @@
 // shell (#85).
 import type { ReactNode } from "react";
 
+import { NotificationInboxProvider } from "@/components/notifications/NotificationInbox";
 import { TextLink } from "@/components/TextLink";
 import { Banner } from "@/components/overlays/Banner";
 import { modeForRole } from "@/lib/mode";
@@ -41,6 +42,7 @@ export type AppShellViewProps = {
 
 export function AppShellView({ viewer, testMode, children, preview }: AppShellViewProps) {
   return (
+    <NotificationInboxProvider key={viewer.email} count={viewer.counts.notifications} preview={Boolean(preview)}>
     <div className={styles.shell} data-mode={modeForRole(viewer.role)}>
       <a href={`#${MAIN_ID}`} className={styles.skip}>
         Skip to content
@@ -74,5 +76,6 @@ export function AppShellView({ viewer, testMode, children, preview }: AppShellVi
       </main>
       <BottomNav viewer={viewer} preview={preview} />
     </div>
+    </NotificationInboxProvider>
   );
 }

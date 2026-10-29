@@ -18,6 +18,7 @@
 import Link from "next/link";
 import {
   createContext,
+  useCallback,
   type KeyboardEvent,
   type MouseEvent,
   type ReactNode,
@@ -56,6 +57,10 @@ export type MenuProps = {
   label?: string;
   /** Start open (previews and screenshots). It is still the menu's own state after that. */
   defaultOpen?: boolean;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  /** Designed menu variants, such as the notification panel. */
+  panelClassName?: string;
   className?: string;
 };
 
@@ -64,8 +69,10 @@ const MenuContext = createContext<MenuContextValue | null>(null);
 
 const ITEM = '[role^="menuitem"]:not([aria-disabled="true"])';
 
-export function Menu({ trigger, children, header, align = "end", label, defaultOpen = false, className }: MenuProps) {
-  const [open, setOpen] = useState(defaultOpen);
+export function Menu({ trigger, children, header, align = "end", label, defaultOpen = false, open: controlledOpen, onOpenChange, panelClassName, className }: MenuProps) {
+  const [ownOpen, setOwnOpen] = useState(defaultOpen);
+  const open = controlledOpen ?? ownOpen;
+  const setOpen = useCallback((next: boolean) => { setOwnOpen(next); onOpenChange?.(next); }, [onOpenChange]);
   const [startAt, setStartAt] = useState<"first" | "last">("first");
   const triggerId = useId();
   const menuId = useId();
@@ -73,6 +80,7 @@ export function Menu({ trigger, children, header, align = "end", label, defaultO
   const rootRef = useRef<HTMLSpanElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  const focusedItem = useRef<HTMLElement | null>(null);
   const typed = useRef({ text: "", at: 0 });
 
   const items = () => [...(menuRef.current?.querySelectorAll<HTMLElement>(ITEM) ?? [])];
@@ -101,6 +109,11 @@ export function Menu({ trigger, children, header, align = "end", label, defaultO
     }
   }, [open, startAt]);
 
+  // Async results can remove the focused Retry/Mark all read item. Keep keyboard focus in the open menu.
+  useLayoutEffect(() => {
+    if (open && focusedItem.current && !focusedItem.current.isConnected && document.activeElement === document.body) items()[0]?.focus();
+  });
+
   // A press anywhere outside closes it (without moving focus: the press already put focus where it should be).
   useEffect(() => {
     if (!open) return;
@@ -109,7 +122,7 @@ export function Menu({ trigger, children, header, align = "end", label, defaultO
     };
     document.addEventListener("pointerdown", onPointerDown);
     return () => document.removeEventListener("pointerdown", onPointerDown);
-  }, [open]);
+  }, [open, setOpen]);
 
   const openAt = (where: "first" | "last") => {
     setStartAt(where);
@@ -165,7 +178,7 @@ export function Menu({ trigger, children, header, align = "end", label, defaultO
       <span ref={rootRef} className={[styles.menuRoot, className].filter(Boolean).join(" ")}>
         {trigger(triggerProps)}
         {open && (
-          <div ref={panelRef} className={`${styles.menu} tm-anim-suggest`} data-align={align}>
+          <div ref={panelRef} className={[styles.menu, "tm-anim-suggest", panelClassName].filter(Boolean).join(" ")} data-align={align}>
             {header && (
               <div id={headerId} className={styles.menuHeader}>
                 {header}
@@ -179,6 +192,7 @@ export function Menu({ trigger, children, header, align = "end", label, defaultO
               aria-label={label}
               aria-describedby={header ? headerId : undefined}
               onKeyDown={onMenuKeyDown}
+              onFocusCapture={(event) => { focusedItem.current = event.target as HTMLElement; }}
               onBlur={(event) => {
                 if (!rootRef.current?.contains(event.relatedTarget as Node | null) && event.relatedTarget) setOpen(false);
               }}
@@ -194,6 +208,8 @@ export function Menu({ trigger, children, header, align = "end", label, defaultO
 
 type MenuItemCommon = {
   children: ReactNode;
+  className?: string;
+  closeOnSelect?: boolean;
   /** Navigation menus identify the current destination, without turning links into radio choices. */
   "aria-current"?: "page";
   /** A Material Symbols name before the label. Decorative. */
@@ -219,9 +235,9 @@ export type MenuItemProps = MenuItemCommon &
       }
   );
 
-export function MenuItem({ children, icon, tone = "default", checked, "aria-current": current, ...action }: MenuItemProps) {
+export function MenuItem({ children, icon, tone = "default", checked, className, closeOnSelect = true, "aria-current": current, ...action }: MenuItemProps) {
   const menu = useContext(MenuContext);
-  const classes = [styles.menuItem, tone === "danger" && styles.menuDanger].filter(Boolean).join(" ");
+  const classes = [styles.menuItem, tone === "danger" && styles.menuDanger, className].filter(Boolean).join(" ");
   const choice = checked === undefined ? {} : { role: "menuitemradio" as const, "aria-checked": checked };
   const content = (
     <>
@@ -248,7 +264,7 @@ export function MenuItem({ children, icon, tone = "default", checked, "aria-curr
       aria-disabled={action.disabled || undefined}
       onClick={() => {
         if (action.disabled) return;
-        menu?.close(true);
+        if (closeOnSelect) menu?.close(true);
         action.onSelect?.();
       }}
     >

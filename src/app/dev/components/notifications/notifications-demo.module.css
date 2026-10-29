@@ -1,0 +1,9 @@
+/* Context from w-notifs; only the shared bell/menu are the feature under review. */
+.canvas { min-height: calc(100dvh - var(--trade-header-h) - var(--app-bottom-h)); background: var(--trade-waiting-bg); }
+.hero { position: relative; height: 250px; overflow: hidden; background: var(--trade-forest); color: var(--trade-text-on-dark); }
+.wrap { position: relative; width: min(var(--trade-content-max), calc(100% - 2 * var(--trade-inset-browse))); margin-inline: auto; padding-top: var(--trade-space-10); }
+.wrap h1 { margin: 0; font-family: var(--trade-font-heading); font-variation-settings: var(--trade-display-axes); font-size: var(--trade-fs-title); font-weight: 900; line-height: var(--trade-lh-title); }
+.bolt { position: absolute; width: 560px; right: -240px; top: -160px; fill: var(--trade-signature); opacity: .16; }
+.controls { display: flex; justify-content: flex-end; padding: var(--trade-space-6); }
+@media (max-width: 599.98px) { .wrap h1 { font-size: var(--trade-fs-price); } }
+@media (min-width: 1024px) { .canvas { min-height: calc(100dvh - 68px); } }
