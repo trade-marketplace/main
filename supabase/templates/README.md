@@ -20,9 +20,31 @@ expired/reused links. See [EMAIL_VERIFICATION.md](../../docs/EMAIL_VERIFICATION.
 
 ## Design and compatibility
 
-The layout uses the existing production PNG bolt icon, a live-text wordmark, one prominent lime action and
+The header uses the exact bolt and outlined lettering from `docs/design/brand/wordmark.svg`, exported to
+`docs/design/brand/wordmark-email.png` at 752×184px and displayed at 188×46px (4× resolution). It does not
+recreate the wordmark with a font. The PNG is flattened on the Forest token for readability in dark-mode clients
+and has `alt="Trade Marketplace"` for image-blocked views. The body uses one prominent lime action and
 concise copy. Inspiration: the clear hierarchy and single-action layouts in [Typeform's verification email](https://reallygoodemails.com/emails/please-verify-your-email-for-typeform)
 and [Discord's verification email](https://reallygoodemails.com/emails/verify-email); no third-party artwork or copy is reused.
+
+The image URL is pinned to the public Git commit containing that PNG, so it is available before merge and
+survives branch deletion. Do not replace it with a Vercel preview URL, expiring URL, authenticated resource or
+tracking URL. For a future export, run from the repository root (Sharp is installed with Next.js):
+
+```sh
+node --input-type=module <<'JS'
+import { readFileSync } from 'node:fs';
+import sharp from 'sharp';
+const tokens = readFileSync('src/styles/tokens.css', 'utf8');
+const forest = tokens.match(/--trade-forest:\s*(#[0-9a-f]{6})/i)[1];
+await sharp('docs/design/brand/wordmark.svg', { density: 288 })
+  .resize(752, 184).flatten({ background: forest }).png()
+  .toFile('docs/design/brand/wordmark-email.png');
+JS
+```
+
+Keep the SVG as the source of truth; PNG is the delivery format for email-client compatibility. Linked and
+embedded SVG support differs between clients ([Can I email](https://www.caniemail.com/features/image-svg/)).
 
 Colours are literal copies of `src/styles/tokens.css` because email clients do not reliably support CSS custom
 properties. Keep these values in sync when changing the brand tokens:
