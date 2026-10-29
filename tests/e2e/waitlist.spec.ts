@@ -66,7 +66,7 @@ test("pending save keeps values and blocks repeated submissions", async ({ page 
   await expect(submit).toHaveAttribute("aria-busy", "true");
   await expect(page.getByLabel("Email", { exact: true })).toHaveValue("pending@example.test");
   await submit.press("Enter");
-  expect(requests).toBe(1);
+  await expect.poll(() => requests).toBe(1);
   release();
   await expect(page.getByRole("main").getByRole("alert")).toContainText("Try again.");
 });

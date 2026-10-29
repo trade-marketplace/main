@@ -100,7 +100,7 @@ function WaitlistForm({ location, coverage, submit, initialState = "empty", init
     <div className={styles.content}>
       <Image className={styles.van} src="/images/van.png" width={300} height={300} sizes="300px" alt="" priority />
       <h1 className={styles.title}>{suburb ? `We’re not in ${suburb} yet.` : "Not in your area yet."}</h1>
-      <form className={styles.form} aria-label="Waitlist" onSubmit={join} noValidate>
+      <form className={styles.form} aria-label="Waitlist" method="post" onSubmit={join} noValidate>
         <TextField className={styles.field} ref={suburbRef} label="Suburb" labelHidden name="suburb" autoComplete="address-level2" placeholder="Suburb" required maxLength={LANDING_LOCATION_MAX}
           value={suburb} readOnly={state === "loading"} error={field === "suburb" ? "Enter your suburb." : undefined}
           onChange={(event) => { setSuburb(event.target.value); keepDraft(email, event.target.value); }} />
