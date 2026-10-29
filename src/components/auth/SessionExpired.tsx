@@ -248,6 +248,11 @@ export function useSessionExpired(): SessionExpiredApi {
   return api;
 }
 
+/** Shared navigation can also be rendered outside a signed-in shell in isolated kit previews. */
+export function useOptionalSessionExpired(): SessionExpiredApi | null {
+  return useContext(SessionExpiredContext);
+}
+
 export type SessionExpiredProviderProps = {
   children: ReactNode;
   logIn: LogInAgain;

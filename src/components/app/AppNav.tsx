@@ -17,13 +17,19 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { type ReactNode, Suspense, useRef } from "react";
 
-import { Button } from "@/components/Button";
+import { Button, IconButton } from "@/components/Button";
 import { Icon } from "@/components/Icon";
 import { Wordmark } from "@/components/Wordmark";
 import { Menu, MenuItem, MenuSeparator } from "@/components/overlays/Menu";
 import { initials } from "@/lib/cards";
-import { useBump, useTabIndicator } from "@/lib/motion/hooks";
+import { useTabIndicator } from "@/lib/motion/hooks";
 import { logOutAction } from "@/server/auth/actions";
+
+import { NotificationBell } from "@/components/notifications/NotificationInbox";
+
+import { NavCount } from "./NavCount";
+export { NavCount } from "./NavCount";
+export { NotificationBell } from "@/components/notifications/NotificationInbox";
 
 import type { ShellViewer } from "./AppShellView";
 import {
@@ -46,7 +52,7 @@ import styles from "./app.module.css";
  * Dev previews: `at` is the page the nav treats as current ("/jobs?view=all"); every nav link goes to `base` with
  * `at` set to where it would have gone, so clicking moves the bar without leaving the preview.
  */
-export type NavPreview = { at: string; base: string; menuOpen?: boolean };
+export type NavPreview = { at: string; base: string; menuOpen?: boolean; notificationsOpen?: boolean };
 
 type Location = { pathname: string | null; view: string | null };
 
@@ -85,39 +91,8 @@ function PathAndView({ render }: { render: (location: Location) => ReactNode }) 
   return render({ pathname, view });
 }
 
-/** The red count badge (.tm-count). Decorative: the link's name carries the number. */
-export function NavCount({ count, className }: { count: number; className?: string }) {
-  const bump = useBump(count, (was, now) => now > was);
-  const text = countText(count);
-  if (!text) return null;
-  return (
-    <span key={bump} className={[styles.count, bump > 0 && "tm-anim-badge", className].filter(Boolean).join(" ")} aria-hidden="true">
-      {text}
-    </span>
-  );
-}
-
-/**
- * The bell: opens Notifications with the unread count on it. The dropdown panel replaces the link in #179. Pages
- * with their own Forest band on a phone (customer home, the job board) put one in it.
- */
-export function NotificationBell({ count, href = NOTIFICATIONS_PATH, className }: { count: number; href?: string; className?: string }) {
-  const pathname = usePathname();
-  return (
-    <Link
-      href={href}
-      className={[styles.navBtn, className].filter(Boolean).join(" ")}
-      aria-label={countLabel("Notifications", count)}
-      aria-current={pathname === NOTIFICATIONS_PATH ? "page" : undefined}
-    >
-      <Icon name="notifications" fill decorative className={styles.bellIcon} />
-      <NavCount count={count} className={styles.navBtnCount} />
-    </Link>
-  );
-}
-
 /** The avatar and its menu: who's signed in, Account, Payments (customers), Notification settings, Help, Log out. */
-export function AccountMenu({ viewer, defaultOpen }: { viewer: ShellViewer; defaultOpen?: boolean }) {
+export function AccountMenu({ viewer, defaultOpen, compact = false }: { viewer: ShellViewer; defaultOpen?: boolean; compact?: boolean }) {
   const formRef = useRef<HTMLFormElement>(null);
   const name = fullName(viewer.firstName, viewer.lastName);
   return (
@@ -125,7 +100,7 @@ export function AccountMenu({ viewer, defaultOpen }: { viewer: ShellViewer; defa
       <Menu
         label="Account"
         defaultOpen={defaultOpen}
-        trigger={(props) => (
+        trigger={(props) => compact ? <IconButton {...props} icon="menu" label={`Account: ${name}`} className={styles.navBtn} /> : (
           <button type="button" {...props} className={styles.avatarBtn} aria-label={`Account: ${name}`}>
             <span className={styles.avatar} aria-hidden="true">
               {initials(name)}
@@ -188,6 +163,7 @@ export function AppHeader({ viewer, preview }: NavProps) {
   const links = TOP_NAV[viewer.role];
   const customer = viewer.role === "CUSTOMER";
   return (
+    <>
     <header className={styles.header}>
       <Link href={previewHref(preview, "/")} className={styles.logo} aria-label="Trade Marketplace home">
         <Wordmark label={null} className={styles.logoMark} />
@@ -207,10 +183,18 @@ export function AppHeader({ viewer, preview }: NavProps) {
             Post a job
           </Button>
         )}
-        <NotificationBell count={viewer.counts.notifications} href={previewHref(preview, NOTIFICATIONS_PATH)} />
+        <NotificationBell count={viewer.counts.notifications} allHref={previewHref(preview, NOTIFICATIONS_PATH)} preview={Boolean(preview)} defaultOpen={preview?.notificationsOpen} />
         <AccountMenu viewer={viewer} defaultOpen={preview?.menuOpen} />
       </div>
     </header>
+    <WithLocation preview={preview} render={({ pathname }) => isFullScreenFlow(pathname) ? null : (
+      <header className={styles.mobileHeader}>
+        <AccountMenu viewer={viewer} compact defaultOpen={preview?.menuOpen} />
+        <Link href={previewHref(preview, "/")} className={styles.logo} aria-label="Trade Marketplace home"><Wordmark label={null} className={styles.logoMark} /></Link>
+        <NotificationBell count={viewer.counts.notifications} allHref={previewHref(preview, NOTIFICATIONS_PATH)} preview={Boolean(preview)} defaultOpen={preview?.notificationsOpen} />
+      </header>
+    )} />
+    </>
   );
 }
 

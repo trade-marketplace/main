@@ -127,7 +127,7 @@ test.describe("/dev/components/app-shell", () => {
   test("a new message or notification pops the badge (M20); reading them takes it away", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto(url());
-    const bell = page.locator("header").getByRole("link", { name: /^Notifications/ });
+    const bell = page.getByRole("button", { name: /^Notifications/ });
     await expect(bell).toHaveAccessibleName("Notifications, 2 unread");
     await page.getByRole("button", { name: "New notification" }).click();
     await expect(bell).toHaveAccessibleName("Notifications, 3 unread");
@@ -146,7 +146,7 @@ test.describe("/dev/components/app-shell", () => {
     await page.keyboard.press("Enter");
     const menu = page.getByRole("menu");
     await expect(menu).toBeVisible();
-    await expect(page.locator("header")).toContainText("sarah@email.co.nz");
+    await expect(page.locator("header").first()).toContainText("sarah@email.co.nz");
     await expect(menu).toHaveAccessibleDescription(/Sarah Thompson/);
     expect(await itemNames(page)).toEqual(["Account", "Payments", "Notification settings", "Help", "Log out"]);
     await expect(menu.getByRole("menuitem", { name: "Account" })).toBeFocused();
@@ -162,7 +162,7 @@ test.describe("/dev/components/app-shell", () => {
     await page.goto(url("?viewer=tradie&menu=open"));
     await expect(page.getByRole("menu")).toBeVisible();
     expect(await itemNames(page)).toEqual(["Account", "Notification settings", "Help", "Log out"]);
-    await expect(page.locator("header")).toContainText("Tradie");
+    await expect(page.locator("header").first()).toContainText("Tradie");
     await expect(page.locator("header").getByRole("link", { name: "Post a job" })).toHaveCount(0);
   });
 

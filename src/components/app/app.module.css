@@ -51,8 +51,20 @@
 
 /* ---- Top nav (.w-appnav), from 1024px ---- */
 .header { display: none; }
+.mobileHeader {
+  display: grid;
+  grid-template-columns: var(--trade-tap) 1fr var(--trade-tap);
+  align-items: center;
+  justify-items: center;
+  min-height: var(--trade-header-h);
+  padding-inline: var(--trade-inset-browse);
+  background: var(--trade-forest);
+  color: var(--trade-text-on-dark);
+}
+.mobileHeader .logoMark { width: 94px; }
 
 @media (min-width: 1024px) {
+  .mobileHeader { display: none; }
   .header {
     position: sticky;
     top: 0;
