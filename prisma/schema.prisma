@@ -17,6 +17,18 @@ datasource db {
   provider = "postgresql"
 }
 
+// A07 (#184): public waitlist submissions go through the server; no Data API access.
+model WaitlistEntry {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email     String   @db.VarChar(254)
+  suburb    String   @db.VarChar(80)
+  suburbKey String   @map("suburb_key") @db.VarChar(160)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([email, suburbKey])
+  @@map("waitlist_entries")
+}
+
 // ---------------------------------------------------------------- Schema 1 (#86): people
 
 enum Role {
