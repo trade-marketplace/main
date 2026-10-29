@@ -30,10 +30,10 @@ async function readUserIdWithSupabase(jar: CookieJar): Promise<string | null> {
     if (error instanceof SupabaseNotConfiguredError) return null;
     throw error;
   }
-  // getClaims() refreshes an expired access token first, then verifies it. Don't run code between creating the
+  // getUser() refreshes an expired access token first, then checks the active session. Don't run code between creating the
   // client and this call: a refresh that's skipped here can log people out at random.
-  const { data } = await supabase.auth.getClaims();
-  return typeof data?.claims.sub === "string" ? data.claims.sub : null;
+  const { data, error } = await supabase.auth.getUser();
+  return !error && typeof data.user?.id === "string" ? data.user.id : null;
 }
 
 async function findRoleInProfiles(userId: string): Promise<Role | null> {

@@ -1,0 +1,4 @@
+.gallery { background: var(--trade-surface); color: var(--trade-text); }
+.gallery h1, .gallery h2 { margin: 0; padding: var(--trade-inset-browse); overflow-wrap: anywhere; }
+.gallery h1 { font-family: var(--trade-font-heading); font-size: var(--trade-fs-title); }
+.gallery h2 { font-size: var(--trade-fs-body); border-top: 1px solid var(--trade-line); }

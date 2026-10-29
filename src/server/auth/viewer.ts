@@ -38,14 +38,14 @@ export async function findProfile(userId: string): Promise<ProfileRow | null> {
 }
 
 /**
- * Reads the session from the request's cookies and checks it. `getClaims()` verifies the access token's signature
- * (against the project's published keys, or by asking Supabase Auth), so a forged or edited cookie never counts.
+ * Reads the session from the request's cookies and checks it with Supabase Auth. `getUser()` rejects revoked
+ * sessions immediately, including access tokens that have not expired after a password reset.
  */
 export async function readUserIdFromCookies(): Promise<string | null> {
   try {
     const supabase = await createSupabaseServerClient();
-    const { data } = await supabase.auth.getClaims();
-    return typeof data?.claims.sub === "string" ? data.claims.sub : null;
+    const { data, error } = await supabase.auth.getUser();
+    return !error && typeof data.user?.id === "string" ? data.user.id : null;
   } catch (error) {
     // Sign-in isn't set up yet (no Supabase keys): everyone is signed out.
     if (error instanceof SupabaseNotConfiguredError) return null;

@@ -66,7 +66,7 @@ signed out → `/login?next=…`; wrong role (e.g. a tradie on `/jobs/new`) → 
 to `RULES` in `routes.ts` with a test in `tests/unit/auth-routes.test.ts`.
 
 **The role always comes from `profiles`**, read on the server by user id after Supabase has verified the session
-(`getClaims()` checks the token's signature). Never from a cookie, a form field, a header or Supabase user metadata,
+(`getUser()` checks with Auth that the session is still active). Never from a cookie, a form field, a header or Supabase user metadata,
 which the user can edit. Sign-up only offers CUSTOMER or TRADIE; ADMIN is set by a founder in the database.
 
 **Every page, action and route handler checks the role itself.** The proxy is only the first line (Next.js warns
@@ -84,8 +84,8 @@ export const postJob = withRole(["CUSTOMER"], async (viewer, _previous: PostJobS
 export const POST = withRoleRoute(["CUSTOMER"], async (viewer, request) => { … });
 ```
 
-**Session refresh.** An access token lasts an hour. The proxy calls `getClaims()` on every request, which swaps an
-expired token for a new pair; the new cookies go on the request (so the page rendering next sees them) and on the
+**Session refresh.** An access token lasts an hour. The proxy calls `getUser()` on every request, which swaps an
+expired token for a new pair and rejects revoked sessions immediately; the new cookies go on the request (so the page rendering next sees them) and on the
 response (so the browser keeps them), including on a redirect. Server Components can't set cookies, which is why
 the refresh happens in the proxy. The proxy reads `profiles` only for non-public pages, so public pages cost no
 database read.
@@ -122,8 +122,14 @@ profile fails, their first log-in creates it (`ensureProfile()`, CUSTOMER or TRA
 Supabase's email confirmation time to `profiles.email_verified_at`. A Supabase user with no profile counts as signed
 out until then.
 
-**Not here yet:** the log-in and sign-up pages (#102–#105), the verify-email link handler (#106), password reset
-(#107), the dialog (#108), log out other devices (#113). Accounts are never locked after wrong passwords
+**Password recovery (#107).** `/recovery` requests an email, exchanges a one-time recovery token into a separate
+HttpOnly proof cookie, saves a password under the shared policy, revokes all sessions, and returns to password
+login with the original destination. It never installs an ordinary login or changes the app's email ownership
+flag. Expired/reused links, retryable delivery/update/revocation failures and offline states are covered.
+See `docs/PASSWORD_RECOVERY.md` for the security boundaries and William's required email-template configuration.
+
+**Not here yet:** the log-in and sign-up pages (#102–#105), the verify-email link handler (#106),
+the dialog (#108), log out other devices (#113). Accounts are never locked after wrong passwords
 (DECISIONS.md).
 
 **Supabase project settings** (William, in the dashboard; nothing in this repo changes them): Authentication →
