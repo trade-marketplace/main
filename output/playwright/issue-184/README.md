@@ -1,7 +1,9 @@
 # Issue #184 evidence
 
 Isolated checkout: `/Users/matthewlarsen/Documents/Codex/2026-10-30/task-2/waitlist`.
-Branch: `feat/184-area-waitlist`. Base: `3c7344f8dc5e6cce7ed2779af0599191a9302f3d`.
+Branch: `feat/184-area-waitlist`. Current base: `faaf5d2587ae5dcb19492da628814e3848f29c57`.
+
+Post-rebase verification is queued behind the shared heavy-check lock. The existing logs and first three visual passes below were captured on the earlier `3c7344f8dc5e6cce7ed2779af0599191a9302f3d` base. They are historical evidence, not a claim that the new upstream recovery/auth changes have already been reverified. The final verification report will identify its actual base and source commit.
 
 ## References captured before implementation
 
