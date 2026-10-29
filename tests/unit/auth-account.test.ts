@@ -222,12 +222,12 @@ describe("logIn", () => {
     expect(result).toMatchObject({ ok: true, redirectTo: "/jobs/j1?tab=photos" });
   });
 
-  it("copies the email confirmation from Supabase to the profile", async () => {
+  it("does not treat provider auto-confirmation as proof of email ownership", async () => {
     const profiles = fakeProfiles([
       { id: user().id, email: "sam@example.nz", role: "CUSTOMER", firstName: "Sam", emailVerifiedAt: null },
     ]);
     await logIn({ auth: fakeAuth(), profiles }, goodLogIn);
-    expect(profiles.rows.get(user().id)?.emailVerifiedAt).toEqual(new Date("2026-10-26T01:00:00Z"));
+    expect(profiles.rows.get(user().id)?.emailVerifiedAt).toBeNull();
   });
 
   it("gives one message for a wrong email or password and keeps the email", async () => {

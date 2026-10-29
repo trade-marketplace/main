@@ -10,6 +10,7 @@ import { describe, expect, it } from "vitest";
 const PUBLIC_ACTIONS: Record<string, string[]> = {
   // Signing up, logging in/out and signup suburb lookup must work before sign-in.
   "src/server/auth/actions.ts": ["signUpAction", "logInAction", "logInAgainAction", "logOutAction", "searchSignupAreasAction"],
+  "src/server/auth/verification-actions.ts": ["resendVerificationAction", "verificationStatusAction", "changeVerificationAccountAction"],
   // A01's public location picker returns NZ place suggestions only, with no profile or job access.
   "src/server/landing-actions.ts": ["searchLandingPlacesAction"],
 };
