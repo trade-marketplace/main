@@ -12,11 +12,12 @@ session and other devices stay signed in. This does not add passwordless login.
 
 Auth changes require the reviewing founder's approval. Matt is handling the 30 October 2026 deployment. Keep the decided Confirm Email setting off so password login remains
 available. Configure Supabase Auth's **Magic Link** and **Confirm signup** email templates to use the server's
-redirect and token hash:
+redirect and token hash. The branded HTML source is
+[`supabase/templates/verify-email.html`](../supabase/templates/verify-email.html); use it for both templates with
+the subject **Confirm your email for Trade Marketplace**. Deployment and email-client notes are in the
+[template README](../supabase/templates/README.md). Its confirmation links retain this contract:
 
 ```html
-<h2>Confirm your email</h2>
-<p>Tap the link to confirm your email for Trade Marketplace.</p>
 <p><a href="{{ .RedirectTo }}&amp;token_hash={{ .TokenHash }}&amp;type=email">Confirm email</a></p>
 ```
 

@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <meta name="supported-color-schemes" content="light" />
+    <title>Confirm your email for Trade Marketplace</title>
+    <style>
+      @font-face {
+        font-family: "Trade UI";
+        src: url("https://trademarketplace.nz/fonts/roboto-flex/RobotoFlex.woff2") format("woff2");
+        font-weight: 100 1000;
+      }
+      a:focus-visible { outline: 2px solid #2163c6; outline-offset: 4px; }
+      @media only screen and (max-width: 600px) {
+        .outer { padding: 24px 16px !important; }
+        .brand { padding: 24px !important; }
+        .content { padding: 32px 24px !important; }
+        .heading { font-size: 28px !important; line-height: 34px !important; }
+      }
+    </style>
+  </head>
+  <!-- Email clients need literal, inline colours. Values come from src/styles/tokens.css:
+       forest, paper, surface, lime, text-2, line and focus. See README.md. -->
+  <body style="margin: 0; padding: 0; background-color: #f1ece5; color: #0c251d; font-family: 'Trade UI', Arial, Helvetica, sans-serif; -webkit-text-size-adjust: 100%;">
+    <div style="display: none; max-height: 0; overflow: hidden; opacity: 0; mso-hide: all;">One quick step to confirm your email for Trade Marketplace.</div>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#f1ece5" style="width: 100%; background-color: #f1ece5;">
+      <tr>
+        <td class="outer" align="center" style="padding: 48px 24px;">
+          <!--[if mso]><table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0"><tr><td><![endif]-->
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width: 100%; max-width: 560px;">
+            <tr>
+              <td class="brand" bgcolor="#0c251d" style="padding: 28px 40px; background-color: #0c251d; border-radius: 22px 22px 0 0; border-bottom: 4px solid #a6d754;">
+                <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                  <tr>
+                    <td width="44" style="width: 44px; vertical-align: middle;">
+                      <img src="https://trademarketplace.nz/icons/icon-192.png" width="44" height="44" alt="" style="display: block; width: 44px; height: 44px; border: 0;" />
+                    </td>
+                    <td style="padding-left: 12px; color: #f1ece5; font-family: 'Trade UI', Arial, Helvetica, sans-serif; font-size: 17px; font-weight: 800; line-height: 19px; letter-spacing: 0.6px;">TRADE<br />MARKETPLACE</td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td class="content" bgcolor="#ffffff" style="padding: 40px; background-color: #ffffff; border-radius: 0 0 22px 22px;">
+                <h1 class="heading" style="margin: 0 0 16px; color: #0c251d; font-size: 32px; font-weight: 800; line-height: 38px; letter-spacing: -0.8px;">Confirm your email</h1>
+                <p style="margin: 0 0 28px; color: #52645b; font-size: 16px; line-height: 25px;">Tap below to confirm your email for Trade Marketplace.</p>
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width: 100%;">
+                  <tr>
+                    <td align="center" bgcolor="#a6d754" style="background-color: #a6d754; border-radius: 11px; mso-padding-alt: 18px 24px;">
+                      <a href="{{ .RedirectTo }}&amp;token_hash={{ .TokenHash }}&amp;type=email" style="display: block; padding: 18px 24px; border: 1px solid #a6d754; border-radius: 11px; color: #0c251d; font-size: 16px; font-weight: 700; line-height: 20px; text-align: center; text-decoration: none; mso-padding-alt: 0;">Confirm email</a>
+                    </td>
+                  </tr>
+                </table>
+                <p style="margin: 20px 0 0; color: #52645b; font-size: 14px; line-height: 22px;">This link can only be used once. If it expires, request a new one in the app.</p>
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width: 100%;">
+                  <tr><td style="padding-top: 28px; border-bottom: 1px solid #e3e6e4; font-size: 1px; line-height: 1px;">&nbsp;</td></tr>
+                </table>
+                <p style="margin: 24px 0 0; color: #52645b; font-size: 14px; line-height: 22px;">Button not working? <a href="{{ .RedirectTo }}&amp;token_hash={{ .TokenHash }}&amp;type=email" style="color: #0c251d; text-decoration: underline; text-underline-offset: 3px;">Use this confirmation link.</a></p>
+              </td>
+            </tr>
+            <tr>
+              <td align="center" style="padding: 24px 16px 0;">
+                <p style="margin: 0; color: #52645b; font-size: 13px; line-height: 21px;">Didn&rsquo;t request this? You can safely ignore this email.</p>
+                <p style="margin: 12px 0 0; font-size: 13px; line-height: 21px;"><a href="https://trademarketplace.nz" style="color: #52645b; text-decoration: underline; text-underline-offset: 3px;">trademarketplace.nz</a></p>
+              </td>
+            </tr>
+          </table>
+          <!--[if mso]></td></tr></table><![endif]-->
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
