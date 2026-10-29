@@ -44,6 +44,8 @@
 .main { flex: 1; }
 /* Focused only by the skip link (tabIndex -1); it isn't something to click, so no ring. */
 .main:focus { outline: none; }
+/* Native section links stop below the sticky header, including direct links on first load. */
+.main :target { scroll-margin-top: calc(var(--site-header-h) + var(--trade-space-4)); }
 
 /* ---- Header (.w-sitenav). Sticky; its Forest fill is the M06 layer (.tm-navfill in motion.css). ---- */
 .header {

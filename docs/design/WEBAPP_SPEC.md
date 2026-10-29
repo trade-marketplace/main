@@ -151,7 +151,7 @@ This spec says **what** to build. How is the developer’s call. All prices, nam
 | M03 | Hover lift | Card rises 2px, shadow deepens to 0 10 24 / 18%. Photo inside zooms 1.04 (400ms). | 160ms · ease-out | Job tiles, category tiles, job rows, cards that link |
 | M04 | Button press | Scale to .98 on press. Hover: brightness 1.06 (primary), tint fill (secondary), lift 1px + shadow (hero). | 120ms | All buttons |
 | M05 | Focus ring | No animation. 2px #2163C6 ring, 2px offset, appears instantly. | 0ms | Anything focusable |
-| M06 | Hero bolt parallax + nav fill | Bolt in the Forest band moves at 0.3× scroll (max 60px). Transparent site nav turns solid Forest with shadow after the hero. | Scroll-linked · nav 200ms | Landing, For tradies, service pages |
+| M06 | Hero bolt parallax + nav fill | Bolt in the Forest band moves at 0.3× scroll (max 60px). Transparent site nav turns solid Forest with shadow as scrolling starts. | Scroll-linked · nav 200ms | Landing, For tradies, service pages |
 | M07 | Headline reveal | Hero headline lines rise 16px + fade, 70ms apart. Then sub-copy, then search bar. Runs once per visit. | 500ms · ease-out | Landing, For tradies hero |
 | M08 | Search suggestions | Dropdown fades in and scales .98→1 from the top edge. Results update as you type (debounce 150ms). | 160ms | Hero search, header search, address field |
 | M09 | Price reveal | Forest price block wipes in left→right (300ms), the number counts up from $0 (700ms, ease-out), then reassurance ticks appear one by one (60ms apart). Once per job. | ~1.1s total | Job · price ready (customer); Earn (tradie) |
@@ -179,7 +179,7 @@ This spec says **what** to build. How is the developer’s call. All prices, nam
 ### Home / landing — `/` (customer)
 
 Founder update (#211, 29 Oct; see DECISIONS.md): signed-in customers see this public homepage until C01 exists. Job and waitlist actions preserve the entered details for the destination pages' own issues. The floating public illustration may use the design's $372.00 for now; it is not a live quote or payment control. The homepage keeps its explanatory mockup copy and category sublabels; design review examples remain visible, labelled as examples, until real reviews replace them (Matt's 29 Oct update).
-1. Transparent site nav over the hero. After scrolling past the hero it turns solid Forest with a shadow (M06). “For tradies” in Amber.
+1. Transparent site nav at the top of the hero. As scrolling starts it turns solid Forest with a shadow (M06), keeping the logo and links clear of moving hero content (#375). “For tradies” in Amber.
 2. Hero: 92px Display headline (M07 reveal), one search bar = the main action. Typing + Enter or “Get a price” opens Post a job with the text filled in. Location defaults from the browser (ask once) or IP; editable.
 3. Example chips pre-fill the search. Trust row: three facts, no numbers we can’t back up yet.
 4. Floating “price ready” card shows the product in one glance. Slight 2° tilt, floats 6px up/down slowly (3s loop, off with reduced motion).

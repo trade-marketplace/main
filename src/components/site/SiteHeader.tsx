@@ -4,7 +4,7 @@
 // app and account. Below 1024px the links move into a menu that drops down under the header.
 //
 // M06 nav fill: over a page's hero (an element with `data-site-hero`) the header is transparent, and turns solid
-// Forest with a shadow once the hero has scrolled up under it (.tm-navfill + useScrolledPast()). Pages without a
+// Forest with a shadow as scrolling starts (#375; .tm-navfill + useScrolledPast()). Pages without a
 // hero get the solid header from the first paint (site.module.css), with no script needed.
 //
 // It gets the visitor from <SiteShell>, which reads them on the server; nothing here decides who is signed in.
@@ -47,20 +47,9 @@ export function SiteHeader({ viewer }: { viewer: SiteViewer | null }) {
   const panelRef = useRef<HTMLDivElement>(null);
   const panelId = useId();
   const [open, setOpen] = useState(false);
-  const [headerHeight, setHeaderHeight] = useState(0);
 
   const { heroRef, hasHero } = useHero();
-  const pastHero = useScrolledPast(heroRef, { offset: headerHeight });
-
-  // The header is 64px on phones and 76px from 1024px up (and taller when text is zoomed): measure it, so the
-  // fill starts exactly when the hero's bottom edge reaches it.
-  useEffect(() => {
-    const header = headerRef.current;
-    if (!header || typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver(() => setHeaderHeight(header.offsetHeight));
-    observer.observe(header);
-    return () => observer.disconnect();
-  }, []);
+  const scrollingHero = useScrolledPast(heroRef, { edge: "top" });
 
   // Close the menu on a page change, and when the window grows wide enough for the full nav.
   const [menuPath, setMenuPath] = useState(pathname);
@@ -98,7 +87,7 @@ export function SiteHeader({ viewer }: { viewer: SiteViewer | null }) {
   }
 
   // null until the page has been checked: then the CSS decides (solid unless there is a hero), so there's no flash.
-  const solid = hasHero === null ? undefined : open || !hasHero || pastHero ? "true" : "false";
+  const solid = hasHero === null ? undefined : open || !hasHero || scrollingHero ? "true" : "false";
 
   const navLinks = (place: "bar" | "menu") =>
     SITE_NAV.map((link) => (

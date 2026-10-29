@@ -125,7 +125,7 @@
    Nothing in this file transitions outline, so the ring is never animated. */
 
 /* ---- M06 Hero bolt parallax + nav fill. useParallax() writes --tm-parallax-y (0.3x scroll, max 60px).
-   The nav turns solid Forest + header shadow after the hero (200ms): set data-solid="true"
+   The site nav turns solid Forest + header shadow as scrolling starts (200ms): set data-solid="true"
    (useScrolledPast()). The nav must be positioned (sticky/fixed/relative); its fill is a layer. */
 .tm-parallax { transform: translate3d(0, var(--tm-parallax-y, 0px), 0); }
 .tm-navfill { isolation: isolate; }

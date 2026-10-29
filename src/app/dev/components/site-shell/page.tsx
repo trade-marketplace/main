@@ -94,7 +94,7 @@ export default async function SiteShellPreview({ searchParams }: { searchParams:
         <div className={styles.wrap}>
           <h2 className={styles.heading}>Things to try</h2>
           <ul className={styles.list}>
-            <li>Scroll down: over the hero the header is see-through, and turns solid Forest once the hero has gone (M06).</li>
+          <li>Scroll down: at the top the header is see-through, and turns solid Forest as soon as scrolling starts (M06).</li>
             <li>Narrow the window below 1024px: the links move into the menu. Open it with Enter or Space; Esc closes it and puts focus back on the button.</li>
             <li>Press Tab first thing on the page: “Skip to content” jumps past the header.</li>
             <li>Zoom to 200%: nothing spills sideways, and long names end in “…”.</li>

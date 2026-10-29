@@ -57,7 +57,7 @@ export const MOTION: readonly MotionEntry[] = [
   {
     id: "M06",
     name: "Hero bolt parallax + nav fill",
-    what: "Bolt in the Forest band moves at 0.3× scroll (max 60px). Transparent site nav turns solid Forest with shadow after the hero.",
+    what: "Bolt in the Forest band moves at 0.3× scroll (max 60px). Transparent site nav turns solid Forest with shadow as scrolling starts.",
     timing: "Scroll-linked · nav 200ms",
     where: "Landing, For tradies, service pages",
     uses: [".tm-parallax", "useParallax()", ".tm-navfill", "useScrolledPast()", ".tm-hero-float"],

@@ -135,6 +135,7 @@ test.describe("landing fixtures", () => {
         await expect(page.locator(".tm-hero-float")).toHaveCSS("animation-duration", "3s");
       }
       await page.evaluate(() => window.scrollTo(0, 120));
+      await expect(header).toHaveAttribute("data-solid", "true");
       await expect.poll(() => bolt.evaluate((el) => el.style.getPropertyValue("--tm-parallax-y"))).toBe("36px");
       await page.evaluate(() => window.scrollTo(0, 900)); await expect(header).toHaveAttribute("data-solid", "true");
       await page.reload(); await expect(page.locator("h1 > span").first()).not.toHaveClass(/tm-anim-reveal/);
