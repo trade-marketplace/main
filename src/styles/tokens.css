@@ -163,7 +163,7 @@
 
 html { scroll-padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
 body { font-family: var(--trade-font-body); font-variation-settings: var(--trade-ui-axes); color: var(--trade-text); }
-:focus-visible { outline: 2px solid var(--trade-focus); outline-offset: 2px; }
+:focus-visible { outline: var(--trade-focus-ring, 2px solid var(--trade-focus)); outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }

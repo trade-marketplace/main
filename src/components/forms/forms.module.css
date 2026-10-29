@@ -11,8 +11,8 @@
 .control { display: flex; align-items: center; gap: 10px; min-width: 0; min-height: var(--trade-field-h); color: var(--trade-text-2); background: var(--trade-surface); }
 .control[data-variant="box"] { padding: 0 14px; border: 1px solid var(--trade-field-border); border-radius: var(--trade-radius-field); }
 .control[data-variant="underline"] { border-bottom: 1px solid var(--trade-field-border); }
-.control:focus-within { outline: 2px solid var(--trade-focus); outline-offset: 2px; }
-.control[data-variant="underline"]:focus-within { border-bottom: 2px solid var(--trade-focus); }
+.control:focus-within { outline: var(--trade-focus-ring, 2px solid var(--trade-focus)); outline-offset: 2px; }
+:global(html:not([data-focus-input="pointer"])) .control[data-variant="underline"]:focus-within { border-bottom: 2px solid var(--trade-focus); }
 .control[data-error="true"] { box-shadow: inset 0 0 0 1px var(--trade-danger); border-color: var(--trade-danger); }
 .control[data-variant="underline"][data-error="true"] { box-shadow: none; border-bottom: 2px solid var(--trade-danger); }
 .control[data-disabled] { background: var(--trade-waiting-bg); cursor: not-allowed; }
@@ -41,7 +41,7 @@
 .choiceInput:checked + .check { background: var(--trade-action); border-color: var(--trade-action); color: var(--trade-on-action); }
 .choiceInput:checked + .radio { border: 7px solid var(--trade-action); }
 .choiceInput:focus-visible + .check, .choiceInput:focus-visible + .radio, .choiceInput:focus-visible + .switchTrack,
-.choiceInput:focus-visible + .chip, .choiceInput:focus-visible + .window { outline: 2px solid var(--trade-focus); outline-offset: 2px; }
+.choiceInput:focus-visible + .chip, .choiceInput:focus-visible + .window { outline: var(--trade-focus-ring, 2px solid var(--trade-focus)); outline-offset: 2px; }
 .choiceInput[aria-invalid="true"] + .check, .choiceInput[aria-invalid="true"] + .radio,
 .choiceInput[aria-invalid="true"] + .switchTrack, .choiceInput[aria-invalid="true"] + .chip,
 .choiceInput[aria-invalid="true"] + .window { box-shadow: 0 0 0 1px var(--trade-danger); }
@@ -70,7 +70,7 @@
 .suggestion { display: flex; align-items: flex-start; gap: var(--trade-space-2); min-height: var(--trade-tap); padding: var(--trade-space-3); font-size: var(--trade-fs-small); color: var(--trade-text); cursor: pointer; overflow-wrap: anywhere; }
 .suggestion > span:first-child { flex: none; }
 .suggestion > span:last-child { min-width: 0; }
-.suggestion[aria-selected="true"] { background: var(--trade-tint); outline: 2px solid var(--trade-focus); outline-offset: -2px; }
+.suggestion[aria-selected="true"] { background: var(--trade-tint); outline: var(--trade-focus-ring, 2px solid var(--trade-focus)); outline-offset: -2px; }
 .lookupStatus:not(:empty) { margin-top: 6px; }
 /* Read out, not shown: how many suggestions appeared (screen readers can't see the list open). */
 .visuallyHidden { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }

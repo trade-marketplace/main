@@ -1,0 +1,128 @@
+[
+  {
+    "screen": "outside",
+    "width": 1440,
+    "before": 392,
+    "after": 392,
+    "overflow": 0
+  },
+  {
+    "screen": "field",
+    "width": 1440,
+    "before": 383,
+    "after": 383,
+    "overflow": 0
+  },
+  {
+    "screen": "login",
+    "width": 1440,
+    "before": 21,
+    "after": 21,
+    "overflow": 0
+  },
+  {
+    "screen": "signup",
+    "width": 1440,
+    "before": 24,
+    "after": 24,
+    "overflow": 0
+  },
+  {
+    "screen": "customer",
+    "width": 1440,
+    "before": 46,
+    "after": 46,
+    "overflow": 0
+  },
+  {
+    "screen": "tradie",
+    "width": 1440,
+    "before": 43,
+    "after": 43,
+    "overflow": 0
+  },
+  {
+    "screen": "fields",
+    "width": 1440,
+    "before": 480,
+    "after": 480,
+    "overflow": 0
+  },
+  {
+    "screen": "app",
+    "width": 1440,
+    "before": 398,
+    "after": 398,
+    "overflow": 0
+  },
+  {
+    "screen": "office",
+    "width": 1440,
+    "before": 83,
+    "after": 83,
+    "overflow": 0
+  },
+  {
+    "screen": "outside",
+    "width": 390,
+    "before": 351,
+    "after": 351,
+    "overflow": 0
+  },
+  {
+    "screen": "field",
+    "width": 390,
+    "before": 342,
+    "after": 342,
+    "overflow": 0
+  },
+  {
+    "screen": "login",
+    "width": 390,
+    "before": 17,
+    "after": 17,
+    "overflow": 0
+  },
+  {
+    "screen": "signup",
+    "width": 390,
+    "before": 20,
+    "after": 20,
+    "overflow": 0
+  },
+  {
+    "screen": "customer",
+    "width": 390,
+    "before": 34,
+    "after": 34,
+    "overflow": 0
+  },
+  {
+    "screen": "tradie",
+    "width": 390,
+    "before": 27,
+    "after": 27,
+    "overflow": 0
+  },
+  {
+    "screen": "fields",
+    "width": 390,
+    "before": 480,
+    "after": 480,
+    "overflow": 0
+  },
+  {
+    "screen": "app",
+    "width": 390,
+    "before": 390,
+    "after": 390,
+    "overflow": 0
+  },
+  {
+    "screen": "office",
+    "width": 390,
+    "before": 69,
+    "after": 69,
+    "overflow": 0
+  }
+]

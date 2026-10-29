@@ -7,7 +7,7 @@
    its ::after covers the whole card so a click anywhere opens it, while screen readers hear just the title. */
 .stretched::after { content: ""; position: absolute; inset: 0; z-index: 1; border-radius: inherit; }
 .stretched:focus-visible { outline: none; }
-.stretched:focus-visible::after { outline: 2px solid var(--trade-focus); outline-offset: 2px; }
+.stretched:focus-visible::after { outline: var(--trade-focus-ring, 2px solid var(--trade-focus)); outline-offset: 2px; }
 
 .visuallyHidden {
   position: absolute;
@@ -95,7 +95,7 @@
 .tileSave { position: absolute; right: 0; bottom: 0; z-index: 3; }
 .tileSave button { color: var(--trade-text-on-dark); }
 .tileSave button:hover { background: color-mix(in srgb, var(--trade-ink) 30%, transparent); }
-.tileWrap:has(.stretched:focus-visible) { outline: 2px solid var(--trade-focus); outline-offset: 2px; }
+.tileWrap:has(.stretched:focus-visible) { outline: var(--trade-focus-ring, 2px solid var(--trade-focus)); outline-offset: 2px; }
 .tileWrap .stretched:focus-visible::after { outline: none; }
 
 /* ---- Category tile (.tm-cat): 159 × 162 at 390 -------------------------------------------------------- */
@@ -152,7 +152,7 @@
 .cat[data-disabled] { box-shadow: none; outline: 1px solid var(--trade-line); background: var(--trade-waiting-bg); cursor: not-allowed; }
 .cat[data-disabled] .catArt { filter: grayscale(1); opacity: 0.45; }
 .cat[data-disabled] .catName { color: var(--trade-text-2); }
-.cat:has(.stretched:focus-visible) { outline: 2px solid var(--trade-focus); outline-offset: 2px; }
+.cat:has(.stretched:focus-visible) { outline: var(--trade-focus-ring, 2px solid var(--trade-focus)); outline-offset: 2px; }
 .cat .stretched:focus-visible::after { outline: none; }
 
 /* A row of category tiles that scrolls sideways on a phone (.tm-rail) and wraps on a computer. */
@@ -234,7 +234,7 @@
   white-space: nowrap;
 }
 .rowAction { position: relative; z-index: 2; }
-.row:has(.stretched:focus-visible) { outline: 2px solid var(--trade-focus); outline-offset: 2px; }
+.row:has(.stretched:focus-visible) { outline: var(--trade-focus-ring, 2px solid var(--trade-focus)); outline-offset: 2px; }
 .row .stretched:focus-visible::after { outline: none; }
 
 /* Little room for the words (a small phone, or text zoomed to 200%): the price and button go under the job,
@@ -289,7 +289,7 @@ a.kpiLabel { color: var(--trade-text-2); }
 /* Overdue (WEBAPP_SPEC F01: "red top edge + red text when anything is overdue"). */
 .kpi[data-alert] { border-top-color: var(--trade-danger); box-shadow: inset 0 2px 0 var(--trade-danger); }
 .kpi[data-alert] .kpiNote { color: var(--trade-danger); font-weight: 700; }
-.kpi:has(.stretched:focus-visible) { outline: 2px solid var(--trade-focus); outline-offset: 2px; }
+.kpi:has(.stretched:focus-visible) { outline: var(--trade-focus-ring, 2px solid var(--trade-focus)); outline-offset: 2px; }
 .kpi .stretched:focus-visible::after { outline: none; }
 
 /* ---- Stat card: the Forest money card at the top of Earnings (tr-earnings) ----------------------------- */

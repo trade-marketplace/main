@@ -52,11 +52,11 @@ export function Banner({ tone = "info", title, children, icon, action, onDismiss
   return (
     <div className={[styles.banner, styles[`banner-${tone}`], className].filter(Boolean).join(" ")} role={role}>
       {name && <Icon name={name} size="sm" fill={tone === "good" || tone === "test"} decorative className={styles.bannerIcon} />}
-      <p className={styles.bannerText}>
+      <p className={styles.bannerText} data-action-only={action && !children ? true : undefined}>
         {title && <b>{title}</b>}
         {title && children ? " " : null}
         {children}
-        {action && <> {action}</>}
+        {action && <span className={styles.bannerAction}>{action}</span>}
       </p>
       {onDismiss && (
         <span className={styles.bannerDismiss}>
