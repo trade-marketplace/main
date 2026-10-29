@@ -8,13 +8,13 @@ and passwords live in Vercel's environment variables and the founders' password 
 | Service | What it does | Account / owner | Plan | Status |
 |---|---|---|---|---|
 | **GitHub** org `trade-marketplace`, repo `main` | Code, issues, CI, PR gate | Org owners: Matt (`mlarsen084`), William (`willimobro`) | Free (repo **public** for now so Vercel Hobby can deploy) | ✅ Live |
-| **Vercel** project `trade-marketplace/main` | Hosting, live site, preview link per PR | Matt's Vercel account (signed in with GitHub `mlarsen084`) | Hobby (free) → Pro before launch (~US$20/mo) | ✅ Live at https://main-ashy-tau.vercel.app/ |
+| **Vercel** project `trade-marketplace/main` | Hosting, live site, preview link per PR | Matt's Vercel account (signed in with GitHub `mlarsen084`) | Hobby (free) → Pro before launch (~US$20/mo) | ✅ Live at https://trademarketplace.nz/ |
 | **Supabase** project "Trade Marketplace Sydney" (`bwbwbpnqfxjdkbompsvg`) | Database, sign-in, file storage, timers | Supabase org owned by Matt; William to be invited as Owner | Free → Pro at launch (~US$25/mo) | ✅ Connected; tables created on each production deploy |
 | Supabase project "Trade Marketplace Main" (`tlqyzgvlkdtiwizisfmp`, Singapore) | Nothing (first attempt, paused) | Same org | Free | ⚠️ Unused; safe to delete |
 | **Mapbox** | Address search, maps | Matt's Mapbox account (`mlarsen084`) | Free tier | ✅ Token set in Vercel |
 | **Claude GitHub App** | Lets Claude agents push and open PRs | Installed on the org by Matt | — | ✅ |
-| **Domain** trademarketplace.nz (+ .co.nz redirect) | Real web address, email sender | Not bought yet | ~NZ$30–40/yr each | ⏳ |
-| **Resend** (email) | Sign-in and job emails from `hello@trademarketplace.nz` | Not set up yet (needs the domain) | Free tier | ⏳ |
+| **Domain** trademarketplace.nz (+ intended .co.nz redirect) | Real web address, email sender | Registrar/account details to confirm | ~NZ$30–40/yr each | ✅ Primary verified/live; .co.nz not yet verified |
+| **Resend** (email) | Sign-in and job emails from `hello@trademarketplace.nz` | Setup/SMTP status to confirm with Matt or William | Free tier | ⚠️ Live configuration not verified |
 | **Firebase** (push) | Job alerts and pings | Not set up yet | Free tier | ⏳ |
 | **Stripe** (test mode) | Payments, Apple Pay | Not set up yet (#151, William) | — | ⏳ |
 | **Plausible or Fathom** | Privacy-friendly analytics | Not chosen yet | Paid (small) | ⏳ |
@@ -64,7 +64,34 @@ Used for (DECISIONS.md #58–#61):
 | `DATABASE_URL` (pooled) / `DIRECT_URL` | server, migrations | **yes** |
 
 ## Vercel (hosting, preview links)
-Connected. Production deploys from `main` at https://main-ashy-tau.vercel.app/ (Hobby plan while the repo is public;
+Connected. Production deploys from `main` at https://trademarketplace.nz/ (Hobby plan while the repo is public;
 Pro before launch). Every PR gets a preview link. Environment variables (Production + Preview) are set in Vercel.
 Production deploys run `scripts/migrate-on-deploy.mjs` first (`vercel-build`), which applies pending Prisma migrations
 to Supabase. Preview deploys never change the database schema.
+
+### Verified live configuration (29 October 2026)
+
+Read-only Vercel connector inspection confirms the existing project, not a new deployment:
+
+- Team `trade-marketplace`, project `main` (`prj_2IXyfVBFTACe4M08iDkk24e5KUZB`).
+- `trademarketplace.nz` is verified and serves production. `www.trademarketplace.nz` is verified and redirects to
+  the primary domain with HTTP 308. `https://main-ashy-tau.vercel.app/` remains a working Vercel alias.
+- Production deployment `dpl_3JhMJp5MuLiKtEL4damvQXLNUTZv` was Ready in Sydney (`syd1`), serving main commit
+  `49ac856` (#381). The homepage and `/verify` both returned HTTP 200.
+- `.co.nz` is still the decided redirect, but it is not in this project's returned domain list. Its registration
+  and redirect status remain unverified; do not infer that it is live.
+- The connector lists the five environment variable names documented above. No values were decrypted or copied.
+  No Resend variable was listed, but this does **not** establish whether Supabase Auth has Resend SMTP configured.
+
+### Checking the email people actually receive
+
+Vercel hosts the app; Supabase Auth stores the live confirmation/recovery email templates and SMTP configuration.
+Domain verification does not prove those templates, the sender address or email delivery are configured.
+
+William should inspect Authentication → Email Templates and SMTP settings in the existing Sydney project. The
+templates in `docs/EMAIL_VERIFICATION.md` are proposed configuration, not evidence of the current live message.
+To review the exact received email, use a screenshot or saved message with its one-time confirmation link removed.
+Never publish live tokens, request real email as part of automated tests, or connect those tests to Supabase.
+
+The dashboard required sign-in during this inspection, so its live templates/SMTP were not inspected. No service
+settings were changed, no email was sent and no database command was run.
