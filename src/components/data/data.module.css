@@ -122,7 +122,7 @@
 }
 .checkboxInput:checked + .checkboxBox,
 .checkboxInput:indeterminate + .checkboxBox { background: var(--trade-action); border-color: var(--trade-action); color: var(--trade-on-action); }
-.checkboxInput:focus-visible + .checkboxBox { outline: 2px solid var(--trade-focus); outline-offset: 2px; }
+.checkboxInput:focus-visible + .checkboxBox { outline: var(--trade-focus-ring, 2px solid var(--trade-focus)); outline-offset: 2px; }
 .checkboxInput:disabled + .checkboxBox { background: var(--trade-waiting-bg); }
 
 /* A thumbnail, title and line under it: the Job column in the office mockups. */
@@ -379,7 +379,7 @@ a.itemTitle:hover { text-decoration: underline; text-underline-offset: 3px; }
   background: var(--trade-surface);
   color: var(--trade-text-2);
 }
-.search:focus-within { outline: 2px solid var(--trade-focus); outline-offset: 2px; }
+.search:focus-within { outline: var(--trade-focus-ring, 2px solid var(--trade-focus)); outline-offset: 2px; }
 .searchInput {
   flex: 1;
   min-width: 0;
@@ -423,7 +423,7 @@ a.itemTitle:hover { text-decoration: underline; text-underline-offset: 3px; }
   cursor: pointer;
 }
 .chipButton:focus-visible { outline: none; }
-.chipButton:focus-visible > .chip { outline: 2px solid var(--trade-focus); outline-offset: 2px; }
+.chipButton:focus-visible > .chip { outline: var(--trade-focus-ring, 2px solid var(--trade-focus)); outline-offset: 2px; }
 .chip {
   display: inline-flex;
   align-items: center;

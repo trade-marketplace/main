@@ -68,7 +68,7 @@
   pointer-events: none;
 }
 .pin .pinIcon { font-size: 15px; }
-.pin:focus-visible { outline: 2px solid var(--trade-focus); outline-offset: 3px; z-index: 3; }
+.pin:focus-visible { outline: var(--trade-focus-ring, 2px solid var(--trade-focus)); outline-offset: 3px; z-index: 3; }
 
 .claim { background: var(--trade-forest); color: var(--trade-text-on-dark); }
 .estimate { background: var(--trade-surface); color: var(--trade-text); }
@@ -108,7 +108,7 @@
   cursor: pointer;
   z-index: 1;
 }
-.cluster:focus-visible { outline: 2px solid var(--trade-focus); outline-offset: 7px; z-index: 3; }
+.cluster:focus-visible { outline: var(--trade-focus-ring, 2px solid var(--trade-focus)); outline-offset: 7px; z-index: 3; }
 .clusterGold {
   position: absolute;
   top: -3px;
@@ -410,7 +410,7 @@
 /* The SDK adds .mapboxgl-map (position: relative) after loading its CSS. Keep this selector more specific so
    the provider container fills the surface even when the vendor stylesheet arrives last. */
 .surface > .mapboxCanvas { position: absolute; inset: 0; width: 100%; height: 100%; }
-.mapboxCanvas :global(.mapboxgl-canvas):focus-visible { outline: 3px solid var(--trade-focus); outline-offset: -3px; }
+.mapboxCanvas :global(.mapboxgl-canvas):focus-visible { outline: var(--trade-focus-ring, 3px solid var(--trade-focus)); outline-offset: -3px; }
 .mapboxLayer { pointer-events: none; }
 .mapboxLayer button { pointer-events: auto; }
 .providerControls { position: absolute; top: 12px; right: 12px; z-index: 4; display: grid; gap: 4px; }
@@ -420,7 +420,7 @@
   background: var(--trade-surface); color: var(--trade-text); cursor: pointer; box-shadow: var(--trade-shadow-pop);
 }
 .providerControls button:disabled { opacity: .5; cursor: default; }
-.providerControls button:focus-visible { outline: 3px solid var(--trade-focus); outline-offset: 3px; }
+.providerControls button:focus-visible { outline: var(--trade-focus-ring, 3px solid var(--trade-focus)); outline-offset: 3px; }
 .locationNotice {
   position: absolute; left: 12px; top: 12px; max-width: calc(100% - 88px); z-index: 4; margin: 0;
   padding: 10px 12px; border-radius: var(--trade-radius-card); font-size: var(--trade-fs-small);

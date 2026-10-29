@@ -204,7 +204,7 @@
 }
 .roleCard:hover { background: color-mix(in srgb, var(--trade-line) 35%, var(--trade-surface)); }
 .roleCard:has(:checked) { border: 2px solid var(--trade-action); padding: calc(var(--trade-space-3) - 1px) calc(var(--trade-space-4) - 1px); background: var(--trade-tint); }
-.roleCard:has(:focus-visible) { outline: 2px solid var(--trade-focus); outline-offset: 2px; }
+.roleCard:has(:focus-visible) { outline: var(--trade-focus-ring, 2px solid var(--trade-focus)); outline-offset: 2px; }
 /* The real radio: covers the card (it's the hit area for touch and screen readers) but can't be seen. */
 .roleInput { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
 .roleDot {

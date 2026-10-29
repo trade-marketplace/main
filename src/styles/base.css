@@ -4,8 +4,13 @@
 
 html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 
+/* M05: no ring for clicks/taps, including fields and focus moved by an overlay or example chip.
+   The shared styles fall back to their original ring with a keyboard, or when JavaScript is unavailable. */
+html[data-focus-input="pointer"] { --trade-focus-ring: none; }
+
 body {
   margin: 0;
+  -webkit-tap-highlight-color: transparent;
   min-height: 100dvh;
   background: var(--trade-surface);
   font-size: var(--trade-fs-body);

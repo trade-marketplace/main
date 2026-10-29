@@ -273,4 +273,8 @@
 .bannerIcon { flex: none; }
 .bannerText { flex: 1; min-width: 0; margin: 0; overflow-wrap: break-word; }
 .bannerText a { color: inherit; }
+.bannerAction { display: inline-flex; vertical-align: middle; margin-inline-start: var(--trade-space-2); }
+.bannerText[data-action-only] { display: flex; align-items: center; flex-wrap: wrap; gap: 0 var(--trade-space-3); }
+.bannerText[data-action-only] .bannerAction { margin-inline-start: 0; }
+.banner:has(.bannerText[data-action-only]) { align-items: center; }
 .bannerDismiss { flex: none; margin: -12px -10px -12px 0; }

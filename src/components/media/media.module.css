@@ -273,7 +273,7 @@
 .starOption > :not(input) { font-size: 34px; transition: transform var(--trade-dur-fast) var(--trade-ease-out); }
 .starOption:hover > :not(input) { transform: scale(1.1); }
 .starRadio { position: absolute; inset: 0; margin: 0; opacity: 0; cursor: pointer; }
-.starOption:has(:focus-visible) { outline: 2px solid var(--trade-focus); outline-offset: -2px; border-radius: 10px; }
+.starOption:has(:focus-visible) { outline: var(--trade-focus-ring, 2px solid var(--trade-focus)); outline-offset: -2px; border-radius: 10px; }
 .starWords { margin-left: var(--trade-space-2); font-weight: 700; font-size: var(--trade-fs-small); color: var(--trade-text-2); }
 .starError { display: flex; gap: 6px; margin: var(--trade-space-2) 0 0; color: var(--trade-danger); font-size: var(--trade-fs-small); }
 @media (prefers-reduced-motion: reduce) {

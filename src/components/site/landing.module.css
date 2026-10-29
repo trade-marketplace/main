@@ -34,7 +34,7 @@
 .priceCard .artButton { margin-top: var(--trade-space-3); min-height: 46px; font-size: 17px; }
 .phoneSearch, .phoneExamples { display: none; }
 .coverage { width: min(1152px, calc(100% - 40px)); margin: var(--trade-space-6) auto 0; }
-.changeLocation { color: inherit; font: inherit; font-weight: 700; background: transparent; border: 0; min-height: var(--trade-tap); cursor: pointer; }
+.changeLocation { color: inherit; font: inherit; font-weight: 700; background: transparent; border: 0; padding: 0; min-height: var(--trade-tap); white-space: nowrap; cursor: pointer; }
 .sectionHeading { text-align: center; }
 .eyebrow { display: block; color: var(--trade-link); text-transform: uppercase; font-size: var(--trade-fs-caption); font-weight: 800; letter-spacing: .1em; }
 .wrap h2 { margin: 10px 0 0; font-family: var(--trade-font-heading); font-variation-settings: var(--trade-display-axes); font-size: var(--trade-fs-title); font-weight: 900; line-height: var(--trade-lh-title); }
