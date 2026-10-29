@@ -11,7 +11,6 @@ import { authCookieOptions, type CookieJar } from "@/server/supabase";
 export const RECOVERY_AUTH_COOKIE = "tm-recovery-auth";
 export const RECOVERY_PENDING_COOKIE = "tm-recovery-pending";
 export const RECOVERY_SAVED_COOKIE = "tm-recovery-saved";
-export const RECOVERY_COMPLETE_COOKIE = "tm-recovery-complete";
 
 export function recoveryRetryAt() {
   return Date.now() + 60_000;

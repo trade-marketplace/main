@@ -57,6 +57,11 @@ describe("recovery pages", () => {
     expect(fake.providerCookie).toBe("tm-recovery-auth");
   });
 
+  it("never lets a previous completion marker block a fresh Forgot password request", async () => {
+    fake.values.set("tm-recovery-complete", "1");
+    expect((await RecoveryPage({ searchParams: Promise.resolve({}) })).props.initialState).toBe("request");
+  });
+
   it("distinguishes an expired session from an Auth outage", async () => {
     fake.values.set("tm-recovery-auth", "proof-session");
     fake.getUser.mockResolvedValueOnce({ data: { user: null }, error: { status: 403 } }).mockResolvedValueOnce({ data: { user: null }, error: { status: 503 } }).mockRejectedValueOnce(new Error("private provider details"));
@@ -97,7 +102,9 @@ describe("password action", () => {
     expect(fake.save).toHaveBeenCalledOnce();
     expect(fake.finish).toHaveBeenCalledOnce();
     expect(fake.set).toHaveBeenCalledWith("tm-recovery-auth.0", "", expect.objectContaining({ path: "/recovery", maxAge: 0 }));
-    expect(fake.set).toHaveBeenCalledWith("tm-recovery-complete", "1", expect.objectContaining({ httpOnly: true, path: "/recovery" }));
+    expect(fake.values.has("tm-recovery-auth.0")).toBe(false);
+    expect(fake.values.has("tm-recovery-saved")).toBe(false);
+    expect(fake.set.mock.calls.some(([name]) => name === "tm-recovery-complete")).toBe(false);
     expect(fake.normalSignOut).toHaveBeenCalledWith({ scope: "local" });
     expect(fake.revalidate).toHaveBeenCalledWith("/", "layout");
     expect(JSON.stringify(fake.set.mock.calls)).not.toContain("korimako-gumboot-41");

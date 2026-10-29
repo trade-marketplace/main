@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { confirmRecovery } from "@/server/auth/password-recovery";
-import { RECOVERY_AUTH_COOKIE, RECOVERY_COMPLETE_COOKIE, RECOVERY_SAVED_COOKIE, recoveryClientWithCookies, recoveryStatePath } from "@/server/auth/recovery";
+import { RECOVERY_AUTH_COOKIE, RECOVERY_SAVED_COOKIE, recoveryClientWithCookies, recoveryStatePath } from "@/server/auth/recovery";
 import { authCookieOptions, type CookieToSet } from "@/server/supabase";
 
 export async function GET(request: NextRequest) {
@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
       response.cookies.set(cookie.name, "", { ...authCookieOptions(), path: "/recovery", maxAge: 0 });
     }
   }
-  for (const name of [RECOVERY_SAVED_COOKIE, RECOVERY_COMPLETE_COOKIE]) response.cookies.set(name, "", { ...authCookieOptions(), path: "/recovery", maxAge: 0 });
+  response.cookies.set(RECOVERY_SAVED_COOKIE, "", { ...authCookieOptions(), path: "/recovery", maxAge: 0 });
   if (state === "reset") {
     for (const { name, value, options } of values) response.cookies.set(name, value, options);
   }

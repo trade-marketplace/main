@@ -26,7 +26,8 @@ changes. Nothing here runs against Supabase during tests.
   server failure, allowing a real retry. The Auth server authorizes revocation. Missing/revoked proof is never
   treated as successful global logout; a fresh reset link is required if that proof has gone.
 - Recovery cookies are cleared on completion, the normal browser cookie is locally cleared, and the user logs in
-  again with the new password. The complete marker is informational, never an authenticated session.
+  again with the new password. Completion is shown only from a successful server-action response; no completion
+  marker blocks a later Forgot password attempt. Reloading starts a fresh request.
 - Recovery does not change the app's independent `profiles.email_verified_at` ownership flag (#106/#353).
 
 ## Immediate old-device rejection

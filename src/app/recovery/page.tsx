@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 
 import { RecoveryFlow } from "@/components/auth/RecoveryFlow";
 import { recoveryNext, recoverySeconds, type RecoveryState } from "@/lib/auth/recovery";
-import { pendingRecovery, RECOVERY_AUTH_COOKIE, RECOVERY_COMPLETE_COOKIE, RECOVERY_SAVED_COOKIE, recoveryClient } from "@/server/auth/recovery";
+import { pendingRecovery, RECOVERY_AUTH_COOKIE, RECOVERY_SAVED_COOKIE, recoveryClient } from "@/server/auth/recovery";
 
 export const metadata: Metadata = { title: "Reset password", robots: { index: false, follow: false } };
 
@@ -14,8 +14,7 @@ export default async function RecoveryPage({ searchParams }: { searchParams: Pro
   const pending = await pendingRecovery();
   let email = pending?.email ?? "";
   let state: RecoveryState = pending ? "sent" : "request";
-  if (jar.get(RECOVERY_COMPLETE_COOKIE)?.value === "1") state = "complete";
-  else if (jar.getAll().some((cookie) => cookie.name === RECOVERY_AUTH_COOKIE || cookie.name.startsWith(`${RECOVERY_AUTH_COOKIE}.`))) {
+  if (jar.getAll().some((cookie) => cookie.name === RECOVERY_AUTH_COOKIE || cookie.name.startsWith(`${RECOVERY_AUTH_COOKIE}.`))) {
     if (jar.get(RECOVERY_SAVED_COOKIE)?.value === "1") state = "finish";
     else {
       try {

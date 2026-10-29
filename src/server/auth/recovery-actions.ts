@@ -5,7 +5,7 @@ import { cookies } from "next/headers";
 
 import { RECOVERY_COOLDOWN_SECONDS, type RecoverySaveResult, type RecoverySendResult } from "@/lib/auth/recovery";
 import { finishRecovery, saveRecoveryPassword, sendRecovery } from "@/server/auth/password-recovery";
-import { clearRecovery, pendingRecovery, RECOVERY_COMPLETE_COOKIE, RECOVERY_PENDING_COOKIE, RECOVERY_SAVED_COOKIE, recoveryClient, recoveryEmailUrl } from "@/server/auth/recovery";
+import { clearRecovery, pendingRecovery, RECOVERY_PENDING_COOKIE, RECOVERY_SAVED_COOKIE, recoveryClient, recoveryEmailUrl } from "@/server/auth/recovery";
 import { verificationAuth } from "@/server/auth/verification";
 import { authCookieOptions, createSupabaseServerClient } from "@/server/supabase";
 
@@ -19,7 +19,6 @@ export async function requestRecoveryAction(email: string, next?: string): Promi
     if (result.ok || result.error === "try-later") {
       const jar = await cookies();
       jar.set(RECOVERY_PENDING_COOKIE, JSON.stringify({ email: result.ok ? result.email : email.trim().toLowerCase(), retryAt: result.retryAt }), { ...authCookieOptions(), path: "/recovery", maxAge: 3_600 });
-      jar.set(RECOVERY_COMPLETE_COOKIE, "", { ...authCookieOptions(), path: "/recovery", maxAge: 0 });
     }
     return result;
   } catch {
@@ -46,7 +45,6 @@ export async function saveRecoveryAction(password: string, confirmation: string)
     }
     await clearRecovery();
     jar.set(RECOVERY_PENDING_COOKIE, "", { ...authCookieOptions(), path: "/recovery", maxAge: 0 });
-    jar.set(RECOVERY_COMPLETE_COOKIE, "1", { ...authCookieOptions(), path: "/recovery", maxAge: 3_600 });
     try {
       const normal = await createSupabaseServerClient();
       await normal.auth.signOut({ scope: "local" });

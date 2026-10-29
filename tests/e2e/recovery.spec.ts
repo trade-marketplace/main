@@ -59,6 +59,16 @@ test.describe("password recovery public journey", () => {
     await expect(page.getByRole("button", { name: "Send reset link" })).not.toHaveAttribute("aria-disabled");
     await expect(page.getByRole("textbox", { name: "Email" })).toHaveValue("sarah@example.test");
   });
+
+  test("a previous completion marker cannot trap the user when they need another reset", async ({ page, context }) => {
+    await context.addCookies([{ name: "tm-recovery-complete", value: "1", domain: "127.0.0.1", path: "/recovery", httpOnly: true, sameSite: "Lax" }]);
+    await page.goto("/login?next=%2Fjobs%2Fnew");
+    await page.getByRole("link", { name: "Forgot password?" }).click();
+    await expect(page.getByRole("heading", { name: "Forgot your password?" })).toBeVisible();
+    await expect(page.getByRole("textbox", { name: "Email" })).toBeVisible();
+    await page.getByRole("link", { name: "Back to log in" }).click();
+    await expect(page.getByRole("heading", { name: "Welcome back" })).toBeVisible();
+  });
 });
 
 test.describe("recovery states and form interactions", () => {
