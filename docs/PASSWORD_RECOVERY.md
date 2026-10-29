@@ -1,6 +1,6 @@
 # Password recovery (#107)
 
-**William must review this auth/session flow and configure its email template before use.** No schema or migration
+**The reviewing founder must approve this auth/session flow and configure its email template before use.** No schema or migration
 changes. Nothing here runs against Supabase during tests.
 
 ## Flow
@@ -46,7 +46,7 @@ Sources: [Supabase sessions](https://supabase.com/docs/guides/auth/sessions),
 [signOut](https://supabase.com/docs/reference/javascript/auth-signout),
 [resetPasswordForEmail](https://supabase.com/docs/reference/javascript/auth-resetpasswordforemail).
 
-## Email and redirect configuration (William)
+## Email and redirect configuration (reviewing founder)
 
 Use the existing Sydney project from `docs/SERVICES.md`; do not create a new project. In Authentication → Email
 Templates → Reset password, the link must go to our token-hash callback, not return browser tokens in a fragment:

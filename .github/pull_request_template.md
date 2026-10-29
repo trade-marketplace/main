@@ -6,7 +6,7 @@ Closes #
 
 ## Live links
 
-- [Live app](https://main-ashy-tau.vercel.app/)
+- [Live app](https://trademarketplace.nz/)
 
 <!-- Verify the links before opening the PR. Add clickable URLs for each changed public screen.
      Use the PR's Vercel preview deployment when available. Clearly label current production links

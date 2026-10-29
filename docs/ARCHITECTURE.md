@@ -118,23 +118,32 @@ How the dialog (#108) hooks in:
 
 **Sign-up creates the profile.** `signUpAction` calls Supabase `signUp()` and then creates the `profiles` row with
 Prisma straight away. What they chose (name, role) is also kept in Supabase's user metadata, so if saving the
-profile fails, their first log-in creates it (`ensureProfile()`, CUSTOMER or TRADIE only). Log-in also copies
-Supabase's email confirmation time to `profiles.email_verified_at`. A Supabase user with no profile counts as signed
-out until then.
+profile fails, their first log-in creates it (`ensureProfile()`, CUSTOMER or TRADIE only). A new profile starts with
+`email_verified_at` unset, even when Supabase auto-confirms the account. Password log-in never copies the provider's
+confirmation timestamp. A Supabase user with no profile counts as signed out until the profile is repaired.
+
+**Email ownership (#106).** Signup leads to `/verify`. A one-time email token is checked on the server by
+`verifyOtp`; only its proved user id and matching current profile email may set `email_verified_at`. The verifier's
+separate Auth client revokes its temporary session without replacing the browser's password session. `/verify`
+supports resend, cooldown, expired/invalid links and already confirmed, and polls for confirmation in another tab.
+See `docs/EMAIL_VERIFICATION.md` for the founder's email-template configuration. The app banner uses this independent
+profile flag; server-side posting/claiming gates and historical profile cleanup remain #353.
+
+**Account security (#113).** `/profile/security` lets customers and tradies change email or password and log out
+other devices after checking the current password. Email changes require a matching-user confirmation callback;
+password changes revoke other refresh sessions while keeping this browser signed in. Existing access tokens may
+remain valid until expiry. See `docs/testing/security.md` for the integration and deployment requirements.
 
 **Password recovery (#107).** `/recovery` requests an email, exchanges a one-time recovery token into a separate
-HttpOnly proof cookie, saves a password under the shared policy, globally revokes refresh sessions, and returns to password
-login with the original destination. Existing access tokens may last until expiry (Matt, DECISIONS.md). It never installs an ordinary login or changes the app's email ownership
-flag. Expired/reused links, retryable delivery/update/revocation failures and offline states are covered.
-See `docs/PASSWORD_RECOVERY.md` for the security boundaries and William's required email-template configuration.
+HttpOnly proof cookie, saves a password under the shared policy, globally revokes refresh sessions, and returns to
+password login with the original destination. Existing access tokens may last until expiry (DECISIONS.md). Recovery
+never installs an ordinary login or changes the app's email ownership flag. Expired/reused links, retryable delivery,
+update/revocation failures and offline states are covered. See `docs/PASSWORD_RECOVERY.md` for the boundaries and
+founder deployment configuration. Accounts are never locked after wrong passwords (DECISIONS.md).
 
-**Not here yet:** the log-in and sign-up pages (#102–#105), the verify-email link handler (#106),
-the dialog (#108), log out other devices (#113). Accounts are never locked after wrong passwords
-(DECISIONS.md).
-
-**Supabase project settings** (William, in the dashboard; nothing in this repo changes them): Authentication →
-Providers → Email: minimum password length **10**; leaked-password protection once on Pro. Whether email must be
-confirmed before log-in is a project setting too (#102 wants log-in to work with a "please verify" banner).
+**Supabase project settings** (configured by the reviewing founder in the dashboard): Authentication →
+Providers → Email: minimum password length **10**; leaked-password protection once on Pro. Keep Confirm Email off
+so people can log in before confirming ownership, with the confirmation banner (DECISIONS.md, #340).
 
 ## Data model
 
