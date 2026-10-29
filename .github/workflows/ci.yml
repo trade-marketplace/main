@@ -100,7 +100,9 @@ jobs:
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         env:
           TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
-        run: npm test
+        # The RLS fixtures share role/auth-schema grants; parallel setup can collide (#351).
+        # Keep every database assertion, with one worker until those fixtures are independent.
+        run: npm test -- --maxWorkers=1
 
       - name: Build
         id: build

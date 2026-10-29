@@ -10,6 +10,7 @@ import { Button } from "@/components/Button";
 import { CheckboxField } from "@/components/forms/ChoiceFields";
 import { PasswordField, TextField } from "@/components/forms/TextFields";
 import { Banner } from "@/components/overlays/Banner";
+import { recoveryPath } from "@/lib/auth/recovery";
 import { logInAction, type LogInState } from "@/server/auth/actions";
 
 import { logInMessages } from "./login-messages";
@@ -86,7 +87,7 @@ export function LoginForm({ next, initialState = null }: LoginFormProps) {
       />
       <div className={styles.row}>
         <CheckboxField name="remember" label="Keep me logged in" defaultChecked className={styles.remember} />
-        <Link href="/recovery" className={styles.forgot}>
+        <Link href={recoveryPath(next)} className={styles.forgot}>
           Forgot password?
         </Link>
       </div>

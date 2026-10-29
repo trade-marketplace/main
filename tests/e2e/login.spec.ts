@@ -52,8 +52,14 @@ test.describe("/login", () => {
 
   test("links: forgot password, sign up (keeping the deep link), home", async ({ page }) => {
     await page.goto("/login?next=%2Fjobs%2FTM-1005");
-    await expect(page.getByRole("link", { name: "Forgot password?" })).toHaveAttribute("href", "/recovery");
-    await expect(page.getByRole("link", { name: "Sign up", exact: true })).toHaveAttribute("href", "/signup?next=%2Fjobs%2FTM-1005");
+    await page.getByRole("link", { name: "Forgot password?" }).click();
+    await expect(page).toHaveURL(/\/recovery\?next=%2Fjobs%2FTM-1005/);
+    await expect(page.getByRole("heading", { name: "Forgot your password?" })).toBeVisible();
+    await page.getByRole("link", { name: "Back to log in" }).click();
+    await expect(page.getByRole("heading", { name: "Welcome back" })).toBeVisible();
+    await page.getByRole("link", { name: "Sign up", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "Create account", exact: true })).toBeVisible();
+    await expect(page).toHaveURL(/\/signup\?next=%2Fjobs%2FTM-1005/);
   });
 
   test("as in the mockups: no labels showing, and Sign up on a phone", async ({ page }) => {

@@ -131,7 +131,13 @@ describe.skipIf(!testDatabaseUrl)("Schema 1: people", () => {
     });
 
     it("updates updated_at even when changed outside Prisma", async () => {
-      const person = await createPerson(email());
+      // Prisma and Docker Postgres can have different clocks (#346). A fixed initial timestamp proves the
+      // database trigger advances the value without comparing the application clock with the database clock.
+      const id = randomUUID();
+      await schema.db.$executeRawUnsafe(`INSERT INTO auth.users (id) VALUES ($1::uuid)`, id);
+      const person = await schema.db.profile.create({
+        data: { id, email: email(), firstName: "Test", updatedAt: new Date("2000-01-01T00:00:00Z") },
+      });
       await schema.db.$executeRawUnsafe(`UPDATE "${schema.name}".profiles SET first_name = 'Changed' WHERE id = $1::uuid`, person.id);
       const after = await schema.db.profile.findUniqueOrThrow({ where: { id: person.id } });
       expect(after.updatedAt.getTime()).toBeGreaterThan(person.updatedAt.getTime());

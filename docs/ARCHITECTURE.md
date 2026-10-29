@@ -134,7 +134,12 @@ other devices after checking the current password. Email changes require a match
 password changes revoke other refresh sessions while keeping this browser signed in. Existing access tokens may
 remain valid until expiry. See `docs/testing/security.md` for the integration and deployment requirements.
 
-**Not here yet:** password recovery (#107, PR #384). Accounts are never locked after wrong passwords (DECISIONS.md).
+**Password recovery (#107).** `/recovery` requests an email, exchanges a one-time recovery token into a separate
+HttpOnly proof cookie, saves a password under the shared policy, globally revokes refresh sessions, and returns to
+password login with the original destination. Existing access tokens may last until expiry (DECISIONS.md). Recovery
+never installs an ordinary login or changes the app's email ownership flag. Expired/reused links, retryable delivery,
+update/revocation failures and offline states are covered. See `docs/PASSWORD_RECOVERY.md` for the boundaries and
+founder deployment configuration. Accounts are never locked after wrong passwords (DECISIONS.md).
 
 **Supabase project settings** (configured by the reviewing founder in the dashboard): Authentication →
 Providers → Email: minimum password length **10**; leaked-password protection once on Pro. Keep Confirm Email off
