@@ -37,7 +37,7 @@ export type AuthClient = {
   signUp(credentials: {
     email: string;
     password: string;
-    options?: { data?: Record<string, unknown> };
+    options?: { data?: Record<string, unknown>; emailRedirectTo?: string };
   }): Promise<AuthResponseLike>;
   signInWithPassword(credentials: { email: string; password: string }): Promise<AuthResponseLike>;
   signOut(options?: { scope?: "global" | "local" | "others" }): Promise<{ error: AuthErrorLike | null }>;
@@ -61,7 +61,7 @@ export type ProfileStore = {
   ensureWorker?(id: string, details: WorkerSignupDetails): Promise<void>;
 };
 
-export type AccountDeps = { auth: AuthClient; profiles: ProfileStore };
+export type AccountDeps = { auth: AuthClient; profiles: ProfileStore; emailRedirectTo?: string };
 
 // ---------------------------------------------------------------- results
 
@@ -185,8 +185,8 @@ function isUniqueViolation(error: unknown): boolean {
 }
 
 /**
- * The person's profile, created if it's missing, with `email_verified_at` copied from Supabase once they've
- * confirmed. Sign-up creates the profile straight away; this also repairs one whose sign-up was cut off between
+ * The person's profile, created if it's missing. Only the email-proof flow sets `email_verified_at`.
+ * Sign-up creates the profile straight away; this also repairs one whose sign-up was cut off between
  * Supabase creating the user and us saving the profile. The role then comes from what they picked at sign-up
  * (kept in Supabase's user metadata), and can only be CUSTOMER or TRADIE, never ADMIN.
  */
@@ -196,7 +196,6 @@ export async function ensureProfile(
   fallback: Partial<Pick<NewProfile, "role" | "firstName" | "lastName" | "phone">> = {},
   worker?: WorkerSignupDetails,
 ): Promise<ProfileRow> {
-  const confirmedAt = user.email_confirmed_at ? new Date(user.email_confirmed_at) : null;
   let profile = await profiles.find(user.id);
   if (!profile) {
     const email = user.email ?? "";
@@ -209,7 +208,7 @@ export async function ensureProfile(
         firstName: fallback.firstName ?? metadataText(user.user_metadata, "first_name") ?? email.split("@")[0],
         lastName: fallback.lastName ?? metadataText(user.user_metadata, "last_name"),
         phone: fallback.phone ?? normaliseMobile(metadataText(user.user_metadata, "phone") ?? ""),
-        emailVerifiedAt: confirmedAt,
+        emailVerifiedAt: null,
       });
     } catch (error) {
       // Two requests raced to create it (e.g. log-in in two tabs): use the one that won.
@@ -218,7 +217,6 @@ export async function ensureProfile(
       if (!profile) throw error;
     }
   }
-  if (confirmedAt && !profile.emailVerifiedAt) profile = await profiles.markEmailVerified(user.id, confirmedAt);
   if (profile.role === "TRADIE") {
     const fromMetadata = parseWorkerSignup(user.user_metadata?.worker_signup);
     const details = worker ?? (fromMetadata.ok ? fromMetadata.details : null);
@@ -256,7 +254,7 @@ export async function signUp(deps: AccountDeps, input: SignUpInput): Promise<Sig
       email,
       password,
       // Kept by Supabase with the user, so a profile can be rebuilt if saving it below fails (ensureProfile).
-      options: { data: { first_name: firstName, last_name: lastName, role, phone, terms_accepted: true, ...(worker?.ok ? { worker_signup: worker.details } : {}) } },
+      options: { ...(deps.emailRedirectTo ? { emailRedirectTo: deps.emailRedirectTo } : {}), data: { first_name: firstName, last_name: lastName, role, phone, terms_accepted: true, ...(worker?.ok ? { worker_signup: worker.details } : {}) } },
     });
   } catch {
     return { ok: false, error: "unavailable", values };

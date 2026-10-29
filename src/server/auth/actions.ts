@@ -11,6 +11,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { workerSignupValues } from "@/lib/auth/worker-signup";
+import { VERIFICATION_COOLDOWN_SECONDS, verificationPath } from "@/lib/auth/verification";
 import { SupabaseNotConfiguredError } from "@/lib/supabase/config";
 import {
   logIn,
@@ -24,6 +25,7 @@ import {
 } from "@/server/auth/account";
 import { searchSignupAreas, type SignupAreaResult } from "@/server/auth/work-area";
 import { prismaProfiles } from "@/server/auth/profiles";
+import { rememberVerification, startVerification, verificationEmailUrl } from "@/server/auth/verification";
 import { createSupabaseServerClient, rememberSessionChoice } from "@/server/supabase";
 
 /** `useActionState` starts with null: nothing sent yet. */
@@ -61,10 +63,16 @@ export async function signUpAction(_previous: SignUpState, formData: FormData): 
     const input = readSignUpForm(formData);
     return { ...unavailable, values: { email: input.email, firstName: input.firstName, lastName: input.lastName, phone: input.phone, role: input.role, terms: input.terms ? "on" : "", ...workerSignupValues(input.worker) } };
   }
-  const result = await signUp({ auth, profiles }, readSignUpForm(formData));
-  if (result.ok && result.status === "signed-in") {
+  const input = readSignUpForm(formData);
+  const result = await signUp({ auth, profiles, emailRedirectTo: verificationEmailUrl(input.next) }, input);
+  if (result.ok) {
+    const email = input.email.trim().toLowerCase();
+    if (result.status === "signed-in") {
+      const sent = await startVerification(email, input.next);
+      if (!sent.ok && sent.error !== "try-later") await rememberVerification(email, 0);
+    } else await rememberVerification(email, Date.now() + VERIFICATION_COOLDOWN_SECONDS * 1_000);
     refreshEverything();
-    redirect(result.redirectTo);
+    redirect(verificationPath(input.next));
   }
   return result;
 }
