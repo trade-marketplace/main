@@ -126,13 +126,17 @@ confirmation timestamp. A Supabase user with no profile counts as signed out unt
 `verifyOtp`; only its proved user id and matching current profile email may set `email_verified_at`. The verifier's
 separate Auth client revokes its temporary session without replacing the browser's password session. `/verify`
 supports resend, cooldown, expired/invalid links and already confirmed, and polls for confirmation in another tab.
-See `docs/EMAIL_VERIFICATION.md` for William's email-template configuration. The app banner uses this independent
+See `docs/EMAIL_VERIFICATION.md` for the founder's email-template configuration. The app banner uses this independent
 profile flag; server-side posting/claiming gates and historical profile cleanup remain #353.
 
-**Not here yet:** password reset (#107) and log out other devices (#113). Accounts are never locked after wrong
-passwords (DECISIONS.md).
+**Account security (#113).** `/profile/security` lets customers and tradies change email or password and log out
+other devices after checking the current password. Email changes require a matching-user confirmation callback;
+password changes revoke other refresh sessions while keeping this browser signed in. Existing access tokens may
+remain valid until expiry. See `docs/testing/security.md` for the integration and deployment requirements.
 
-**Supabase project settings** (William, in the dashboard; nothing in this repo changes them): Authentication →
+**Not here yet:** password recovery (#107, PR #384). Accounts are never locked after wrong passwords (DECISIONS.md).
+
+**Supabase project settings** (configured by the reviewing founder in the dashboard): Authentication →
 Providers → Email: minimum password length **10**; leaked-password protection once on Pro. Keep Confirm Email off
 so people can log in before confirming ownership, with the confirmation banner (DECISIONS.md, #340).
 

@@ -17,7 +17,7 @@ Decided by Matt (Co-Founder/CEO) on 23 October 2026. These override older wordin
 
 ## Decided since (closed decision issues)
 
-- **Domain** (#209, Matt): primary **trademarketplace.nz**; **trademarketplace.co.nz** redirects to it. Both still need buying.
+- **Domain** (#209, Matt): primary **trademarketplace.nz**; **trademarketplace.co.nz** is intended to redirect to it. The primary domain is verified and live on Vercel (connector checked 29 October 2026); the .co.nz purchase/redirect has not been verified. See `docs/SERVICES.md`.
 - **Email, push and SMS** (#63, Matt): **Resend** for email from **hello@trademarketplace.nz**; **Firebase** web push for job alerts and pings. **No SMS at launch** (cost); revisit with more users.
 - **Analytics and cookies** (#234, Matt): privacy-friendly analytics (**Plausible or Fathom**), so the cookie banner informs only, no consent choices.
 - **Hosting and database** (#58, William): **Vercel** for the app + **Supabase Postgres**, both in the **Sydney** region. Free tiers until launch; at launch upgrade Supabase to Pro (daily backups, no inactivity pausing) and Vercel to Pro (Hobby is non-commercial only), ~US$45/mo. Supabase also covers auth, file storage and realtime.
