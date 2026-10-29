@@ -1,0 +1,32 @@
+[
+  {
+    "state": "signed-out",
+    "desktop": 389,
+    "phone": 348
+  },
+  {
+    "state": "signed-in",
+    "desktop": 388,
+    "phone": 346
+  },
+  {
+    "state": "outside",
+    "desktop": 392,
+    "phone": 351
+  },
+  {
+    "state": "reviews",
+    "desktop": 387,
+    "phone": 346
+  },
+  {
+    "state": "location-loading",
+    "desktop": 7,
+    "phone": 7
+  },
+  {
+    "state": "location-error",
+    "desktop": 8,
+    "phone": 8
+  }
+]

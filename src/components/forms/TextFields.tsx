@@ -19,11 +19,11 @@ export type TextFieldProps = Omit<InputHTMLAttributes<HTMLInputElement>, "size" 
 };
 
 export function TextField({
-  label, hint, error, success, required, id, variant = "box", icon, prefix, suffix, className,
+  label, labelHidden, hint, error, success, required, id, variant = "box", icon, prefix, suffix, className,
   type = "text", "aria-describedby": describedBy, ...input
 }: TextFieldProps) {
   const field = useField({ id, hint, error, success, describedBy });
-  return <Field {...{ label, hint, error, success, required }} id={field.id} className={className}>
+  return <Field {...{ label, labelHidden, hint, error, success, required }} id={field.id} className={className}>
     <div className={styles.control} data-variant={variant} data-error={Boolean(error)} data-disabled={input.disabled || undefined}>
       {icon && <Icon name={icon} size="sm" decorative />}
       {prefix && <span className={styles.affix} aria-hidden="true">{prefix}</span>}

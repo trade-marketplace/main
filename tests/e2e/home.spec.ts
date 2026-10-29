@@ -3,7 +3,10 @@ import { expect, test } from "@playwright/test";
 import { expectNoA11yViolations } from "./support/a11y";
 import { VIEWPORTS } from "./support/viewports";
 
-// Example end-to-end test against the placeholder home page (the real one is #211).
+// Check resting colours, rather than a partly transparent frame of M07. Real motion is tested in landing.spec.
+test.use({ reducedMotion: "reduce" });
+
+// Public homepage smoke checks at every supported width.
 // Signing in as each role is added with sign-in (#101/#102).
 
 for (const viewport of VIEWPORTS) {
@@ -13,8 +16,8 @@ for (const viewport of VIEWPORTS) {
     test("loads with the product name as the heading", async ({ page }) => {
       const response = await page.goto("/");
       expect(response?.status()).toBe(200);
-      await expect(page).toHaveTitle("Trade Marketplace");
-      await expect(page.getByRole("heading", { level: 1, name: "Trade Marketplace" })).toBeVisible();
+      await expect(page).toHaveTitle("Trade Marketplace — Sorted in a flash.");
+      await expect(page.getByRole("heading", { level: 1, name: /Sorted in\s*a flash\./ })).toBeVisible();
     });
 
     test("has no sideways scroll", async ({ page }) => {
