@@ -69,6 +69,17 @@ export function SiteHeader({ viewer }: { viewer: SiteViewer | null }) {
     if (open) panelRef.current?.querySelector<HTMLElement>("a, button")?.focus();
   }, [open]);
 
+  // Pointer dismissal is independent of focus: some browsers blur with no next target
+  // before a menu link receives its click. Hiding the link there cancels navigation.
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (event: PointerEvent) => {
+      if (event.target instanceof Node && !headerRef.current?.contains(event.target)) setOpen(false);
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, [open]);
+
   function close({ returnFocus }: { returnFocus: boolean }) {
     setOpen(false);
     if (returnFocus) headerRef.current?.querySelector<HTMLElement>(`[aria-controls="${panelId}"]`)?.focus();
@@ -81,9 +92,9 @@ export function SiteHeader({ viewer }: { viewer: SiteViewer | null }) {
     }
   }
 
-  // Tabbing (or clicking) out of the header closes the menu, so it never hides the page behind it.
+  // Tabbing to a known target outside closes the menu; pointer dismissal is handled above.
   function onBlur(event: FocusEvent<HTMLElement>) {
-    if (open && !event.currentTarget.contains(event.relatedTarget as Node | null)) setOpen(false);
+    if (open && event.relatedTarget && !event.currentTarget.contains(event.relatedTarget as Node)) setOpen(false);
   }
 
   // null until the page has been checked: then the CSS decides (solid unless there is a hero), so there's no flash.
