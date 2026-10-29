@@ -31,6 +31,9 @@ The logo has `alt="Trade Marketplace"` for image-blocked views. The body uses on
 concise copy. Inspiration: the clear hierarchy and single-action layouts in [Typeform's verification email](https://reallygoodemails.com/emails/please-verify-your-email-for-typeform)
 and [Discord's verification email](https://reallygoodemails.com/emails/verify-email); no third-party artwork or copy is reused.
 
+The body and outer layout table deliberately have no background colour, so the surrounding area follows the
+recipient's email app. Only the card, button and brand header have explicit fills.
+
 The image is hosted at `https://assets.trademarketplace.nz/email/trade-marketplace-40e29c402400.png` on the
 sender's own domain. A small Cloudflare Worker (`trade-marketplace-email-assets`) returns the embedded public
 PNG bytes; it has no credentials, storage bindings, upstream requests or user-data handling. The filename
@@ -70,7 +73,7 @@ properties. Keep these values in sync when changing the brand tokens:
 | Token | Used for |
 |---|---|
 | `forest` | Header, headings, button label and secondary link |
-| `paper` | Background and header wordmark |
+| `paper` | Header wordmark |
 | `surface` | Content card |
 | `lime` | Button and header accent |
 | `text-2` | Supporting text and footer |
