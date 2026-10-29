@@ -14,7 +14,7 @@
 .card { min-width: 0; background: var(--trade-surface); border: 1px solid var(--trade-line); border-radius: var(--trade-radius-action); padding: var(--trade-space-5); }
 .card h2 { margin: 0; font-family: var(--trade-font-heading); font-variation-settings: var(--trade-display-axes); font-size: var(--trade-fs-subheading); line-height: var(--trade-lh-subheading); font-weight: 900; }
 .hint { margin: var(--trade-space-2) 0 0; color: var(--trade-text-2); font-size: var(--trade-fs-small); overflow-wrap: anywhere; }
-.form { margin-top: var(--trade-space-5); display: grid; gap: var(--trade-space-4); max-width: var(--trade-read-max); }
+.form { min-width: 0; margin-top: var(--trade-space-5); display: grid; gap: var(--trade-space-4); }
 .fields { min-width: 0; padding: 0; margin: 0; border: 0; display: grid; gap: var(--trade-space-4); }
 .message { overflow-wrap: anywhere; }
 .message a { display: inline-block; padding-top: var(--trade-space-3); color: var(--trade-link); }

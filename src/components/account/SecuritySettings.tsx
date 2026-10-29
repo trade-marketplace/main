@@ -82,7 +82,7 @@ function SecurityForm({ operation, email, action, initial, offline, previewPendi
             onChange={() => setMismatch(false)} />
         </>}
       </fieldset>
-      <Button type="submit" loading={busy} variant={operation === "sessions" ? "destructive" : "primary"} disabled={offline ? "Reconnect before saving." : undefined}>{BUTTONS[operation]}</Button>
+      <Button type="submit" width="full" loading={busy} variant={operation === "sessions" ? "destructive" : "primary"} disabled={offline ? "Reconnect before saving." : undefined}>{BUTTONS[operation]}</Button>
       <span className={styles.srOnly} role="status">{busy ? (operation === "sessions" ? "Logging out other devices…" : "Saving…") : ""}</span>
     </form>
   </section>;
