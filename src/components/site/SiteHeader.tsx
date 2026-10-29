@@ -40,9 +40,10 @@ function useHero() {
   return { heroRef, hasHero: element === undefined ? null : element !== null };
 }
 
-export function SiteHeader({ viewer }: { viewer: SiteViewer | null }) {
-  const pathname = usePathname();
-  const actions = headerActions(viewer);
+export function SiteHeader({ viewer, currentPath }: { viewer: SiteViewer | null; currentPath?: string }) {
+  const routePath = usePathname();
+  const pathname = currentPath ?? routePath;
+  const actions = headerActions(viewer, pathname);
   const headerRef = useRef<HTMLElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const panelId = useId();
@@ -203,7 +204,7 @@ export function SiteHeader({ viewer }: { viewer: SiteViewer | null }) {
           )}
           {actions.guest && (
             <>
-              <Button href={actions.guest.signUp.href} variant="secondary" width="full">
+              <Button href={actions.guest.signUp.href} variant={isCurrent(pathname, FOR_TRADIES_PATH) ? "hero" : "secondary"} width="full">
                 {actions.guest.signUp.label}
               </Button>
               <Button href={actions.guest.logIn.href} variant="secondary" width="full">

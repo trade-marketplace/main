@@ -95,8 +95,9 @@ export type HeaderActions = {
 };
 
 /** Which actions the header shows for this visitor (null = signed out). */
-export function headerActions(viewer: SiteViewer | null): HeaderActions {
+export function headerActions(viewer: SiteViewer | null, pathname?: string | null): HeaderActions {
   if (!viewer) {
+    if (isCurrent(pathname ?? null, FOR_TRADIES_PATH)) return { postJob: null, guest: { logIn: LOG_IN, signUp: { label: "Join as a tradie", href: TRADIE_SIGNUP_PATH } }, app: null, account: null };
     return { postJob: { label: "Post a job", href: POST_JOB_PATH }, guest: { logIn: LOG_IN, signUp: SIGN_UP }, app: null, account: null };
   }
   const accountPath = ACCOUNT_PATH[viewer.role];

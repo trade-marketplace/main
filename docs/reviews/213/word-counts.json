@@ -1,0 +1,68 @@
+[
+  {
+    "state": "ready",
+    "width": 1440,
+    "main": 144,
+    "screen": 193
+  },
+  {
+    "state": "empty",
+    "width": 1440,
+    "main": 107,
+    "screen": 156
+  },
+  {
+    "state": "loading",
+    "width": 1440,
+    "main": 105,
+    "screen": 154
+  },
+  {
+    "state": "error",
+    "width": 1440,
+    "main": 109,
+    "screen": 158
+  },
+  {
+    "state": "faq-open",
+    "width": 1440,
+    "main": 158,
+    "screen": 207
+  },
+  {
+    "state": "ready",
+    "width": 390,
+    "main": 130,
+    "screen": 169
+  },
+  {
+    "state": "empty",
+    "width": 390,
+    "main": 107,
+    "screen": 146
+  },
+  {
+    "state": "loading",
+    "width": 390,
+    "main": 105,
+    "screen": 144
+  },
+  {
+    "state": "error",
+    "width": 390,
+    "main": 109,
+    "screen": 148
+  },
+  {
+    "state": "faq-open",
+    "width": 390,
+    "main": 144,
+    "screen": 183
+  },
+  {
+    "state": "menu",
+    "width": 390,
+    "main": 107,
+    "screen": 161
+  }
+]
