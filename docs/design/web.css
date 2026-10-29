@@ -22,7 +22,7 @@
 .w-sitenav { height: 76px; display: flex; align-items: center; gap: 32px; padding: 0 48px; position: relative; z-index: 10; }
 .w-sitenav a { color: #fff; font-weight: 600; font-size: 15px; text-decoration: none; opacity: .88; }
 .w-sitenav a:hover { opacity: 1; text-decoration: underline; text-underline-offset: 6px; }
-.w-sitenav--solid { background: var(--trade-forest); box-shadow: var(--trade-shadow-header); }  /* after scrolling past hero (M06) */
+.w-sitenav--solid { background: var(--trade-forest); box-shadow: var(--trade-shadow-header); }  /* as scrolling starts (M06) */
 .w-appnav { height: 68px; background: var(--trade-forest); display: flex; align-items: center; gap: 8px; padding: 0 32px; color: #fff; position: sticky; top: 0; z-index: var(--trade-z-nav); }
 .w-appnav__links { display: flex; gap: 4px; margin-left: 28px; }
 .w-appnav__links a { height: 40px; display: flex; align-items: center; gap: 8px; padding: 0 14px; border-radius: 10px; color: rgb(255 255 255 / 78%); font-weight: 600; font-size: 14.5px; text-decoration: none; position: relative; transition: background var(--trade-dur-fast); }

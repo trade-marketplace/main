@@ -278,18 +278,37 @@ export function useParallax<T extends HTMLElement>(
 }
 
 /**
- * M06 nav fill: true once `targetRef` (the hero) has scrolled up under the nav (`offset` px from the top).
+ * M06 nav fill: true once the target's chosen edge passes `offset` px from the top.
+ * Site headers use the top edge so moving hero content never crosses transparent navigation.
  * Put it on the nav as data-solid. Scrolls the window unless `scrollContainer` is given.
  */
 export function useScrolledPast<T extends Element>(
   targetRef: RefObject<T | null>,
-  { offset = 0, scrollContainer }: { offset?: number; scrollContainer?: RefObject<HTMLElement | null> } = {},
+  { offset = 0, edge = "bottom", scrollContainer }: { offset?: number; edge?: "top" | "bottom"; scrollContainer?: RefObject<HTMLElement | null> } = {},
 ): boolean {
   const [past, setPast] = useState(false);
   useEffect(() => {
     const target = targetRef.current;
-    if (!target || typeof IntersectionObserver === "undefined") return;
+    if (!target) return;
     const root = scrollContainer?.current ?? null;
+    if (edge === "top") {
+      const source = root ?? window;
+      let frame = 0;
+      const update = () => {
+        frame = 0;
+        setPast(target.getBoundingClientRect().top < (root?.getBoundingClientRect().top ?? 0) + offset);
+      };
+      const schedule = () => { if (!frame) frame = requestAnimationFrame(update); };
+      update();
+      source.addEventListener("scroll", schedule, { passive: true });
+      window.addEventListener("resize", schedule);
+      return () => {
+        source.removeEventListener("scroll", schedule);
+        window.removeEventListener("resize", schedule);
+        if (frame) cancelAnimationFrame(frame);
+      };
+    }
+    if (typeof IntersectionObserver === "undefined") return;
     const observer = new IntersectionObserver(
       ([entry]) => {
         const rootTop = entry.rootBounds?.top ?? 0;
@@ -299,7 +318,7 @@ export function useScrolledPast<T extends Element>(
     );
     observer.observe(target);
     return () => observer.disconnect();
-  }, [targetRef, scrollContainer, offset]);
+  }, [targetRef, scrollContainer, offset, edge]);
   return past;
 }
 

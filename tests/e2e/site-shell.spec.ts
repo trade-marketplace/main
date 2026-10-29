@@ -50,15 +50,11 @@ for (const viewport of VIEWPORTS) {
       await expect(page.getByRole("main")).toBeFocused();
     });
 
-    test("is see-through over the hero and solid Forest once the hero has scrolled past (M06)", async ({ page }) => {
+    test("is see-through at the top and solid Forest as scrolling starts (M06)", async ({ page }) => {
       await page.goto("/");
       await expect.poll(() => headerIsSolid(page)).toBe(false);
-      // The placeholder home is one screen-high hero and the footer: add page below the hero to scroll through.
-      await page.getByRole("main").evaluate((main) => {
-        const more = document.createElement("div");
-        more.style.height = "200vh";
-        main.append(more);
-      });
+      await page.evaluate(() => window.scrollTo(0, 1));
+      await expect.poll(() => headerIsSolid(page)).toBe(true);
       await page.evaluate(() => window.scrollTo(0, window.innerHeight * 1.5));
       await expect.poll(() => headerIsSolid(page)).toBe(true);
       await expectNoA11yViolations(page);
