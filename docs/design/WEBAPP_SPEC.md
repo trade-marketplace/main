@@ -177,6 +177,8 @@ This spec says **what** to build. How is the developer’s call. All prices, nam
 ## Designed pages
 
 ### Home / landing — `/` (customer)
+
+Founder update (#211, 29 Oct; see DECISIONS.md): signed-in customers see this public homepage until C01 exists. Job and waitlist actions preserve the entered details for the destination pages' own issues. The floating public illustration may use the design's $372.00 for now; it is not a live quote or payment control. The homepage keeps its explanatory mockup copy and category sublabels; design review examples remain visible, labelled as examples, until real reviews replace them (Matt's 29 Oct update).
 1. Transparent site nav over the hero. After scrolling past the hero it turns solid Forest with a shadow (M06). “For tradies” in Amber.
 2. Hero: 92px Display headline (M07 reveal), one search bar = the main action. Typing + Enter or “Get a price” opens Post a job with the text filled in. Location defaults from the browser (ask once) or IP; editable.
 3. Example chips pre-fill the search. Trust row: three facts, no numbers we can’t back up yet.

@@ -132,6 +132,10 @@
 .tm-navfill::before { content: ""; position: absolute; inset: 0; z-index: -1; background: var(--trade-forest); box-shadow: var(--trade-shadow-header); opacity: 0; pointer-events: none; transition: opacity var(--trade-dur-base) var(--trade-ease-out); }
 .tm-navfill[data-solid="true"]::before { opacity: 1; }
 
+/* A01/A02 product illustrations: the designed 3s / 6px float, on a wrapper so their 2deg tilt is retained. */
+@keyframes tm-hero-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+.tm-hero-float { animation: tm-hero-float 3s var(--trade-ease-in-out) infinite; }
+
 /* ---- M07 Headline reveal: lines rise 16px + fade (500ms ease-out), 70ms apart, then the sub-copy,
    then the search bar. Number them with --tm-i (staggerStyle(i)). Once per visit: useOncePerEvent(…, "visit"). */
 @keyframes tm-reveal { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
@@ -313,6 +317,7 @@
   .tm-anim-rise,
   .tm-stagger > *,
   .tm-anim-reveal,
+  .tm-hero-float,
   .tm-anim-suggest,
   .tm-anim-wipe,
   .tm-anim-underline,

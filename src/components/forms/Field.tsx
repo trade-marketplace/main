@@ -8,6 +8,8 @@ import styles from "./forms.module.css";
 
 export type FieldMessageProps = {
   label: string;
+  /** Hide only the visual label when the mockup uses the same words as its placeholder. */
+  labelHidden?: boolean;
   hint?: string;
   error?: string;
   success?: string;
@@ -35,11 +37,11 @@ export function FieldMessages({ id, hint, error, success }: Omit<FieldMessagePro
   </>;
 }
 
-export function Field({ id, label, hint, error, success, children, className }: FieldMessageProps & {
+export function Field({ id, label, labelHidden, hint, error, success, children, className }: FieldMessageProps & {
   id: string; children: ReactNode; className?: string;
 }) {
   return <div className={[styles.field, className].filter(Boolean).join(" ")}>
-    <label className={styles.label} htmlFor={id}>{label}</label>
+    <label className={labelHidden ? styles.visuallyHidden : styles.label} htmlFor={id}>{label}</label>
     {children}
     <FieldMessages id={id} hint={hint} error={error} success={success} />
   </div>;

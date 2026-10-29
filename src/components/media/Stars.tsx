@@ -13,7 +13,7 @@ import { starLabel, starParts } from "@/lib/media";
 
 import styles from "./media.module.css";
 
-export function StarRating({ value, count, size = "md", className }: { value: number; count?: number; size?: "sm" | "md"; className?: string }) {
+export function StarRating({ value, count, size = "md", className, showValue = true }: { value: number; count?: number; size?: "sm" | "md"; className?: string; showValue?: boolean }) {
   const { full, half, empty } = starParts(value);
   const words = `${starLabel(value)}${typeof count === "number" ? `, ${count} review${count === 1 ? "" : "s"}` : ""}`;
   return (
@@ -25,10 +25,10 @@ export function StarRating({ value, count, size = "md", className }: { value: nu
       {Array.from({ length: empty }, (_, i) => (
         <Icon key={`e${i}`} name="star" fill decorative className={styles.starOff} />
       ))}
-      <span className={styles.starValue} aria-hidden="true">
+      {showValue && <span className={styles.starValue} aria-hidden="true">
         {Math.round(value * 10) / 10}
         {typeof count === "number" && ` (${count})`}
-      </span>
+      </span>}
     </span>
   );
 }

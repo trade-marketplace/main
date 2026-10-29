@@ -35,6 +35,14 @@ Decided by Matt (Co-Founder/CEO) on 23 October 2026. These override older wordin
 - **Coverage area** (Matt, 26 Oct): **60 km around Invercargill** (centre -46.4132, 168.3538). Stored in office Settings (`settings.coverage_*`), so the office can change it without a deploy; editing it from the office Settings screen (F14, Coverage tab) comes with that page.
 - **Copy on screen** (Matt, 28 Oct): every word has to fight to be on screen. Minimal text, lots of white space, no helper text or explanations; only user-written content runs long. Accessibility stays invisible (alt text, aria-labels), never extra visible text. See AGENTS.md section 5.
 
+### Homepage implementation (#211, Matt, 29 Oct)
+
+- Signed-in customers see the public homepage until C01 is built. Tradies and office users keep their existing role-home redirects.
+- Finish the homepage with tested hand-offs that preserve the entered job text, category and location. The Post a Job wizard and outside-area waitlist destination pages remain in their own issues.
+- Keep the homepage's explanatory mockup copy: step paragraphs, category sublabels, promise paragraphs and fuller FAQ answers/intro. Remove the three eyebrows (How it works, What can we sort?, Why Trade Marketplace). The homepage is an exception to aggressive copy cutting; do not cut this text again.
+- Keep the review section with the design examples until real reviews exist, visibly labelled **Example reviews**. Real reviews replace these automatically when available.
+- The floating public product illustration may use the design example's **$372.00** for now. It is decorative marketing artwork, not a live quote or payment control. Real job prices continue to come from the server.
+
 ## Still to decide
 
 - [ ] Legal check: restricted work rules + platform liability (lawyer)

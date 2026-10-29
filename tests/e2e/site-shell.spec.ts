@@ -3,6 +3,9 @@ import { expect, type Page, test } from "@playwright/test";
 import { expectNoA11yViolations } from "./support/a11y";
 import { VIEWPORTS } from "./support/viewports";
 
+// Shell/axe assertions inspect the resting screen; landing.spec exercises M06/M07 with normal motion.
+test.use({ reducedMotion: "reduce" });
+
 // The public site header, phone menu and footer (#83), on the home page (signed out: e2e runs keep Supabase off).
 // Signed-in states are checked on /dev/components/site-shell against `npm run dev` (bottom of this file).
 
