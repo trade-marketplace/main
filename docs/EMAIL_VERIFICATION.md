@@ -8,9 +8,9 @@ The email provider's one-time email token is used only as proof of ownership. A 
 client sends and verifies it. Its temporary session is revoked with `scope: local`; the browser's existing
 session and other devices stay signed in. This does not add passwordless login.
 
-## William's deployment configuration
+## Founder deployment configuration
 
-Auth changes require William's review. Keep the decided Confirm Email setting off so password login remains
+Auth changes require the reviewing founder's approval. Matt is handling the 30 October 2026 deployment. Keep the decided Confirm Email setting off so password login remains
 available. Configure Supabase Auth's **Magic Link** and **Confirm signup** email templates to use the server's
 redirect and token hash:
 
