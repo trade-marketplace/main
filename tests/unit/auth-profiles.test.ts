@@ -55,7 +55,7 @@ describe.skipIf(!testDatabaseUrl)("profiles for sign-in", () => {
     ).rejects.toThrow(/Foreign key constraint/);
   });
 
-  it("log-in creates a missing profile and records when the email was confirmed", async () => {
+  it("log-in creates a missing profile without treating Auth account confirmation as email proof", async () => {
     const user = await authUser(`${randomUUID()}@example.nz`, {
       email_confirmed_at: "2026-10-26T01:00:00Z",
       user_metadata: { first_name: "Sam", role: "CUSTOMER" },
@@ -63,7 +63,8 @@ describe.skipIf(!testDatabaseUrl)("profiles for sign-in", () => {
     const result = await logIn({ auth: fakeAuth(user), profiles: profiles() }, { email: user.email!, password: "x" });
     expect(result).toEqual({ ok: true, role: "CUSTOMER", redirectTo: "/" });
     const row = await schema.db.profile.findUniqueOrThrow({ where: { id: user.id } });
-    expect(row.emailVerifiedAt).toEqual(new Date("2026-10-26T01:00:00Z"));
+    // #106 and #113: Auth can automatically confirm accounts; only the email-proof flow verifies ownership.
+    expect(row.emailVerifiedAt).toBeNull();
   });
 
   it("recognises Prisma's real duplicate error when two requests create the same profile", async () => {
