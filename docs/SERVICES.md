@@ -71,6 +71,12 @@ Cloudflare DNS. Supabase Auth sends from **Trade Marketplace <hello@trademarketp
 port **465** (TLS), username `resend`; the restricted sending credential is stored only in Supabase's encrypted
 SMTP settings. No secret belongs in this repository or a PR description.
 
+Verification email images are served over HTTPS from **assets.trademarketplace.nz**, using the public-only
+Cloudflare Worker `trade-marketplace-email-assets`. The supplied SVG, transparent PNG, handler source and
+deployment notes are in [`supabase/templates`](../supabase/templates/README.md). The Worker embeds the logo
+and has no credentials, upstream fetches or storage bindings. Hosted Auth templates are updated separately
+from Vercel application deployments.
+
 - Site URL: `https://trademarketplace.nz`.
 - Allowed callbacks: `/verify/confirm`, `/recovery/confirm` and `/profile/security/confirm` on that exact origin.
 - Confirm Email stays **off**, Secure email change stays **on**, minimum password length is **10**.
