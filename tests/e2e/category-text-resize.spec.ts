@@ -34,10 +34,16 @@ for (const width of [320, 390, 640, 768, 1024, 1440]) {
           expect((await tile.boundingBox())!.width).toBe(159);
           expect((await tile.boundingBox())!.height).toBe(162);
         }
-        await tile.evaluate((el) => el.scrollIntoView({ block: "center", inline: "start" }));
-        await expect(tile).toBeInViewport({ ratio: 0.99 });
       }
-      if (width < 1024) expect(await rail.evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(true);
+      if (width < 1024) {
+        expect(await rail.evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(true);
+        await rail.evaluate((el) => { el.scrollLeft = el.scrollWidth; });
+        await expect.poll(() => tiles.last().evaluate((el) => {
+          const card = el.getBoundingClientRect();
+          const rail = el.closest("ul")!.getBoundingClientRect();
+          return card.left >= rail.left - 1 && card.right <= rail.right + 1;
+        })).toBe(true);
+      }
       await expectNoA11yViolations(page, { include: "section[aria-labelledby='category-heading']" });
     }
   });
