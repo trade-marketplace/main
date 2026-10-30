@@ -1,4 +1,6 @@
-.page { min-height: 100%; background: var(--trade-waiting-bg); }
+/* Let the account surface fill the app shell's remaining space, including short/error screens. */
+:global(main):has(> .page) { display: flex; flex-direction: column; }
+.page { flex: 1; min-width: 0; background: color-mix(in srgb, var(--trade-forest) 3.8%, var(--trade-surface)); }
 .layout { max-width: var(--trade-content-max); margin: 0 auto; padding: var(--trade-space-6) var(--trade-inset-browse); display: grid; gap: var(--trade-space-6); }
 .nav { display: flex; flex-wrap: wrap; gap: var(--trade-space-1); align-content: start; }
 .desktopNav { display: none; }
@@ -21,7 +23,10 @@
 .srOnly { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 @media (min-width: 600px) and (max-width: 1023px) { .layout { max-width: 720px; } }
 @media (min-width: 1024px) {
-  .layout { grid-template-columns: 240px minmax(0, 1fr); gap: var(--trade-space-10); padding: var(--trade-space-8) var(--trade-space-6); }
+  .layout { grid-template-columns: 240px minmax(0, 1fr); gap: var(--trade-space-10); padding: calc(var(--trade-space-10) + var(--trade-space-1) / 2) var(--trade-space-6); }
+  /* w-account: the content has its own 30 × 40 inset inside the 820-wide account column. */
+  .content { padding: calc(var(--trade-space-6) + var(--trade-space-3) / 2) var(--trade-space-10); gap: calc(var(--trade-space-4) + var(--trade-space-1) / 2); }
+  .title { font-size: calc(var(--trade-fs-body) * 2); }
   .nav { display: grid; gap: 2px; }
   .mobileNav { display: none; }
   .card { padding: var(--trade-space-6); }

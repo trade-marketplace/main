@@ -1,0 +1,2 @@
+import { defineConfig, devices } from '@playwright/test';
+export default defineConfig({ testDir: '../../../tests/e2e', testMatch: 'notification-preferences-signed-in.spec.ts', workers: 1, use: { ...devices['Desktop Chrome'], launchOptions: { executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' }, baseURL: 'http://127.0.0.1:3214', trace: 'retain-on-failure' }, timeout: 90000 });

@@ -1,0 +1,198 @@
+[
+  {
+    "mode": "customer",
+    "state": "default",
+    "width": 1440,
+    "count": 83,
+    "text": "Test mode. Home My jobs Messages Post a job ST Profile Security Notifications Addresses Payments Delete account Security Email Current email: sarah@example.test Current password New email Change email Password Use 10 or more characters. Changing your password logs out other devices. Current password New password Confirm new password Change password Other devices Log out everywhere else. You’ll stay logged in on this device. Other devices may keep access until their current session expires. Current password Log out other devices"
+  },
+  {
+    "mode": "customer",
+    "state": "wrong",
+    "width": 1440,
+    "count": 95,
+    "text": "Test mode. Home My jobs Messages Post a job ST Profile Security Notifications Addresses Payments Delete account Security Email Current email: sarah@example.test Current password New email Change email Password Use 10 or more characters. Changing your password logs out other devices. That’s not your current password. Try again. Current password That’s not your current password. New password Confirm new password Change password Other devices Log out everywhere else. You’ll stay logged in on this device. Other devices may keep access until their current session expires. Current password Log out other devices"
+  },
+  {
+    "mode": "customer",
+    "state": "success",
+    "width": 1440,
+    "count": 91,
+    "text": "Test mode. Home My jobs Messages Post a job ST Profile Security Notifications Addresses Payments Delete account Security Email Current email: sarah@example.test Current password New email Change email Password Use 10 or more characters. Changing your password logs out other devices. Password changed. Other devices have been logged out. Current password New password Confirm new password Change password Other devices Log out everywhere else. You’ll stay logged in on this device. Other devices may keep access until their current session expires. Current password Log out other devices"
+  },
+  {
+    "mode": "customer",
+    "state": "unavailable",
+    "width": 1440,
+    "count": 92,
+    "text": "Test mode. Home My jobs Messages Post a job ST Profile Security Notifications Addresses Payments Delete account Security Email Current email: sarah@example.test Current password New email Change email Password Use 10 or more characters. Changing your password logs out other devices. Couldn’t save that. Check your connection and try again. Current password New password Confirm new password Change password Other devices Log out everywhere else. You’ll stay logged in on this device. Other devices may keep access until their current session expires. Current password Log out other devices"
+  },
+  {
+    "mode": "customer",
+    "state": "loading",
+    "width": 1440,
+    "count": 20,
+    "text": "Test mode. Home My jobs Messages Post a job ST Profile Security Notifications Addresses Payments Delete account Security"
+  },
+  {
+    "mode": "customer",
+    "state": "limited",
+    "width": 1440,
+    "count": 89,
+    "text": "Test mode. Home My jobs Messages Post a job ST Profile Security Notifications Addresses Payments Delete account Security Email Current email: sarah@example.test Current password New email Change email Password Use 10 or more characters. Changing your password logs out other devices. Too many tries. Try again shortly. Current password New password Confirm new password Change password Other devices Log out everywhere else. You’ll stay logged in on this device. Other devices may keep access until their current session expires. Current password Log out other devices"
+  },
+  {
+    "mode": "customer",
+    "state": "invalid-link",
+    "width": 1440,
+    "count": 96,
+    "text": "Test mode. Home My jobs Messages Post a job ST Profile Security Notifications Addresses Payments Delete account Security That email link has expired or is invalid. Request a new link below. Email Current email: sarah@example.test Current password New email Change email Password Use 10 or more characters. Changing your password logs out other devices. Current password New password Confirm new password Change password Other devices Log out everywhere else. You’ll stay logged in on this device. Other devices may keep access until their current session expires. Current password Log out other devices"
+  },
+  {
+    "mode": "customer",
+    "state": "pending-email",
+    "width": 1440,
+    "count": 96,
+    "text": "Test mode. Home My jobs Messages Post a job ST Profile Security Notifications Addresses Payments Delete account Security Check new@example.test and your current inbox to confirm your new email. Email Current email: sarah@example.test Current password New email Change email Password Use 10 or more characters. Changing your password logs out other devices. Current password New password Confirm new password Change password Other devices Log out everywhere else. You’ll stay logged in on this device. Other devices may keep access until their current session expires. Current password Log out other devices"
+  },
+  {
+    "mode": "customer",
+    "state": "partial",
+    "width": 1440,
+    "count": 101,
+    "text": "Test mode. Home My jobs Messages Post a job ST Profile Security Notifications Addresses Payments Delete account Security Email Current email: sarah@example.test Current password New email Change email Password Use 10 or more characters. Changing your password logs out other devices. Password changed, but other devices couldn’t be logged out. Use Log out other devices below to try again. Current password New password Confirm new password Change password Other devices Log out everywhere else. You’ll stay logged in on this device. Other devices may keep access until their current session expires. Current password Log out other devices"
+  },
+  {
+    "mode": "customer",
+    "state": "expired",
+    "width": 1440,
+    "count": 94,
+    "text": "Test mode. Home My jobs Messages Post a job ST Profile Security Notifications Addresses Payments Delete account Security Email Current email: sarah@example.test Current password New email Change email Password Use 10 or more characters. Changing your password logs out other devices. Log in again to change your security settings. Log in again Current password New password Confirm new password Change password Other devices Log out everywhere else. You’ll stay logged in on this device. Other devices may keep access until their current session expires. Current password Log out other devices"
+  },
+  {
+    "mode": "customer",
+    "state": "offline",
+    "width": 1440,
+    "count": 88,
+    "text": "Test mode. Home My jobs Messages Post a job ST Profile Security Notifications Addresses Payments Delete account Security You’re offline. Reconnect before saving. Email Current email: sarah@example.test Current password New email Change email Password Use 10 or more characters. Changing your password logs out other devices. Current password New password Confirm new password Change password Other devices Log out everywhere else. You’ll stay logged in on this device. Other devices may keep access until their current session expires. Current password Log out other devices"
+  },
+  {
+    "mode": "customer",
+    "state": "pending",
+    "width": 1440,
+    "count": 81,
+    "text": "Test mode. Home My jobs Messages Post a job ST Profile Security Notifications Addresses Payments Delete account Security Email Current email: sarah@example.test Current password New email Change email Password Use 10 or more characters. Changing your password logs out other devices. Current password New password Confirm new password Other devices Log out everywhere else. You’ll stay logged in on this device. Other devices may keep access until their current session expires. Current password Log out other devices"
+  },
+  {
+    "mode": "customer",
+    "state": "access-errors",
+    "width": 1440,
+    "count": 110,
+    "text": "Test mode. Home My jobs Messages Post a job ST Profile Security Notifications Addresses Payments Delete account Security Email Current email: sarah@example.test Log in again, then retry this change. Log in again Current password New email Change email Password Use 10 or more characters. Changing your password logs out other devices. Too many tries. Try again shortly. Current password New password Confirm new password Change password Other devices Log out everywhere else. You’ll stay logged in on this device. Other devices may keep access until their current session expires. Log in again to change your security settings. Log in again Current password Log out other devices"
+  },
+  {
+    "mode": "trade",
+    "state": "default",
+    "width": 1440,
+    "count": 87,
+    "text": "Test mode. Tradie Find work My work Earnings Messages ST Profile Security Notifications Trades & licences Work area Bank & tax Delete account Security Email Current email: sarah@example.test Current password New email Change email Password Use 10 or more characters. Changing your password logs out other devices. Current password New password Confirm new password Change password Other devices Log out everywhere else. You’ll stay logged in on this device. Other devices may keep access until their current session expires. Current password Log out other devices"
+  },
+  {
+    "mode": "customer",
+    "state": "default",
+    "width": 390,
+    "count": 70,
+    "text": "Test mode. Account settings Security Email Current email: sarah@example.test Current password New email Change email Password Use 10 or more characters. Changing your password logs out other devices. Current password New password Confirm new password Change password Other devices Log out everywhere else. You’ll stay logged in on this device. Other devices may keep access until their current session expires. Current password Log out other devices"
+  },
+  {
+    "mode": "customer",
+    "state": "wrong",
+    "width": 390,
+    "count": 82,
+    "text": "Test mode. Account settings Security Email Current email: sarah@example.test Current password New email Change email Password Use 10 or more characters. Changing your password logs out other devices. That’s not your current password. Try again. Current password That’s not your current password. New password Confirm new password Change password Other devices Log out everywhere else. You’ll stay logged in on this device. Other devices may keep access until their current session expires. Current password Log out other devices"
+  },
+  {
+    "mode": "customer",
+    "state": "success",
+    "width": 390,
+    "count": 78,
+    "text": "Test mode. Account settings Security Email Current email: sarah@example.test Current password New email Change email Password Use 10 or more characters. Changing your password logs out other devices. Password changed. Other devices have been logged out. Current password New password Confirm new password Change password Other devices Log out everywhere else. You’ll stay logged in on this device. Other devices may keep access until their current session expires. Current password Log out other devices"
+  },
+  {
+    "mode": "customer",
+    "state": "unavailable",
+    "width": 390,
+    "count": 79,
+    "text": "Test mode. Account settings Security Email Current email: sarah@example.test Current password New email Change email Password Use 10 or more characters. Changing your password logs out other devices. Couldn’t save that. Check your connection and try again. Current password New password Confirm new password Change password Other devices Log out everywhere else. You’ll stay logged in on this device. Other devices may keep access until their current session expires. Current password Log out other devices"
+  },
+  {
+    "mode": "customer",
+    "state": "loading",
+    "width": 390,
+    "count": 7,
+    "text": "Test mode. Account settings Security"
+  },
+  {
+    "mode": "customer",
+    "state": "limited",
+    "width": 390,
+    "count": 76,
+    "text": "Test mode. Account settings Security Email Current email: sarah@example.test Current password New email Change email Password Use 10 or more characters. Changing your password logs out other devices. Too many tries. Try again shortly. Current password New password Confirm new password Change password Other devices Log out everywhere else. You’ll stay logged in on this device. Other devices may keep access until their current session expires. Current password Log out other devices"
+  },
+  {
+    "mode": "customer",
+    "state": "invalid-link",
+    "width": 390,
+    "count": 83,
+    "text": "Test mode. Account settings Security That email link has expired or is invalid. Request a new link below. Email Current email: sarah@example.test Current password New email Change email Password Use 10 or more characters. Changing your password logs out other devices. Current password New password Confirm new password Change password Other devices Log out everywhere else. You’ll stay logged in on this device. Other devices may keep access until their current session expires. Current password Log out other devices"
+  },
+  {
+    "mode": "customer",
+    "state": "pending-email",
+    "width": 390,
+    "count": 83,
+    "text": "Test mode. Account settings Security Check new@example.test and your current inbox to confirm your new email. Email Current email: sarah@example.test Current password New email Change email Password Use 10 or more characters. Changing your password logs out other devices. Current password New password Confirm new password Change password Other devices Log out everywhere else. You’ll stay logged in on this device. Other devices may keep access until their current session expires. Current password Log out other devices"
+  },
+  {
+    "mode": "customer",
+    "state": "partial",
+    "width": 390,
+    "count": 88,
+    "text": "Test mode. Account settings Security Email Current email: sarah@example.test Current password New email Change email Password Use 10 or more characters. Changing your password logs out other devices. Password changed, but other devices couldn’t be logged out. Use Log out other devices below to try again. Current password New password Confirm new password Change password Other devices Log out everywhere else. You’ll stay logged in on this device. Other devices may keep access until their current session expires. Current password Log out other devices"
+  },
+  {
+    "mode": "customer",
+    "state": "expired",
+    "width": 390,
+    "count": 81,
+    "text": "Test mode. Account settings Security Email Current email: sarah@example.test Current password New email Change email Password Use 10 or more characters. Changing your password logs out other devices. Log in again to change your security settings. Log in again Current password New password Confirm new password Change password Other devices Log out everywhere else. You’ll stay logged in on this device. Other devices may keep access until their current session expires. Current password Log out other devices"
+  },
+  {
+    "mode": "customer",
+    "state": "offline",
+    "width": 390,
+    "count": 75,
+    "text": "Test mode. Account settings Security You’re offline. Reconnect before saving. Email Current email: sarah@example.test Current password New email Change email Password Use 10 or more characters. Changing your password logs out other devices. Current password New password Confirm new password Change password Other devices Log out everywhere else. You’ll stay logged in on this device. Other devices may keep access until their current session expires. Current password Log out other devices"
+  },
+  {
+    "mode": "customer",
+    "state": "pending",
+    "width": 390,
+    "count": 68,
+    "text": "Test mode. Account settings Security Email Current email: sarah@example.test Current password New email Change email Password Use 10 or more characters. Changing your password logs out other devices. Current password New password Confirm new password Other devices Log out everywhere else. You’ll stay logged in on this device. Other devices may keep access until their current session expires. Current password Log out other devices"
+  },
+  {
+    "mode": "customer",
+    "state": "access-errors",
+    "width": 390,
+    "count": 97,
+    "text": "Test mode. Account settings Security Email Current email: sarah@example.test Log in again, then retry this change. Log in again Current password New email Change email Password Use 10 or more characters. Changing your password logs out other devices. Too many tries. Try again shortly. Current password New password Confirm new password Change password Other devices Log out everywhere else. You’ll stay logged in on this device. Other devices may keep access until their current session expires. Log in again to change your security settings. Log in again Current password Log out other devices"
+  },
+  {
+    "mode": "trade",
+    "state": "default",
+    "width": 390,
+    "count": 70,
+    "text": "Test mode. Account settings Security Email Current email: sarah@example.test Current password New email Change email Password Use 10 or more characters. Changing your password logs out other devices. Current password New password Confirm new password Change password Other devices Log out everywhere else. You’ll stay logged in on this device. Other devices may keep access until their current session expires. Current password Log out other devices"
+  }
+]
