@@ -1,0 +1,51 @@
+[WebServer]
+[WebServer] > trade-marketplace@0.1.0 start
+[WebServer] > next start --port 3184
+[WebServer]
+[WebServer] (node:23696) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] ▲ Next.js 16.4.3
+[WebServer] - Local:         http://localhost:3184
+[WebServer] - Network:       http://192.168.1.96:3184
+[WebServer] ✓ Ready in 133ms
+[WebServer] ✓ Running next.config.ts took 132ms
+[WebServer] Database: off. The app runs without it for now.
+[WebServer] To connect, copy .env.example to .env.local and fill in DATABASE_URL and DIRECT_URL from Supabase.
+[WebServer]
+[WebServer] > trade-marketplace@0.1.0 start
+[WebServer] > next start --port 4284
+[WebServer]
+[WebServer] (node:23720) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] ▲ Next.js 16.4.3
+[WebServer] - Local:         http://localhost:4284
+[WebServer] - Network:       http://192.168.1.96:4284
+[WebServer] ✓ Ready in 98ms
+[WebServer] ✓ Running next.config.ts took 102ms
+[WebServer] Database: reachable at 127.0.0.1:54336.
+
+Running 17 tests using 2 workers
+
+(node:23723) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:23722) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   2 [chromium] › tests/e2e/waitlist.spec.ts:9:1 › waitlist previews are guarded; public state flags cannot claim a successful signup (505ms)
+  ✓   1 [chromium] › tests/e2e/waitlist.spec.ts:17:3 › 320px public waitlist keeps form values after a failed save and fits with axe (1.0s)
+  ✓   3 [chromium] › tests/e2e/waitlist.spec.ts:17:3 › 390px public waitlist keeps form values after a failed save and fits with axe (1.3s)
+  ✓   4 [chromium] › tests/e2e/waitlist.spec.ts:17:3 › 768px public waitlist keeps form values after a failed save and fits with axe (955ms)
+  ✓   5 [chromium] › tests/e2e/waitlist.spec.ts:17:3 › 1024px public waitlist keeps form values after a failed save and fits with axe (986ms)
+  ✓   6 [chromium] › tests/e2e/waitlist.spec.ts:17:3 › 1440px public waitlist keeps form values after a failed save and fits with axe (1.1s)
+  ✓   7 [chromium] › tests/e2e/waitlist.spec.ts:30:1 › empty location, invalid fields and hostile location parameters remain safe (435ms)
+  ✓   8 [chromium] › tests/e2e/waitlist.spec.ts:42:1 › offline keeps the draft, disables submit, and reconnecting enables retry (351ms)
+  ✓   9 [chromium] › tests/e2e/waitlist.spec.ts:54:1 › pending save keeps values and blocks repeated submissions (555ms)
+  ✓  10 [chromium] › tests/e2e/waitlist.spec.ts:78:5 › guarded waitlist states › 320px every state fits and passes axe (2.7s)
+  ✓  11 [chromium] › tests/e2e/waitlist.spec.ts:78:5 › guarded waitlist states › 390px every state fits and passes axe (3.9s)
+  ✓  12 [chromium] › tests/e2e/waitlist.spec.ts:78:5 › guarded waitlist states › 768px every state fits and passes axe (3.6s)
+  ✓  13 [chromium] › tests/e2e/waitlist.spec.ts:78:5 › guarded waitlist states › 1024px every state fits and passes axe (2.8s)
+  ✓  15 [chromium] › tests/e2e/waitlist.spec.ts:89:3 › guarded waitlist states › keyboard signup keeps the form, repeated signup says You’re on it, and copy shares only location (352ms)
+  ✓  16 [chromium] › tests/e2e/waitlist.spec.ts:106:3 › guarded waitlist states › the real server action persists to local Postgres and a repeated request survives reload (547ms)
+  ✓  17 [chromium] › tests/e2e/waitlist.spec.ts:118:3 › guarded waitlist states › copy failures are visible and never claim Copied (281ms)
+  ✓  14 [chromium] › tests/e2e/waitlist.spec.ts:78:5 › guarded waitlist states › 1440px every state fits and passes axe (2.6s)
+
+  17 passed (14.5s)

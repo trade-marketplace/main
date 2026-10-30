@@ -1,0 +1,51 @@
+
+> trade-marketplace@0.1.0 test
+> vitest run --maxWorkers=1
+
+
+ RUN  v5.0.5 /Users/matthewlarsen/Documents/Codex/2026-10-30/task-2/waitlist
+
+ ❯ tests/unit/dev-pages.test.tsx (111 tests | 1 failed) 33ms
+   ❯ every /dev page (101)
+     × uses the shared guard 10ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/unit/dev-pages.test.tsx > every /dev page > uses the shared guard
+AssertionError: expected [ '/dev/components/app-shell', …(25) ] to deeply equal [ '/dev/components/app-shell', …(24) ]
+
+- Expected
++ Received
+
+@@ -12,10 +12,11 @@
+    "/dev/components/mapbox",
+    "/dev/components/media",
+    "/dev/components/notifications",
+    "/dev/components/office-shell",
+    "/dev/components/overlays",
++   "/dev/components/recovery",
+    "/dev/components/security",
+    "/dev/components/session-expired",
+    "/dev/components/signup-customer",
+    "/dev/components/signup-tradie",
+    "/dev/components/site-shell",
+
+ ❯ tests/unit/dev-pages.test.tsx:142:36
+    140| describe("every /dev page", () => {
+    141|   it("uses the shared guard", () => {
+    142|     expect(devPageRoutes().sort()).toEqual(Object.keys(PAGES).sort());
+       |                                    ^
+    143|     for (const route of Object.keys(PAGES)) {
+    144|       const source = readFileSync(`src/app${route}/page.tsx`, "utf8");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 105 passed (106)
+      Tests  1 failed | 2199 passed (2200)
+   Start at  13:05:49
+   Duration  39.46s (tests 67%, import 21%, transform 11%, worker 1%)
+
+    Isolate  106 workers spawned · ~56ms startup each (spawn + environment, per file)
+             at least ~5.88s faster with isolate: false — reuses workers across files instead of one per file
+

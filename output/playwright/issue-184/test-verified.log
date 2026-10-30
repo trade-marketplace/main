@@ -1,0 +1,15 @@
+
+> trade-marketplace@0.1.0 test
+> vitest run --maxWorkers=1
+
+
+ RUN  v5.0.5 /Users/matthewlarsen/Documents/Codex/2026-10-30/task-2/waitlist
+
+
+ Test Files  106 passed (106)
+      Tests  2204 passed (2204)
+   Start at  13:07:19
+   Duration  37.12s (tests 70%, import 24%, transform 5%, worker 1%)
+
+    Isolate  106 workers spawned · ~56ms startup each (spawn + environment, per file)
+             at least ~5.87s faster with isolate: false — reuses workers across files instead of one per file

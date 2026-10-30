@@ -1,0 +1,19 @@
+/* A07 geometry from w-waitlist. All controls and feedback use the existing kit. */
+.page { display: grid; justify-items: center; padding: calc(var(--trade-space-16) + var(--trade-space-2)) var(--trade-inset-form); min-height: calc(100dvh - var(--site-header-h)); }
+.content { width: min(100%, 620px); min-width: 0; text-align: center; }
+.van { display: block; width: min(100%, 300px); height: auto; margin: 0 auto; }
+.title { margin: var(--trade-space-4) 0 0; font-family: var(--trade-font-heading); font-weight: 900; font-variation-settings: var(--trade-display-axes); font-size: var(--trade-fs-title); line-height: var(--trade-lh-title); overflow-wrap: anywhere; }
+.form { display: grid; gap: var(--trade-space-2); margin-top: var(--trade-space-5); text-align: left; }
+.emailRow { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: calc(var(--trade-space-2) + var(--trade-space-1) / 2); }
+.emailRow > button { padding-inline: calc(var(--trade-space-5) + var(--trade-space-2)); }
+/* The mockup's 55px rounded form geometry; field internals, validation and focus remain the kit's. */
+.form .field > div[data-variant="box"] { min-height: var(--trade-btn-h); border-radius: var(--trade-radius-action); }
+.field input { min-height: calc(var(--trade-btn-h) - 2px); }
+.message { margin-top: var(--trade-space-4); text-align: left; }
+/* Retain the full 44px copy target inside the reference's compact banner. */
+.copy { margin-block: calc(-1 * var(--trade-space-3)); }
+@media (max-width: 599px) {
+  .page { padding-top: var(--trade-space-8); padding-bottom: var(--trade-space-10); }
+  .emailRow { grid-template-columns: minmax(0, 1fr); }
+  .emailRow > button { width: 100%; }
+}
