@@ -1,0 +1,15 @@
+
+> trade-marketplace@0.1.0 test
+> vitest run --maxWorkers=2
+
+
+ RUN  v5.0.5 /Users/matthewlarsen/Documents/Codex/2026-10-30/task-9/repo
+
+
+ Test Files  104 passed (104)
+      Tests  2191 passed (2191)
+   Start at  13:53:11
+   Duration  19.30s (tests 68%, import 25%, transform 6%, worker 1%)
+
+    Isolate  104 workers spawned · ~61ms startup each (spawn + environment, per file)
+             at least ~3.09s faster with isolate: false — reuses workers across files instead of one per file

@@ -1,0 +1,24 @@
+[WebServer]
+[WebServer] > trade-marketplace@0.1.0 start
+[WebServer] > next start --hostname 127.0.0.1 --port 4393
+[WebServer]
+[WebServer] (node:43574) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] ▲ Next.js 16.4.3
+[WebServer] - Local:         http://127.0.0.1:4393
+[WebServer] - Network:       http://127.0.0.1:4393
+[WebServer] ✓ Ready in 106ms
+[WebServer] ✓ Running next.config.ts took 188ms
+[WebServer] Database: off. The app runs without it for now.
+[WebServer] To connect, copy .env.example to .env.local and fill in DATABASE_URL and DIRECT_URL from Supabase.
+
+Running 2 tests using 2 workers
+
+(node:43597) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:43596) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 [chromium] › tests/e2e/dev-feedback.spec.ts:117:3 › /dev/components/feedback on the dev server › a quick load says nothing (1.2s)
+  ✓  2 [chromium] › tests/e2e/dev-feedback.spec.ts:102:3 › /dev/components/feedback on the dev server › a slow load shows the skeleton, says “Loading your jobs” once, then the list cross-fades in (3.7s)
+
+  2 passed (5.3s)

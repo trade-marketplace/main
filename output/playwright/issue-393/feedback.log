@@ -1,0 +1,44 @@
+[WebServer]
+[WebServer] > trade-marketplace@0.1.0 start
+[WebServer] > next start --hostname 127.0.0.1 --port 4393
+[WebServer]
+[WebServer] (node:47969) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] ▲ Next.js 16.4.3
+[WebServer] - Local:         http://127.0.0.1:4393
+[WebServer] - Network:       http://127.0.0.1:4393
+[WebServer] ✓ Ready in 147ms
+[WebServer] ✓ Running next.config.ts took 132ms
+[WebServer] Database: off. The app runs without it for now.
+[WebServer] To connect, copy .env.example to .env.local and fill in DATABASE_URL and DIRECT_URL from Supabase.
+
+Running 21 tests using 2 workers
+
+(node:47970) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:47971) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  -   1 [chromium] › tests/e2e/dev-feedback.spec.ts:10:1 › /dev/components/feedback is not in production builds
+  ✓   3 [chromium] › tests/e2e/dev-feedback.spec.ts:40:5 › /dev/components/feedback on the dev server › has no accessibility violations, sideways scroll or spilled text at 390px (868ms)
+  ✓   2 [chromium] › tests/e2e/dev-feedback.spec.ts:40:5 › /dev/components/feedback on the dev server › has no accessibility violations, sideways scroll or spilled text at 320px (979ms)
+  ✓   4 [chromium] › tests/e2e/dev-feedback.spec.ts:40:5 › /dev/components/feedback on the dev server › has no accessibility violations, sideways scroll or spilled text at 768px (891ms)
+  ✓   5 [chromium] › tests/e2e/dev-feedback.spec.ts:40:5 › /dev/components/feedback on the dev server › has no accessibility violations, sideways scroll or spilled text at 1024px (902ms)
+  ✓   6 [chromium] › tests/e2e/dev-feedback.spec.ts:40:5 › /dev/components/feedback on the dev server › has no accessibility violations, sideways scroll or spilled text at 1440px (814ms)
+  ✓   7 [chromium] › tests/e2e/dev-feedback.spec.ts:50:5 › /dev/components/feedback on the dev server › has no accessibility violations in trade mode (885ms)
+  ✓   9 [chromium] › tests/e2e/dev-feedback.spec.ts:59:5 › /dev/components/feedback on the dev server › the usage example opens in the empty state with ?state=empty, with no violations (516ms)
+  ✓   8 [chromium] › tests/e2e/dev-feedback.spec.ts:50:5 › /dev/components/feedback on the dev server › has no accessibility violations in office mode (880ms)
+  ✓  10 [chromium] › tests/e2e/dev-feedback.spec.ts:59:5 › /dev/components/feedback on the dev server › the usage example opens in the error state with ?state=error, with no violations (507ms)
+  ✓  11 [chromium] › tests/e2e/dev-feedback.spec.ts:59:5 › /dev/components/feedback on the dev server › the usage example opens in the jobs state with ?state=jobs, with no violations (644ms)
+  ✓  12 [chromium] › tests/e2e/dev-feedback.spec.ts:69:3 › /dev/components/feedback on the dev server › still works at 200% zoom: text wraps, nothing spills, no sideways scroll (545ms)
+  ✓  13 [chromium] › tests/e2e/dev-feedback.spec.ts:79:3 › /dev/components/feedback on the dev server › skeletons are hidden from screen readers, wait 300ms, and shimmer (272ms)
+  ✓  14 [chromium] › tests/e2e/dev-feedback.spec.ts:90:3 › /dev/components/feedback on the dev server › with reduced motion the skeleton is static grey and the spinner stands still (478ms)
+  ✓  16 [chromium] › tests/e2e/dev-feedback.spec.ts:117:3 › /dev/components/feedback on the dev server › a quick load says nothing (907ms)
+  ✓  15 [chromium] › tests/e2e/dev-feedback.spec.ts:102:3 › /dev/components/feedback on the dev server › a slow load shows the skeleton, says “Loading your jobs” once, then the list cross-fades in (3.5s)
+  ✓  18 [chromium] › tests/e2e/dev-feedback.spec.ts:140:3 › /dev/components/feedback on the dev server › an inline error's Try again saves (1.6s)
+  ✓  17 [chromium] › tests/e2e/dev-feedback.spec.ts:125:3 › /dev/components/feedback on the dev server › Try again works from the keyboard: spinner while it runs, the error is said again, then the list loads (3.9s)
+  ✓  20 [chromium] › tests/e2e/dev-feedback.spec.ts:175:3 › /dev/components/feedback on the dev server › offline, it retries by itself with backoff (2.7s)
+  ✓  21 [chromium] › tests/e2e/dev-feedback.spec.ts:188:3 › /dev/components/feedback on the dev server › progress bars have names and values; the upload demo fills to 100% (3.7s)
+  ✓  19 [chromium] › tests/e2e/dev-feedback.spec.ts:147:3 › /dev/components/feedback on the dev server › the real offline banner follows the browser: offline, Retry, then back online (8.1s)
+
+  1 skipped
+  20 passed (19.2s)
