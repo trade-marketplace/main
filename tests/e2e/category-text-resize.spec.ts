@@ -21,7 +21,10 @@ for (const width of [320, 390, 640, 768, 1024, 1440]) {
   test(`${width}px: category names and sublabels fit at default and 200% text`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await page.goto("/");
+    // Hydration can reset attributes added to <html>; don't let a reset text size produce a false pass.
+    await expect(page.locator("header[data-solid]")).toHaveAttribute("data-solid", /true|false/);
     await page.evaluate(() => document.fonts.ready);
+    const rootFontSize = await page.locator("html").evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
     const rail = page.getByRole("list", { name: "Trades", exact: true });
     const tiles = rail.getByRole("article");
     await expect(tiles).toHaveCount(5);
@@ -31,6 +34,7 @@ for (const width of [320, 390, 640, 768, 1024, 1440]) {
         document.body.getBoundingClientRect(); // Flush text-size layout before waiting for any newly selected fonts.
         await document.fonts.ready;
       }, scale);
+      await expect(page.locator("html")).toHaveCSS("font-size", `${rootFontSize * (scale ? 2 : 1)}px`);
       await expectReadable(tiles);
       await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
       for (const tile of await tiles.all()) {
@@ -56,7 +60,9 @@ for (const width of [320, 390, 640, 768, 1024, 1440]) {
 test("200% text: keyboard reaches every category and starts the selected job", async ({ page }) => {
   await page.setViewportSize({ width: 640, height: 900 });
   await page.goto("/");
+  await expect(page.locator("header[data-solid]")).toHaveAttribute("data-solid", /true|false/);
   await page.evaluate(() => { document.documentElement.style.fontSize = "200%"; });
+  await expect(page.locator("html")).toHaveCSS("font-size", "32px");
   const rail = page.getByRole("list", { name: "Trades", exact: true });
   const links = rail.getByRole("link");
   await links.first().focus();
