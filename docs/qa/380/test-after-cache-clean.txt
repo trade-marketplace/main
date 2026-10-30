@@ -1,0 +1,16 @@
+
+> trade-marketplace@0.1.0 test
+> vitest run --maxWorkers=1
+
+
+ RUN  v5.0.5 /Users/matthewlarsen/Documents/Codex/2026-10-30/task-11/issue-380
+
+
+ Test Files  106 passed (106)
+      Tests  2204 passed (2204)
+   Start at  15:24:18
+   Duration  50.04s (tests 69%, import 25%, transform 6%, worker 1%)
+
+     Import  453 modules were evaluated 602 times · 10.93s total, 25% of tracked time
+             ~2.70s faster with isolate: false — shared modules are evaluated once per worker instead of once per file
+             learn more: https://vitest.dev/guide/improving-performance#test-isolation

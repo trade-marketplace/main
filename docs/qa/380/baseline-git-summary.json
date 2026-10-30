@@ -1,0 +1,21 @@
+{
+  "allGitProcessStarts": 103,
+  "directGitProcessStarts": 67,
+  "directCommandCounts": {
+    "init": 2,
+    "remote": 1,
+    "fetch": 4,
+    "read-tree": 8,
+    "hash-object": 16,
+    "update-index": 16,
+    "write-tree": 4,
+    "commit-tree": 4,
+    "push": 4,
+    "clone": 1,
+    "rev-parse": 3,
+    "show": 3,
+    "ls-tree": 1
+  },
+  "directGitSeconds": 0.425277,
+  "maxDirectGitSeconds": 0.052185
+}
