@@ -1,0 +1,104 @@
+{
+  "issue": 180,
+  "source_commit": "8184e746836d8da75394c3000507bf911873bf08",
+  "base_commit": "faaf5d2587ae5dcb19492da628814e3848f29c57",
+  "source_tree": "94acfa90bc17d2259e97fe6cb89ced1c3fd90817",
+  "tests_tree": "9f265b6e85c2aff499dee0d5613e8c7c81e24061",
+  "lint": {
+    "exit": 0,
+    "warnings": 0
+  },
+  "typecheck": {
+    "exit": 0
+  },
+  "unit": {
+    "exit": 0,
+    "files": 105,
+    "passed": 2204,
+    "skipped": 0,
+    "environment": "Disposable Node 22 / PostgreSQL 17 VM; one worker; default deadlines"
+  },
+  "build": {
+    "exit": 0,
+    "command": "npm run build via npm run e2e",
+    "workers": 2
+  },
+  "standard_e2e": {
+    "exit": 0,
+    "passed": 188,
+    "skipped": 439,
+    "workers": 1,
+    "port": 3181,
+    "skip_note": "Existing opt-in local fixture/signed-in/live-provider suites. Required notification opt-in suites executed separately."
+  },
+  "affected_e2e": {
+    "exit": 0,
+    "passed": 29,
+    "skipped": 2,
+    "workers": 1,
+    "skip_note": "Two production-only fixture guards execute in standard run. New list, signed-in, and all existing bell tests executed."
+  },
+  "accessibility": {
+    "notification_page_state_mode_width_combinations": 80,
+    "bell_state_width_combinations": 40,
+    "widths": [
+      320,
+      390,
+      768,
+      1024,
+      1440
+    ],
+    "axe_violations": 0,
+    "keyboard_focus_verified": true
+  },
+  "visual": {
+    "passes": 2,
+    "pairs_per_pass": 48,
+    "personally_inspected": true,
+    "states": [
+      "default",
+      "unread",
+      "read",
+      "empty",
+      "loading",
+      "error",
+      "offline",
+      "saving",
+      "expired",
+      "many",
+      "page-2",
+      "long"
+    ],
+    "modes": [
+      "customer",
+      "trade"
+    ],
+    "widths": [
+      1440,
+      390
+    ],
+    "reference_limits": "No E03 desktop mockup; E02 desktop rows/shell and actual sh-notifs phone screen. No separate tradie/state mocks. One-pixel white canvas padding may preserve fractional gallery height."
+  },
+  "isolation": {
+    "database": "task-owned disposable localhost only",
+    "supabase": "local Auth HTTP double only",
+    "heavy_lock": "Owned atomic /tmp/trade-marketplace-heavy-check.lock; owner/PID; released on exit",
+    "max_test_workers": 1,
+    "max_build_workers": 2,
+    "other_worker_termination": false
+  },
+  "live_links": {
+    "https://trademarketplace.nz/": 200,
+    "https://trademarketplace.nz/notifications": {
+      "status": 307,
+      "destination": "/login?next=%2Fnotifications"
+    }
+  },
+  "harness_notes": [
+    "Initial Node 22.17 module-loader / missing default Chromium selection resolved using Node 22.23.4 and installed Chromium.",
+    "First container run omitted Git metadata; existing seed suite could not load. Restored actual checkout metadata and reran the entire suite successfully.",
+    "First axe pass caught an invalid label on the loading wrapper. Replaced with existing LoadingRegion; full affected suite then passed."
+  ],
+  "merge": false,
+  "manual_deployment": false
+}
