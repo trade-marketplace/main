@@ -26,9 +26,13 @@ for (const width of [320, 390, 640, 768, 1024, 1440]) {
     const tiles = rail.getByRole("article");
     await expect(tiles).toHaveCount(5);
     for (const scale of ["", "200%"]) {
-      await page.evaluate((size) => { document.documentElement.style.fontSize = size; }, scale);
+      await page.evaluate(async (size) => {
+        document.documentElement.style.fontSize = size;
+        document.body.getBoundingClientRect(); // Flush text-size layout before waiting for any newly selected fonts.
+        await document.fonts.ready;
+      }, scale);
       await expectReadable(tiles);
-      expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
+      await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
       for (const tile of await tiles.all()) {
         if (!scale) {
           expect((await tile.boundingBox())!.width).toBe(159);
