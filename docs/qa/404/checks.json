@@ -1,0 +1,50 @@
+{
+  "base": "faaf5d2587ae5dcb19492da628814e3848f29c57",
+  "branch": "fix/404-homepage-text-resize",
+  "node": "22.23.4",
+  "browser": "installed Google Chrome via Playwright",
+  "lint": "passed, zero warnings",
+  "typecheck": "passed",
+  "unit": {
+    "files": 104,
+    "passed": 2191,
+    "skipped": 0,
+    "workers": 1,
+    "database": "task-owned disposable PostgreSQL 17 at 127.0.0.1:54404, isolated per-file schemas"
+  },
+  "build": {
+    "result": "passed",
+    "workers": 2,
+    "temporary_config_restored": true
+  },
+  "targeted_e2e": {
+    "passed": 6,
+    "skipped": 0,
+    "workers": 2
+  },
+  "production_e2e": {
+    "passed": 193,
+    "skipped": 425,
+    "failed": 0,
+    "workers": 2,
+    "command": "npx playwright test --config /tmp/issue404-tools/e2e.config.ts --workers=2",
+    "note": "Already-built production app; local config changes only port, cwd, paths and installed browser. Repository guards and assertions unchanged."
+  },
+  "overflow320at200": {
+    "before": 66,
+    "after": 0,
+    "computed_root": "32px",
+    "computed_faq_heading": "56px"
+  },
+  "default_changed_pixels": {
+    "1440": 0,
+    "390": 0
+  },
+  "visible_main_words": {
+    "1440": 309,
+    "390": 293
+  },
+  "merge": false,
+  "manual_deployment": false,
+  "journey": "Real Chromium: homepage Enter with Fix the gate -> login -> Sign up -> Next to customer details -> browser Back to signup; /jobs/new?description=Fix+the+gate&location=Invercargill preserved throughout. No account submitted."
+}

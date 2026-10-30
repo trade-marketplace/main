@@ -39,7 +39,7 @@
 .eyebrow { display: block; color: var(--trade-link); text-transform: uppercase; font-size: var(--trade-fs-caption); font-weight: 800; letter-spacing: .1em; }
 .wrap h2 { margin: 10px 0 0; font-family: var(--trade-font-heading); font-variation-settings: var(--trade-display-axes); font-size: var(--trade-fs-title); font-weight: 900; line-height: var(--trade-lh-title); }
 .how { padding-block: 72px 80px; }
-.steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; margin-top: 48px; }
+.steps { overflow-wrap: anywhere; display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; margin-top: 48px; }
 .step { min-height: 232px; padding: 28px; border-radius: var(--trade-radius-card); background: var(--trade-surface); box-shadow: var(--trade-shadow-category); }
 .stepIcon { display: grid; place-items: center; width: 56px; height: 56px; border-radius: var(--trade-space-4); background: var(--trade-forest); color: var(--trade-signature); }
 .stepIcon > span:first-child { font-size: 30px; }
@@ -51,7 +51,7 @@
 .categoryHeading { display: flex; justify-content: space-between; align-items: flex-end; gap: var(--trade-space-6); margin-bottom: 36px; }
 .categoryHeading > a, .help { display: inline-flex; align-items: center; gap: var(--trade-space-2); font-size: var(--trade-fs-small); color: var(--trade-link); font-weight: 700; text-decoration: none; min-height: var(--trade-tap); }
 .categoryHeading > a > span, .help > span { font-size: 18px; }
-.why { display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: center; padding-block: 96px; }
+.why { overflow-wrap: anywhere; display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: center; padding-block: 96px; }
 .promises { display: grid; gap: 22px; padding: 0; margin: 30px 0 0; list-style: none; }
 .promises li { display: flex; align-items: flex-start; gap: var(--trade-space-4); font-size: 18px; }
 .promises li > span { display: grid; place-items: center; width: 44px; height: 44px; flex: none; border-radius: var(--trade-radius-card); background: var(--trade-tint); color: var(--trade-success); }
@@ -79,7 +79,7 @@
 .tradie .eyebrow { color: var(--trade-signature); }
 .tradie h2 { font-size: 48px; }
 .tradieBolt { position: absolute; width: 620px; right: -120px; top: -230px; fill: var(--trade-signature); opacity: .2; }
-.questions { display: grid; grid-template-columns: 1fr 2fr; gap: 64px; padding-block: 88px; }
+.questions { overflow-wrap: anywhere; display: grid; grid-template-columns: 1fr 2fr; gap: 64px; padding-block: 88px; }
 .faqItem { border-bottom: 1px solid var(--trade-line); }
 .faqItem h3 { margin: 0; }
 .faqItem button { display: flex; align-items: center; justify-content: space-between; gap: var(--trade-space-4); width: 100%; min-height: 58px; padding: 18px 0; border: 0; background: transparent; color: var(--trade-text); text-align: left; font: inherit; font-size: 17px; font-weight: 700; cursor: pointer; }
