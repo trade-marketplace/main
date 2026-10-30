@@ -1,5 +1,6 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 
 import pg from "pg";
@@ -110,14 +111,60 @@ describe("no hard-coded demo password", () => {
     .split("\0")
     .filter((file) => file && existsSync(file) && !/\.(webp|jpe?g|png|gif|pdf|ico|woff2?|ttf)$/i.test(file));
 
+  function filesWithPassword(files: string[], cwd = process.cwd()): string[] {
+    if (!files.length) return [];
+    let candidates: string;
+    try {
+      // Git scans the same working-tree files in one process. Only files containing the required prefix
+      // need reopening in JavaScript; keep the original regex (including its whitespace semantics) below.
+      candidates = execFileSync(
+        "git",
+        [
+          "grep", "--threads=2", "--text", "--no-textconv", "-l", "-z", "-F", "-e", `${VARIABLE}=`,
+          "--", ...files.map((file) => `:(literal)${file}`),
+        ],
+        { cwd, encoding: "utf8" },
+      );
+    } catch (error) {
+      // git grep uses status 1 for no matches; all actual command failures must still fail the test.
+      if ((error as { status?: number }).status === 1) return [];
+      throw error;
+    }
+    const withValue = new RegExp(`${VARIABLE}=[^\\s<]`);
+    return candidates.split("\0").filter((file) => file && withValue.test(readFileSync(path.resolve(cwd, file), "utf8")));
+  }
+
   it("leaves SEED_DEMO_PASSWORD empty in .env.example", () => {
     expect(readFileSync(".env.example", "utf8")).toMatch(new RegExp(`^${VARIABLE}=$`, "m"));
   });
 
   it("never gives SEED_DEMO_PASSWORD a value in a tracked file", () => {
-    const withValue = new RegExp(`${VARIABLE}=[^\\s<]`);
-    const offenders = tracked.filter((file) => withValue.test(readFileSync(file, "utf8")));
+    const offenders = filesWithPassword(tracked);
     expect(offenders).toEqual([]);
+  });
+
+  it("finds assignments in working-tree text, literal paths and NUL-containing files without exposing values", () => {
+    const cwd = mkdtempSync(path.join(tmpdir(), "seed-password-scan-"));
+    try {
+      execFileSync("git", ["init", "--quiet"], { cwd });
+      const files = [".env.example", "literal[1].txt", "space and\nnewline.txt", "nul.txt"];
+      for (const file of files) writeFileSync(path.join(cwd, file), `${VARIABLE}=\n`);
+      execFileSync("git", ["add", "--all"], { cwd });
+
+      // Leave the index clean of assignments: the scan must read the current files, not cached blobs.
+      for (const file of files) writeFileSync(path.join(cwd, file), `prefix\0${VARIABLE}=synthetic-test-value\n`);
+      writeFileSync(path.join(cwd, "untracked.txt"), `${VARIABLE}=synthetic-test-value\n`);
+      expect(filesWithPassword(files, cwd).sort()).toEqual([...files].sort());
+
+      for (const file of files) {
+        writeFileSync(path.join(cwd, file), `${VARIABLE}=\n${VARIABLE}=<placeholder>\n${VARIABLE}=\u2003\n`);
+      }
+      expect(filesWithPassword(files, cwd)).toEqual([]);
+      writeFileSync(path.join(cwd, ".env.example"), "no assignment prefix\n");
+      expect(filesWithPassword([".env.example"], cwd)).toEqual([]);
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
   });
 
   it("has no password in the seed code, and not the old prototype's either", () => {
