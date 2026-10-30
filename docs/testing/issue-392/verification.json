@@ -1,0 +1,46 @@
+{
+  "issue": 392,
+  "base": "b7a48687dc295d855211bf58c6414ec1eb9bcfbc",
+  "verified_source_commit": "31763a710cdcd3de00f5b268337930f2a1bf7e1f",
+  "runtime": "Node 22.23.4",
+  "checks": {
+    "lint": {
+      "command": "npm run lint",
+      "exit": 0,
+      "seconds": 10
+    },
+    "typecheck": {
+      "command": "npm run typecheck",
+      "exit": 0,
+      "seconds": 9
+    },
+    "test": {
+      "command": "npm test -- --maxWorkers=1",
+      "exit": 0,
+      "files": 106,
+      "passed": 2205,
+      "skipped": 0,
+      "duration_seconds": 48.07
+    },
+    "build": {
+      "command": "npm run build",
+      "exit": 0,
+      "seconds": 16,
+      "local_worker_cap": 2,
+      "config_restored": true
+    },
+    "e2e": {
+      "command": "npx playwright test --workers=2",
+      "exit": 0,
+      "passed": 196,
+      "existing_conditional_skips": 433,
+      "seconds": 132
+    }
+  },
+  "database": "task-owned disposable localhost Postgres 17, removed",
+  "shared_lock": "released; no other lock/process touched",
+  "screenshots": "N/A: test-only change",
+  "visible_word_count": "N/A: no UI change",
+  "initial_e2e_limit": "Node 22.17.0 internal module status 3 during discovery; exact log retained; resolved with supported Node 22.23.4",
+  "merge_or_manual_deploy": false
+}

@@ -1,0 +1,10 @@
+Database tests will be skipped: set TEST_DATABASE_URL to a throwaway Postgres to run them (docs/TESTING.md).
+
+ RUN  v5.0.5 /Users/matthewlarsen/Documents/Codex/2026-10-30/task-12/repo
+
+
+ Test Files  1 passed (1)
+      Tests  4 passed | 22 skipped (26)
+   Start at  15:05:39
+   Duration  328ms (tests 50%, import 33%, transform 16%, worker 1%)
+
