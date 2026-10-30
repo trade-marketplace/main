@@ -4,6 +4,8 @@ import { HelpCentre } from "@/components/help/HelpCentre";
 import { helpState } from "@/lib/help";
 import { loadHelpArticles } from "@/server/help/articles";
 import { saveHelpFeedback } from "../actions";
+export const dynamicParams = false;
+export async function generateStaticParams() { return (await loadHelpArticles()).map(({ slug }) => ({ slug })); }
 type Props = { params: Promise<{ slug: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> };
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
