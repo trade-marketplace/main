@@ -1,0 +1,28 @@
+[WebServer]
+[WebServer] > trade-marketplace@0.1.0 start
+[WebServer] > next start --port 4406
+[WebServer]
+[WebServer] (node:73978) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] ▲ Next.js 16.4.3
+[WebServer] - Local:         http://localhost:4406
+[WebServer] - Network:       http://192.168.1.96:4406
+[WebServer] ✓ Ready in 129ms
+[WebServer] ✓ Running next.config.ts took 124ms
+[WebServer] Database: off. The app runs without it for now.
+[WebServer] To connect, copy .env.example to .env.local and fill in DATABASE_URL and DIRECT_URL from Supabase.
+
+Running 6 tests using 2 workers
+
+(node:73979) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:73980) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  2 [chromium] › tests/e2e/landing-text-resize.spec.ts:28:3 › 320px: landing grids wrap at 200% text without sideways scroll (1.7s)
+  ✓  1 [chromium] › tests/e2e/landing-text-resize.spec.ts:28:3 › 390px: landing grids wrap at 200% text without sideways scroll (2.7s)
+  ✓  3 [chromium] › tests/e2e/landing-text-resize.spec.ts:28:3 › 640px: landing grids wrap at 200% text without sideways scroll (1.7s)
+  ✓  4 [chromium] › tests/e2e/landing-text-resize.spec.ts:28:3 › 768px: landing grids wrap at 200% text without sideways scroll (1.3s)
+  ✓  6 [chromium] › tests/e2e/landing-text-resize.spec.ts:28:3 › 1440px: landing grids wrap at 200% text without sideways scroll (1.8s)
+  ✓  5 [chromium] › tests/e2e/landing-text-resize.spec.ts:28:3 › 1024px: landing grids wrap at 200% text without sideways scroll (2.6s)
+
+  6 passed (9.4s)

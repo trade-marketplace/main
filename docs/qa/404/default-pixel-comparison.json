@@ -1,0 +1,26 @@
+{
+  "1440": {
+    "original": [
+      1440,
+      4251
+    ],
+    "fixed": [
+      1440,
+      4251
+    ],
+    "diff_bounds": null,
+    "changed_pixels": 0
+  },
+  "390": {
+    "original": [
+      390,
+      4623
+    ],
+    "fixed": [
+      390,
+      4623
+    ],
+    "diff_bounds": null,
+    "changed_pixels": 0
+  }
+}
