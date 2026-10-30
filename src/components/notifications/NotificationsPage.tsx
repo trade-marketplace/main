@@ -24,15 +24,15 @@ const SOURCE: NotificationsSource = { load: loadNotificationsPageAction, read: r
 const clock = new Intl.DateTimeFormat("en-NZ", { hour: "numeric", minute: "2-digit", timeZone: "Pacific/Auckland" });
 
 export function NotificationsLoading() {
-  return <div className={styles.page}><div className={styles.pageContent}>
-    <h1 className={styles.pageTitle}>Notifications</h1><NotificationsSkeleton />
+  return <div className={styles.page}><div className={`${styles.pageContent} tm-anim-rise`}>
+    <h1 className={styles.pageTitle}>Notifications</h1><LoadingRegion loading label="Loading notifications" skeleton={<NotificationsSkeleton />} />
   </div></div>;
 }
 
 function NotificationsSkeleton() {
-  return <LoadingRegion loading label="Loading notifications" skeleton={<div className={styles.loading}>
+  return <div className={styles.loading}>
     {[0, 1, 2, 3].map((i) => <div key={i} className={styles.loadingRow}><Skeleton width={36} height={36} /><div><Skeleton width="80%" /><Skeleton width={50} height={12} /></div></div>)}
-  </div>} />;
+  </div>;
 }
 
 export function NotificationsPage({ initial, query, source = SOURCE, now: fixedNow, baseHref = "/notifications", extraQuery = "", loading = false, online: forcedOnline }: {
@@ -111,18 +111,20 @@ export function NotificationsPage({ initial, query, source = SOURCE, now: fixedN
     </li>;
   }
 
-  return <div className={styles.page}><div className={styles.pageContent} ref={content}>
+  return <div className={styles.page}><div className={`${styles.pageContent} tm-anim-rise`} ref={content}>
     {!online && <Banner tone="alert" title="You're offline." />}
     <header className={styles.pageHeading}><h1 className={styles.pageTitle}>Notifications</h1>
       {Boolean(inbox?.unread) && <Button variant="tertiary" width="auto" disabled={busy || loading || !online} onClick={() => { void run(null); }}>Mark all read</Button>}
     </header>
     <Tabs label="Notifications" value={query.filter} onChange={(filter) => router.push(href({ filter, page: 1 }))} items={[{ value: "all", label: "All" }, { value: "unread", label: "Unread" }]}>
       <div aria-busy={busy || loading}>
-        {(loading || (busy && !saving)) ? <NotificationsSkeleton /> : !result.ok ? <ErrorState title="Notifications unavailable" onRetry={() => run()} /> : inbox?.items.length === 0 ?
+        <LoadingRegion loading={loading || (busy && !saving)} label="Loading notifications" skeleton={<NotificationsSkeleton />}>
+        {!result.ok ? <ErrorState title="Notifications unavailable" onRetry={() => run()} /> : inbox?.items.length === 0 ?
           <EmptyState title={query.filter === "unread" ? "No unread notifications" : "No notifications"} icon="notifications_none" /> :
           notificationDays(inbox?.items ?? [], now).map((day) => <section key={day.key} aria-label={day.label} className={styles.day}>
             <h2 className={styles.dayTitle}>{day.label}</h2><ul className={styles.pageRows}>{day.items.map(row)}</ul>
           </section>)}
+        </LoadingRegion>
       </div>
     </Tabs>
     {inbox && inbox.total > NOTIFICATIONS_PAGE_SIZE && !loading && <Pagination page={inbox.page} pageSize={NOTIFICATIONS_PAGE_SIZE} total={inbox.total} label="Notification pages" getHref={(page) => href({ ...query, page })} />}
