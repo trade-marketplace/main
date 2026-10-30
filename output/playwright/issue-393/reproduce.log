@@ -1,0 +1,101 @@
+[WebServer]
+[WebServer] > trade-marketplace@0.1.0 start
+[WebServer] > next start --hostname 127.0.0.1 --port 4393
+[WebServer]
+[WebServer] (node:41682) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] ▲ Next.js 16.4.3
+[WebServer] - Local:         http://127.0.0.1:4393
+[WebServer] - Network:       http://127.0.0.1:4393
+[WebServer] ✓ Ready in 173ms
+[WebServer] ✓ Running next.config.ts took 273ms
+[WebServer] Database: off. The app runs without it for now.
+[WebServer] To connect, copy .env.example to .env.local and fill in DATABASE_URL and DIRECT_URL from Supabase.
+
+Running 2 tests using 2 workers
+
+(node:41694) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:41695) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  1 [chromium] › tests/e2e/dev-feedback.spec.ts:105:3 › /dev/components/feedback on the dev server › a slow load shows the skeleton, says “Loading your jobs” once, then the list cross-fades in (5.7s)
+  ✘  2 [chromium] › tests/e2e/dev-feedback.spec.ts:118:3 › /dev/components/feedback on the dev server › a quick load says nothing (6.3s)
+
+
+  1) [chromium] › tests/e2e/dev-feedback.spec.ts:105:3 › /dev/components/feedback on the dev server › a slow load shows the skeleton, says “Loading your jobs” once, then the list cross-fades in
+
+    Error: expect(locator).toHaveAttribute(expected) failed
+
+    Locator: locator('#loading [class*="__region"]')
+    Expected: "true"
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toHaveAttribute" locator('#loading [class*="__region"]') with timeout 5000ms
+      - waiting for locator('#loading [class*="__region"]')
+
+
+      107 |     const region = page.locator(REGION);
+      108 |     await page.getByRole("button", { name: "Load slowly (3s)" }).click();
+    > 109 |     await expect(region).toHaveAttribute("aria-busy", "true");
+          |                          ^
+      110 |     await expect(region.locator(".tm-skel").first()).toBeVisible();
+      111 |     await expect(statusAfter(page, REGION)).toHaveText("Loading your jobs");
+      112 |     await expect(region.getByText("Leaking kitchen mixer tap")).toBeVisible({ timeout: 5000 });
+        at /Users/matthewlarsen/Documents/Codex/2026-10-30/task-9/repo/tests/e2e/dev-feedback.spec.ts:109:26
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/dev-feedback--dev-componen-ccb0f-hen-the-list-cross-fades-in-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/dev-feedback--dev-componen-ccb0f-hen-the-list-cross-fades-in-chromium/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/dev-feedback--dev-componen-ccb0f-hen-the-list-cross-fades-in-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/dev-feedback--dev-componen-ccb0f-hen-the-list-cross-fades-in-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [chromium] › tests/e2e/dev-feedback.spec.ts:118:3 › /dev/components/feedback on the dev server › a quick load says nothing
+
+    Error: expect(locator).toHaveText(expected) failed
+
+    Locator: locator('#loading [class*="__region"] + [role=status]')
+    Expected: ""
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toHaveText" locator('#loading [class*="__region"] + [role=status]') with timeout 5000ms
+      - waiting for locator('#loading [class*="__region"] + [role=status]')
+
+
+      121 |     await expect(page.getByText("Loaded 1 time")).toBeVisible();
+      122 |     await page.waitForTimeout(400);
+    > 123 |     await expect(statusAfter(page, REGION)).toHaveText("");
+          |                                             ^
+      124 |   });
+      125 |
+      126 |   test("Try again works from the keyboard: spinner while it runs, the error is said again, then the list loads", async ({ page }) => {
+        at /Users/matthewlarsen/Documents/Codex/2026-10-30/task-9/repo/tests/e2e/dev-feedback.spec.ts:123:45
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/dev-feedback--dev-componen-01fca-r-a-quick-load-says-nothing-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/dev-feedback--dev-componen-01fca-r-a-quick-load-says-nothing-chromium/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/dev-feedback--dev-componen-01fca-r-a-quick-load-says-nothing-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/dev-feedback--dev-componen-01fca-r-a-quick-load-says-nothing-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2 failed
+    [chromium] › tests/e2e/dev-feedback.spec.ts:105:3 › /dev/components/feedback on the dev server › a slow load shows the skeleton, says “Loading your jobs” once, then the list cross-fades in
+    [chromium] › tests/e2e/dev-feedback.spec.ts:118:3 › /dev/components/feedback on the dev server › a quick load says nothing
