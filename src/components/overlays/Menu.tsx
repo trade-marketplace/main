@@ -69,6 +69,20 @@ const MenuContext = createContext<MenuContextValue | null>(null);
 
 const ITEM = '[role^="menuitem"]:not([aria-disabled="true"])';
 
+/** Match the item's name, without decorative icon ligatures (including icons nested in its label). */
+function itemLabel(item: HTMLElement): string {
+  const text = (element: HTMLElement) => {
+    const copy = element.cloneNode(true) as HTMLElement;
+    copy.querySelectorAll('[aria-hidden="true"], [hidden]').forEach((hidden) => hidden.remove());
+    return copy.textContent ?? "";
+  };
+  const labelledBy = item.getAttribute("aria-labelledby")?.trim().split(/\s+/)
+    .map((id) => item.ownerDocument.getElementById(id))
+    .filter((element): element is HTMLElement => element !== null)
+    .map(text).join(" ").trim();
+  return labelledBy || item.getAttribute("aria-label")?.trim() || text(item);
+}
+
 export function Menu({ trigger, children, header, align = "end", label, defaultOpen = false, open: controlledOpen, onOpenChange, panelClassName, className }: MenuProps) {
   const [ownOpen, setOwnOpen] = useState(defaultOpen);
   const open = controlledOpen ?? ownOpen;
@@ -168,7 +182,7 @@ export function Menu({ trigger, children, header, align = "end", label, defaultO
     if (event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey && event.key !== " ") {
       const now = event.timeStamp;
       typed.current = { text: (now - typed.current.at > TYPEAHEAD_RESET_MS ? "" : typed.current.text) + event.key, at: now };
-      const next = typeaheadIndex(list.map((el) => el.textContent ?? ""), index, typed.current.text);
+      const next = typeaheadIndex(list.map(itemLabel), index, typed.current.text);
       if (next >= 0) list[next].focus();
     }
   };

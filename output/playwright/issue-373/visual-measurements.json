@@ -1,0 +1,26 @@
+[
+  {
+    "pass": 1,
+    "width": 1440,
+    "menuPixelDifferenceBounds": null,
+    "menuVisibleWords": 10
+  },
+  {
+    "pass": 1,
+    "width": 390,
+    "menuPixelDifferenceBounds": null,
+    "menuVisibleWords": 10
+  },
+  {
+    "pass": 2,
+    "width": 1440,
+    "menuPixelDifferenceBounds": null,
+    "menuVisibleWords": 10
+  },
+  {
+    "pass": 2,
+    "width": 390,
+    "menuPixelDifferenceBounds": null,
+    "menuVisibleWords": 10
+  }
+]
