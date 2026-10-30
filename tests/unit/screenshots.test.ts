@@ -565,30 +565,49 @@ describe("pushImages (against a throwaway git remote)", () => {
     rmSync(root, { recursive: true, force: true });
   });
 
+  // Four real tree builds/pushes (one rejected) start ~100 git processes including helpers.
+  // This case exceeded 5s under parallel load (#380); allow headroom for that local Git work.
   it("starts again when another run moved the branch meanwhile, so neither PR's folder is lost", () => {
     const { work, images, files, tree, root } = setup();
-    const quiet = () => {};
-    pushImages({ dir: images, folder: "pr-1/aaa", files, cwd: work, log: quiet });
-    const other = join(root, "other");
-    sh(root, "clone", "--quiet", join(root, "origin.git"), other);
-    const logs: string[] = [];
-    pushImages({
-      dir: images,
-      folder: "pr-3/ccc",
-      files,
-      cwd: work,
-      log: (m) => logs.push(m),
-      // Another runner publishes PR 2 after this one read the branch but before it pushed.
-      beforePush: (attempt) => {
-        if (attempt === 1) pushImages({ dir: images, folder: "pr-2/bbb", files, cwd: other, log: quiet });
-      },
-    });
-    expect(logs.some((m) => m.includes("moved while publishing (attempt 1)"))).toBe(true);
-    expect(tree().filter((path) => path.endsWith("1440.png"))).toEqual([
-      "pr-1/aaa/home-1440.png",
-      "pr-2/bbb/home-1440.png",
-      "pr-3/ccc/home-1440.png",
-    ]);
-    rmSync(root, { recursive: true, force: true });
-  });
+    try {
+      const quiet = () => {};
+      // Retention must not depend on the wall clock advancing between publishers.
+      const now = () => new Date("2026-10-22T00:00:00Z");
+      pushImages({ dir: images, folder: "pr-1/aaa", files, cwd: work, now, log: quiet });
+      const other = join(root, "other");
+      sh(root, "clone", "--quiet", join(root, "origin.git"), other);
+      const logs: string[] = [];
+      const attempts: number[] = [];
+      pushImages({
+        dir: images,
+        folder: "pr-3/ccc",
+        files,
+        cwd: work,
+        now,
+        log: (m) => logs.push(m),
+        // Another runner publishes PR 2 after this one read the branch but before it pushed.
+        beforePush: (attempt) => {
+          attempts.push(attempt);
+          if (attempt === 1) pushImages({ dir: images, folder: "pr-2/bbb", files, cwd: other, now, log: quiet });
+        },
+      });
+      expect(logs.some((m) => m.includes("moved while publishing (attempt 1)"))).toBe(true);
+      expect(tree().filter((path) => path.endsWith("1440.png"))).toEqual([
+        "pr-1/aaa/home-1440.png",
+        "pr-2/bbb/home-1440.png",
+        "pr-3/ccc/home-1440.png",
+      ]);
+      expect(attempts).toEqual([1, 2]);
+      expect(tree().filter((path) => path.startsWith("pr-"))).toEqual([
+        "pr-1/aaa/home-1440.png",
+        "pr-1/aaa/home-390.png",
+        "pr-2/bbb/home-1440.png",
+        "pr-2/bbb/home-390.png",
+        "pr-3/ccc/home-1440.png",
+        "pr-3/ccc/home-390.png",
+      ]);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  }, 15_000);
 });

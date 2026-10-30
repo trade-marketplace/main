@@ -1,0 +1,81 @@
+
+> trade-marketplace@0.1.0 build
+> prisma generate && next build
+
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma/schema.prisma.
+
+✔ Generated Prisma Client (7.10.1) to ./src/generated/prisma in 153ms
+
+▲ Next.js 16.4.3 (Turbopack)
+✓ Running next.config.ts took 168ms
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 5.7s
+  Running TypeScript ...
+  Finished TypeScript in 8.6s ...
+  Collecting page data using 2 workers ...
+  Generating static pages using 2 workers (0/50) ...
+  Generating static pages using 2 workers (12/50)
+  Generating static pages using 2 workers (24/50)
+  Generating static pages using 2 workers (37/50)
+✓ Generating static pages using 2 workers (50/50) in 702ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ƒ /
+├ ○ /_not-found
+├ ○ /apple-icon.png
+├ ƒ /coming-soon
+├ ƒ /dev/components/app-shell
+├ ƒ /dev/components/buttons
+├ ƒ /dev/components/cards
+├ ƒ /dev/components/data
+├ ƒ /dev/components/error-pages
+├ ƒ /dev/components/feedback
+├ ƒ /dev/components/fields
+├ ƒ /dev/components/landing
+├ ƒ /dev/components/login
+├ ƒ /dev/components/map
+├ ƒ /dev/components/mapbox
+├ ƒ /dev/components/media
+├ ƒ /dev/components/notifications
+├ ƒ /dev/components/office-shell
+├ ƒ /dev/components/overlays
+├ ƒ /dev/components/recovery
+├ ƒ /dev/components/security
+├ ƒ /dev/components/session-expired
+├ ƒ /dev/components/signup-customer
+├ ƒ /dev/components/signup-tradie
+├ ƒ /dev/components/site-shell
+├ ƒ /dev/components/status
+├ ƒ /dev/components/verify-email
+├ ƒ /dev/components/waitlist
+├ ƒ /dev/motion
+├ ƒ /dev/tokens
+├ ○ /for-tradies/opengraph-image
+├ ○ /for-tradies/twitter-image
+├ ○ /icon.png
+├ ○ /icon.svg
+├ ƒ /login
+├ ○ /manifest.webmanifest
+├ ○ /opengraph-image
+├ ○ /profile
+├ ○ /profile/security
+├ ƒ /profile/security/confirm
+├ ƒ /recovery
+├ ƒ /recovery/confirm
+├ ○ /robots.txt
+├ ƒ /signup
+├ ƒ /signup/customer
+├ ƒ /signup/tradie
+├ ○ /twitter-image
+├ ƒ /verify
+└ ƒ /verify/confirm
+
+
+ƒ Proxy (Middleware)
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand

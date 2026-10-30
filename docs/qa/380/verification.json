@@ -1,0 +1,53 @@
+{
+  "issue": 380,
+  "base": "b7a48687dc295d855211bf58c6414ec1eb9bcfbc",
+  "testedSource": "0bc36c5963fa222acc25d74486cc1741037f1ad7",
+  "screenshotTestBlob": "e3c92ca5d51a29aa958d369606a736ef0017083d",
+  "node": "22.22.0",
+  "postgres": "17.10",
+  "unitWorkers": 1,
+  "buildWorkers": 2,
+  "e2eWorkers": 2,
+  "checks": {
+    "lint": {
+      "exit": 0
+    },
+    "typecheck": {
+      "exit": 0
+    },
+    "test": {
+      "exit": 0,
+      "files": 106,
+      "passed": 2204,
+      "skipped": 0,
+      "seconds": 50.04,
+      "log": "test-after-cache-clean.txt"
+    },
+    "build": {
+      "exit": 0
+    },
+    "e2e": {
+      "exit": 0,
+      "passed": 196,
+      "skipped": 433,
+      "failures": 0,
+      "log": "e2e.txt"
+    }
+  },
+  "priorAttempt": {
+    "testExit": 1,
+    "passed": 2199,
+    "failed": 1,
+    "reason": "Documented stale node_modules/.vitest-cache glob inventory after rebase; cleared, then complete unit suite passed without source changes.",
+    "log": "test.txt"
+  },
+  "screenshots": "N/A: no visible UI changes",
+  "wordCount": "N/A: no visible UI changes",
+  "limits": [
+    "Project-board read denied: missing read:project; status not moved, issue comment records the missing permission."
+  ],
+  "resources": {
+    "ownHeavyLockReleased": true,
+    "disposablePostgresStopped": true
+  }
+}

@@ -1,0 +1,60 @@
+Database tests will be skipped: set TEST_DATABASE_URL to a throwaway Postgres to run them (docs/TESTING.md).
+
+ RUN  v5.0.5 /Users/matthewlarsen/Documents/Codex/2026-10-30/task-11/issue-380
+
+ ✓ tests/unit/screenshots.test.ts > parseScreenshotsList > reads a `screenshots:` list with roles, job statuses and state flags 1ms
+ ✓ tests/unit/screenshots.test.ts > parseScreenshotsList > reads a one-line list and a bold or heading label 0ms
+ ✓ tests/unit/screenshots.test.ts > parseScreenshotsList > isn't fooled by the template's heading, comments or code 0ms
+ ✓ tests/unit/screenshots.test.ts > parseScreenshotsList > reports items it can't use and keeps the rest 1ms
+ ✓ tests/unit/screenshots.test.ts > routeForPage > src/app/page.tsx → / 0ms
+ ✓ tests/unit/screenshots.test.ts > routeForPage > src/app/jobs/page.tsx → /jobs 0ms
+ ✓ tests/unit/screenshots.test.ts > routeForPage > src/app/jobs/[id]/book/page.tsx → /jobs/[id]/book 0ms
+ ✓ tests/unit/screenshots.test.ts > routeForPage > src/app/(marketing)/how-it-works/page.tsx → /how-it-works 0ms
+ ✓ tests/unit/screenshots.test.ts > routeForPage > src/app/admin/@modal/jobs/page.tsx → /admin/jobs 0ms
+ ✓ tests/unit/screenshots.test.ts > routeForPage > src/app/jobs/JobCard.tsx isn't a route 0ms
+ ✓ tests/unit/screenshots.test.ts > routeForPage > src/app/_parts/page.tsx isn't a route 0ms
+ ✓ tests/unit/screenshots.test.ts > routeForPage > src/app/(.)photo/page.tsx isn't a route 0ms
+ ✓ tests/unit/screenshots.test.ts > routeForPage > src/app/api/x/route.ts isn't a route 0ms
+ ✓ tests/unit/screenshots.test.ts > importsOf > finds static, side-effect, dynamic and CSS imports 0ms
+ ✓ tests/unit/screenshots.test.ts > detectRoutes > finds a changed page 0ms
+ ✓ tests/unit/screenshots.test.ts > detectRoutes > follows a changed component to every page that uses it, directly or through other files 5ms
+ ✓ tests/unit/screenshots.test.ts > detectRoutes > follows a colocated file or CSS module to its page 1ms
+ ✓ tests/unit/screenshots.test.ts > detectRoutes > counts a layout or loading file for every page under it 0ms
+ ✓ tests/unit/screenshots.test.ts > detectRoutes > finds nothing for deleted or non-UI files 0ms
+ ✓ tests/unit/screenshots.test.ts > component sets map to their /dev/components page (#317) > maps a changed component folder to its set's page, even when no page imports the file 0ms
+ ✓ tests/unit/screenshots.test.ts > component sets map to their /dev/components page (#317) > maps a top-level component file, singular or plural, to its set 0ms
+ ✓ tests/unit/screenshots.test.ts > component sets map to their /dev/components page (#317) > maps any file in a dev set's own folder to that set 0ms
+ ✓ tests/unit/screenshots.test.ts > component sets map to their /dev/components page (#317) > finds the set for a deleted component file 0ms
+ ✓ tests/unit/screenshots.test.ts > component sets map to their /dev/components page (#317) > finds nothing when the set has no page 0ms
+ ✓ tests/unit/screenshots.test.ts > component sets map to their /dev/components page (#317) > a component PR is planned with its /dev/components page 0ms
+ ✓ tests/unit/screenshots.test.ts > buildPlan > skips a PR with no screen changes 0ms
+ ✓ tests/unit/screenshots.test.ts > buildPlan > uses the changed files' routes 0ms
+ ✓ tests/unit/screenshots.test.ts > buildPlan > prefers the description's `screenshots:` list 0ms
+ ✓ tests/unit/screenshots.test.ts > buildPlan > runs for a `ui` label, but captures nothing when no route can be found 0ms
+ ✓ tests/unit/screenshots.test.ts > buildPlan > shoots the home page when only the screenshot tooling changed, so it proves itself 0ms
+ ✓ tests/unit/screenshots.test.ts > buildPlan > stops at 12 routes and lists the rest 0ms
+ ✓ tests/unit/screenshots.test.ts > renderComment > posts one table: route · 1440 · 390, sorted, with the commit's marker 0ms
+ ✓ tests/unit/screenshots.test.ts > renderComment > lists skipped, over-the-limit and badly written routes 0ms
+ ✓ tests/unit/screenshots.test.ts > renderComment > satisfies the PR gate for that commit only 1ms
+ ✓ tests/unit/screenshots.test.ts > renderComment > makes blob ?raw=true image links (they render in a private repo) 0ms
+ ✓ tests/unit/screenshots.test.ts > renderNoticeComment > has the marker but no images, so a failure never passes the gate 0ms
+ ✓ tests/unit/screenshots.test.ts > what if the app fails to start? > waits until the app answers 0ms
+ ✓ tests/unit/screenshots.test.ts > what if the app fails to start? > fails straight away when the server process stops 0ms
+ ✓ tests/unit/screenshots.test.ts > what if the app fails to start? > fails after the timeout when it never answers, or only answers with server errors 0ms
+ ✓ tests/unit/screenshots.test.ts > what if the app fails to start? > shows the end of the server log 0ms
+ ✓ tests/unit/screenshots.test.ts > publishing > replaces this PR's folder and drops folders older than 7 days 1ms
+ ✓ tests/unit/screenshots.test.ts > publishing > re-runs the PR gate only when its latest run for the commit failed 0ms
+ ✓ tests/unit/screenshots.test.ts > publishing > waits for a gate run in progress, then re-runs it 0ms
+ ✓ tests/unit/screenshots.test.ts > publishing > keeps ONE comment: creates it, then edits the bot's own 0ms
+ ✓ tests/unit/screenshots.test.ts > screenshots workflow > keeps images 7 days and shoots with a time limit 0ms
+ ✓ tests/unit/screenshots.test.ts > screenshots workflow > only gives the publish job a token that can write, and never uses pull_request_target 0ms
+ ✓ tests/unit/screenshots.test.ts > screenshots workflow > turns on the /dev pages only for the app it starts, with a fixed value nothing in the PR can change 0ms
+ ✓ tests/unit/screenshots.test.ts > screenshots workflow > can't take SCREENSHOT_DEV_PAGES from the PR description or labels 0ms
+ ✓ tests/unit/screenshots.test.ts > screenshots workflow > never points the app at a real Supabase project 0ms
+ ✓ tests/unit/screenshots.test.ts > pushImages (against a throwaway git remote) > creates the branch, keeps other PRs' folders, replaces this PR's, and keeps no history 1213ms
+ ✓ tests/unit/screenshots.test.ts > pushImages (against a throwaway git remote) > starts again when another run moved the branch meanwhile, so neither PR's folder is lost 1194ms
+
+ Test Files  1 passed (1)
+      Tests  51 passed (51)
+   Start at  15:05:48
+   Duration  2.56s (tests 98%, transform 1%, import 1%)
