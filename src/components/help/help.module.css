@@ -59,7 +59,7 @@
 @media (min-width: 1024px) and (max-width: 1259.98px) { .articleLayout { grid-template-columns: 220px minmax(0, 1fr) 240px; gap: var(--trade-space-6); } }
 @media (max-width: 1023.98px) {
   /* The phone reference is the compact Help shell; desktop keeps the existing public header. */
-  :global(body):has(.page) :global(header[data-solid]) { display: none; }
+  :global(body):has(.page) :global(header:has(nav[aria-label="Main"])) { display: none; }
   .page { min-height: 100dvh; }
   .phoneBar { display: flex; align-items: center; gap: var(--trade-space-1); min-height: 56px; padding-inline: var(--trade-space-3); box-shadow: var(--trade-shadow-header); }
   .phoneBar > a { display: grid; place-items: center; min-width: var(--trade-tap); min-height: var(--trade-tap); color: var(--trade-text); }

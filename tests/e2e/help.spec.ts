@@ -12,7 +12,7 @@ for (const viewport of VIEWPORTS) {
         if (route.includes("state=no-results")) await expect(page.getByRole("heading", { name: "No articles found", exact: true })).toBeVisible();
         if (route.includes("state=loading")) await expect(page.locator('[aria-busy="true"]').first()).toBeVisible();
         if (route.includes("state=error")) await expect(page.getByRole("heading", { name: "Can’t load help articles", exact: true })).toBeVisible();
-        if (route.includes("state=helpful-voted")) await expect(page.getByText("Thanks for your feedback.", { exact: true })).toBeVisible();
+        if (route.includes("state=helpful-voted")) await expect(page.getByRole("status").filter({ hasText: "Thanks for your feedback." })).toBeVisible();
         if (route.includes("state=not-helpful")) await expect(page.getByRole("textbox", { name: "What were you looking for?" })).toBeVisible();
         if (route.includes("state=feedback-error")) await expect(page.getByText("Couldn’t save your feedback. Try again.").first()).toBeVisible();
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
@@ -51,3 +51,12 @@ test("feedback keeps the optional note and truthfully reports unavailable persis
   await expect(note).toHaveValue("Where is my invoice?"); await expect(page.getByText("Thanks for your feedback.")).toHaveCount(0);
 });
 test("unknown articles return a real 404", async ({ page }) => { const response = await page.goto("/help/not-a-real-article"); expect(response?.status()).toBe(404); });
+test("phone shell is correct before hydration", async ({ browser }) => {
+  const context = await browser.newContext({ javaScriptEnabled: false, viewport: { width: 390, height: 844 } });
+  const page = await context.newPage();
+  await page.goto("/help");
+  await expect(page.getByRole("navigation", { name: "Main", exact: true })).not.toBeVisible();
+  await expect(page.getByRole("heading", { name: "Help & support", exact: true })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await context.close();
+});
