@@ -8,6 +8,13 @@ for (const viewport of VIEWPORTS) {
       for (const route of ["/help", "/help?q=pay", "/help?state=no-results", "/help?state=loading", "/help?state=error", "/help/when-do-i-pay", "/help/when-do-i-pay?state=helpful-voted", "/help/when-do-i-pay?state=not-helpful", "/help/when-do-i-pay?state=feedback-error"]) {
         await page.goto(route); await expect(page.getByRole("searchbox").or(page.getByRole("combobox"))).toBeVisible();
         await page.locator("[data-help-ready=true]").waitFor(); await page.evaluate(() => document.fonts.ready);
+        if (route.includes("q=pay")) await expect(page.getByRole("combobox")).toHaveValue("pay");
+        if (route.includes("state=no-results")) await expect(page.getByRole("heading", { name: "No articles found", exact: true })).toBeVisible();
+        if (route.includes("state=loading")) await expect(page.locator('[aria-busy="true"]').first()).toBeVisible();
+        if (route.includes("state=error")) await expect(page.getByRole("heading", { name: "Can’t load help articles", exact: true })).toBeVisible();
+        if (route.includes("state=helpful-voted")) await expect(page.getByText("Thanks for your feedback.", { exact: true })).toBeVisible();
+        if (route.includes("state=not-helpful")) await expect(page.getByRole("textbox", { name: "What were you looking for?" })).toBeVisible();
+        if (route.includes("state=feedback-error")) await expect(page.getByText("Couldn’t save your feedback. Try again.").first()).toBeVisible();
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
         await expectNoA11yViolations(page);
       }
