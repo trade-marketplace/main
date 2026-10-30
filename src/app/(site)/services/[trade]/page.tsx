@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { cache } from "react";
+import { cache, Suspense } from "react";
 
-import { ServicePage } from "@/components/site/ServicePage";
-import { CATEGORIES, isCategory } from "@/lib/cards";
+import { ServiceLoading, ServicePage } from "@/components/site/ServicePage";
+import { CATEGORIES, isCategory, type Category } from "@/lib/cards";
 import { loadService } from "@/server/services";
 
 import { joinServiceWaitlist } from "./actions";
@@ -28,5 +28,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function Service({ params }: Props) {
   const { trade } = await params;
   if (!isCategory(trade)) notFound();
+  // Validate before the first streaming boundary so invalid trades return HTTP 404.
+  return <Suspense fallback={<ServiceLoading />}><ServiceContent trade={trade} /></Suspense>;
+}
+
+async function ServiceContent({ trade }: { trade: Category }) {
   return <ServicePage data={await readService(trade)} submit={joinServiceWaitlist} />;
 }
