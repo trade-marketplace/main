@@ -973,3 +973,17 @@ model AuditLog {
   @@index([createdAt])
   @@map("audit_log")
 }
+
+// Help article votes (#185). Browser key is a SHA-256 digest of a random, http-only cookie, never an IP/name.
+// Server-only; no public read policy. William reviews this table before migration.
+model HelpArticleFeedback {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  articleSlug String   @map("article_slug") @db.VarChar(100)
+  voterKey    String   @map("voter_key") @db.VarChar(64)
+  helpful     Boolean
+  lookingFor  String?  @map("looking_for") @db.VarChar(300)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  @@unique([articleSlug, voterKey])
+  @@map("help_article_feedback")
+}

@@ -1,3 +1,4 @@
+import Link from "next/link";
 // Loading, empty and error states (#79): the HTML each component renders, the pure helpers, and the CSS rules the
 // design depends on. Timing, announcements, retries and the offline banner going on and off are checked in the
 // browser: tests/e2e/dev-feedback.spec.ts.
@@ -219,7 +220,7 @@ describe("<ErrorState>", () => {
         title="Can’t load your jobs"
         message="Check your connection and try again."
         onRetry={() => {}}
-        secondaryAction={<a href="/help">Contact support</a>}
+        secondaryAction={<Link href="/help">Contact support</Link>}
       />,
     );
     expect(html).toMatch(/class="badge errorBadge"><span class="icon" aria-hidden="true"[^>]*>cloud_off/);
