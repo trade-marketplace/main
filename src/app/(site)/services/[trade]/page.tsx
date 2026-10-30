@@ -8,6 +8,8 @@ import { loadService } from "@/server/services";
 
 import { joinServiceWaitlist } from "./actions";
 
+// Coverage and real reviews are read on each request, including when a build has no database.
+export const dynamic = "force-dynamic";
 export const dynamicParams = false;
 export function generateStaticParams() { return CATEGORIES.map((trade) => ({ trade })); }
 
