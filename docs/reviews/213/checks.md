@@ -1,8 +1,8 @@
 # Verification status · #213
 
-Implementation is committed and based on main `3c7344f`. Final verification is pending shared test capacity; no PR, merge or manual deployment.
+Implementation started on main `3c7344f` and is now rebased onto latest main `faaf5d2` (#384). The new base includes the deterministic profile-timestamp fix for #346. Final verification is pending shared test capacity; no PR, merge or manual deployment.
 
-All checks preserve their assertions and timeouts. Heavy runs are stopped while #184 owns `/tmp/trade-marketplace-heavy-check.lock`. Orchestration files are outside the checkout in the task workspace's `verification/` directory. Final runs will be serial, with one unit-test worker and at most two browser workers.
+All checks preserve their assertions and timeouts. Heavy runs are stopped while another worker owns `/tmp/trade-marketplace-heavy-check.lock`. Orchestration files are outside the checkout in the task workspace's `verification/` directory. Final runs will be serial, with one unit-test worker and at most two browser workers.
 
 ## Completed evidence
 

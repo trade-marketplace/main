@@ -2,7 +2,7 @@
 
 The `/for-tradies` page uses the founder's exact hero, trade colours, existing buttons, job rows, price blocks, feedback, header and footer. Requirements come from `SIGNUP_TRADES`. Earnings examples come from current server settings through `ratesForTrade`, `priceWork` and `perHour`; only worker pay reaches the client. Missing or invalid settings never fall back to mockup amounts. The existing Open Graph and Twitter routes are unchanged. No testimonials or #280 onboarding rules are invented.
 
-**Verification pending:** the current capture set precedes the small visible-Invercargill copy adjustment. A final refresh also awaits the kit loading skeleton's deliberate 300 ms delay. The shared Mac heavy-check lock is owned by #184; no PR is open. Counts below describe these interim captures and will be regenerated after final verification.
+**Verification pending:** the current capture set precedes the small visible-Invercargill copy adjustment. A final refresh also awaits the kit loading skeleton's deliberate 300 ms delay. The shared Mac heavy-check lock is queued behind another worker; no PR is open. Counts below describe these interim captures and will be regenerated after final verification.
 
 ## References and visual review
 
