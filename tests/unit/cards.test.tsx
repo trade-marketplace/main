@@ -214,7 +214,7 @@ describe("the CSS", () => {
   });
 
   it("the sizes from FRONTEND_SPEC: category tile 159 × 162, row photo 64, the desktop board's 191 × 220", () => {
-    expect(css).toMatch(/\.cat \{[^}]*width: 159px;[^}]*height: 162px;/);
+    expect(css).toMatch(/\.cat \{[^}]*width: 159px;[^}]*min-height: 162px;/);
     expect(css).toMatch(/\.rowThumb \{[^}]*width: 64px;[^}]*height: 64px;/);
     expect(css).toContain("aspect-ratio: 191 / 220");
   });

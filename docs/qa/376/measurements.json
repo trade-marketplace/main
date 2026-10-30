@@ -1,0 +1,166 @@
+[
+  {
+    "pass": 1,
+    "width": 1440,
+    "font": "15px",
+    "tiles": [
+      {
+        "name": "Electrical",
+        "width": 159,
+        "height": 162
+      },
+      {
+        "name": "Plumbing",
+        "width": 159,
+        "height": 162
+      },
+      {
+        "name": "Construction",
+        "width": 159,
+        "height": 162
+      },
+      {
+        "name": "Gas fitting",
+        "width": 159,
+        "height": 162
+      },
+      {
+        "name": "Other",
+        "width": 159,
+        "height": 162
+      }
+    ]
+  },
+  {
+    "pass": 1,
+    "width": 390,
+    "font": "15px",
+    "tiles": [
+      {
+        "name": "Electrical",
+        "width": 159,
+        "height": 162
+      },
+      {
+        "name": "Plumbing",
+        "width": 159,
+        "height": 162
+      },
+      {
+        "name": "Construction",
+        "width": 159,
+        "height": 162
+      },
+      {
+        "name": "Gas fitting",
+        "width": 159,
+        "height": 162
+      },
+      {
+        "name": "Other",
+        "width": 159,
+        "height": 162
+      }
+    ]
+  },
+  {
+    "pass": 2,
+    "width": 1440,
+    "font": "15px",
+    "tiles": [
+      {
+        "name": "Electrical",
+        "width": 159,
+        "height": 162
+      },
+      {
+        "name": "Plumbing",
+        "width": 159,
+        "height": 162
+      },
+      {
+        "name": "Construction",
+        "width": 159,
+        "height": 162
+      },
+      {
+        "name": "Gas fitting",
+        "width": 159,
+        "height": 162
+      },
+      {
+        "name": "Other",
+        "width": 159,
+        "height": 162
+      }
+    ]
+  },
+  {
+    "pass": 2,
+    "width": 390,
+    "font": "15px",
+    "tiles": [
+      {
+        "name": "Electrical",
+        "width": 159,
+        "height": 162
+      },
+      {
+        "name": "Plumbing",
+        "width": 159,
+        "height": 162
+      },
+      {
+        "name": "Construction",
+        "width": 159,
+        "height": 162
+      },
+      {
+        "name": "Gas fitting",
+        "width": 159,
+        "height": 162
+      },
+      {
+        "name": "Other",
+        "width": 159,
+        "height": 162
+      }
+    ]
+  },
+  {
+    "width": 640,
+    "font": "200%",
+    "tiles": [
+      {
+        "name": "Electrical",
+        "height": 230.390625,
+        "bottomSpace": 8,
+        "subClipped": false
+      },
+      {
+        "name": "Plumbing",
+        "height": 230.390625,
+        "bottomSpace": 8,
+        "subClipped": false
+      },
+      {
+        "name": "Construction",
+        "height": 230.390625,
+        "bottomSpace": 8,
+        "subClipped": false
+      },
+      {
+        "name": "Gas fitting",
+        "height": 230.390625,
+        "bottomSpace": 8,
+        "subClipped": false
+      },
+      {
+        "name": "Other",
+        "height": 194.390625,
+        "bottomSpace": 8,
+        "subClipped": false
+      }
+    ]
+  }
+]
