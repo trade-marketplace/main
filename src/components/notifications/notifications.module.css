@@ -32,3 +32,29 @@
 .loadingRow { display: flex; align-items: center; gap: var(--trade-space-3); min-height: 72px; }
 .loadingRow > div { display: grid; gap: var(--trade-space-2); flex: 1; min-width: 0; }
 .rows .retry { justify-content: center; min-height: var(--trade-space-16); }
+
+/* E03: screens.html#sh-notifs list, E02 row tiles, existing app shell and data kit. */
+.page { min-height: 100%; background: var(--trade-surface); }
+.pageContent { max-width: var(--trade-read-max); margin-inline: auto; padding: var(--trade-space-4) var(--trade-inset-browse) var(--trade-space-8); }
+.pageHeading { display: flex; align-items: center; justify-content: space-between; gap: var(--trade-space-3); margin-bottom: var(--trade-space-3); }
+.pageTitle { margin: 0; font-family: var(--trade-font-heading); font-variation-settings: var(--trade-display-axes); font-size: var(--trade-fs-subheading); line-height: var(--trade-lh-subheading); font-weight: 900; }
+.pageHeading > button { flex: none; padding-inline: 0; }
+.day { margin-top: var(--trade-space-4); }
+.day:first-child { margin-top: 0; }
+.dayTitle { margin: 0 0 var(--trade-space-1); color: var(--trade-text-2); font-size: var(--trade-fs-caption); line-height: var(--trade-lh-caption); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+.pageRows { list-style: none; margin: 0; padding: 0; }
+.pageRows .pageRow { display: flex; width: 100%; min-height: var(--trade-header-h); padding: var(--trade-space-2) 0; border-radius: 0; border-bottom: 1px solid var(--trade-line); text-align: start; color: var(--trade-text); }
+.pageRow > span, .pageRow > span > span { width: 100%; }
+.pageRowContent { display: flex; align-items: center; gap: var(--trade-space-3); width: 100%; min-width: 0; }
+.pageRow .line { white-space: normal; overflow-wrap: anywhere; font-size: var(--trade-fs-small); }
+.pageRow time { font-weight: 400; }
+.pageRow .icon { background: var(--trade-tint); border-radius: var(--trade-radius-card); }
+.pageRows .unread { background: var(--trade-tint); }
+.pageRow .dot { margin: 0; }
+.pageRowContent > :last-child { flex: none; }
+.srOnly { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+@media (min-width: 1024px) {
+  .pageContent { padding-block: var(--trade-space-8); }
+  .pageTitle { font-size: var(--trade-fs-title); line-height: var(--trade-lh-title); }
+  .pageRows .pageRow { padding-inline: var(--trade-space-4); min-height: var(--trade-space-16); }
+}
