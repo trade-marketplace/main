@@ -1,0 +1,25 @@
+[WebServer] 
+[WebServer] > trade-marketplace@0.1.0 start
+[WebServer] > next start --port 3100
+[WebServer] 
+[WebServer] (node:90029) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] ▲ Next.js 16.4.3
+[WebServer] - Local:         http://localhost:3100
+[WebServer] - Network:       http://192.168.1.96:3100
+[WebServer] ✓ Ready in 368ms
+[WebServer] ✓ Running next.config.ts took 123ms
+[WebServer] Database: off. The app runs without it for now.
+[WebServer] To connect, copy .env.example to .env.local and fill in DATABASE_URL and DIRECT_URL from Supabase.
+Error: Unexpected module status 3.
+This is caused by either a bug in Node.js or incorrect usage of Node.js internals.
+Please open an issue with this stack trace at https://github.com/nodejs/node/issues
+
+    at Object.<anonymous> (/Users/matthewlarsen/Documents/Codex/2026-10-30/task-12/repo/node_modules/@supabase/auth-js/src/lib/webauthn.errors.ts:4:1)
+    at Object.<anonymous> (/Users/matthewlarsen/Documents/Codex/2026-10-30/task-12/repo/node_modules/@supabase/auth-js/src/lib/webauthn.ts:29:1)
+    at Object.<anonymous> (/Users/matthewlarsen/Documents/Codex/2026-10-30/task-12/repo/node_modules/@supabase/auth-js/src/GoTrueClient.ts:180:1)
+    at Object.<anonymous> (/Users/matthewlarsen/Documents/Codex/2026-10-30/task-12/repo/node_modules/@supabase/auth-js/src/index.ts:2:1)
+    at Object.<anonymous> (/Users/matthewlarsen/Documents/Codex/2026-10-30/task-12/repo/node_modules/@supabase/supabase-js/dist/index.cjs:6:25)
+    at Object.<anonymous> (/Users/matthewlarsen/Documents/Codex/2026-10-30/task-12/repo/node_modules/@supabase/ssr/src/createBrowserClient.ts:1:1)
+    at Object.<anonymous> (/Users/matthewlarsen/Documents/Codex/2026-10-30/task-12/repo/node_modules/@supabase/ssr/src/index.ts:7:1)
+
