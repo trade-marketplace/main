@@ -3,7 +3,7 @@
 Isolated checkout: `/Users/matthewlarsen/Documents/Codex/2026-10-30/task-2/waitlist`.
 Branch: `feat/184-area-waitlist`. Current base: `faaf5d2587ae5dcb19492da628814e3848f29c57`.
 
-Post-rebase verification is queued behind the shared heavy-check lock. The existing logs and first three visual passes below were captured on the earlier `3c7344f8dc5e6cce7ed2779af0599191a9302f3d` base. They are historical evidence, not a claim that the new upstream recovery/auth changes have already been reverified. The final verification report will identify its actual base and source commit.
+Post-rebase verification passed on source commit `f0eebfce0ee7aa08c9ad04b5b2414fc4f520a452`, based on `faaf5d2587ae5dcb19492da628814e3848f29c57`. This final evidence commit changes documentation/logs only. The three personally inspected visual passes were captured on the earlier `3c7344f8dc5e6cce7ed2779af0599191a9302f3d` base; the waitlist UI code is unchanged by the rebase. All state, responsive, keyboard and axe checks were rerun successfully on the final source.
 
 ## References captured before implementation
 
@@ -52,6 +52,8 @@ GitHub rejected reading the issue's project item because the CLI token lacks `re
 
 ## Verification and optional catalog findings
 
-All 103 unit files passed: 2,151 tests, zero skipped, using the UTC native test database. After the final CSS-only adjustment, the focused token/icon/public-action/waitlist unit checks also passed: 20 tests, zero skipped. Final lint, typecheck and production build passed. Standard production e2e: 188 passed, 422 existing conditional skips, zero failures. Waitlist e2e with the guarded fixture explicitly enabled: 17 passed, zero skipped. Final production checks and every waitlist fixture case are recorded in `verification.json` and the `*-verified.log` files. The standard production e2e configuration intentionally skips development-fixture cases; the separate waitlist run enables its guarded preview, so required waitlist coverage is not skipped.
+All 106 unit files passed: 2,204 tests, zero skipped, with one worker and the UTC native test database. Lint, typecheck and production build passed. Standard production e2e: 196 passed, 433 conditional skips (425 pre-existing cases plus eight waitlist fixture cases), zero failures. The separate guarded waitlist run passed all 17 tests, zero skipped, explicitly exercising all eight fixture cases. Exact outcomes/base/source are in `verification.json` and `*-verified.log`.
+
+The first post-rebase unit run had 2,199 passes and one stale Vitest preview-inventory cache failure after main added the recovery page. Clearing only this checkout’s `node_modules/.vitest-cache`, as the test documents, restored all 2,204 tests without source/assertion changes. The initial failure remains in `post-rebase-cache-failure.log`. Heavy checks ran serially, units with one worker and e2e with two; the owned lock and native test database were released/stopped immediately afterward.
 
 An extra expanded component-catalog run enabled development fixtures globally. It exposed unrelated existing failures: cards redirect expectation ([#361](https://github.com/trade-marketplace/main/issues/361)); two feedback selectors ([#393](https://github.com/trade-marketplace/main/issues/393)); trade-menu contrast during the overlay check ([#394](https://github.com/trade-marketplace/main/issues/394)). No affected component, assertion, skip condition or auth rule was changed. That extra run was stopped with 279 passed, 4 failed, 2 interrupted, 20 skipped and 305 not run; it is not represented as green. Its log, contexts, screenshots and traces remain in `optional-catalog.log` and `optional-failures/`.
