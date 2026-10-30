@@ -29,6 +29,19 @@ model WaitlistEntry {
   @@map("waitlist_entries")
 }
 
+// A04: interest in one trade, independent of the area waitlist. Server-only; no public read policy.
+model ServiceWaitlistEntry {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email     String   @db.VarChar(254)
+  suburb    String   @db.VarChar(80)
+  suburbKey String   @map("suburb_key") @db.VarChar(160)
+  trade     Trade
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([email, suburbKey, trade])
+  @@map("service_waitlist_entries")
+}
+
 // ---------------------------------------------------------------- Schema 1 (#86): people
 
 enum Role {
