@@ -23,6 +23,9 @@ type InboxState = { inbox: InboxSnapshot | null; phase: "idle" | "loading" | "re
 type InboxContextValue = InboxState & { count: number; now: number; refresh: () => Promise<void>; read: (id: string | null) => Promise<boolean> };
 const InboxContext = createContext<InboxContextValue | null>(null);
 
+/** The full page refreshes the shared bell after a confirmed read. */
+export function useNotificationInboxRefresh() { return useContext(InboxContext)?.refresh; }
+
 type ProviderProps = {
   children: ReactNode; count: number; source?: InboxSource; preview?: boolean; initialInbox?: InboxSnapshot; initialError?: boolean; initialSaving?: boolean; now?: number;
 };

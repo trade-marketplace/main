@@ -2,6 +2,7 @@ import "server-only";
 
 import type { Prisma } from "@/generated/prisma/client";
 import type { InboxItem, InboxSnapshot } from "@/lib/notifications";
+import { NOTIFICATIONS_PAGE_SIZE, notificationsQuery, type NotificationsPage } from "@/lib/notifications";
 
 export type InboxDb = Pick<Prisma.TransactionClient, "notification">;
 const SELECT = { id: true, type: true, payload: true, createdAt: true, readAt: true } as const;
@@ -67,7 +68,23 @@ export async function loadInbox(db: InboxDb, userId: string): Promise<InboxSnaps
 
 /** Ownership is part of the write predicate; an unknown/foreign id is indistinguishable from an already-read id. */
 export async function readInbox(db: InboxDb, userId: string, id: string | null, now = new Date()): Promise<InboxSnapshot> {
+  await markInboxRead(db, userId, id, now);
+  return loadInbox(db, userId);
+}
+
+export async function markInboxRead(db: InboxDb, userId: string, id: string | null, now = new Date()): Promise<void> {
   if (id !== null && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) throw new Error("Invalid notification id");
   await db.notification.updateMany({ where: { userId, readAt: null, ...(id === null ? { createdAt: { lte: now } } : { id }) }, data: { readAt: now } });
-  return loadInbox(db, userId);
+}
+
+/** Full owned inbox; the bell deliberately keeps its separate eight-row limit. */
+export async function loadNotificationsPage(db: InboxDb, userId: string, input: unknown): Promise<NotificationsPage> {
+  const query = notificationsQuery(input);
+  const where = { userId, ...(query.filter === "unread" ? { readAt: null } : {}) };
+  const [total, unread] = await Promise.all([
+    db.notification.count({ where }), db.notification.count({ where: { userId, readAt: null } }),
+  ]);
+  const page = Math.min(query.page, Math.max(1, Math.ceil(total / NOTIFICATIONS_PAGE_SIZE)));
+  const rows = await db.notification.findMany({ where, orderBy: [{ createdAt: "desc" }, { id: "desc" }], skip: (page - 1) * NOTIFICATIONS_PAGE_SIZE, take: NOTIFICATIONS_PAGE_SIZE, select: SELECT });
+  return { items: rows.map(inboxItem), unread, total, page };
 }
