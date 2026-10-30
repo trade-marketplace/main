@@ -18,3 +18,15 @@ Default cards remain 159 × 162 with 15px category names. Artwork, fonts, colour
 The focused browser tests cover default and 200% text at 320, 390, 640, 768, 1024 and 1440, containment of names and sublabels, unchanged default dimensions, horizontal rail access, no page overflow, category-scoped axe, keyboard focus and the job-start/login return journey. The guarded local kit also covers disabled reasons and long unbroken sublabels in customer, trade and office modes.
 
 No new loading/error state is introduced: this is the existing static category card's sizing fix. Database-backed checks require the separate disposable test database; no live connection is used.
+
+## Final validation
+
+- Lint and typecheck: passed.
+- Unit suite: 1,939 passed, 252 skipped; 96 files passed and 8 database-dependent files skipped.
+- Production build: passed.
+- Full production Chromium suite: 194 passed, 426 opt-in checks skipped (620 discovered), two workers, unique port 3377.
+- Focused local category suite: 8 passed, including guarded disabled/long-sublabel fixtures.
+- Full e2e used Node 22.23.4, within the supported Node 22 range. The host's older Node 22.17 failed in dependency test discovery before tests could run.
+- The text-size test waits for font/layout selection after changing the root font. An initial immediate assertion observed transient 320px overflow; the settled baseline and fixed styles both measured zero. No unrelated homepage change or rule suppression was made.
+
+The 426 production skips are the suite's guarded development fixtures and opt-in isolated authentication/database checks. The category kit fixture relevant to this fix was tested separately above. No live Supabase or database was contacted. Heavy checks used the owned shared atomic lock, released on exit.
