@@ -1,0 +1,44 @@
+{
+  "source": "c32209974050b63609df6cf56b6925ded128aef0",
+  "base": "faaf5d2587ae5dcb19492da628814e3848f29c57",
+  "lint": "passed",
+  "typecheck": "passed",
+  "unit": {
+    "passed": 2191,
+    "files": 104,
+    "skipped": 0,
+    "failed": 0
+  },
+  "build": "passed (inside npm run e2e)",
+  "e2e": {
+    "passed": 187,
+    "skipped": 432,
+    "failed": 0,
+    "workers": 2
+  },
+  "newFocusedBrowser": {
+    "passed": 7,
+    "skipped": 0,
+    "failed": 0
+  },
+  "existingMenuBrowser": {
+    "passed": 6,
+    "skipped": 0,
+    "failed": 0
+  },
+  "widths": [
+    320,
+    390,
+    768,
+    1024,
+    1440
+  ],
+  "axeViolations": 0,
+  "horizontalOverflow": 0,
+  "visualPasses": 2,
+  "menuWordsBefore": 10,
+  "menuWordsAfter": 10,
+  "projectBoard": "GitHub denied projectItems read: token lacks read:project; board move unavailable",
+  "deployment": "none",
+  "merge": "none"
+}

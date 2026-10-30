@@ -1,0 +1,13 @@
+
+Running 6 tests using 1 worker
+
+(node:48589) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 [chromium] › tests/e2e/dev-app-shell.spec.ts:141:3 › /dev/components/app-shell › the avatar menu works by keyboard and logs out with a form (591ms)
+  ✓  2 [chromium] › tests/e2e/dev-overlays.spec.ts:115:5 › /dev/components/overlays on the dev server › a dialog, a menu and a toast have no accessibility violations in trade mode (2.5s)
+  ✓  3 [chromium] › tests/e2e/dev-overlays.spec.ts:115:5 › /dev/components/overlays on the dev server › a dialog, a menu and a toast have no accessibility violations in office mode (2.0s)
+  ✓  4 [chromium] › tests/e2e/dev-overlays.spec.ts:291:3 › /dev/components/overlays on the dev server › a menu works by keyboard: arrows, Home/End, first letter, Esc back to the button (575ms)
+  ✓  5 [chromium] › tests/e2e/dev-overlays.spec.ts:325:3 › /dev/components/overlays on the dev server › a menu item can open a confirm; closing it puts focus back on the menu button (735ms)
+  ✓  6 [chromium] › tests/e2e/dev-overlays.spec.ts:337:3 › /dev/components/overlays on the dev server › a menu skips disabled items and closes on a click outside (539ms)
+
+  6 passed (8.3s)
