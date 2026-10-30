@@ -116,3 +116,7 @@
   .filters button[aria-pressed="true"] > span[data-plain] { font-weight: 700; }
   .articleList { margin-top: 0; }
 }
+@media (min-width: 1024px) {
+  .supportCard p { margin-bottom: var(--trade-fs-small); }
+  .related { gap: 0; }
+}
