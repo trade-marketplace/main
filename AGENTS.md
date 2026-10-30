@@ -66,11 +66,7 @@ that claims to be done is worse than none.
 | The full visual guides (PDF) | The `design-pdfs` branch (kept off `main` so clones stay small) |
 
 - Build **what** the spec describes; choose **how** to build it yourself.
-- **Keep useful copy.** Preserve approved explanations, field hints, captions and supporting text that help people
-  understand or decide. Remove extra section taglines/eyebrows that repeat the heading, invented marketing lines
-  and generic AI filler. Follow the mockup and the founder's wording; do not retroactively rewrite approved screens.
-  Word counts are QA measurements, never targets for cutting. Use accessible names for icon-only controls without
-  adding visible text that merely repeats an obvious control.
+- **Copy:** use the wording in the mockup and the spec. Don't add or remove text on your own; ask Matt if unsure.
 - **No focus boxes after clicks or taps.** Reuse the shared `FocusVisibility` behaviour and `--trade-focus-ring`.
   Keep M05 focus visible for keyboard navigation, including Tab, arrows and focus moved by keyboard interactions.
   Never blur controls to hide a ring or disable keyboard focus globally.
