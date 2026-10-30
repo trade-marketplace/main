@@ -2,7 +2,7 @@
 
 The `/for-tradies` page uses the founder's exact hero, trade colours, existing buttons, job rows, price blocks, feedback, header and footer. Requirements come from `SIGNUP_TRADES`. Earnings examples come from current server settings through `ratesForTrade`, `priceWork` and `perHour`; only worker pay reaches the client. Missing or invalid settings never fall back to mockup amounts. The existing Open Graph and Twitter routes are unchanged. No testimonials or #280 onboarding rules are invented.
 
-**Verification pending:** the current capture set precedes the small visible-Invercargill copy adjustment. A final refresh also awaits the kit loading skeleton's deliberate 300 ms delay. The shared Mac heavy-check lock is queued behind another worker; no PR is open. Counts below describe these interim captures and will be regenerated after final verification.
+All required gates pass on application/test source commit `49934c3`, rebased onto main `faaf5d2`. This review records the final production-build captures; subsequent changes only update screenshots, counts and this check report. See [exact results](checks.md).
 
 ## References and visual review
 
@@ -18,7 +18,21 @@ Two visual correction passes are preserved in the local task workspace’s `veri
 |---|---|
 | ![Closest phone reference](closest-mockup-390.png) | ![Built phone comparison](comparison-390.png) |
 
-The reference has no designed empty/loading/error/FAQ states or full page below the requirements card. Those use the existing kit and the closest public-page layout. Full captures:
+The reference has no designed empty/loading/error/FAQ states or full page below the requirements card. Those use the existing kit and the closest public-page layout. The same-size comparison crops below cover every state; full captures afterward show each distinct earnings/FAQ state below the reference area.
+
+| State / size | Reference | Built comparison |
+|---|---|---|
+| empty / 1440 | ![Reference](mockup-1440.png) | ![Built empty](comparison-empty-1440.png) |
+| empty / 390 | ![Reference](closest-mockup-390.png) | ![Built empty](comparison-empty-390.png) |
+| loading / 1440 | ![Reference](mockup-1440.png) | ![Built loading](comparison-loading-1440.png) |
+| loading / 390 | ![Reference](closest-mockup-390.png) | ![Built loading](comparison-loading-390.png) |
+| error / 1440 | ![Reference](mockup-1440.png) | ![Built error](comparison-error-1440.png) |
+| error / 390 | ![Reference](closest-mockup-390.png) | ![Built error](comparison-error-390.png) |
+| faq-open / 1440 | ![Reference](mockup-1440.png) | ![Built faq-open](comparison-faq-open-1440.png) |
+| faq-open / 390 | ![Reference](closest-mockup-390.png) | ![Built faq-open](comparison-faq-open-390.png) |
+| Menu / 390 | ![Closest phone reference](closest-mockup-390.png) | ![Built menu](comparison-menu-390.png) |
+
+Full captures:
 
 | State | Desktop 1440 | Phone 390 |
 |---|---|---|
@@ -50,16 +64,16 @@ There are no `.agents` skills or nested `AGENTS.md` files in this checkout. Read
 
 ## Words
 
-Counts are browser-visible words in the complete page, excluding decorative Material Symbol ligatures, invisible accessibility text, closed FAQ answers and hidden responsive content. `main` excludes header/footer; `screen` includes them. Open FAQ answers are counted in their own state. See [the machine-readable counts](word-counts.json).
+Counts are browser-visible text tokens in the complete page, including visible amounts and excluding decorative Material Symbol ligatures, invisible accessibility text, closed FAQ answers, hidden responsive content and graphical wordmark paths. Covered text behind the open mobile menu is excluded. `main` excludes header/footer; `screen` includes them. Open FAQ answers are counted in their own state. See [the machine-readable counts](word-counts.json).
 
 | State | Main 1440 | Main 390 | Screen 1440 | Screen 390 |
 |---|---:|---:|---:|---:|
-| Ready | 144 | 130 | 193 | 169 |
-| Empty | 107 | 107 | 156 | 146 |
-| Loading | 105 | 105 | 154 | 144 |
-| Error | 109 | 109 | 158 | 148 |
-| FAQ expanded | 158 | 144 | 207 | 183 |
-| Menu | — | 107 | — | 161 |
+| Ready | 147 | 133 | 196 | 172 |
+| Empty | 108 | 108 | 157 | 147 |
+| Loading | 106 | 106 | 155 | 145 |
+| Error | 110 | 110 | 159 | 149 |
+| FAQ expanded | 160 | 146 | 209 | 185 |
+| Menu | — | 96 | — | 147 |
 
 ## Verification boundary
 
@@ -67,6 +81,6 @@ Local app ports 3213 and 4213; disposable Postgres container `trade-213-tests` o
 
 The original Node 22.17 runtime hit `Unexpected module status 3` while collecting an unchanged Supabase import in the full e2e suite. An official, checksum-verified Node 22.22 runtime in `/tmp/trade-213-node` was used for the rerun; both satisfy the declared Node 22 engine range. No repository dependency or engine requirement was changed.
 
-Final check results and any blockers are recorded in the issue update and `checks.md` beside this file.
+Final results are recorded in [checks.md](checks.md). No required local gate remains blocked.
 
 Made by: Codex (GPT-6.1).

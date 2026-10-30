@@ -1,36 +1,27 @@
-# Verification status · #213
+# Verification · #213
 
-Implementation started on main `3c7344f` and is now rebased onto latest main `faaf5d2` (#384). The new base includes the deterministic profile-timestamp fix for #346. Final verification is pending shared test capacity; no PR, merge or manual deployment.
+Application and test source: `49934c34aafc6244a6dae40081f6a6566b9a1f27`, rebased onto latest main `faaf5d2587ae5dcb19492da628814e3848f29c57`. Final evidence commit changes only review screenshots, word counts and documentation. All required gates pass; no merge or manual deployment.
 
-All checks preserve their assertions and timeouts. Heavy runs are stopped while another worker owns `/tmp/trade-marketplace-heavy-check.lock`. Orchestration files are outside the checkout in the task workspace's `verification/` directory. Final runs will be serial, with one unit-test worker and at most two browser workers.
+| Required gate | Final result |
+|---|---|
+| `npm run lint` | Passed, exit 0 |
+| `npm run typecheck` | Passed, exit 0 |
+| `npm test -- --maxWorkers=1` | 105 files, 2,202 passed, 0 failed, 0 skipped; 52.82 s |
+| `npm run build` | Passed, invoked once by `npm run e2e` |
+| `npm run e2e` with task-specific Playwright config | 199 passed, 445 conditional skips, 0 failed |
+| Explicit For tradies browser run with guarded previews enabled | 32 passed, 0 failed, 0 skipped |
+| Production-build capture run | All states captured at 1440/390; Open Graph and Twitter routes both 200 |
 
-## Completed evidence
+The default production e2e configuration intentionally skips guarded development and signed-in fixture tests without their existing environment flags. Its 445 skips include the 20 new preview-state cases; all 20 execute in the separate 32-test For tradies run. No required For tradies coverage is skipped. Existing assertions, timeouts, skip conditions and dependencies were preserved.
 
-- Issue was open/unclaimed, with no covering open PR. Claimed with exactly `Taking this — Codex`.
-- Existing prerequisite #83 is closed. No project board item exists for #213.
-- Real Chromium mockup captures at 1440 and 390 preceded code. No specific phone For tradies frame exists; closest public landing frame used.
-- Two visual correction passes, followed by the header geometry correction, are preserved locally. Every current desktop/phone state pair was personally inspected.
-- Public URL HEAD checks: homepage 200; `/for-tradies` 404 until merge/deployment.
-- Existing local Open Graph and Twitter routes both return 200 and their source files are untouched.
-- Lint and typecheck passed earlier; production builds pass, including the final force-dynamic server route. Final source checks will be rerun after the last copy/test adjustment.
-- Initial focused unit checks: 33 passed across For tradies and existing site-shell tests.
+The explicit browser run covers ready, empty, loading and error at 320/390/768/1024/1440; no horizontal overflow; axe; keyboard FAQ and visible focus; CTA navigation through real signup account Next/Back; mobile menu dismissal; M06/M07 and reduced motion. Two visual correction passes were preserved locally before final captures, then the header geometry was corrected. Every final desktop/phone state capture was personally inspected. Reference limitations and all images are in [README.md](README.md).
 
-## Previous complete runs under shared load
+The first post-rebase unit run passed 2,197 tests and failed only the automatically discovered dev-page inventory because its cached import list omitted the new upstream Recovery page. Following that test's documented instruction, clearing only this checkout's generated `node_modules/.vitest-cache` restored all 2,202 tests without source/assertion changes. Earlier resource-contention and trace-cleanup attempts were superseded by these serial final runs; runner output directories are isolated.
 
-| Run | Exact result | Remaining problem |
-|---|---|---|
-| Unit/database, initial | 2,146 passed; 3 failed; 0 skipped | Profile timestamp (#346), same-millisecond estimate timestamp, screenshot race timeout (#380). These files are unchanged from main. |
-| Retry of those three files | 115 passed; 1 failed; 0 skipped | Profile timestamp equality (#346); estimate and screenshot checks passed. |
-| Unit/database under Node 22.22 and heavy shared load | 2,147 passed; 2 failed; 0 skipped | Unchanged seed-file scan (5s) and ESLint-ignore probe (30s) exceeded their timeouts. Timestamp and race checks passed. |
-| Full e2e under Node 22.22 | 188 passed; 3 failed; 434 conditional skips | Two trace cleanup collisions between my local runner configs, plus one context-teardown timeout. Page assertions passed. Separate output directories now prevent the collision. |
-| Focused For tradies browser run after header correction | 31 passed; 1 failed; 0 skipped | Same trace cleanup collision at 1440; page/axe assertions passed. M06/M07 passes. |
+Checks used checksum-verified supported Node 22.22 and real Playwright Chromium. Heavy checks ran serially under `/tmp/trade-marketplace-heavy-check.lock`, with one unit worker and at most two build/browser workers; the task released its lock. Full runner logs and both earlier visual passes remain in the local task workspace's `verification/` directory.
 
-The full production-mode e2e run includes guarded development and signed-in fixture tests that intentionally skip without their existing environment flags. The 20 new preview-state cases are separately exercised with guarded local previews enabled. No required For tradies state is intended to be skipped in the final focused run.
+Database tests used only disposable local Postgres `trade-213-tests` on 127.0.0.1:55413. App/build/browser checks set database and Supabase variables empty. Preview earnings use fixed isolated settings; production reads server settings per request and never substitutes preview amounts. No live database, secrets, security configuration, financial actions, merge or manual deployment.
 
-The initial Node 22.17 full e2e collection hit `Unexpected module status 3` in an unchanged Supabase import. The official checksum-verified Node 22.22 runtime resolves that collection error; no dependency/engine requirement was changed.
+Public URL HEAD checks: homepage 200; `/for-tradies` 404 until merge/deployment. Existing Open Graph and Twitter source is untouched and both local routes return 200. Issue was open/unclaimed without a covering PR when claimed with exactly `Taking this — Codex`; prerequisite #83 is closed.
 
-## Still required
-
-Fresh lint, typecheck, the entire unit/database suite, production build/full e2e, all focused preview checks, refreshed 1440/390 screenshots and word counts, and final inspection. The final PR will only be opened as a draft if every gate passes. Otherwise the exact blocker will be recorded on #213 without a PR.
-
-Database tests use only disposable local Postgres `trade-213-tests` on 127.0.0.1:55413. App/browser checks set database and Supabase variables empty. No live database, secrets, auth/security configuration, financial actions, merge or manual deployment.
+Made by: Codex (GPT-6.1).
