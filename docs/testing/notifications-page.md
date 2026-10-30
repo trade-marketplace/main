@@ -24,7 +24,7 @@ Existing kit reviewed:
 | Shells | AppShell/AppShellView, AppNav, SiteShell, OfficeShell |
 | Tokens | docs/design/tokens.css and src/styles/tokens.css; existing notification row styles |
 
-The page composes Button, Icon, Tabs, Pagination and feedback components, extends the existing notification module with reusable page/list classes, and uses mode tokens only. Customer Leaf/Lime; tradie Hi-Vis/Amber; coloured-button labels Forest. Named kit motion is reused: M15 skeleton delay and M16 tabs; no custom animation was introduced.
+The page composes Button, Icon, Tabs, Pagination and feedback components, extends the existing notification module with reusable page/list classes, and uses mode tokens only. Customer Leaf/Lime; tradie Hi-Vis/Amber; coloured-button labels Forest. Named kit motion is reused: M01 page entry, M15 skeleton/content swap and M16 tabs; no custom animation was introduced.
 
 ## Review routes and behavior
 
@@ -83,7 +83,7 @@ Counts include scrollable content, visible navigation/logo words, badges and mod
 - `npm run lint`: passed, no warnings in the final run.
 - `npm run typecheck`: passed.
 - `npm test -- --maxWorkers=1`: 2,204 passed across 105 files, zero skipped. Node 22 and PostgreSQL 17 ran in the same disposable VM, with original test deadlines and every assertion intact.
-- Affected Playwright: 29 passed, two production-only checks deferred to the standard production run. Includes every existing bell test and all new list/signed-in tests.
+- Affected Playwright: 29 passed, two production-only checks covered by the standard production run. Includes every existing bell test and all new list/signed-in tests. The final M01/M15-only correction was followed by clean lint/typecheck/full-unit/build/standard e2e and an additional final-production list run: **11 passed, one production guard already covered**. Unchanged bell/server/signed-in evidence was reused; all 48 second-pass captures were refreshed from the final build and personally inspected again.
 - Five widths (320/390/768/1024/1440), both modes and eight review states each: 80 page/axe combinations; no sideways scroll or axe violations. Existing bell coverage adds 40 state/width axe combinations. All/Unread arrows, visible keyboard focus, Next/Previous, retry, protected destination/Back, read-all persistence, offline and session loss also executed.
 - Production build: passed. Standard production e2e: **188 passed, 439 opt-in skips**. Required notification opt-in coverage ran separately; the two production fixture guards passed here. [Sanitized check record](../../output/playwright/issue-180/checks.json).
 
