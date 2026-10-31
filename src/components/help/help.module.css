@@ -121,4 +121,4 @@
   .related { gap: 0; }
 }
 /* Keep kit loading/error content at its natural height inside the page grid. */
-.homeLayout, .articleLayout { align-items: start; }
+@media (min-width: 1024px) { .homeLayout, .articleLayout { align-items: start; } }
