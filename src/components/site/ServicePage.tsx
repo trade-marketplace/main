@@ -31,7 +31,7 @@ import styles from "./service.module.css";
 
 const STEPS = [
   { title: "Post it", text: "Tell us what needs doing and snap a photo or two. Free, no sign-up to start.", icon: "edit_note" },
-  { title: "Accept the price", text: "One fair, fixed price. Happy? Accept and pay. Not? Say no. It costs nothing.", icon: "sell" },
+  { title: "Accept the price", short: "Accept", text: "One fair, fixed price. Happy? Accept and pay. Not? Say no. It costs nothing.", icon: "sell" },
   { title: "Sorted", text: "Someone local turns up and gets it done. You check it, rate it, done.", icon: "bolt" },
 ];
 const WAITLIST_STATES: Partial<Record<ServicePreviewState, WaitlistState>> = { sending: "loading", joined: "joined", "already-on-list": "already-on-list", "waitlist-error": "error", offline: "offline" };
@@ -95,9 +95,9 @@ export function ServicePage({ data, submit, preview }: Props) {
       <section className={`${landing.wrap} ${styles.popular}`} aria-labelledby="popular-heading"><h2 id="popular-heading" className={styles.sectionTitle}>{data.popularHeading}</h2>
         {data.jobs.length ? <div className={styles.jobs}>{data.jobs.map((job) => <ServiceJobCard key={job.name} job={job} category={data.category} href={jobStartPath(draft(serviceDescription(job, description)), data.coverage)} onClick={(event) => {
           if (!event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey && event.button === 0) { event.preventDefault(); start(serviceDescription(job, description)); }
-        }} />)}</div> : <EmptyCard icon="edit_note" title="What needs doing?" message="Tell us about your job and we’ll get you a price." action={<Button onClick={() => input.current?.focus()}>Describe your job</Button>} />}
+        }} />)}</div> : <EmptyCard className={styles.emptyJobs} icon="edit_note" title="What needs doing?" message="Tell us about your job and we’ll get you a price." action={<Button onClick={() => input.current?.focus()}>Describe your job</Button>} />}
       </section>
-      <section className={`${landing.wrap} ${styles.how}`} aria-labelledby="service-how-heading"><h2 id="service-how-heading" className={styles.sectionTitle}>Three taps. Job sorted.</h2><div className={landing.steps}>{STEPS.map((step, i) => <article key={step.title} className={`${landing.step} tm-lift`}><span className={landing.stepIcon}><Icon name={step.icon} fill decorative /><span>{i + 1}</span></span><h3>{i + 1}. {step.title}</h3><p>{step.text}</p></article>)}</div></section>
+      <section className={`${landing.wrap} ${styles.how}`} aria-labelledby="service-how-heading"><h2 id="service-how-heading" className={styles.sectionTitle}>Three taps. Job sorted.</h2><div className={landing.steps}>{STEPS.map((step, i) => <article key={step.title} className={`${landing.step} tm-lift`}><span className={landing.stepIcon}><Icon name={step.icon} fill decorative /><span>{i + 1}</span></span><h3><span className={landing.desktopStep}>{i + 1}. {step.title}</span><span className={landing.phoneStep}>{step.short ?? step.title}</span></h3><p>{step.text}</p></article>)}</div></section>
       {data.reviewsUnavailable ? <section className={landing.wrap} aria-label="Reviews"><ErrorState title="Couldn’t load reviews." onRetry={() => router.refresh()} /></section> : data.reviews.length > 0 && <section className={landing.reviews} aria-labelledby="service-reviews-heading"><div className={landing.wrap}><h2 id="service-reviews-heading">Getting it sorted</h2><div className={landing.reviewGrid}>{data.reviews.map((review) => <article className={landing.review} key={review.id}><StarRating value={review.rating} showValue={false} /><blockquote>“{review.comment}”</blockquote><div><Avatar name={review.name} size="sm" decorative /><b>{review.name}</b></div></article>)}</div></div></section>}
       <section className={landing.final} aria-labelledby="service-cta-heading"><div className={`${landing.wrap} ${styles.cta}`}><h2 id="service-cta-heading">What needs doing?</h2><Button variant="hero" onClick={() => start()}>Post a job</Button></div></section>
     </>}

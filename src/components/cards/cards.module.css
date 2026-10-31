@@ -11,8 +11,8 @@
 
 /* Service job variant (A04 / w-service), shared with any future trade × city page. */
 .serviceJob { position: relative; min-width: 0; padding: calc(var(--trade-space-4) + var(--trade-space-1) / 2); border-radius: var(--trade-radius-card); background: var(--trade-surface); box-shadow: var(--trade-shadow-category); }
-.serviceIcon { display: grid; place-items: center; width: var(--trade-tap); height: var(--trade-tap); border-radius: var(--trade-radius-card); background: var(--service-tint); color: var(--trade-text); }
-.serviceJob h3 { margin: var(--trade-space-3) 0 0; font: inherit; font-weight: 700; overflow-wrap: anywhere; }
+.serviceIcon { display: grid; place-items: center; width: var(--trade-tap); height: var(--trade-tap); border-radius: var(--trade-radius-card); background: color-mix(in srgb, var(--service-tint) 66.6667%, transparent); color: var(--trade-text); }
+.serviceJob h3 { margin: var(--trade-space-3) 0 0; font: inherit; font-weight: 700; line-height: var(--trade-lh-label); overflow-wrap: anywhere; }
 .serviceJob a { color: inherit; text-decoration: none; }
 .serviceJob p { margin: 0; color: var(--trade-text-2); font-size: var(--trade-fs-caption); line-height: var(--trade-lh-caption); }
 

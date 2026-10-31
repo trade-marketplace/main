@@ -9,10 +9,10 @@
 .crumbs a:hover { text-decoration: underline; }
 .crumbs > span { font-size: var(--trade-fs-body); }
 .hero h1 { margin: 0 0 var(--trade-space-3); font-family: var(--trade-font-heading); font-variation-settings: var(--trade-display-axes); font-weight: 900; font-size: var(--trade-fs-display); line-height: var(--trade-lh-display); overflow-wrap: anywhere; }
-.intro { margin: var(--trade-space-3) 0 0; font-size: var(--trade-fs-section); line-height: var(--trade-lh-body); color: color-mix(in srgb, var(--trade-text-on-dark) 85%, transparent); }
+.intro { margin: calc(var(--trade-space-3) + var(--trade-space-1) / 2) 0 0; font-size: var(--trade-fs-lead); line-height: var(--trade-lh-lead); color: color-mix(in srgb, var(--trade-text-on-dark) 85%, transparent); }
 .heroText .search { position: relative; z-index: 2; width: 640px; margin-top: calc(var(--trade-space-6) + var(--trade-space-1) / 2); }
 .art { position: relative; min-height: 0; }
-.art > span:first-child { position: absolute; width: 300px; height: 300px; border-radius: var(--trade-radius-sheet); background: var(--service-tint); right: var(--trade-space-10); top: var(--trade-space-5); }
+.art > span:first-child { position: absolute; width: 300px; height: 300px; border-radius: var(--trade-radius-art); background: color-mix(in srgb, var(--service-tint) 83.3333%, transparent); right: var(--trade-space-10); top: var(--trade-space-5); }
 .art img { position: absolute; width: 340px; height: 340px; object-fit: contain; right: var(--trade-space-5); top: 0; }
 .art > span:last-child:not(:first-child) { display: grid; place-items: center; position: relative; width: 340px; height: 340px; margin-left: auto; font-size: 160px; color: var(--trade-text-on-dark); }
 .popular { padding-block: 56px; }
@@ -46,7 +46,7 @@
   .heroGrid { display: flex; flex-direction: column; gap: var(--trade-space-4); padding-inline: var(--trade-space-5); padding-bottom: var(--trade-space-8); }
   .hero h1 { font-size: var(--trade-fs-title); }
   .heroBolt { width: 600px; left: 20%; top: -100px; }
-  .intro { font-size: var(--trade-fs-body); }
+  .intro { font-size: var(--trade-fs-body); line-height: var(--trade-lh-body); }
   .art { min-height: 180px; order: -1; display: none; }
   .search { margin-top: var(--trade-space-6); }
   .search > button:last-child { width: 100%; flex-basis: 100%; }
@@ -70,3 +70,6 @@
 }
 
 .visuallyHidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+.emptyJobs { margin-top: var(--trade-space-5); }
+.heroText .search .location { font-size: var(--trade-fs-body); }
