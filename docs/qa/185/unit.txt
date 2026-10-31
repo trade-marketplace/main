@@ -1,0 +1,35 @@
+
+> trade-marketplace@0.1.0 test
+> vitest run --maxWorkers=1
+
+
+ RUN  v5.0.5 /Users/mattmacbook/Documents/Codex/2026-10-31/task/help-centre
+
+ ❯ tests/unit/data-components.test.tsx (44 tests | 1 failed) 7874ms
+   ❯ /dev/components/data (4)
+     × opens a menu on load with ?open=, and ignores unknown ids 7608ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/unit/data-components.test.tsx > /dev/components/data > opens a menu on load with ?open=, and ignores unknown ids
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ tests/unit/data-components.test.tsx:436:3
+    434|   });
+    435|
+    436|   it("opens a menu on load with ?open=, and ignores unknown ids", asyn…
+       |   ^
+    437|     vi.stubEnv("NODE_ENV", "development");
+    438|     for (const id of OPEN_IDS) expect((await render({ open: id })).mat…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 107 passed (108)
+      Tests  1 failed | 2214 passed (2215)
+   Start at  13:12:01
+   Duration  96.52s (tests 78%, import 20%, transform 1%, worker 1%)
+
+    Isolate  108 workers spawned · ~353ms startup each (spawn + environment, per file)
+             at least ~37.79s faster with isolate: false — reuses workers across files instead of one per file
+

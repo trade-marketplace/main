@@ -1,0 +1,18 @@
+{
+  "checkedAt": "2026-10-31T05:09:13.277Z",
+  "links": [
+    {
+      "url": "https://trademarketplace.nz/",
+      "status": 200
+    },
+    {
+      "url": "https://trademarketplace.nz/help",
+      "status": 404
+    },
+    {
+      "url": "https://trademarketplace.nz/help/when-do-i-pay",
+      "status": 404
+    }
+  ],
+  "note": "Current production responses before publication; no manual deployment."
+}

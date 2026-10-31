@@ -1,0 +1,6 @@
+▲ Next.js 16.4.3
+- Local:         http://127.0.0.1:3185
+- Network:       http://127.0.0.1:3185
+✓ Ready in 163ms
+✓ Running next.config.ts took 173ms
+Database: reachable at 127.0.0.1:54185.

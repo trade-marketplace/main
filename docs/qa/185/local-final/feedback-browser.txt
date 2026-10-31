@@ -1,0 +1,15 @@
+{
+  source: 'bd7c20d09fb0f04cc912fdb94d20e7115b562121',
+  realBrowser: true,
+  database: 'disposable localhost PostgreSQL 17',
+  checks: [
+    'No is recorded immediately',
+    'Optional note persists through the server action',
+    'Success is shown only after saving',
+    'HttpOnly/SameSite cookie survives reload',
+    'Changing a vote updates one row and clears the old note',
+    'Missing article returns HTTP 404 with one shell',
+    '404 Help centre action returns to Help'
+  ],
+  passed: 7
+}

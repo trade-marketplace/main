@@ -1,0 +1,29 @@
+{
+  "checkedAt": "2026-10-31T05:10:33.824Z",
+  "postgres": {
+    "port": 54185,
+    "formerPid": 72747,
+    "dataDirectory": "/tmp/trade-185-postgres/data",
+    "status": "stopped using owned pg_ctl; server confirmed shutdown"
+  },
+  "ports": [
+    {
+      "port": 3100,
+      "listeners": []
+    },
+    {
+      "port": 3185,
+      "listeners": []
+    },
+    {
+      "port": 8185,
+      "listeners": []
+    },
+    {
+      "port": 54185,
+      "listeners": []
+    }
+  ],
+  "heavyCheckLock": "absent; own lock released",
+  "qaEvidence": "preserved for branch artifact commit"
+}

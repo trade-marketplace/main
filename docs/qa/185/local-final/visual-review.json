@@ -1,0 +1,384 @@
+{
+  "source": "bd7c20d09fb0f04cc912fdb94d20e7115b562121",
+  "passes": [
+    {
+      "pass": "visual-pass-1",
+      "pairCount": 20,
+      "personallyInspected": true,
+      "pairs": [
+        {
+          "state": "home",
+          "width": 1440,
+          "file": "pair-home-1440.png",
+          "pairWidth": 2880,
+          "pairHeight": 960,
+          "words": 109,
+          "horizontalOverflow": 0
+        },
+        {
+          "state": "search-results",
+          "width": 1440,
+          "file": "pair-search-results-1440.png",
+          "pairWidth": 2880,
+          "pairHeight": 960,
+          "words": 99,
+          "horizontalOverflow": 0
+        },
+        {
+          "state": "suggestions",
+          "width": 1440,
+          "file": "pair-suggestions-1440.png",
+          "pairWidth": 2880,
+          "pairHeight": 960,
+          "words": 121,
+          "horizontalOverflow": 0
+        },
+        {
+          "state": "no-results",
+          "width": 1440,
+          "file": "pair-no-results-1440.png",
+          "pairWidth": 2880,
+          "pairHeight": 960,
+          "words": 77,
+          "horizontalOverflow": 0
+        },
+        {
+          "state": "loading",
+          "width": 1440,
+          "file": "pair-loading-1440.png",
+          "pairWidth": 2880,
+          "pairHeight": 960,
+          "words": 60,
+          "horizontalOverflow": 0
+        },
+        {
+          "state": "error",
+          "width": 1440,
+          "file": "pair-error-1440.png",
+          "pairWidth": 2880,
+          "pairHeight": 960,
+          "words": 63,
+          "horizontalOverflow": 0
+        },
+        {
+          "state": "article",
+          "width": 1440,
+          "file": "pair-article-1440.png",
+          "pairWidth": 2880,
+          "pairHeight": 960,
+          "words": 179,
+          "horizontalOverflow": 0
+        },
+        {
+          "state": "helpful-voted",
+          "width": 1440,
+          "file": "pair-helpful-voted-1440.png",
+          "pairWidth": 2880,
+          "pairHeight": 960,
+          "words": 178,
+          "horizontalOverflow": 0
+        },
+        {
+          "state": "not-helpful",
+          "width": 1440,
+          "file": "pair-not-helpful-1440.png",
+          "pairWidth": 2880,
+          "pairHeight": 960,
+          "words": 186,
+          "horizontalOverflow": 0
+        },
+        {
+          "state": "feedback-error",
+          "width": 1440,
+          "file": "pair-feedback-error-1440.png",
+          "pairWidth": 2880,
+          "pairHeight": 960,
+          "words": 193,
+          "horizontalOverflow": 0
+        },
+        {
+          "state": "home",
+          "width": 390,
+          "file": "pair-home-390.png",
+          "pairWidth": 780,
+          "pairHeight": 800,
+          "words": 84,
+          "horizontalOverflow": 0
+        },
+        {
+          "state": "search-results",
+          "width": 390,
+          "file": "pair-search-results-390.png",
+          "pairWidth": 780,
+          "pairHeight": 800,
+          "words": 84,
+          "horizontalOverflow": 0
+        },
+        {
+          "state": "suggestions",
+          "width": 390,
+          "file": "pair-suggestions-390.png",
+          "pairWidth": 780,
+          "pairHeight": 800,
+          "words": 109,
+          "horizontalOverflow": 0
+        },
+        {
+          "state": "no-results",
+          "width": 390,
+          "file": "pair-no-results-390.png",
+          "pairWidth": 780,
+          "pairHeight": 800,
+          "words": 65,
+          "horizontalOverflow": 0
+        },
+        {
+          "state": "loading",
+          "width": 390,
+          "file": "pair-loading-390.png",
+          "pairWidth": 780,
+          "pairHeight": 800,
+          "words": 49,
+          "horizontalOverflow": 0
+        },
+        {
+          "state": "error",
+          "width": 390,
+          "file": "pair-error-390.png",
+          "pairWidth": 780,
+          "pairHeight": 800,
+          "words": 52,
+          "horizontalOverflow": 0
+        },
+        {
+          "state": "article",
+          "width": 390,
+          "file": "pair-article-390.png",
+          "pairWidth": 780,
+          "pairHeight": 800,
+          "words": 148,
+          "horizontalOverflow": 0
+        },
+        {
+          "state": "helpful-voted",
+          "width": 390,
+          "file": "pair-helpful-voted-390.png",
+          "pairWidth": 780,
+          "pairHeight": 800,
+          "words": 147,
+          "horizontalOverflow": 0
+        },
+        {
+          "state": "not-helpful",
+          "width": 390,
+          "file": "pair-not-helpful-390.png",
+          "pairWidth": 780,
+          "pairHeight": 800,
+          "words": 155,
+          "horizontalOverflow": 0
+        },
+        {
+          "state": "feedback-error",
+          "width": 390,
+          "file": "pair-feedback-error-390.png",
+          "pairWidth": 780,
+          "pairHeight": 800,
+          "words": 156,
+          "horizontalOverflow": 0
+        }
+      ]
+    },
+    {
+      "pass": "visual-pass-2",
+      "pairCount": 20,
+      "personallyInspected": true,
+      "pairs": [
+        {
+          "state": "home",
+          "width": 1440,
+          "file": "pair-home-1440.png",
+          "pairWidth": 2880,
+          "pairHeight": 960,
+          "words": 109,
+          "horizontalOverflow": 0
+        },
+        {
+          "state": "search-results",
+          "width": 1440,
+          "file": "pair-search-results-1440.png",
+          "pairWidth": 2880,
+          "pairHeight": 960,
+          "words": 99,
+          "horizontalOverflow": 0
+        },
+        {
+          "state": "suggestions",
+          "width": 1440,
+          "file": "pair-suggestions-1440.png",
+          "pairWidth": 2880,
+          "pairHeight": 960,
+          "words": 121,
+          "horizontalOverflow": 0
+        },
+        {
+          "state": "no-results",
+          "width": 1440,
+          "file": "pair-no-results-1440.png",
+          "pairWidth": 2880,
+          "pairHeight": 960,
+          "words": 77,
+          "horizontalOverflow": 0
+        },
+        {
+          "state": "loading",
+          "width": 1440,
+          "file": "pair-loading-1440.png",
+          "pairWidth": 2880,
+          "pairHeight": 960,
+          "words": 60,
+          "horizontalOverflow": 0
+        },
+        {
+          "state": "error",
+          "width": 1440,
+          "file": "pair-error-1440.png",
+          "pairWidth": 2880,
+          "pairHeight": 960,
+          "words": 63,
+          "horizontalOverflow": 0
+        },
+        {
+          "state": "article",
+          "width": 1440,
+          "file": "pair-article-1440.png",
+          "pairWidth": 2880,
+          "pairHeight": 960,
+          "words": 179,
+          "horizontalOverflow": 0
+        },
+        {
+          "state": "helpful-voted",
+          "width": 1440,
+          "file": "pair-helpful-voted-1440.png",
+          "pairWidth": 2880,
+          "pairHeight": 960,
+          "words": 178,
+          "horizontalOverflow": 0
+        },
+        {
+          "state": "not-helpful",
+          "width": 1440,
+          "file": "pair-not-helpful-1440.png",
+          "pairWidth": 2880,
+          "pairHeight": 960,
+          "words": 186,
+          "horizontalOverflow": 0
+        },
+        {
+          "state": "feedback-error",
+          "width": 1440,
+          "file": "pair-feedback-error-1440.png",
+          "pairWidth": 2880,
+          "pairHeight": 960,
+          "words": 193,
+          "horizontalOverflow": 0
+        },
+        {
+          "state": "home",
+          "width": 390,
+          "file": "pair-home-390.png",
+          "pairWidth": 780,
+          "pairHeight": 800,
+          "words": 84,
+          "horizontalOverflow": 0
+        },
+        {
+          "state": "search-results",
+          "width": 390,
+          "file": "pair-search-results-390.png",
+          "pairWidth": 780,
+          "pairHeight": 800,
+          "words": 84,
+          "horizontalOverflow": 0
+        },
+        {
+          "state": "suggestions",
+          "width": 390,
+          "file": "pair-suggestions-390.png",
+          "pairWidth": 780,
+          "pairHeight": 800,
+          "words": 109,
+          "horizontalOverflow": 0
+        },
+        {
+          "state": "no-results",
+          "width": 390,
+          "file": "pair-no-results-390.png",
+          "pairWidth": 780,
+          "pairHeight": 800,
+          "words": 65,
+          "horizontalOverflow": 0
+        },
+        {
+          "state": "loading",
+          "width": 390,
+          "file": "pair-loading-390.png",
+          "pairWidth": 780,
+          "pairHeight": 800,
+          "words": 49,
+          "horizontalOverflow": 0
+        },
+        {
+          "state": "error",
+          "width": 390,
+          "file": "pair-error-390.png",
+          "pairWidth": 780,
+          "pairHeight": 800,
+          "words": 52,
+          "horizontalOverflow": 0
+        },
+        {
+          "state": "article",
+          "width": 390,
+          "file": "pair-article-390.png",
+          "pairWidth": 780,
+          "pairHeight": 800,
+          "words": 148,
+          "horizontalOverflow": 0
+        },
+        {
+          "state": "helpful-voted",
+          "width": 390,
+          "file": "pair-helpful-voted-390.png",
+          "pairWidth": 780,
+          "pairHeight": 800,
+          "words": 147,
+          "horizontalOverflow": 0
+        },
+        {
+          "state": "not-helpful",
+          "width": 390,
+          "file": "pair-not-helpful-390.png",
+          "pairWidth": 780,
+          "pairHeight": 800,
+          "words": 155,
+          "horizontalOverflow": 0
+        },
+        {
+          "state": "feedback-error",
+          "width": 390,
+          "file": "pair-feedback-error-390.png",
+          "pairWidth": 780,
+          "pairHeight": 800,
+          "words": 156,
+          "horizontalOverflow": 0
+        }
+      ]
+    }
+  ],
+  "comparison": {
+    "identicalRenderedPairs": 20,
+    "changedRenderedPairs": []
+  },
+  "review": "Both passes personally inspected against normalized same-size references. No further implementation changes required."
+}
