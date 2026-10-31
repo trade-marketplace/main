@@ -1,0 +1,15 @@
+
+> trade-marketplace@0.1.0 test
+> vitest run --maxWorkers=1
+
+
+ RUN  v5.0.5 /Users/mattmacbook/Documents/Codex/2026-10-31/task-2/service-pages
+
+
+ Test Files  108 passed (108)
+      Tests  2224 passed (2224)
+   Start at  00:03:49
+   Duration  49.47s (tests 76%, import 21%, transform 2%, worker 1%)
+
+    Isolate  108 workers spawned · ~123ms startup each (spawn + environment, per file)
+             at least ~13.15s faster with isolate: false — reuses workers across files instead of one per file

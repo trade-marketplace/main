@@ -1,0 +1,90 @@
+{
+  "issue": 245,
+  "branch": "feat/245-service-pages",
+  "base": "b7a48687dc295d855211bf58c6414ec1eb9bcfbc",
+  "tested_source_commit": "17fbf774d4436c4e04ff5a9ee22ed9be6993f002",
+  "checked_at_utc": "2026-10-31T00:13:24.085947+00:00",
+  "commands": {
+    "lint": {
+      "command": "npm run lint",
+      "status": "passed"
+    },
+    "typecheck": {
+      "command": "npm run typecheck",
+      "status": "passed"
+    },
+    "unit": {
+      "command": "TEST_DATABASE_URL=<disposable local Postgres> npm test -- --maxWorkers=1",
+      "status": "passed",
+      "files": 108,
+      "passed": 2224,
+      "skipped": 0,
+      "failed": 0
+    },
+    "standard_e2e": {
+      "command": "npm run e2e -- --workers=1",
+      "includes": "npm run build",
+      "status": "passed",
+      "passed": 209,
+      "skipped": 442,
+      "failed": 0,
+      "skip_detail": "433 pre-existing opt-in cases plus 9 guarded service-fixture cases; the latter were explicitly executed in the dedicated run"
+    },
+    "feature": {
+      "command": "E2E_DEV_BASE_URL=http://127.0.0.1:3245 npx playwright test -c ../service-feature.config.cjs --workers=1",
+      "status": "passed",
+      "passed": 22,
+      "skipped": 0,
+      "failed": 0,
+      "runner": "one worker, services.spec.ts only, baseURL 3245, installed Chromium; production server with SCREENSHOT_DEV_PAGES=1"
+    }
+  },
+  "viewports": [
+    320,
+    390,
+    768,
+    1024,
+    1440
+  ],
+  "visual": {
+    "passes": 2,
+    "states_per_pass": 12,
+    "viewport_pairs_per_pass": 24,
+    "personally_inspected_pairs": 48,
+    "all_trade_full_pages_inspected_both_passes": true,
+    "desktop_pair_size": [
+      2880,
+      1000
+    ],
+    "phone_pair_size": [
+      780,
+      844
+    ],
+    "reference_side": "left",
+    "built_side": "right",
+    "horizontal_overflow": 0,
+    "fixes_after_pass1": [
+      "popular-card line spacing and tint",
+      "empty-card top gap",
+      "hero supporting-copy typography and artwork radius/tint",
+      "phone step labels avoid duplicated numbers"
+    ]
+  },
+  "word_counts": "pass2/word-counts.json",
+  "source_tree_hashes": {
+    "src": "69dcb5e91415eb6bb1e7dd132d8be7bf8d5a6090",
+    "prisma": "53505e97ec412458f1f98de7f7a56042bd28545d",
+    "tests": "d7508da32882f410b22296714a8b983b7ed42980",
+    "docs/design/tokens.css": "101fbbd16e8f09989b91bd8cdbabde856de34773"
+  },
+  "limits": [
+    "No dedicated service phone mockup; the closest public landing reference is used.",
+    "No exact standalone coming-soon/loading/error service mockups; shared kit states and A07 form patterns are used.",
+    "The job wizard is a separate issue; verified handoffs reach login/signup and the area waitlist.",
+    "Keyboard and axe/accessibility semantics checked; no VoiceOver audio session was performed."
+  ],
+  "live_link": {
+    "url": "https://trademarketplace.nz/",
+    "http_status": 200
+  }
+}

@@ -1,0 +1,29 @@
+
+Running 22 tests using 1 worker
+
+(node:4131) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   1 tests/e2e/services.spec.ts:16:5 › public service pages › 320px: service template fits and passes axe (1.2s)
+  ✓   2 tests/e2e/services.spec.ts:16:5 › public service pages › 390px: service template fits and passes axe (1.0s)
+  ✓   3 tests/e2e/services.spec.ts:16:5 › public service pages › 768px: service template fits and passes axe (992ms)
+  ✓   4 tests/e2e/services.spec.ts:16:5 › public service pages › 1024px: service template fits and passes axe (999ms)
+  ✓   5 tests/e2e/services.spec.ts:16:5 › public service pages › 1440px: service template fits and passes axe (1.0s)
+  ✓   6 tests/e2e/services.spec.ts:27:5 › public service pages › electrical: public SEO metadata, live state and typed job survive login and signup handoffs (713ms)
+  ✓   7 tests/e2e/services.spec.ts:27:5 › public service pages › plumbing: public SEO metadata, live state and typed job survive login and signup handoffs (709ms)
+  ✓   8 tests/e2e/services.spec.ts:27:5 › public service pages › construction: public SEO metadata, live state and typed job survive login and signup handoffs (736ms)
+  ✓   9 tests/e2e/services.spec.ts:27:5 › public service pages › gas: public SEO metadata, live state and typed job survive login and signup handoffs (705ms)
+  ✓  10 tests/e2e/services.spec.ts:27:5 › public service pages › other: public SEO metadata, live state and typed job survive login and signup handoffs (664ms)
+  ✓  11 tests/e2e/services.spec.ts:45:3 › public service pages › unknown trades are 404; state query flags cannot invent availability or a successful signup (397ms)
+  ✓  12 tests/e2e/services.spec.ts:53:3 › public service pages › popular named job and Something else both preserve Other and the appropriate description (652ms)
+  ✓  13 tests/e2e/services.spec.ts:64:3 › public service pages › keyboard search shortcut, visible focus, location dismissal and storage-denied handoff work (669ms)
+  ✓  14 tests/e2e/services.spec.ts:86:5 › guarded service states › 320px: every service, list, review and waitlist state fits with axe (6.4s)
+  ✓  15 tests/e2e/services.spec.ts:86:5 › guarded service states › 390px: every service, list, review and waitlist state fits with axe (6.3s)
+  ✓  16 tests/e2e/services.spec.ts:86:5 › guarded service states › 768px: every service, list, review and waitlist state fits with axe (6.3s)
+  ✓  17 tests/e2e/services.spec.ts:86:5 › guarded service states › 1024px: every service, list, review and waitlist state fits with axe (6.4s)
+  ✓  18 tests/e2e/services.spec.ts:86:5 › guarded service states › 1440px: every service, list, review and waitlist state fits with axe (6.4s)
+  ✓  19 tests/e2e/services.spec.ts:97:3 › guarded service states › waitlist validates, saves, retains values and recognizes repeat signups (954ms)
+  ✓  20 tests/e2e/services.spec.ts:114:3 › guarded service states › failed save retains input; offline disables submit and reconnect allows retry (512ms)
+  ✓  21 tests/e2e/services.spec.ts:125:3 › guarded service states › outside coverage leads to the real area waitlist with the draft and trade preserved (841ms)
+  ✓  22 tests/e2e/services.spec.ts:136:3 › guarded service states › manual location fallback keeps the trade and text; empty popular jobs focuses the search (733ms)
+
+  22 passed (46.8s)

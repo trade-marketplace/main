@@ -1,0 +1,194 @@
+[
+  {
+    "state": "live",
+    "width": 1440,
+    "visibleMainWords": 139,
+    "overflow": 0
+  },
+  {
+    "state": "empty",
+    "width": 1440,
+    "visibleMainWords": 97,
+    "overflow": 0
+  },
+  {
+    "state": "loading",
+    "width": 1440,
+    "visibleMainWords": 0,
+    "overflow": 0
+  },
+  {
+    "state": "error",
+    "width": 1440,
+    "visibleMainWords": 11,
+    "overflow": 0
+  },
+  {
+    "state": "reviews",
+    "width": 1440,
+    "visibleMainWords": 147,
+    "overflow": 0
+  },
+  {
+    "state": "reviews-error",
+    "width": 1440,
+    "visibleMainWords": 144,
+    "overflow": 0
+  },
+  {
+    "state": "coming-soon",
+    "width": 1440,
+    "visibleMainWords": 24,
+    "overflow": 0
+  },
+  {
+    "state": "sending",
+    "width": 1440,
+    "visibleMainWords": 24,
+    "overflow": 0
+  },
+  {
+    "state": "joined",
+    "width": 1440,
+    "visibleMainWords": 28,
+    "overflow": 0
+  },
+  {
+    "state": "already-on-list",
+    "width": 1440,
+    "visibleMainWords": 29,
+    "overflow": 0
+  },
+  {
+    "state": "waitlist-error",
+    "width": 1440,
+    "visibleMainWords": 30,
+    "overflow": 0
+  },
+  {
+    "state": "offline",
+    "width": 1440,
+    "visibleMainWords": 31,
+    "overflow": 0
+  },
+  {
+    "trade": "plumbing",
+    "width": 1440,
+    "visibleMainWords": 143,
+    "overflow": 0
+  },
+  {
+    "trade": "gas",
+    "width": 1440,
+    "visibleMainWords": 127,
+    "overflow": 0
+  },
+  {
+    "trade": "construction",
+    "width": 1440,
+    "visibleMainWords": 143,
+    "overflow": 0
+  },
+  {
+    "trade": "other",
+    "width": 1440,
+    "visibleMainWords": 143,
+    "overflow": 0
+  },
+  {
+    "state": "live",
+    "width": 390,
+    "visibleMainWords": 137,
+    "overflow": 0
+  },
+  {
+    "state": "empty",
+    "width": 390,
+    "visibleMainWords": 95,
+    "overflow": 0
+  },
+  {
+    "state": "loading",
+    "width": 390,
+    "visibleMainWords": 0,
+    "overflow": 0
+  },
+  {
+    "state": "error",
+    "width": 390,
+    "visibleMainWords": 11,
+    "overflow": 0
+  },
+  {
+    "state": "reviews",
+    "width": 390,
+    "visibleMainWords": 145,
+    "overflow": 0
+  },
+  {
+    "state": "reviews-error",
+    "width": 390,
+    "visibleMainWords": 142,
+    "overflow": 0
+  },
+  {
+    "state": "coming-soon",
+    "width": 390,
+    "visibleMainWords": 24,
+    "overflow": 0
+  },
+  {
+    "state": "sending",
+    "width": 390,
+    "visibleMainWords": 24,
+    "overflow": 0
+  },
+  {
+    "state": "joined",
+    "width": 390,
+    "visibleMainWords": 28,
+    "overflow": 0
+  },
+  {
+    "state": "already-on-list",
+    "width": 390,
+    "visibleMainWords": 29,
+    "overflow": 0
+  },
+  {
+    "state": "waitlist-error",
+    "width": 390,
+    "visibleMainWords": 30,
+    "overflow": 0
+  },
+  {
+    "state": "offline",
+    "width": 390,
+    "visibleMainWords": 31,
+    "overflow": 0
+  },
+  {
+    "trade": "plumbing",
+    "width": 390,
+    "visibleMainWords": 141,
+    "overflow": 0
+  },
+  {
+    "trade": "gas",
+    "width": 390,
+    "visibleMainWords": 125,
+    "overflow": 0
+  },
+  {
+    "trade": "construction",
+    "width": 390,
+    "visibleMainWords": 141,
+    "overflow": 0
+  },
+  {
+    "trade": "other",
+    "width": 390,
+    "visibleMainWords": 141,
+    "overflow": 0
+  }
+]
