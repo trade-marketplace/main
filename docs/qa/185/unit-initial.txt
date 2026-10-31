@@ -1,0 +1,43 @@
+
+> trade-marketplace@0.1.0 test
+> vitest run --maxWorkers=1
+
+
+ RUN  v5.0.5 /Users/mattmacbook/Documents/Codex/2026-10-31/task/help-centre
+
+ ❯ tests/unit/auth-every-action.test.ts (2 tests | 1 failed) 26ms
+   ❯ server actions (2)
+     × are all wrapped in withRole(), apart from the explicitly public actions 11ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/unit/auth-every-action.test.ts > server actions > are all wrapped in withRole(), apart from the explicitly public actions
+AssertionError: expected [ Array(1) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "src/app/(site)/help/actions.ts: saveHelpFeedback must be `export const saveHelpFeedback = withRole([...roles], async (viewer, ...) => …)`",
++ ]
+
+ ❯ tests/unit/auth-every-action.test.ts:52:22
+     50|       if (/^export\s+default/m.test(source)) problems.push(`${file}: u…
+     51|     }
+     52|     expect(problems).toEqual([]);
+       |                      ^
+     53|   });
+     54| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 107 passed (108)
+      Tests  1 failed | 2214 passed (2215)
+   Start at  12:30:04
+   Duration  46.05s (tests 75%, import 19%, transform 5%, worker 1%)
+
+    Isolate  108 workers spawned · ~102ms startup each (spawn + environment, per file)
+             at least ~10.94s faster with isolate: false — reuses workers across files instead of one per file
+

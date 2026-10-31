@@ -1,0 +1,793 @@
+[WebServer] 
+[WebServer] > trade-marketplace@0.1.0 start
+[WebServer] > next start --port 3100
+[WebServer] 
+[WebServer] (node:99401) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] ▲ Next.js 16.4.3
+[WebServer] - Local:         http://localhost:3100
+[WebServer] - Network:       http://192.168.88.8:3100
+[WebServer] ✓ Ready in 117ms
+[WebServer] ✓ Running next.config.ts took 125ms
+[WebServer] Database: off. The app runs without it for now.
+[WebServer] To connect, copy .env.example to .env.local and fill in DATABASE_URL and DIRECT_URL from Supabase.
+
+Running 639 tests using 2 workers
+
+(node:99404) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:99403) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓    2 [chromium] › tests/e2e/a11y-helper.spec.ts:26:1 › passes on a clean page (879ms)
+  ✓    1 [chromium] › tests/e2e/a11y-helper.spec.ts:14:1 › fails on a page with violations, naming each rule (906ms)
+  ✓    4 [chromium] › tests/e2e/dev-app-shell.spec.ts:10:1 › /dev/components/app-shell is not in production builds (517ms)
+  -    5 [chromium] › tests/e2e/dev-app-shell.spec.ts:42:5 › /dev/components/app-shell › phone-small (320px): no axe violations, no sideways scroll, the right nav
+  -    6 [chromium] › tests/e2e/dev-app-shell.spec.ts:42:5 › /dev/components/app-shell › phone (390px): no axe violations, no sideways scroll, the right nav
+  -    7 [chromium] › tests/e2e/dev-app-shell.spec.ts:42:5 › /dev/components/app-shell › tablet (768px): no axe violations, no sideways scroll, the right nav
+  -    8 [chromium] › tests/e2e/dev-app-shell.spec.ts:42:5 › /dev/components/app-shell › laptop (1024px): no axe violations, no sideways scroll, the right nav
+  -    9 [chromium] › tests/e2e/dev-app-shell.spec.ts:42:5 › /dev/components/app-shell › desktop (1440px): no axe violations, no sideways scroll, the right nav
+  -   10 [chromium] › tests/e2e/dev-app-shell.spec.ts:59:3 › /dev/components/app-shell › the skip link is the first thing Tab reaches and jumps past the nav
+  -   11 [chromium] › tests/e2e/dev-app-shell.spec.ts:69:3 › /dev/components/app-shell › computer: the current tab's bar slides to the tab you pick (M16)
+  -   12 [chromium] › tests/e2e/dev-app-shell.spec.ts:87:3 › /dev/components/app-shell › phone: the bar sits over the current icon and moves with it
+  -   13 [chromium] › tests/e2e/dev-app-shell.spec.ts:102:3 › /dev/components/app-shell › phone: the end of the page is never hidden behind the bottom bar
+  -   14 [chromium] › tests/e2e/dev-app-shell.spec.ts:114:3 › /dev/components/app-shell › phone: icons are named, with the unread count, and each is a big enough target
+  -   15 [chromium] › tests/e2e/dev-app-shell.spec.ts:127:3 › /dev/components/app-shell › a new message or notification pops the badge (M20); reading them takes it away
+  -   16 [chromium] › tests/e2e/dev-app-shell.spec.ts:141:3 › /dev/components/app-shell › the avatar menu works by keyboard and logs out with a form
+  -   17 [chromium] › tests/e2e/dev-app-shell.spec.ts:160:3 › /dev/components/app-shell › a tradie's menu has no Payments, and their nav has the Tradie flag and no Post a job
+  -   18 [chromium] › tests/e2e/dev-app-shell.spec.ts:169:3 › /dev/components/app-shell › pages outside the nav mark no tab, and full-screen flows drop the bottom bar
+  -   19 [chromium] › tests/e2e/dev-app-shell.spec.ts:179:3 › /dev/components/app-shell › the test-mode banner shows until payments are live
+  -   20 [chromium] › tests/e2e/dev-app-shell.spec.ts:186:3 › /dev/components/app-shell › 200% text: the computer's nav still fits without sideways scroll
+  ✓    3 [chromium] › tests/e2e/a11y-helper.spec.ts:33:1 › can skip a rule when a reason is given (627ms)
+  -   22 [chromium] › tests/e2e/dev-buttons.spec.ts:33:5 › /dev/components/buttons on the dev server › has no accessibility violations, sideways scroll or spilled labels at 320px
+  -   23 [chromium] › tests/e2e/dev-buttons.spec.ts:33:5 › /dev/components/buttons on the dev server › has no accessibility violations, sideways scroll or spilled labels at 390px
+  -   24 [chromium] › tests/e2e/dev-buttons.spec.ts:33:5 › /dev/components/buttons on the dev server › has no accessibility violations, sideways scroll or spilled labels at 768px
+  -   25 [chromium] › tests/e2e/dev-buttons.spec.ts:33:5 › /dev/components/buttons on the dev server › has no accessibility violations, sideways scroll or spilled labels at 1024px
+  -   26 [chromium] › tests/e2e/dev-buttons.spec.ts:33:5 › /dev/components/buttons on the dev server › has no accessibility violations, sideways scroll or spilled labels at 1440px
+  -   27 [chromium] › tests/e2e/dev-buttons.spec.ts:43:5 › /dev/components/buttons on the dev server › has no accessibility violations in trade mode
+  -   28 [chromium] › tests/e2e/dev-buttons.spec.ts:43:5 › /dev/components/buttons on the dev server › has no accessibility violations in office mode
+  -   29 [chromium] › tests/e2e/dev-buttons.spec.ts:51:3 › /dev/components/buttons on the dev server › still works at 200% zoom: labels wrap, nothing spills, no sideways scroll
+  -   30 [chromium] › tests/e2e/dev-buttons.spec.ts:61:3 › /dev/components/buttons on the dev server › primary buttons take the mode colours, with Forest labels on coloured fills
+  -   31 [chromium] › tests/e2e/dev-buttons.spec.ts:75:3 › /dev/components/buttons on the dev server › Enter and Space press a button; loading keeps the width and ignores more presses
+  -   32 [chromium] › tests/e2e/dev-buttons.spec.ts:94:3 › /dev/components/buttons on the dev server › a disabled button can be reached by Tab, explains itself, and can't be pressed
+  -   33 [chromium] › tests/e2e/dev-buttons.spec.ts:116:3 › /dev/components/buttons on the dev server › a disabled button shows its reason on a tap, and after 500ms of hover
+  -   34 [chromium] › tests/e2e/dev-buttons.spec.ts:129:3 › /dev/components/buttons on the dev server › a tooltip next to the edge of a 320px screen slides back inside it
+  -   35 [chromium] › tests/e2e/dev-buttons.spec.ts:145:3 › /dev/components/buttons on the dev server › icon buttons have names, show them as tooltips, and report on/off
+  -   36 [chromium] › tests/e2e/dev-buttons.spec.ts:154:3 › /dev/components/buttons on the dev server › a truncated label keeps its whole text for screen readers and shows it in a tooltip
+  -   37 [chromium] › tests/e2e/dev-buttons.spec.ts:165:3 › /dev/components/buttons on the dev server › links are links, and the external one says it opens a new tab
+  -   38 [chromium] › tests/e2e/dev-buttons.spec.ts:175:3 › /dev/components/buttons on the dev server › the usage example works: Cancel job loads, Keep job waits
+  ✓   21 [chromium] › tests/e2e/dev-buttons.spec.ts:10:1 › /dev/components/buttons is not in production builds (482ms)
+  -   40 [chromium] › tests/e2e/dev-cards.spec.ts:47:5 › /dev/components/cards › phone-small (320px): no axe violations, no sideways scroll, nothing spills
+  -   41 [chromium] › tests/e2e/dev-cards.spec.ts:47:5 › /dev/components/cards › phone (390px): no axe violations, no sideways scroll, nothing spills
+  -   42 [chromium] › tests/e2e/dev-cards.spec.ts:47:5 › /dev/components/cards › tablet (768px): no axe violations, no sideways scroll, nothing spills
+  -   43 [chromium] › tests/e2e/dev-cards.spec.ts:47:5 › /dev/components/cards › laptop (1024px): no axe violations, no sideways scroll, nothing spills
+  -   44 [chromium] › tests/e2e/dev-cards.spec.ts:47:5 › /dev/components/cards › desktop (1440px): no axe violations, no sideways scroll, nothing spills
+  -   45 [chromium] › tests/e2e/dev-cards.spec.ts:61:3 › /dev/components/cards › each card is one link: a click anywhere on it opens it, and its name is just the title
+  -   46 [chromium] › tests/e2e/dev-cards.spec.ts:80:3 › /dev/components/cards › a row's own button is pressed by itself, not the row
+  -   47 [chromium] › tests/e2e/dev-cards.spec.ts:86:3 › /dev/components/cards › Save toggles, keeps focus, and pops once when it becomes saved (M23)
+  -   48 [chromium] › tests/e2e/dev-cards.spec.ts:101:3 › /dev/components/cards › keyboard: Tab reaches each card's link with a visible ring; a greyed-out trade isn't a stop
+  -   49 [chromium] › tests/e2e/dev-cards.spec.ts:113:3 › /dev/components/cards › hover lifts a tile 2px and zooms its photo (M03)
+  -   50 [chromium] › tests/e2e/dev-cards.spec.ts:121:3 › /dev/components/cards › long text: titles end in “…” with the whole title as the tooltip
+  -   51 [chromium] › tests/e2e/dev-cards.spec.ts:130:3 › /dev/components/cards › category tiles scroll sideways inside their row on a phone, never the page
+  -   52 [chromium] › tests/e2e/dev-cards.spec.ts:138:3 › /dev/components/cards › KPI numbers count up to the final value, and an overdue card is marked
+  -   53 [chromium] › tests/e2e/dev-cards.spec.ts:146:3 › /dev/components/cards › still usable at 200% zoom: nothing spills and the page doesn't scroll sideways
+  ✓   39 [chromium] › tests/e2e/dev-cards.spec.ts:10:1 › /dev/components/cards is not in production builds (593ms)
+  -   55 [chromium] › tests/e2e/dev-components-map.spec.ts:32:7 › /dev/components/map on the dev server › has no accessibility violations or sideways scroll at 320px (jobs)
+  -   56 [chromium] › tests/e2e/dev-components-map.spec.ts:32:7 › /dev/components/map on the dev server › has no accessibility violations or sideways scroll at 320px ?state=loading
+  -   57 [chromium] › tests/e2e/dev-components-map.spec.ts:32:7 › /dev/components/map on the dev server › has no accessibility violations or sideways scroll at 320px ?state=empty
+  -   58 [chromium] › tests/e2e/dev-components-map.spec.ts:32:7 › /dev/components/map on the dev server › has no accessibility violations or sideways scroll at 320px ?state=error
+  -   59 [chromium] › tests/e2e/dev-components-map.spec.ts:32:7 › /dev/components/map on the dev server › has no accessibility violations or sideways scroll at 390px (jobs)
+  -   60 [chromium] › tests/e2e/dev-components-map.spec.ts:32:7 › /dev/components/map on the dev server › has no accessibility violations or sideways scroll at 390px ?state=loading
+  -   61 [chromium] › tests/e2e/dev-components-map.spec.ts:32:7 › /dev/components/map on the dev server › has no accessibility violations or sideways scroll at 390px ?state=empty
+  -   62 [chromium] › tests/e2e/dev-components-map.spec.ts:32:7 › /dev/components/map on the dev server › has no accessibility violations or sideways scroll at 390px ?state=error
+  -   63 [chromium] › tests/e2e/dev-components-map.spec.ts:32:7 › /dev/components/map on the dev server › has no accessibility violations or sideways scroll at 768px (jobs)
+  -   64 [chromium] › tests/e2e/dev-components-map.spec.ts:32:7 › /dev/components/map on the dev server › has no accessibility violations or sideways scroll at 768px ?state=loading
+  -   65 [chromium] › tests/e2e/dev-components-map.spec.ts:32:7 › /dev/components/map on the dev server › has no accessibility violations or sideways scroll at 768px ?state=empty
+  -   66 [chromium] › tests/e2e/dev-components-map.spec.ts:32:7 › /dev/components/map on the dev server › has no accessibility violations or sideways scroll at 768px ?state=error
+  -   67 [chromium] › tests/e2e/dev-components-map.spec.ts:32:7 › /dev/components/map on the dev server › has no accessibility violations or sideways scroll at 1024px (jobs)
+  -   68 [chromium] › tests/e2e/dev-components-map.spec.ts:32:7 › /dev/components/map on the dev server › has no accessibility violations or sideways scroll at 1024px ?state=loading
+  -   69 [chromium] › tests/e2e/dev-components-map.spec.ts:32:7 › /dev/components/map on the dev server › has no accessibility violations or sideways scroll at 1024px ?state=empty
+  -   70 [chromium] › tests/e2e/dev-components-map.spec.ts:32:7 › /dev/components/map on the dev server › has no accessibility violations or sideways scroll at 1024px ?state=error
+  -   71 [chromium] › tests/e2e/dev-components-map.spec.ts:32:7 › /dev/components/map on the dev server › has no accessibility violations or sideways scroll at 1440px (jobs)
+  -   72 [chromium] › tests/e2e/dev-components-map.spec.ts:32:7 › /dev/components/map on the dev server › has no accessibility violations or sideways scroll at 1440px ?state=loading
+  -   73 [chromium] › tests/e2e/dev-components-map.spec.ts:32:7 › /dev/components/map on the dev server › has no accessibility violations or sideways scroll at 1440px ?state=empty
+  -   74 [chromium] › tests/e2e/dev-components-map.spec.ts:32:7 › /dev/components/map on the dev server › has no accessibility violations or sideways scroll at 1440px ?state=error
+  -   75 [chromium] › tests/e2e/dev-components-map.spec.ts:43:3 › /dev/components/map on the dev server › still works at 200% zoom (a 1440px screen zoomed in is a 720px page)
+  -   76 [chromium] › tests/e2e/dev-components-map.spec.ts:52:3 › /dev/components/map on the dev server › every pin can be reached with the keyboard and is named
+  -   77 [chromium] › tests/e2e/dev-components-map.spec.ts:65:3 › /dev/components/map on the dev server › hovering a row grows its pin, and hovering a pin highlights its row (M21)
+  -   78 [chromium] › tests/e2e/dev-components-map.spec.ts:81:3 › /dev/components/map on the dev server › picking a pin opens its card; Esc closes it and gives focus back
+  -   79 [chromium] › tests/e2e/dev-components-map.spec.ts:98:3 › /dev/components/map on the dev server › the countdown is never a live region
+  -   80 [chromium] › tests/e2e/dev-components-map.spec.ts:103:3 › /dev/components/map on the dev server › pins for jobs the tradie hasn't claimed are approximate
+  -   81 [chromium] › tests/e2e/dev-components-map.spec.ts:112:3 › /dev/components/map on the dev server › close pins merge into a cluster at phone width, and pressing it zooms in
+  -   82 [chromium] › tests/e2e/dev-components-map.spec.ts:127:3 › /dev/components/map on the dev server › reduced motion stops the bounty shimmer and makes the hover growth instant
+  -   83 [chromium] › tests/e2e/dev-components-map.spec.ts:142:3 › /dev/components/map on the dev server › long titles and suburbs are cut in the list with the whole text in a tooltip
+  ✓   54 [chromium] › tests/e2e/dev-components-map.spec.ts:11:1 › /dev/components/map is not in production builds (538ms)
+  -   85 [chromium] › tests/e2e/dev-data.spec.ts:44:5 › /dev/components/data › phone-small (320px): no axe violations and no sideways scroll
+  -   86 [chromium] › tests/e2e/dev-data.spec.ts:44:5 › /dev/components/data › phone (390px): no axe violations and no sideways scroll
+  -   87 [chromium] › tests/e2e/dev-data.spec.ts:44:5 › /dev/components/data › tablet (768px): no axe violations and no sideways scroll
+  -   88 [chromium] › tests/e2e/dev-data.spec.ts:44:5 › /dev/components/data › laptop (1024px): no axe violations and no sideways scroll
+  -   89 [chromium] › tests/e2e/dev-data.spec.ts:44:5 › /dev/components/data › desktop (1440px): no axe violations and no sideways scroll
+  -   90 [chromium] › tests/e2e/dev-data.spec.ts:58:3 › /dev/components/data › each ?open= menu passes axe and stays on screen
+  -   91 [chromium] › tests/e2e/dev-data.spec.ts:70:3 › /dev/components/data › sorting: a header click sorts, a second flips it, and aria-sort and the URL say so
+  -   92 [chromium] › tests/e2e/dev-data.spec.ts:87:3 › /dev/components/data › ticking rows: the bulk bar counts them, Shift+click ticks a run, select-all and Clear
+  -   93 [chromium] › tests/e2e/dev-data.spec.ts:106:3 › /dev/components/data › filters: a chip's menu works by keyboard, fills the chip, lands in the URL; Clear filters undoes it
+  -   94 [chromium] › tests/e2e/dev-data.spec.ts:128:3 › /dev/components/data › search narrows the list; Esc or × clears it; nothing found shows the empty state
+  -   95 [chromium] › tests/e2e/dev-data.spec.ts:144:3 › /dev/components/data › saving filters: name them in the dialog, then they're ticked under Saved filters
+  -   96 [chromium] › tests/e2e/dev-data.spec.ts:157:3 › /dev/components/data › pagination: Next and Previous move 25 at a time, are greyed out at the ends, and keep the page in the URL
+  -   97 [chromium] › tests/e2e/dev-data.spec.ts:170:3 › /dev/components/data › a row opens with a click anywhere on it, and then is the tinted, current one
+  -   98 [chromium] › tests/e2e/dev-data.spec.ts:182:3 › /dev/components/data › opening a row keeps the list as it is now: filters and sort chosen after the page loaded stay
+  -   99 [chromium] › tests/e2e/dev-data.spec.ts:194:3 › /dev/components/data › tabs and segmented controls: arrows move and choose, Home/End jump, Tab goes into the panel
+  -  100 [chromium] › tests/e2e/dev-data.spec.ts:223:3 › /dev/components/data › many tabs on a narrow screen: the bar scrolls by itself, the page doesn't
+  -  101 [chromium] › tests/e2e/dev-data.spec.ts:239:3 › /dev/components/data › on a phone the table is cards, with Select all and a Sort menu instead of headers
+  -  102 [chromium] › tests/e2e/dev-data.spec.ts:255:3 › /dev/components/data › still usable at 200% zoom: no sideways scroll, menus and the last button reachable
+  -  103 [chromium] › tests/e2e/dev-data.spec.ts:272:3 › /dev/components/data › reduced motion: the tab underline and the segmented thumb jump instead of sliding
+  ✓   84 [chromium] › tests/e2e/dev-data.spec.ts:10:1 › /dev/components/data is not in production builds (532ms)
+  -  105 [chromium] › tests/e2e/dev-feedback.spec.ts:43:5 › /dev/components/feedback on the dev server › has no accessibility violations, sideways scroll or spilled text at 320px
+  -  106 [chromium] › tests/e2e/dev-feedback.spec.ts:43:5 › /dev/components/feedback on the dev server › has no accessibility violations, sideways scroll or spilled text at 390px
+  -  107 [chromium] › tests/e2e/dev-feedback.spec.ts:43:5 › /dev/components/feedback on the dev server › has no accessibility violations, sideways scroll or spilled text at 768px
+  -  108 [chromium] › tests/e2e/dev-feedback.spec.ts:43:5 › /dev/components/feedback on the dev server › has no accessibility violations, sideways scroll or spilled text at 1024px
+  -  109 [chromium] › tests/e2e/dev-feedback.spec.ts:43:5 › /dev/components/feedback on the dev server › has no accessibility violations, sideways scroll or spilled text at 1440px
+  -  110 [chromium] › tests/e2e/dev-feedback.spec.ts:53:5 › /dev/components/feedback on the dev server › has no accessibility violations in trade mode
+  -  111 [chromium] › tests/e2e/dev-feedback.spec.ts:53:5 › /dev/components/feedback on the dev server › has no accessibility violations in office mode
+  -  112 [chromium] › tests/e2e/dev-feedback.spec.ts:62:5 › /dev/components/feedback on the dev server › the usage example opens in the empty state with ?state=empty, with no violations
+  -  113 [chromium] › tests/e2e/dev-feedback.spec.ts:62:5 › /dev/components/feedback on the dev server › the usage example opens in the error state with ?state=error, with no violations
+  -  114 [chromium] › tests/e2e/dev-feedback.spec.ts:62:5 › /dev/components/feedback on the dev server › the usage example opens in the jobs state with ?state=jobs, with no violations
+  -  115 [chromium] › tests/e2e/dev-feedback.spec.ts:72:3 › /dev/components/feedback on the dev server › still works at 200% zoom: text wraps, nothing spills, no sideways scroll
+  -  116 [chromium] › tests/e2e/dev-feedback.spec.ts:82:3 › /dev/components/feedback on the dev server › skeletons are hidden from screen readers, wait 300ms, and shimmer
+  -  117 [chromium] › tests/e2e/dev-feedback.spec.ts:93:3 › /dev/components/feedback on the dev server › with reduced motion the skeleton is static grey and the spinner stands still
+  -  118 [chromium] › tests/e2e/dev-feedback.spec.ts:105:3 › /dev/components/feedback on the dev server › a slow load shows the skeleton, says “Loading your jobs” once, then the list cross-fades in
+  -  119 [chromium] › tests/e2e/dev-feedback.spec.ts:118:3 › /dev/components/feedback on the dev server › a quick load says nothing
+  -  120 [chromium] › tests/e2e/dev-feedback.spec.ts:126:3 › /dev/components/feedback on the dev server › Try again works from the keyboard: spinner while it runs, the error is said again, then the list loads
+  -  121 [chromium] › tests/e2e/dev-feedback.spec.ts:141:3 › /dev/components/feedback on the dev server › an inline error's Try again saves
+  -  122 [chromium] › tests/e2e/dev-feedback.spec.ts:148:3 › /dev/components/feedback on the dev server › the real offline banner follows the browser: offline, Retry, then back online
+  -  123 [chromium] › tests/e2e/dev-feedback.spec.ts:176:3 › /dev/components/feedback on the dev server › offline, it retries by itself with backoff
+  -  124 [chromium] › tests/e2e/dev-feedback.spec.ts:189:3 › /dev/components/feedback on the dev server › progress bars have names and values; the upload demo fills to 100%
+  ✓  104 [chromium] › tests/e2e/dev-feedback.spec.ts:10:1 › /dev/components/feedback is not in production builds (510ms)
+  -  126 [chromium] › tests/e2e/dev-fields.spec.ts:38:5 › form fields on the dev server › fits at 320px, with no accessibility violations
+  -  127 [chromium] › tests/e2e/dev-fields.spec.ts:38:5 › form fields on the dev server › fits at 390px, with no accessibility violations
+  -  128 [chromium] › tests/e2e/dev-fields.spec.ts:38:5 › form fields on the dev server › fits at 768px, with no accessibility violations
+  -  129 [chromium] › tests/e2e/dev-fields.spec.ts:38:5 › form fields on the dev server › fits at 1024px, with no accessibility violations
+  -  130 [chromium] › tests/e2e/dev-fields.spec.ts:38:5 › form fields on the dev server › fits at 1440px, with no accessibility violations
+  -  131 [chromium] › tests/e2e/dev-fields.spec.ts:50:9 › form fields on the dev server › customer, default, 390px: all variants, states and review screenshot
+  -  132 [chromium] › tests/e2e/dev-fields.spec.ts:50:9 › form fields on the dev server › customer, default, 1440px: all variants, states and review screenshot
+  -  133 [chromium] › tests/e2e/dev-fields.spec.ts:50:9 › form fields on the dev server › customer, error, 390px: all variants, states and review screenshot
+  -  134 [chromium] › tests/e2e/dev-fields.spec.ts:50:9 › form fields on the dev server › customer, error, 1440px: all variants, states and review screenshot
+  -  135 [chromium] › tests/e2e/dev-fields.spec.ts:50:9 › form fields on the dev server › customer, disabled, 390px: all variants, states and review screenshot
+  -  136 [chromium] › tests/e2e/dev-fields.spec.ts:50:9 › form fields on the dev server › customer, disabled, 1440px: all variants, states and review screenshot
+  -  137 [chromium] › tests/e2e/dev-fields.spec.ts:50:9 › form fields on the dev server › customer, success, 390px: all variants, states and review screenshot
+  -  138 [chromium] › tests/e2e/dev-fields.spec.ts:50:9 › form fields on the dev server › customer, success, 1440px: all variants, states and review screenshot
+  -  139 [chromium] › tests/e2e/dev-fields.spec.ts:50:9 › form fields on the dev server › trade, default, 390px: all variants, states and review screenshot
+  -  140 [chromium] › tests/e2e/dev-fields.spec.ts:50:9 › form fields on the dev server › trade, default, 1440px: all variants, states and review screenshot
+  -  141 [chromium] › tests/e2e/dev-fields.spec.ts:50:9 › form fields on the dev server › trade, error, 390px: all variants, states and review screenshot
+  -  142 [chromium] › tests/e2e/dev-fields.spec.ts:50:9 › form fields on the dev server › trade, error, 1440px: all variants, states and review screenshot
+  -  143 [chromium] › tests/e2e/dev-fields.spec.ts:50:9 › form fields on the dev server › trade, disabled, 390px: all variants, states and review screenshot
+  -  144 [chromium] › tests/e2e/dev-fields.spec.ts:50:9 › form fields on the dev server › trade, disabled, 1440px: all variants, states and review screenshot
+  -  145 [chromium] › tests/e2e/dev-fields.spec.ts:50:9 › form fields on the dev server › trade, success, 390px: all variants, states and review screenshot
+  -  146 [chromium] › tests/e2e/dev-fields.spec.ts:50:9 › form fields on the dev server › trade, success, 1440px: all variants, states and review screenshot
+  -  147 [chromium] › tests/e2e/dev-fields.spec.ts:50:9 › form fields on the dev server › office, default, 390px: all variants, states and review screenshot
+  -  148 [chromium] › tests/e2e/dev-fields.spec.ts:50:9 › form fields on the dev server › office, default, 1440px: all variants, states and review screenshot
+  -  149 [chromium] › tests/e2e/dev-fields.spec.ts:50:9 › form fields on the dev server › office, error, 390px: all variants, states and review screenshot
+  -  150 [chromium] › tests/e2e/dev-fields.spec.ts:50:9 › form fields on the dev server › office, error, 1440px: all variants, states and review screenshot
+  -  151 [chromium] › tests/e2e/dev-fields.spec.ts:50:9 › form fields on the dev server › office, disabled, 390px: all variants, states and review screenshot
+  -  152 [chromium] › tests/e2e/dev-fields.spec.ts:50:9 › form fields on the dev server › office, disabled, 1440px: all variants, states and review screenshot
+  -  153 [chromium] › tests/e2e/dev-fields.spec.ts:50:9 › form fields on the dev server › office, success, 390px: all variants, states and review screenshot
+  -  154 [chromium] › tests/e2e/dev-fields.spec.ts:50:9 › form fields on the dev server › office, success, 1440px: all variants, states and review screenshot
+  -  155 [chromium] › tests/e2e/dev-fields.spec.ts:62:3 › form fields on the dev server › 200% zoom and long content wrap without overflow
+  -  156 [chromium] › tests/e2e/dev-fields.spec.ts:71:3 › form fields on the dev server › password visibility works with the keyboard and doesn't change or submit the value
+  -  157 [chromium] › tests/e2e/dev-fields.spec.ts:85:3 › form fields on the dev server › keyboard focus has a visible 2px ring on text and choice controls
+  -  158 [chromium] › tests/e2e/dev-fields.spec.ts:102:3 › form fields on the dev server › native numbers, decimal money strings, dates, select values and textarea counters stay editable
+  -  159 [chromium] › tests/e2e/dev-fields.spec.ts:117:3 › form fields on the dev server › radio arrows, checkbox Space, switches and single/multiple chips work without a pointer
+  -  160 [chromium] › tests/e2e/dev-fields.spec.ts:138:3 › form fields on the dev server › Any time selects only available windows, supports individual toggles and clear, and submits native values
+  -  161 [chromium] › tests/e2e/dev-fields.spec.ts:154:3 › form fields on the dev server › state changes preserve typed values, selected chips and time windows, and disabled controls cannot change
+  -  162 [chromium] › tests/e2e/dev-fields.spec.ts:169:3 › form fields on the dev server › address keyboard selection, Escape, no results and offline fallback preserve the input
+  -  163 [chromium] › tests/e2e/dev-fields.spec.ts:194:3 › form fields on the dev server › address pointer selection and Tab dismissal work without stealing focus
+  -  164 [chromium] › tests/e2e/dev-fields.spec.ts:206:3 › form fields on the dev server › invalid submit at 390px focuses the first error, retains entries and recovers to success
+  -  165 [chromium] › tests/e2e/dev-fields.spec.ts:206:3 › form fields on the dev server › invalid submit at 1440px focuses the first error, retains entries and recovers to success
+  ✓  125 [chromium] › tests/e2e/dev-fields.spec.ts:30:1 › /dev/components/fields is a 404 in production (489ms)
+  -  167 [chromium] › tests/e2e/dev-media.spec.ts:32:5 › /dev/components/media › 320px: no axe violations and no sideways scroll
+  -  168 [chromium] › tests/e2e/dev-media.spec.ts:32:5 › /dev/components/media › 390px: no axe violations and no sideways scroll
+  -  169 [chromium] › tests/e2e/dev-media.spec.ts:32:5 › /dev/components/media › 768px: no axe violations and no sideways scroll
+  -  170 [chromium] › tests/e2e/dev-media.spec.ts:32:5 › /dev/components/media › 1024px: no axe violations and no sideways scroll
+  -  171 [chromium] › tests/e2e/dev-media.spec.ts:32:5 › /dev/components/media › 1440px: no axe violations and no sideways scroll
+  -  172 [chromium] › tests/e2e/dev-media.spec.ts:43:3 › /dev/components/media › choosing files: previews appear, upload, and bad files are explained
+  -  173 [chromium] › tests/e2e/dev-media.spec.ts:62:3 › /dev/components/media › Retry starts a failed upload again; remove has Undo
+  -  174 [chromium] › tests/e2e/dev-media.spec.ts:74:3 › /dev/components/media › dragging files over the drop zone shows the drag-over state (M26)
+  -  175 [chromium] › tests/e2e/dev-media.spec.ts:84:3 › /dev/components/media › the viewer: opens from a photo, arrows move, Esc closes and focus returns
+  -  176 [chromium] › tests/e2e/dev-media.spec.ts:111:3 › /dev/components/media › star input works by keyboard and says the chosen words
+  -  177 [chromium] › tests/e2e/dev-media.spec.ts:120:3 › /dev/components/media › 200% text: nothing spills
+  ✓  166 [chromium] › tests/e2e/dev-media.spec.ts:10:1 › /dev/components/media is not in production builds (479ms)
+  -  179 [chromium] › tests/e2e/dev-motion.spec.ts:24:5 › /dev/motion on the dev server › has no accessibility violations or sideways scroll at 320px
+  -  180 [chromium] › tests/e2e/dev-motion.spec.ts:24:5 › /dev/motion on the dev server › has no accessibility violations or sideways scroll at 390px
+  -  181 [chromium] › tests/e2e/dev-motion.spec.ts:24:5 › /dev/motion on the dev server › has no accessibility violations or sideways scroll at 768px
+  -  182 [chromium] › tests/e2e/dev-motion.spec.ts:24:5 › /dev/motion on the dev server › has no accessibility violations or sideways scroll at 1024px
+  -  183 [chromium] › tests/e2e/dev-motion.spec.ts:24:5 › /dev/motion on the dev server › has no accessibility violations or sideways scroll at 1440px
+  -  184 [chromium] › tests/e2e/dev-motion.spec.ts:36:3 › /dev/motion on the dev server › has a play button for each of M01–M27, and every one plays without an error
+  -  185 [chromium] › tests/e2e/dev-motion.spec.ts:50:3 › /dev/motion on the dev server › the drawer takes focus, closes with Esc and gives focus back
+  -  186 [chromium] › tests/e2e/dev-motion.spec.ts:61:3 › /dev/motion on the dev server › the toast waits while hovered and leaves 4s after
+  -  187 [chromium] › tests/e2e/dev-motion.spec.ts:72:3 › /dev/motion on the dev server › a celebration plays once per event: revisiting the same event shows it still
+  -  188 [chromium] › tests/e2e/dev-motion.spec.ts:83:5 › /dev/motion on the dev server › with reduced motion › every change is instant and the skeleton is static grey
+  ✓  178 [chromium] › tests/e2e/dev-motion.spec.ts:11:1 › /dev/motion is not in production builds (522ms)
+  -  190 [chromium] › tests/e2e/dev-office-shell.spec.ts:28:5 › /dev/components/office-shell › 320px: all states have no axe violations or sideways scroll
+  -  191 [chromium] › tests/e2e/dev-office-shell.spec.ts:28:5 › /dev/components/office-shell › 390px: all states have no axe violations or sideways scroll
+  -  192 [chromium] › tests/e2e/dev-office-shell.spec.ts:28:5 › /dev/components/office-shell › 768px: all states have no axe violations or sideways scroll
+  -  193 [chromium] › tests/e2e/dev-office-shell.spec.ts:28:5 › /dev/components/office-shell › 1024px: all states have no axe violations or sideways scroll
+  -  194 [chromium] › tests/e2e/dev-office-shell.spec.ts:28:5 › /dev/components/office-shell › 1440px: all states have no axe violations or sideways scroll
+  -  195 [chromium] › tests/e2e/dev-office-shell.spec.ts:88:5 › /dev/components/office-shell › 390px: the skip link is first in the tab order and focuses main
+  -  196 [chromium] › tests/e2e/dev-office-shell.spec.ts:88:5 › /dev/components/office-shell › 1440px: the skip link is first in the tab order and focuses main
+  -  197 [chromium] › tests/e2e/dev-office-shell.spec.ts:101:3 › /dev/components/office-shell › the phone menu opens with the keyboard, supports navigation keys and returns focus on Esc
+  -  198 [chromium] › tests/e2e/dev-office-shell.spec.ts:140:3 › /dev/components/office-shell › the phone menu navigates while preserving the preview and its selected state
+  -  199 [chromium] › tests/e2e/dev-office-shell.spec.ts:157:3 › /dev/components/office-shell › the desktop sidebar is 240px, selects nested pages and moves its M16 indicator
+  -  200 [chromium] › tests/e2e/dev-office-shell.spec.ts:185:5 › /dev/components/office-shell › 390px: the avatar menu has only Help and Log out and restores keyboard focus
+  -  201 [chromium] › tests/e2e/dev-office-shell.spec.ts:185:5 › /dev/components/office-shell › 1440px: the avatar menu has only Help and Log out and restores keyboard focus
+  -  202 [chromium] › tests/e2e/dev-office-shell.spec.ts:214:3 › /dev/components/office-shell › test mode can be shown and hidden and counts display none, some and 99+
+  -  203 [chromium] › tests/e2e/dev-office-shell.spec.ts:230:3 › /dev/components/office-shell › 200% text and a long name fit at both widths
+  -  204 [chromium] › tests/e2e/dev-office-shell.spec.ts:240:3 › /dev/components/office-shell › on a long page the sidebar, its links and the avatar stay in view, and the phone bar stays on top
+  -  205 [chromium] › tests/e2e/dev-office-shell.spec.ts:270:3 › /dev/components/office-shell › before scrolling, the avatar is on screen even with the test-mode banner (short windows scroll the links)
+  ✓  189 [chromium] › tests/e2e/dev-office-shell.spec.ts:18:1 › /dev/components/office-shell is a 404 in production (466ms)
+  -  207 [chromium] › tests/e2e/dev-overlays.spec.ts:92:7 › /dev/components/overlays on the dev server › at 320px › the page has no accessibility violations or sideways scroll
+  -  208 [chromium] › tests/e2e/dev-overlays.spec.ts:99:7 › /dev/components/overlays on the dev server › at 320px › every overlay, open, has no accessibility violations and stays inside the screen
+  -  209 [chromium] › tests/e2e/dev-overlays.spec.ts:92:7 › /dev/components/overlays on the dev server › at 390px › the page has no accessibility violations or sideways scroll
+  -  210 [chromium] › tests/e2e/dev-overlays.spec.ts:99:7 › /dev/components/overlays on the dev server › at 390px › every overlay, open, has no accessibility violations and stays inside the screen
+  -  211 [chromium] › tests/e2e/dev-overlays.spec.ts:92:7 › /dev/components/overlays on the dev server › at 768px › the page has no accessibility violations or sideways scroll
+  -  212 [chromium] › tests/e2e/dev-overlays.spec.ts:99:7 › /dev/components/overlays on the dev server › at 768px › every overlay, open, has no accessibility violations and stays inside the screen
+  -  213 [chromium] › tests/e2e/dev-overlays.spec.ts:92:7 › /dev/components/overlays on the dev server › at 1024px › the page has no accessibility violations or sideways scroll
+  -  214 [chromium] › tests/e2e/dev-overlays.spec.ts:99:7 › /dev/components/overlays on the dev server › at 1024px › every overlay, open, has no accessibility violations and stays inside the screen
+  -  215 [chromium] › tests/e2e/dev-overlays.spec.ts:92:7 › /dev/components/overlays on the dev server › at 1440px › the page has no accessibility violations or sideways scroll
+  -  216 [chromium] › tests/e2e/dev-overlays.spec.ts:99:7 › /dev/components/overlays on the dev server › at 1440px › every overlay, open, has no accessibility violations and stays inside the screen
+  -  217 [chromium] › tests/e2e/dev-overlays.spec.ts:115:5 › /dev/components/overlays on the dev server › a dialog, a menu and a toast have no accessibility violations in trade mode
+  -  218 [chromium] › tests/e2e/dev-overlays.spec.ts:115:5 › /dev/components/overlays on the dev server › a dialog, a menu and a toast have no accessibility violations in office mode
+  -  219 [chromium] › tests/e2e/dev-overlays.spec.ts:125:3 › /dev/components/overlays on the dev server › a dialog: focus goes to its title, Tab stays inside, Esc closes, focus comes back
+  -  220 [chromium] › tests/e2e/dev-overlays.spec.ts:157:3 › /dev/components/overlays on the dev server › a dialog closes from the scrim and from ×, not from a click inside it
+  -  221 [chromium] › tests/e2e/dev-overlays.spec.ts:174:3 › /dev/components/overlays on the dev server › the page behind an open dialog can't be reached
+  -  222 [chromium] › tests/e2e/dev-overlays.spec.ts:189:3 › /dev/components/overlays on the dev server › a dialog that isn't dismissible ignores Esc and the scrim and has no ×
+  -  223 [chromium] › tests/e2e/dev-overlays.spec.ts:204:3 › /dev/components/overlays on the dev server › a destructive confirm waits for its action, then shows a toast whose Undo works
+  -  224 [chromium] › tests/e2e/dev-overlays.spec.ts:222:3 › /dev/components/overlays on the dev server › a confirm whose action fails stays open with an alert
+  -  225 [chromium] › tests/e2e/dev-overlays.spec.ts:232:3 › /dev/components/overlays on the dev server › a drawer: focus on its title, the form works, Esc closes and focus comes back
+  -  226 [chromium] › tests/e2e/dev-overlays.spec.ts:247:3 › /dev/components/overlays on the dev server › a bottom sheet on a phone closes when dragged down, and springs back from a small drag
+  -  227 [chromium] › tests/e2e/dev-overlays.spec.ts:274:3 › /dev/components/overlays on the dev server › dialogs are bottom sheets on a phone, unless asked to stay dialogs
+  -  228 [chromium] › tests/e2e/dev-overlays.spec.ts:291:3 › /dev/components/overlays on the dev server › a menu works by keyboard: arrows, Home/End, first letter, Esc back to the button
+  -  229 [chromium] › tests/e2e/dev-overlays.spec.ts:325:3 › /dev/components/overlays on the dev server › a menu item can open a confirm; closing it puts focus back on the menu button
+  -  230 [chromium] › tests/e2e/dev-overlays.spec.ts:337:3 › /dev/components/overlays on the dev server › a menu skips disabled items and closes on a click outside
+  -  231 [chromium] › tests/e2e/dev-overlays.spec.ts:348:3 › /dev/components/overlays on the dev server › a toast goes after 4 seconds, but not while the pointer is on it
+  -  232 [chromium] › tests/e2e/dev-overlays.spec.ts:360:3 › /dev/components/overlays on the dev server › a toast's Undo undoes, and a new toast replaces the old one
+  -  233 [chromium] › tests/e2e/dev-overlays.spec.ts:373:3 › /dev/components/overlays on the dev server › a live banner is read out when it appears; a dismissible one can be closed
+  -  234 [chromium] › tests/e2e/dev-overlays.spec.ts:381:3 › /dev/components/overlays on the dev server › with reduced motion, overlays open and close without animating
+  -  235 [chromium] › tests/e2e/dev-overlays.spec.ts:393:3 › /dev/components/overlays on the dev server › still usable at 200% zoom: long overlays wrap, fit and scroll, with no sideways scroll
+  ✓  206 [chromium] › tests/e2e/dev-overlays.spec.ts:10:1 › /dev/components/overlays is not in production builds (514ms)
+  -  237 [chromium] › tests/e2e/dev-session-expired.spec.ts:35:5 › /dev/components/session-expired › phone-small (320px): no axe violations, no sideways scroll, fits the screen
+  -  238 [chromium] › tests/e2e/dev-session-expired.spec.ts:35:5 › /dev/components/session-expired › phone (390px): no axe violations, no sideways scroll, fits the screen
+  -  239 [chromium] › tests/e2e/dev-session-expired.spec.ts:35:5 › /dev/components/session-expired › tablet (768px): no axe violations, no sideways scroll, fits the screen
+  -  240 [chromium] › tests/e2e/dev-session-expired.spec.ts:35:5 › /dev/components/session-expired › laptop (1024px): no axe violations, no sideways scroll, fits the screen
+  -  241 [chromium] › tests/e2e/dev-session-expired.spec.ts:35:5 › /dev/components/session-expired › desktop (1440px): no axe violations, no sideways scroll, fits the screen
+  -  242 [chromium] › tests/e2e/dev-session-expired.spec.ts:53:3 › /dev/components/session-expired › the mockup at 1440: icon tile, one-line title, no small print, a full-width button and the ×
+  -  243 [chromium] › tests/e2e/dev-session-expired.spec.ts:70:3 › /dev/components/session-expired › the × closes it and goes to the home page
+  -  244 [chromium] › tests/e2e/dev-session-expired.spec.ts:76:3 › /dev/components/session-expired › Esc and the scrim don't close it, and Tab stays inside
+  -  245 [chromium] › tests/e2e/dev-session-expired.spec.ts:89:3 › /dev/components/session-expired › logging in again keeps the page and the draft, sends it, and puts focus back
+  -  246 [chromium] › tests/e2e/dev-session-expired.spec.ts:113:3 › /dev/components/session-expired › problems that aren't about the password show in a banner that's read out
+  -  247 [chromium] › tests/e2e/dev-session-expired.spec.ts:124:3 › /dev/components/session-expired › when the email isn't known it's asked for first
+  -  248 [chromium] › tests/e2e/dev-session-expired.spec.ts:137:3 › /dev/components/session-expired › Not you? goes to the log-in page
+  ✓  236 [chromium] › tests/e2e/dev-session-expired.spec.ts:10:1 › /dev/components/session-expired is not in production builds (509ms)
+  -  250 [chromium] › tests/e2e/dev-status-components.spec.ts:42:7 › /dev/components/status on the dev server › customer mode at 320px: no sideways scroll, nothing overflows, no axe violations
+  -  251 [chromium] › tests/e2e/dev-status-components.spec.ts:42:7 › /dev/components/status on the dev server › customer mode at 390px: no sideways scroll, nothing overflows, no axe violations
+  -  252 [chromium] › tests/e2e/dev-status-components.spec.ts:42:7 › /dev/components/status on the dev server › customer mode at 768px: no sideways scroll, nothing overflows, no axe violations
+  -  253 [chromium] › tests/e2e/dev-status-components.spec.ts:42:7 › /dev/components/status on the dev server › customer mode at 1024px: no sideways scroll, nothing overflows, no axe violations
+  -  254 [chromium] › tests/e2e/dev-status-components.spec.ts:42:7 › /dev/components/status on the dev server › customer mode at 1440px: no sideways scroll, nothing overflows, no axe violations
+  -  255 [chromium] › tests/e2e/dev-status-components.spec.ts:42:7 › /dev/components/status on the dev server › trade mode at 320px: no sideways scroll, nothing overflows, no axe violations
+  -  256 [chromium] › tests/e2e/dev-status-components.spec.ts:42:7 › /dev/components/status on the dev server › trade mode at 390px: no sideways scroll, nothing overflows, no axe violations
+  -  257 [chromium] › tests/e2e/dev-status-components.spec.ts:42:7 › /dev/components/status on the dev server › trade mode at 768px: no sideways scroll, nothing overflows, no axe violations
+  -  258 [chromium] › tests/e2e/dev-status-components.spec.ts:42:7 › /dev/components/status on the dev server › trade mode at 1024px: no sideways scroll, nothing overflows, no axe violations
+  -  259 [chromium] › tests/e2e/dev-status-components.spec.ts:42:7 › /dev/components/status on the dev server › trade mode at 1440px: no sideways scroll, nothing overflows, no axe violations
+  -  260 [chromium] › tests/e2e/dev-status-components.spec.ts:42:7 › /dev/components/status on the dev server › office mode at 320px: no sideways scroll, nothing overflows, no axe violations
+  -  261 [chromium] › tests/e2e/dev-status-components.spec.ts:42:7 › /dev/components/status on the dev server › office mode at 390px: no sideways scroll, nothing overflows, no axe violations
+  -  262 [chromium] › tests/e2e/dev-status-components.spec.ts:42:7 › /dev/components/status on the dev server › office mode at 768px: no sideways scroll, nothing overflows, no axe violations
+  -  263 [chromium] › tests/e2e/dev-status-components.spec.ts:42:7 › /dev/components/status on the dev server › office mode at 1024px: no sideways scroll, nothing overflows, no axe violations
+  -  264 [chromium] › tests/e2e/dev-status-components.spec.ts:42:7 › /dev/components/status on the dev server › office mode at 1440px: no sideways scroll, nothing overflows, no axe violations
+  -  265 [chromium] › tests/e2e/dev-status-components.spec.ts:53:3 › /dev/components/status on the dev server › still works at 200% zoom (a 1280px window is 640 CSS pixels)
+  -  266 [chromium] › tests/e2e/dev-status-components.spec.ts:61:3 › /dev/components/status on the dev server › shows each mode's own labels
+  -  267 [chromium] › tests/e2e/dev-status-components.spec.ts:70:3 › /dev/components/status on the dev server › M25: moving the job on with the keyboard announces the new status as text
+  -  268 [chromium] › tests/e2e/dev-status-components.spec.ts:84:3 › /dev/components/status on the dev server › M11: the tracker moves on a step at a time and marks the current step
+  -  269 [chromium] › tests/e2e/dev-status-components.spec.ts:97:3 › /dev/components/status on the dev server › M09: the reveal ends on the real numbers, each side seeing only its own
+  -  270 [chromium] › tests/e2e/dev-status-components.spec.ts:110:3 › /dev/components/status on the dev server › a truncated pill keeps its full label in a tooltip
+  ✓  249 [chromium] › tests/e2e/dev-status-components.spec.ts:10:1 › /dev/components/status is not in production builds (514ms)
+  ✓  271 [chromium] › tests/e2e/error-pages.spec.ts:17:5 › 404 › 320px: a missing page says so, with status 404, no sideways scroll and no axe violations (1.0s)
+  ✓  272 [chromium] › tests/e2e/error-pages.spec.ts:17:5 › 404 › 390px: a missing page says so, with status 404, no sideways scroll and no axe violations (974ms)
+  ✓  273 [chromium] › tests/e2e/error-pages.spec.ts:17:5 › 404 › 768px: a missing page says so, with status 404, no sideways scroll and no axe violations (995ms)
+  ✓  274 [chromium] › tests/e2e/error-pages.spec.ts:17:5 › 404 › 1024px: a missing page says so, with status 404, no sideways scroll and no axe violations (1.0s)
+  ✓  276 [chromium] › tests/e2e/error-pages.spec.ts:29:3 › 404 › Go home and Help centre work by keyboard (661ms)
+  ✓  275 [chromium] › tests/e2e/error-pages.spec.ts:17:5 › 404 › 1440px: a missing page says so, with status 404, no sideways scroll and no axe violations (998ms)
+  -  278 [chromium] › tests/e2e/error-pages.spec.ts:55:5 › 500 (dev preview) › 320px: no sideways scroll and no axe violations
+  -  279 [chromium] › tests/e2e/error-pages.spec.ts:55:5 › 500 (dev preview) › 390px: no sideways scroll and no axe violations
+  -  280 [chromium] › tests/e2e/error-pages.spec.ts:55:5 › 500 (dev preview) › 768px: no sideways scroll and no axe violations
+  -  281 [chromium] › tests/e2e/error-pages.spec.ts:55:5 › 500 (dev preview) › 1024px: no sideways scroll and no axe violations
+  -  282 [chromium] › tests/e2e/error-pages.spec.ts:55:5 › 500 (dev preview) › 1440px: no sideways scroll and no axe violations
+  -  283 [chromium] › tests/e2e/error-pages.spec.ts:66:3 › 500 (dev preview) › says it's our fault, shows the reference, and Try again works by keyboard
+  -  284 [chromium] › tests/e2e/error-pages.spec.ts:76:3 › 500 (dev preview) › an error from the browser shows no reference
+  -  285 [chromium] › tests/e2e/error-pages.spec.ts:82:3 › 500 (dev preview) › 200% text still fits
+  ✓  277 [chromium] › tests/e2e/error-pages.spec.ts:39:3 › 404 › the skip link jumps to the message (553ms)
+  ✓  286 [chromium] › tests/e2e/focus-visibility.spec.ts:11:5 › focus follows the input method › 320px: clicking and typing are ring-free; Tab restores the field and button rings (938ms)
+  ✓  287 [chromium] › tests/e2e/focus-visibility.spec.ts:35:5 › focus follows the input method › 320px: example-chip focus and pointer-opened location dialog have no ring (806ms)
+  ✓  288 [chromium] › tests/e2e/focus-visibility.spec.ts:11:5 › focus follows the input method › 390px: clicking and typing are ring-free; Tab restores the field and button rings (841ms)
+  ✓  289 [chromium] › tests/e2e/focus-visibility.spec.ts:35:5 › focus follows the input method › 390px: example-chip focus and pointer-opened location dialog have no ring (779ms)
+  ✓  290 [chromium] › tests/e2e/focus-visibility.spec.ts:11:5 › focus follows the input method › 768px: clicking and typing are ring-free; Tab restores the field and button rings (857ms)
+  ✓  291 [chromium] › tests/e2e/focus-visibility.spec.ts:35:5 › focus follows the input method › 768px: example-chip focus and pointer-opened location dialog have no ring (765ms)
+  ✓  292 [chromium] › tests/e2e/focus-visibility.spec.ts:11:5 › focus follows the input method › 1024px: clicking and typing are ring-free; Tab restores the field and button rings (865ms)
+  ✓  293 [chromium] › tests/e2e/focus-visibility.spec.ts:35:5 › focus follows the input method › 1024px: example-chip focus and pointer-opened location dialog have no ring (936ms)
+  ✓  294 [chromium] › tests/e2e/focus-visibility.spec.ts:11:5 › focus follows the input method › 1440px: clicking and typing are ring-free; Tab restores the field and button rings (909ms)
+  ✓  295 [chromium] › tests/e2e/focus-visibility.spec.ts:35:5 › focus follows the input method › 1440px: example-chip focus and pointer-opened location dialog have no ring (809ms)
+  ✓  296 [chromium] › tests/e2e/focus-visibility.spec.ts:61:3 › touch focus › tapping fields and example chips keeps them functional and ring-free (636ms)
+  -  298 [chromium] › tests/e2e/focus-visibility.spec.ts:83:5 › outside-area banner › 320px: title and action wrap as whole items and align with the icon
+  -  299 [chromium] › tests/e2e/focus-visibility.spec.ts:83:5 › outside-area banner › 390px: title and action wrap as whole items and align with the icon
+  -  300 [chromium] › tests/e2e/focus-visibility.spec.ts:83:5 › outside-area banner › 768px: title and action wrap as whole items and align with the icon
+  -  301 [chromium] › tests/e2e/focus-visibility.spec.ts:83:5 › outside-area banner › 1024px: title and action wrap as whole items and align with the icon
+  -  302 [chromium] › tests/e2e/focus-visibility.spec.ts:83:5 › outside-area banner › 1440px: title and action wrap as whole items and align with the icon
+  -  303 [chromium] › tests/e2e/focus-visibility.spec.ts:102:5 › shared keyboard navigation after a click › 390px: menu arrows and typeahead restore focus visibility
+  -  304 [chromium] › tests/e2e/focus-visibility.spec.ts:102:5 › shared keyboard navigation after a click › 1440px: menu arrows and typeahead restore focus visibility
+  -  305 [chromium] › tests/e2e/focus-visibility.spec.ts:122:3 › shared keyboard navigation after a click › address suggestion arrows show the ring; typing alone does not
+  ✓  297 [chromium] › tests/e2e/focus-visibility.spec.ts:70:1 › without JavaScript keyboard focus still has the original M05 ring (785ms)
+  ✘  306 [chromium] › tests/e2e/help.spec.ts:7:5 › Help centre 320px › home, article and every review state fit and remain accessible (7.6s)
+  ✘  307 [chromium] › tests/e2e/help.spec.ts:7:5 › Help centre 390px › home, article and every review state fit and remain accessible (7.6s)
+(node:99567) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:99568) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  309 [chromium] › tests/e2e/help.spec.ts:7:5 › Help centre 1024px › home, article and every review state fit and remain accessible (5.6s)
+  ✘  308 [chromium] › tests/e2e/help.spec.ts:7:5 › Help centre 768px › home, article and every review state fit and remain accessible (8.2s)
+(node:99629) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  310 [chromium] › tests/e2e/help.spec.ts:7:5 › Help centre 1440px › home, article and every review state fit and remain accessible (5.2s)
+  ✓  312 [chromium] › tests/e2e/help.spec.ts:34:1 › phone FAQ, topic filters and article back navigation work (749ms)
+  ✓  311 [chromium] › tests/e2e/help.spec.ts:24:1 › search suggestions support slash, arrows, Enter, Escape and a real article journey (1.7s)
+  ✓  314 [chromium] › tests/e2e/help.spec.ts:53:1 › unknown articles return a real 404 (583ms)
+  ✓  313 [chromium] › tests/e2e/help.spec.ts:44:1 › feedback keeps the optional note and truthfully reports unavailable persistence (683ms)
+  ✓  316 [chromium] › tests/e2e/home.spec.ts:16:5 › home page at 320px › loads with the product name as the heading (566ms)
+  ✓  315 [chromium] › tests/e2e/help.spec.ts:54:1 › phone shell is correct before hydration (899ms)
+  ✓  317 [chromium] › tests/e2e/home.spec.ts:23:5 › home page at 320px › has no sideways scroll (538ms)
+  ✓  319 [chromium] › tests/e2e/home.spec.ts:16:5 › home page at 390px › loads with the product name as the heading (508ms)
+  ✓  320 [chromium] › tests/e2e/home.spec.ts:23:5 › home page at 390px › has no sideways scroll (481ms)
+  ✓  318 [chromium] › tests/e2e/home.spec.ts:31:5 › home page at 320px › has no accessibility violations (1.3s)
+  ✓  322 [chromium] › tests/e2e/home.spec.ts:16:5 › home page at 768px › loads with the product name as the heading (619ms)
+  ✓  323 [chromium] › tests/e2e/home.spec.ts:23:5 › home page at 768px › has no sideways scroll (472ms)
+  ✓  321 [chromium] › tests/e2e/home.spec.ts:31:5 › home page at 390px › has no accessibility violations (1.3s)
+  ✓  325 [chromium] › tests/e2e/home.spec.ts:16:5 › home page at 1024px › loads with the product name as the heading (587ms)
+  ✓  326 [chromium] › tests/e2e/home.spec.ts:23:5 › home page at 1024px › has no sideways scroll (482ms)
+  ✓  324 [chromium] › tests/e2e/home.spec.ts:31:5 › home page at 768px › has no accessibility violations (1.3s)
+  ✓  328 [chromium] › tests/e2e/home.spec.ts:16:5 › home page at 1440px › loads with the product name as the heading (659ms)
+  ✓  329 [chromium] › tests/e2e/home.spec.ts:23:5 › home page at 1440px › has no sideways scroll (516ms)
+  ✓  327 [chromium] › tests/e2e/home.spec.ts:31:5 › home page at 1024px › has no accessibility violations (1.4s)
+  ✓  331 [chromium] › tests/e2e/landing.spec.ts:16:1 › landing fixtures are guarded on production deployments (466ms)
+  ✓  330 [chromium] › tests/e2e/home.spec.ts:31:5 › home page at 1440px › has no accessibility violations (1.4s)
+  ✓  332 [chromium] › tests/e2e/landing.spec.ts:24:5 › public homepage › 320px: all sections fit, accessible, with one primary start above the fold (1.3s)
+  ✓  333 [chromium] › tests/e2e/landing.spec.ts:24:5 › public homepage › 390px: all sections fit, accessible, with one primary start above the fold (1.3s)
+  ✓  334 [chromium] › tests/e2e/landing.spec.ts:24:5 › public homepage › 768px: all sections fit, accessible, with one primary start above the fold (1.3s)
+  ✓  335 [chromium] › tests/e2e/landing.spec.ts:24:5 › public homepage › 1024px: all sections fit, accessible, with one primary start above the fold (1.3s)
+  ✓  337 [chromium] › tests/e2e/landing.spec.ts:37:3 › public homepage › Enter carries text and location through the existing login return path and saves the same draft (602ms)
+  ✓  336 [chromium] › tests/e2e/landing.spec.ts:24:5 › public homepage › 1440px: all sections fit, accessible, with one primary start above the fold (1.5s)
+  ✓  338 [chromium] › tests/e2e/landing.spec.ts:47:3 › public homepage › a phone example fills the visible input; final CTA shares the text (826ms)
+  ✓  339 [chromium] › tests/e2e/landing.spec.ts:55:3 › public homepage › a category carries its type and the entered query (1.0s)
+  ✓  340 [chromium] › tests/e2e/landing.spec.ts:63:3 › public homepage › storage denied still retains text in the return URL (903ms)
+  ✓  341 [chromium] › tests/e2e/landing.spec.ts:70:3 › public homepage › geolocation is requested once and updates coverage even with development effect replay (1.0s)
+  -  343 [chromium] › tests/e2e/landing.spec.ts:95:5 › landing fixtures › 320px: signed-in, outside, reviews, lookup loading/error states fit and pass axe
+  -  344 [chromium] › tests/e2e/landing.spec.ts:95:5 › landing fixtures › 390px: signed-in, outside, reviews, lookup loading/error states fit and pass axe
+  -  345 [chromium] › tests/e2e/landing.spec.ts:95:5 › landing fixtures › 768px: signed-in, outside, reviews, lookup loading/error states fit and pass axe
+  -  346 [chromium] › tests/e2e/landing.spec.ts:95:5 › landing fixtures › 1024px: signed-in, outside, reviews, lookup loading/error states fit and pass axe
+  -  347 [chromium] › tests/e2e/landing.spec.ts:95:5 › landing fixtures › 1440px: signed-in, outside, reviews, lookup loading/error states fit and pass axe
+  -  348 [chromium] › tests/e2e/landing.spec.ts:105:3 › landing fixtures › outside-area starts carry details to the waitlist hand-off
+  -  349 [chromium] › tests/e2e/landing.spec.ts:111:3 › landing fixtures › the location picker selects a real provider shape and supports manual fallback
+  -  350 [chromium] › tests/e2e/landing.spec.ts:123:5 › landing fixtures › 1440px: M06 parallax/nav fill, M07 reveal and reduced motion
+  -  351 [chromium] › tests/e2e/landing.spec.ts:123:5 › landing fixtures › 390px: M06 parallax/nav fill, M07 reveal and reduced motion
+  ✓  342 [chromium] › tests/e2e/landing.spec.ts:83:3 › public homepage › FAQ is a keyboard-operable M24 accordion (763ms)
+  ✓  352 [chromium] › tests/e2e/login.spec.ts:18:5 › /login › 320px: no sideways scroll, no axe violations, the right layout (1.2s)
+  ✓  353 [chromium] › tests/e2e/login.spec.ts:18:5 › /login › 390px: no sideways scroll, no axe violations, the right layout (1.2s)
+  ✓  354 [chromium] › tests/e2e/login.spec.ts:18:5 › /login › 768px: no sideways scroll, no axe violations, the right layout (1.1s)
+  ✓  355 [chromium] › tests/e2e/login.spec.ts:18:5 › /login › 1024px: no sideways scroll, no axe violations, the right layout (1.3s)
+[WebServer] Supabase isn't connected. Copy .env.example to .env.local and fill in NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY from Supabase (Project Settings → API Keys).
+  ✓  356 [chromium] › tests/e2e/login.spec.ts:18:5 › /login › 1440px: no sideways scroll, no axe violations, the right layout (1.3s)
+  ✓  357 [chromium] › tests/e2e/login.spec.ts:30:3 › /login › by keyboard: type, show the password, Enter submits; the email stays, the password empties (1.2s)
+  ✓  358 [chromium] › tests/e2e/login.spec.ts:45:3 › /login › Keep me logged in starts ticked and can be unticked (597ms)
+  ✓  360 [chromium] › tests/e2e/login.spec.ts:65:3 › /login › as in the mockups: no labels showing, and Sign up on a phone (501ms)
+  -  361 [chromium] › tests/e2e/login.spec.ts:84:5 › /dev/components/login (every answer) › 320px: every state has no axe violations or sideways scroll
+  -  362 [chromium] › tests/e2e/login.spec.ts:84:5 › /dev/components/login (every answer) › 390px: every state has no axe violations or sideways scroll
+  -  363 [chromium] › tests/e2e/login.spec.ts:84:5 › /dev/components/login (every answer) › 768px: every state has no axe violations or sideways scroll
+  -  364 [chromium] › tests/e2e/login.spec.ts:84:5 › /dev/components/login (every answer) › 1024px: every state has no axe violations or sideways scroll
+  -  365 [chromium] › tests/e2e/login.spec.ts:84:5 › /dev/components/login (every answer) › 1440px: every state has no axe violations or sideways scroll
+  -  366 [chromium] › tests/e2e/login.spec.ts:95:3 › /dev/components/login (every answer) › wrong password: one message under the password, which is red and empty
+  -  367 [chromium] › tests/e2e/login.spec.ts:102:3 › /dev/components/login (every answer) › too many tries and an unconfirmed email show as banners
+  -  368 [chromium] › tests/e2e/login.spec.ts:109:3 › /dev/components/login (every answer) › 200% text still fits
+  ✓  359 [chromium] › tests/e2e/login.spec.ts:53:3 › /login › links: forgot password, sign up (keeping the deep link), home (997ms)
+  -  370 [chromium] › tests/e2e/mapbox-provider.spec.ts:18:7 › Mapbox provider › ready at 320px is accessible without sideways scroll
+  -  371 [chromium] › tests/e2e/mapbox-provider.spec.ts:18:7 › Mapbox provider › missing-token at 320px is accessible without sideways scroll
+  -  372 [chromium] › tests/e2e/mapbox-provider.spec.ts:18:7 › Mapbox provider › loading at 320px is accessible without sideways scroll
+  -  373 [chromium] › tests/e2e/mapbox-provider.spec.ts:18:7 › Mapbox provider › error at 320px is accessible without sideways scroll
+  -  374 [chromium] › tests/e2e/mapbox-provider.spec.ts:18:7 › Mapbox provider › empty at 320px is accessible without sideways scroll
+  -  375 [chromium] › tests/e2e/mapbox-provider.spec.ts:18:7 › Mapbox provider › location-denied at 320px is accessible without sideways scroll
+  -  376 [chromium] › tests/e2e/mapbox-provider.spec.ts:18:7 › Mapbox provider › ready at 390px is accessible without sideways scroll
+  -  377 [chromium] › tests/e2e/mapbox-provider.spec.ts:18:7 › Mapbox provider › missing-token at 390px is accessible without sideways scroll
+  -  378 [chromium] › tests/e2e/mapbox-provider.spec.ts:18:7 › Mapbox provider › loading at 390px is accessible without sideways scroll
+  -  379 [chromium] › tests/e2e/mapbox-provider.spec.ts:18:7 › Mapbox provider › error at 390px is accessible without sideways scroll
+  -  380 [chromium] › tests/e2e/mapbox-provider.spec.ts:18:7 › Mapbox provider › empty at 390px is accessible without sideways scroll
+  -  381 [chromium] › tests/e2e/mapbox-provider.spec.ts:18:7 › Mapbox provider › location-denied at 390px is accessible without sideways scroll
+  -  382 [chromium] › tests/e2e/mapbox-provider.spec.ts:18:7 › Mapbox provider › ready at 768px is accessible without sideways scroll
+  -  383 [chromium] › tests/e2e/mapbox-provider.spec.ts:18:7 › Mapbox provider › missing-token at 768px is accessible without sideways scroll
+  -  384 [chromium] › tests/e2e/mapbox-provider.spec.ts:18:7 › Mapbox provider › loading at 768px is accessible without sideways scroll
+  -  385 [chromium] › tests/e2e/mapbox-provider.spec.ts:18:7 › Mapbox provider › error at 768px is accessible without sideways scroll
+  -  386 [chromium] › tests/e2e/mapbox-provider.spec.ts:18:7 › Mapbox provider › empty at 768px is accessible without sideways scroll
+  -  387 [chromium] › tests/e2e/mapbox-provider.spec.ts:18:7 › Mapbox provider › location-denied at 768px is accessible without sideways scroll
+  -  388 [chromium] › tests/e2e/mapbox-provider.spec.ts:18:7 › Mapbox provider › ready at 1024px is accessible without sideways scroll
+  -  389 [chromium] › tests/e2e/mapbox-provider.spec.ts:18:7 › Mapbox provider › missing-token at 1024px is accessible without sideways scroll
+  -  390 [chromium] › tests/e2e/mapbox-provider.spec.ts:18:7 › Mapbox provider › loading at 1024px is accessible without sideways scroll
+  -  391 [chromium] › tests/e2e/mapbox-provider.spec.ts:18:7 › Mapbox provider › error at 1024px is accessible without sideways scroll
+  -  392 [chromium] › tests/e2e/mapbox-provider.spec.ts:18:7 › Mapbox provider › empty at 1024px is accessible without sideways scroll
+  -  393 [chromium] › tests/e2e/mapbox-provider.spec.ts:18:7 › Mapbox provider › location-denied at 1024px is accessible without sideways scroll
+  -  394 [chromium] › tests/e2e/mapbox-provider.spec.ts:18:7 › Mapbox provider › ready at 1440px is accessible without sideways scroll
+  -  395 [chromium] › tests/e2e/mapbox-provider.spec.ts:18:7 › Mapbox provider › missing-token at 1440px is accessible without sideways scroll
+  -  396 [chromium] › tests/e2e/mapbox-provider.spec.ts:18:7 › Mapbox provider › loading at 1440px is accessible without sideways scroll
+  -  397 [chromium] › tests/e2e/mapbox-provider.spec.ts:18:7 › Mapbox provider › error at 1440px is accessible without sideways scroll
+  -  398 [chromium] › tests/e2e/mapbox-provider.spec.ts:18:7 › Mapbox provider › empty at 1440px is accessible without sideways scroll
+  -  399 [chromium] › tests/e2e/mapbox-provider.spec.ts:18:7 › Mapbox provider › location-denied at 1440px is accessible without sideways scroll
+  -  400 [chromium] › tests/e2e/mapbox-provider.spec.ts:32:3 › Mapbox provider › missing token never requests Mapbox; rows still open a card and Escape returns focus
+  -  401 [chromium] › tests/e2e/mapbox-provider.spec.ts:45:3 › Mapbox provider › late vendor CSS leaves a full-height canvas, pins and attribution visible
+  -  402 [chromium] › tests/e2e/mapbox-provider.spec.ts:66:3 › Mapbox provider › real provider adapter projects our pins, clusters close jobs and fits cluster bounds
+  -  403 [chromium] › tests/e2e/mapbox-provider.spec.ts:88:3 › Mapbox provider › denied permission recentres the full work area and keeps every job
+  -  404 [chromium] › tests/e2e/mapbox-provider.spec.ts:98:3 › Mapbox provider › location success shows the dot; map is usable with keyboard zoom controls
+  -  405 [chromium] › tests/e2e/mapbox-provider.spec.ts:108:3 › Mapbox provider › the live configuration falls back when no token is installed
+  -  406 [chromium] › tests/e2e/mapbox-provider.spec.ts:116:5 › Mapbox provider › live Mapbox renders tiles, pins and attribution at 320px
+  -  407 [chromium] › tests/e2e/mapbox-provider.spec.ts:116:5 › Mapbox provider › live Mapbox renders tiles, pins and attribution at 390px
+  -  408 [chromium] › tests/e2e/mapbox-provider.spec.ts:116:5 › Mapbox provider › live Mapbox renders tiles, pins and attribution at 768px
+  -  409 [chromium] › tests/e2e/mapbox-provider.spec.ts:116:5 › Mapbox provider › live Mapbox renders tiles, pins and attribution at 1024px
+  -  410 [chromium] › tests/e2e/mapbox-provider.spec.ts:116:5 › Mapbox provider › live Mapbox renders tiles, pins and attribution at 1440px
+  -  411 [chromium] › tests/e2e/mapbox-provider.spec.ts:163:3 › Mapbox provider › pins stay inside the map after resizing and switching through fallback states
+  -  412 [chromium] › tests/e2e/mapbox-provider.spec.ts:186:3 › Mapbox provider › full-page captures never clamp clusters to a transient one-pixel map
+  ✓  369 [chromium] › tests/e2e/mapbox-provider.spec.ts:9:1 › Mapbox preview is private in production (529ms)
+  ✓  413 [chromium] › tests/e2e/meta.spec.ts:23:3 › icons and share images › the SVG favicon is the bolt on Forest (634ms)
+  ✓  414 [chromium] › tests/e2e/meta.spec.ts:32:3 › icons and share images › the PNG favicon is 32px and the apple-touch-icon 180px (713ms)
+  ✓  416 [chromium] › tests/e2e/meta.spec.ts:73:5 › icons and share images › /opengraph-image is a 1200 × 630 PNG (13ms)
+  ✓  417 [chromium] › tests/e2e/meta.spec.ts:73:5 › icons and share images › /twitter-image is a 1200 × 630 PNG (12ms)
+  ✓  418 [chromium] › tests/e2e/meta.spec.ts:73:5 › icons and share images › /for-tradies/opengraph-image is a 1200 × 630 PNG (9ms)
+  ✓  415 [chromium] › tests/e2e/meta.spec.ts:50:3 › icons and share images › the web app manifest is linked and its icons load at the sizes it lists (602ms)
+  ✓  420 [chromium] › tests/e2e/meta.spec.ts:98:3 › icons and share images › robots.txt keeps crawlers out of the private pages (19ms)
+  ✓  419 [chromium] › tests/e2e/meta.spec.ts:82:3 › icons and share images › the home page shares its image as Open Graph and a large Twitter card (604ms)
+  -  422 [chromium] › tests/e2e/notifications.spec.ts:27:5 › notification bell › 320px: every state fits and passes axe
+  -  423 [chromium] › tests/e2e/notifications.spec.ts:27:5 › notification bell › 390px: every state fits and passes axe
+  -  424 [chromium] › tests/e2e/notifications.spec.ts:27:5 › notification bell › 768px: every state fits and passes axe
+  -  425 [chromium] › tests/e2e/notifications.spec.ts:27:5 › notification bell › 1024px: every state fits and passes axe
+  -  426 [chromium] › tests/e2e/notifications.spec.ts:27:5 › notification bell › 1440px: every state fits and passes axe
+  -  427 [chromium] › tests/e2e/notifications.spec.ts:42:3 › notification bell › empty means an icon and two words; loading has no explanation
+  -  428 [chromium] › tests/e2e/notifications.spec.ts:52:3 › notification bell › rows use one short line plus time; long user text keeps its full accessible name
+  -  429 [chromium] › tests/e2e/notifications.spec.ts:64:3 › notification bell › latest eight remain scrollable while the badge includes unread rows beyond the panel
+  -  430 [chromium] › tests/e2e/notifications.spec.ts:74:3 › notification bell › keyboard opens, moves through items, closes with Escape and restores the bell
+  -  431 [chromium] › tests/e2e/notifications.spec.ts:89:3 › notification bell › mark all read waits for the save, clears the badge and keeps the panel open
+  -  432 [chromium] › tests/e2e/notifications.spec.ts:99:3 › notification bell › a row waits for read confirmation before following its exact job destination
+  -  433 [chromium] › tests/e2e/notifications.spec.ts:108:3 › notification bell › Retry recovers without leaving and restores keyboard focus to an available action
+  -  434 [chromium] › tests/e2e/notifications.spec.ts:118:3 › notification bell › an expired session opens the existing login dialog without discarding the page
+  -  435 [chromium] › tests/e2e/notifications.spec.ts:125:3 › notification bell › M20 pops when fresh server data increases the count; M08 uses the existing named animation
+  -  436 [chromium] › tests/e2e/notifications.spec.ts:135:3 › notification bell › tradie mode retains the kit colours, tooltip and account actions
+  ✓  421 [chromium] › tests/e2e/notifications.spec.ts:17:1 › notification fixtures are unavailable on production deployments (410ms)
+  ✓  437 [chromium] › tests/e2e/recovery.spec.ts:15:5 › password recovery public journey › 320px: Forgot password and Back preserve the original destination (1.2s)
+  ✓  438 [chromium] › tests/e2e/recovery.spec.ts:15:5 › password recovery public journey › 390px: Forgot password and Back preserve the original destination (1.3s)
+  ✓  439 [chromium] › tests/e2e/recovery.spec.ts:15:5 › password recovery public journey › 768px: Forgot password and Back preserve the original destination (1.1s)
+  ✓  440 [chromium] › tests/e2e/recovery.spec.ts:15:5 › password recovery public journey › 1024px: Forgot password and Back preserve the original destination (1.2s)
+  ✓  442 [chromium] › tests/e2e/recovery.spec.ts:41:3 › password recovery public journey › query flags and invalid callbacks cannot open a password form or grant a login (891ms)
+  ✓  441 [chromium] › tests/e2e/recovery.spec.ts:15:5 › password recovery public journey › 1440px: Forgot password and Back preserve the original destination (1.2s)
+  ✓  443 [chromium] › tests/e2e/recovery.spec.ts:52:3 › password recovery public journey › offline preserves the entered email and reconnect enables a request (559ms)
+  -  445 [chromium] › tests/e2e/recovery.spec.ts:77:5 › recovery states and form interactions › 320px: all states fit and pass axe
+  -  446 [chromium] › tests/e2e/recovery.spec.ts:77:5 › recovery states and form interactions › 390px: all states fit and pass axe
+  -  447 [chromium] › tests/e2e/recovery.spec.ts:77:5 › recovery states and form interactions › 768px: all states fit and pass axe
+  -  448 [chromium] › tests/e2e/recovery.spec.ts:77:5 › recovery states and form interactions › 1024px: all states fit and pass axe
+  -  449 [chromium] › tests/e2e/recovery.spec.ts:77:5 › recovery states and form interactions › 1440px: all states fit and pass axe
+  -  450 [chromium] › tests/e2e/recovery.spec.ts:89:3 › recovery states and form interactions › request, sent, cooldown and Change it work without revealing an account
+  -  451 [chromium] › tests/e2e/recovery.spec.ts:106:3 › recovery states and form interactions › expired and invalid links have a one-click resend fix
+  -  452 [chromium] › tests/e2e/recovery.spec.ts:116:3 › recovery states and form interactions › passwords match on blur, show/hide stays keyboard accessible, then save and login retain next
+  -  453 [chromium] › tests/e2e/recovery.spec.ts:148:3 › recovery states and form interactions › invalid email and weak passwords put focus on the field that needs fixing
+  -  454 [chromium] › tests/e2e/recovery.spec.ts:163:3 › recovery states and form interactions › delivery and save errors preserve inputs; revocation retry never asks for a password again
+  -  455 [chromium] › tests/e2e/recovery.spec.ts:181:3 › recovery states and form interactions › the screenshot gallery includes each transient state without overflow
+  ✓  456 [chromium] › tests/e2e/route-protection.spec.ts:6:1 › sends a signed-out visitor from an app page to log in, remembering the page (6ms)
+  ✓  457 [chromium] › tests/e2e/route-protection.spec.ts:13:1 › leaves public pages alone (14ms)
+  ✓  444 [chromium] › tests/e2e/recovery.spec.ts:63:3 › password recovery public journey › a previous completion marker cannot trap the user when they need another reset (765ms)
+  ✓  458 [chromium] › tests/e2e/scrolling-header.spec.ts:20:7 › scrolling header with motion reduce › 320px: first scroll fills the header; it stays visible and resets only at the top (2.2s)
+  ✓  459 [chromium] › tests/e2e/scrolling-header.spec.ts:20:7 › scrolling header with motion reduce › 390px: first scroll fills the header; it stays visible and resets only at the top (2.2s)
+  ✓  461 [chromium] › tests/e2e/scrolling-header.spec.ts:20:7 › scrolling header with motion reduce › 1024px: first scroll fills the header; it stays visible and resets only at the top (2.0s)
+  ✓  460 [chromium] › tests/e2e/scrolling-header.spec.ts:20:7 › scrolling header with motion reduce › 768px: first scroll fills the header; it stays visible and resets only at the top (2.2s)
+  ✓  462 [chromium] › tests/e2e/scrolling-header.spec.ts:20:7 › scrolling header with motion reduce › 1440px: first scroll fills the header; it stays visible and resets only at the top (2.1s)
+  ✓  463 [chromium] › tests/e2e/scrolling-header.spec.ts:20:7 › scrolling header with motion no-preference › 320px: first scroll fills the header; it stays visible and resets only at the top (4.4s)
+  ✓  464 [chromium] › tests/e2e/scrolling-header.spec.ts:20:7 › scrolling header with motion no-preference › 390px: first scroll fills the header; it stays visible and resets only at the top (4.2s)
+  ✓  465 [chromium] › tests/e2e/scrolling-header.spec.ts:20:7 › scrolling header with motion no-preference › 768px: first scroll fills the header; it stays visible and resets only at the top (4.2s)
+  ✓  466 [chromium] › tests/e2e/scrolling-header.spec.ts:20:7 › scrolling header with motion no-preference › 1024px: first scroll fills the header; it stays visible and resets only at the top (3.4s)
+  ✓  468 [chromium] › tests/e2e/scrolling-header.spec.ts:45:1 › 200% text and keyboard scrolling keep the header legible (1.6s)
+  -  469 [chromium] › tests/e2e/scrolling-header.spec.ts:60:5 › hero and plain-page navigation › 390px: pages without a hero stay solid across route changes
+  -  470 [chromium] › tests/e2e/scrolling-header.spec.ts:60:5 › hero and plain-page navigation › 1440px: pages without a hero stay solid across route changes
+  -  471 [chromium] › tests/e2e/security-signed-in.spec.ts:49:3 › signed-in account security › real login → Account menu → security → browser Back; menu dismisses
+  -  472 [chromium] › tests/e2e/security-signed-in.spec.ts:68:3 › signed-in account security › wrong password never updates Auth; a corrected password revokes other refresh sessions
+  -  473 [chromium] › tests/e2e/security-signed-in.spec.ts:90:3 › signed-in account security › email stays unchanged in Postgres until the PKCE confirmation link is followed
+  -  474 [chromium] › tests/e2e/security-signed-in.spec.ts:106:3 › signed-in account security › a failed revocation is not reported as a successful password change
+  -  475 [chromium] › tests/e2e/security-signed-in.spec.ts:120:3 › signed-in account security › phone Account navigation keeps the tradie palette and opens the usable destination
+  -  476 [chromium] › tests/e2e/security-signed-in.spec.ts:139:3 › signed-in account security › reauthentication ends only this session and returns through login to Security
+  ✓  477 [chromium] › tests/e2e/security.spec.ts:6:1 › security settings require login and preserve the destination (490ms)
+  -  478 [chromium] › tests/e2e/security.spec.ts:17:5 › security settings isolated UI › 320px: all states fit and have no accessibility violations
+  -  479 [chromium] › tests/e2e/security.spec.ts:17:5 › security settings isolated UI › 390px: all states fit and have no accessibility violations
+  -  480 [chromium] › tests/e2e/security.spec.ts:17:5 › security settings isolated UI › 768px: all states fit and have no accessibility violations
+  -  481 [chromium] › tests/e2e/security.spec.ts:17:5 › security settings isolated UI › 1024px: all states fit and have no accessibility violations
+  -  482 [chromium] › tests/e2e/security.spec.ts:17:5 › security settings isolated UI › 1440px: all states fit and have no accessibility violations
+  -  483 [chromium] › tests/e2e/security.spec.ts:32:3 › security settings isolated UI › keyboard submission handles wrong password, clears secrets and focuses the error
+  -  484 [chromium] › tests/e2e/security.spec.ts:47:3 › security settings isolated UI › checks matching passwords on blur and succeeds after a correction
+  -  485 [chromium] › tests/e2e/security.spec.ts:61:3 › security settings isolated UI › email confirmation keeps the current address and tells the person what comes next
+  -  486 [chromium] › tests/e2e/security.spec.ts:72:3 › security settings isolated UI › other-device logout has a success state and keeps this page open
+  -  487 [chromium] › tests/e2e/security.spec.ts:81:3 › security settings isolated UI › pending submission prevents duplicate edits and announces progress
+  -  488 [chromium] › tests/e2e/security.spec.ts:92:3 › security settings isolated UI › offline disables writes, keeps typed values, and recovers online
+  -  489 [chromium] › tests/e2e/security.spec.ts:105:3 › security settings isolated UI › show/hide controls work and pointer clicks leave no focus ring
+  ✓  467 [chromium] › tests/e2e/scrolling-header.spec.ts:20:7 › scrolling header with motion no-preference › 1440px: first scroll fills the header; it stays visible and resets only at the top (3.5s)
+  ✓  490 [chromium] › tests/e2e/signup-choice.spec.ts:15:5 › /signup › 320px: both choices have no axe violations and no sideways scroll (1.2s)
+  ✓  491 [chromium] › tests/e2e/signup-choice.spec.ts:15:5 › /signup › 390px: both choices have no axe violations and no sideways scroll (1.3s)
+  ✓  492 [chromium] › tests/e2e/signup-choice.spec.ts:15:5 › /signup › 768px: both choices have no axe violations and no sideways scroll (1.3s)
+  ✓  493 [chromium] › tests/e2e/signup-choice.spec.ts:15:5 › /signup › 1024px: both choices have no axe violations and no sideways scroll (1.3s)
+  ✓  495 [chromium] › tests/e2e/signup-choice.spec.ts:27:3 › /signup › by keyboard: arrows change the choice, the page turns orange, Next goes to that side's details (582ms)
+  ✓  494 [chromium] › tests/e2e/signup-choice.spec.ts:15:5 › /signup › 1440px: both choices have no axe violations and no sideways scroll (1.3s)
+  ✓  496 [chromium] › tests/e2e/signup-choice.spec.ts:44:3 › /signup › clicking anywhere on a card chooses it (580ms)
+  ✓  497 [chromium] › tests/e2e/signup-choice.spec.ts:53:3 › /signup › a phone shows Log in under Next; a computer shows it top right (553ms)
+  ✓  498 [chromium] › tests/e2e/signup-choice.spec.ts:62:3 › /signup › 200% text still fits (683ms)
+  ✓  499 [chromium] › tests/e2e/signup-customer.spec.ts:12:5 › customer sign-up details › 320px: fields, responsive layout and accessibility (1.0s)
+  ✓  500 [chromium] › tests/e2e/signup-customer.spec.ts:12:5 › customer sign-up details › 390px: fields, responsive layout and accessibility (1.0s)
+  ✓  501 [chromium] › tests/e2e/signup-customer.spec.ts:12:5 › customer sign-up details › 768px: fields, responsive layout and accessibility (1.0s)
+  ✓  502 [chromium] › tests/e2e/signup-customer.spec.ts:12:5 › customer sign-up details › 1024px: fields, responsive layout and accessibility (1.1s)
+[WebServer] Supabase isn't connected. Copy .env.example to .env.local and fill in NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY from Supabase (Project Settings → API Keys).
+  ✓  503 [chromium] › tests/e2e/signup-customer.spec.ts:12:5 › customer sign-up details › 1440px: fields, responsive layout and accessibility (1.2s)
+  ✓  504 [chromium] › tests/e2e/signup-customer.spec.ts:25:3 › customer sign-up details › keyboard consent, password strength and failed submission keep the details and wizard draft (1.5s)
+  -  506 [chromium] › tests/e2e/signup-customer.spec.ts:69:5 › customer sign-up preview states › 320px: every state fits and passes axe
+  -  507 [chromium] › tests/e2e/signup-customer.spec.ts:69:5 › customer sign-up preview states › 390px: every state fits and passes axe
+  -  508 [chromium] › tests/e2e/signup-customer.spec.ts:69:5 › customer sign-up preview states › 768px: every state fits and passes axe
+  -  509 [chromium] › tests/e2e/signup-customer.spec.ts:69:5 › customer sign-up preview states › 1024px: every state fits and passes axe
+  -  510 [chromium] › tests/e2e/signup-customer.spec.ts:69:5 › customer sign-up preview states › 1440px: every state fits and passes axe
+  -  511 [chromium] › tests/e2e/signup-customer.spec.ts:80:3 › customer sign-up preview states › email taken keeps name/mobile and offers both recovery routes
+  -  512 [chromium] › tests/e2e/signup-customer.spec.ts:89:3 › customer sign-up preview states › 200% text still fits phone and desktop
+  ✓  505 [chromium] › tests/e2e/signup-customer.spec.ts:52:3 › customer sign-up details › offline keeps the fields, disables creation and re-enables on reconnect (930ms)
+  ✓  513 [chromium] › tests/e2e/signup-navigation.spec.ts:18:5 › signup journeys at 320px › header Sign up reaches both roles; browser back and next paths work (1.1s)
+  ✓  514 [chromium] › tests/e2e/signup-navigation.spec.ts:31:5 › signup journeys at 320px › Join CTA and footer Join open tradie details, then Your trade and Back preserve details (1.1s)
+  ✓  515 [chromium] › tests/e2e/signup-navigation.spec.ts:49:5 › signup journeys at 320px › keyboard role selection and Next preserve the return path (841ms)
+  ✓  516 [chromium] › tests/e2e/signup-navigation.spec.ts:68:7 › signup journeys at 320px › menu link survives blur without a relatedTarget before its click (876ms)
+  ✓  517 [chromium] › tests/e2e/signup-navigation.spec.ts:83:7 › signup journeys at 320px › outside click, Tab and Escape still dismiss the menu (693ms)
+  ✓  518 [chromium] › tests/e2e/signup-navigation.spec.ts:18:5 › signup journeys at 390px › header Sign up reaches both roles; browser back and next paths work (889ms)
+  ✓  519 [chromium] › tests/e2e/signup-navigation.spec.ts:31:5 › signup journeys at 390px › Join CTA and footer Join open tradie details, then Your trade and Back preserve details (951ms)
+  ✓  520 [chromium] › tests/e2e/signup-navigation.spec.ts:49:5 › signup journeys at 390px › keyboard role selection and Next preserve the return path (733ms)
+  ✓  521 [chromium] › tests/e2e/signup-navigation.spec.ts:68:7 › signup journeys at 390px › menu link survives blur without a relatedTarget before its click (873ms)
+  ✓  522 [chromium] › tests/e2e/signup-navigation.spec.ts:83:7 › signup journeys at 390px › outside click, Tab and Escape still dismiss the menu (661ms)
+  ✓  523 [chromium] › tests/e2e/signup-navigation.spec.ts:18:5 › signup journeys at 768px › header Sign up reaches both roles; browser back and next paths work (940ms)
+  ✓  524 [chromium] › tests/e2e/signup-navigation.spec.ts:31:5 › signup journeys at 768px › Join CTA and footer Join open tradie details, then Your trade and Back preserve details (1.0s)
+  ✓  525 [chromium] › tests/e2e/signup-navigation.spec.ts:49:5 › signup journeys at 768px › keyboard role selection and Next preserve the return path (761ms)
+  ✓  526 [chromium] › tests/e2e/signup-navigation.spec.ts:68:7 › signup journeys at 768px › menu link survives blur without a relatedTarget before its click (924ms)
+  ✓  527 [chromium] › tests/e2e/signup-navigation.spec.ts:83:7 › signup journeys at 768px › outside click, Tab and Escape still dismiss the menu (852ms)
+  ✓  528 [chromium] › tests/e2e/signup-navigation.spec.ts:18:5 › signup journeys at 1024px › header Sign up reaches both roles; browser back and next paths work (1.1s)
+  ✓  529 [chromium] › tests/e2e/signup-navigation.spec.ts:31:5 › signup journeys at 1024px › Join CTA and footer Join open tradie details, then Your trade and Back preserve details (996ms)
+  ✓  530 [chromium] › tests/e2e/signup-navigation.spec.ts:49:5 › signup journeys at 1024px › keyboard role selection and Next preserve the return path (805ms)
+  ✓  531 [chromium] › tests/e2e/signup-navigation.spec.ts:18:5 › signup journeys at 1440px › header Sign up reaches both roles; browser back and next paths work (858ms)
+  ✓  532 [chromium] › tests/e2e/signup-navigation.spec.ts:31:5 › signup journeys at 1440px › Join CTA and footer Join open tradie details, then Your trade and Back preserve details (969ms)
+  ✓  533 [chromium] › tests/e2e/signup-navigation.spec.ts:49:5 › signup journeys at 1440px › keyboard role selection and Next preserve the return path (830ms)
+  ✓  534 [chromium] › tests/e2e/signup-navigation.spec.ts:109:3 › touch signup at 320px › header signup tap and tradie card tap reach the tradie account step (872ms)
+  ✓  535 [chromium] › tests/e2e/signup-navigation.spec.ts:109:3 › touch signup at 390px › header signup tap and tradie card tap reach the tradie account step (839ms)
+  ✓  536 [chromium] › tests/e2e/signup-navigation.spec.ts:109:3 › touch signup at 768px › header signup tap and tradie card tap reach the tradie account step (870ms)
+  ✓  537 [chromium] › tests/e2e/signup-navigation.spec.ts:109:3 › touch signup at 1024px › header signup tap and tradie card tap reach the tradie account step (797ms)
+  ✓  538 [chromium] › tests/e2e/signup-navigation.spec.ts:109:3 › touch signup at 1440px › header signup tap and tradie card tap reach the tradie account step (840ms)
+  ✓  539 [chromium] › tests/e2e/signup-tradie.spec.ts:24:3 › tradie signup › normal motion settles to readable colours and keeps inputs available (1.1s)
+  ✓  540 [chromium] › tests/e2e/signup-tradie.spec.ts:32:5 › tradie signup › 320px: both steps fit and have no accessibility violations (1.5s)
+  ✓  541 [chromium] › tests/e2e/signup-tradie.spec.ts:32:5 › tradie signup › 390px: both steps fit and have no accessibility violations (1.5s)
+  ✓  542 [chromium] › tests/e2e/signup-tradie.spec.ts:32:5 › tradie signup › 768px: both steps fit and have no accessibility violations (1.5s)
+  ✓  543 [chromium] › tests/e2e/signup-tradie.spec.ts:32:5 › tradie signup › 1024px: both steps fit and have no accessibility violations (1.5s)
+  ✓  544 [chromium] › tests/e2e/signup-tradie.spec.ts:32:5 › tradie signup › 1440px: both steps fit and have no accessibility violations (1.5s)
+[WebServer] Supabase isn't connected. Copy .env.example to .env.local and fill in NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY from Supabase (Project Settings → API Keys).
+  ✓  546 [chromium] › tests/e2e/signup-tradie.spec.ts:69:3 › tradie signup › multiple trades, malformed licence example, and deselecting the last restricted trade (879ms)
+  ✓  545 [chromium] › tests/e2e/signup-tradie.spec.ts:45:3 › tradie signup › Other needs no licence: manual area works with no token, and an outage keeps all details (2.1s)
+  -  548 [chromium] › tests/e2e/signup-tradie.spec.ts:106:5 › tradie preview states › 320px: every state fits and passes axe
+  -  549 [chromium] › tests/e2e/signup-tradie.spec.ts:106:5 › tradie preview states › 390px: every state fits and passes axe
+  -  550 [chromium] › tests/e2e/signup-tradie.spec.ts:106:5 › tradie preview states › 768px: every state fits and passes axe
+  -  551 [chromium] › tests/e2e/signup-tradie.spec.ts:106:5 › tradie preview states › 1024px: every state fits and passes axe
+  -  552 [chromium] › tests/e2e/signup-tradie.spec.ts:106:5 › tradie preview states › 1440px: every state fits and passes axe
+  -  553 [chromium] › tests/e2e/signup-tradie.spec.ts:116:3 › tradie preview states › suburb suggestions use keyboard selection and clear coordinates after manual edits
+  -  554 [chromium] › tests/e2e/signup-tradie.spec.ts:128:3 › tradie preview states › 200% text still fits phone and desktop
+  ✓  547 [chromium] › tests/e2e/signup-tradie.spec.ts:89:3 › tradie signup › offline pauses submission and retains both account and work details (779ms)
+  ✓  556 [chromium] › tests/e2e/site-shell.spec.ts:43:5 › site shell at 320px › skip link is the first thing Tab reaches and jumps to the main content (519ms)
+  ✓  555 [chromium] › tests/e2e/site-shell.spec.ts:29:5 › site shell at 320px › has the header, main and footer landmarks and no sideways scroll (1.3s)
+  ✓  557 [chromium] › tests/e2e/site-shell.spec.ts:53:5 › site shell at 320px › is see-through at the top and solid Forest as scrolling starts (M06) (1.3s)
+  ✓  558 [chromium] › tests/e2e/site-shell.spec.ts:76:7 › site shell at 320px › opens the menu from the keyboard, moves focus into it, and Esc closes it back to the button (1.4s)
+  ✓  559 [chromium] › tests/e2e/site-shell.spec.ts:107:7 › site shell at 320px › closes the menu when the window grows wide enough for the full nav (741ms)
+  ✓  561 [chromium] › tests/e2e/site-shell.spec.ts:43:5 › site shell at 390px › skip link is the first thing Tab reaches and jumps to the main content (534ms)
+  ✓  560 [chromium] › tests/e2e/site-shell.spec.ts:29:5 › site shell at 390px › has the header, main and footer landmarks and no sideways scroll (1.4s)
+  ✓  562 [chromium] › tests/e2e/site-shell.spec.ts:53:5 › site shell at 390px › is see-through at the top and solid Forest as scrolling starts (M06) (1.3s)
+  ✓  564 [chromium] › tests/e2e/site-shell.spec.ts:107:7 › site shell at 390px › closes the menu when the window grows wide enough for the full nav (655ms)
+  ✓  563 [chromium] › tests/e2e/site-shell.spec.ts:76:7 › site shell at 390px › opens the menu from the keyboard, moves focus into it, and Esc closes it back to the button (1.5s)
+  ✓  566 [chromium] › tests/e2e/site-shell.spec.ts:43:5 › site shell at 768px › skip link is the first thing Tab reaches and jumps to the main content (628ms)
+  ✓  565 [chromium] › tests/e2e/site-shell.spec.ts:29:5 › site shell at 768px › has the header, main and footer landmarks and no sideways scroll (1.4s)
+  ✓  567 [chromium] › tests/e2e/site-shell.spec.ts:53:5 › site shell at 768px › is see-through at the top and solid Forest as scrolling starts (M06) (1.3s)
+  ✓  569 [chromium] › tests/e2e/site-shell.spec.ts:107:7 › site shell at 768px › closes the menu when the window grows wide enough for the full nav (620ms)
+  ✓  568 [chromium] › tests/e2e/site-shell.spec.ts:76:7 › site shell at 768px › opens the menu from the keyboard, moves focus into it, and Esc closes it back to the button (1.4s)
+  ✓  571 [chromium] › tests/e2e/site-shell.spec.ts:43:5 › site shell at 1024px › skip link is the first thing Tab reaches and jumps to the main content (626ms)
+  ✓  570 [chromium] › tests/e2e/site-shell.spec.ts:29:5 › site shell at 1024px › has the header, main and footer landmarks and no sideways scroll (1.4s)
+  ✓  573 [chromium] › tests/e2e/site-shell.spec.ts:66:7 › site shell at 1024px › shows the full nav, Log in and Sign up, and no menu button (515ms)
+  ✓  572 [chromium] › tests/e2e/site-shell.spec.ts:53:5 › site shell at 1024px › is see-through at the top and solid Forest as scrolling starts (M06) (1.4s)
+  ✓  575 [chromium] › tests/e2e/site-shell.spec.ts:43:5 › site shell at 1440px › skip link is the first thing Tab reaches and jumps to the main content (628ms)
+  ✓  574 [chromium] › tests/e2e/site-shell.spec.ts:29:5 › site shell at 1440px › has the header, main and footer landmarks and no sideways scroll (1.4s)
+  ✓  577 [chromium] › tests/e2e/site-shell.spec.ts:66:7 › site shell at 1440px › shows the full nav, Log in and Sign up, and no menu button (536ms)
+  ✓  576 [chromium] › tests/e2e/site-shell.spec.ts:53:5 › site shell at 1440px › is see-through at the top and solid Forest as scrolling starts (M06) (1.5s)
+  ✓  579 [chromium] › tests/e2e/site-shell.spec.ts:140:1 › /dev/components/site-shell is not in production builds (455ms)
+  -  580 [chromium] › tests/e2e/site-shell.spec.ts:163:7 › /dev/components/site-shell on the dev server › signed out at 320px
+  -  581 [chromium] › tests/e2e/site-shell.spec.ts:163:7 › /dev/components/site-shell on the dev server › a customer at 320px
+  -  582 [chromium] › tests/e2e/site-shell.spec.ts:163:7 › /dev/components/site-shell on the dev server › a tradie at 320px
+  -  583 [chromium] › tests/e2e/site-shell.spec.ts:163:7 › /dev/components/site-shell on the dev server › the office at 320px
+  -  584 [chromium] › tests/e2e/site-shell.spec.ts:163:7 › /dev/components/site-shell on the dev server › a long name at 320px
+  -  585 [chromium] › tests/e2e/site-shell.spec.ts:163:7 › /dev/components/site-shell on the dev server › signed out at 390px
+  -  586 [chromium] › tests/e2e/site-shell.spec.ts:163:7 › /dev/components/site-shell on the dev server › a customer at 390px
+  -  587 [chromium] › tests/e2e/site-shell.spec.ts:163:7 › /dev/components/site-shell on the dev server › a tradie at 390px
+  -  588 [chromium] › tests/e2e/site-shell.spec.ts:163:7 › /dev/components/site-shell on the dev server › the office at 390px
+  -  589 [chromium] › tests/e2e/site-shell.spec.ts:163:7 › /dev/components/site-shell on the dev server › a long name at 390px
+  -  590 [chromium] › tests/e2e/site-shell.spec.ts:163:7 › /dev/components/site-shell on the dev server › signed out at 768px
+  -  591 [chromium] › tests/e2e/site-shell.spec.ts:163:7 › /dev/components/site-shell on the dev server › a customer at 768px
+  -  592 [chromium] › tests/e2e/site-shell.spec.ts:163:7 › /dev/components/site-shell on the dev server › a tradie at 768px
+  -  593 [chromium] › tests/e2e/site-shell.spec.ts:163:7 › /dev/components/site-shell on the dev server › the office at 768px
+  -  594 [chromium] › tests/e2e/site-shell.spec.ts:163:7 › /dev/components/site-shell on the dev server › a long name at 768px
+  -  595 [chromium] › tests/e2e/site-shell.spec.ts:163:7 › /dev/components/site-shell on the dev server › signed out at 1024px
+  -  596 [chromium] › tests/e2e/site-shell.spec.ts:163:7 › /dev/components/site-shell on the dev server › a customer at 1024px
+  -  597 [chromium] › tests/e2e/site-shell.spec.ts:163:7 › /dev/components/site-shell on the dev server › a tradie at 1024px
+  -  598 [chromium] › tests/e2e/site-shell.spec.ts:163:7 › /dev/components/site-shell on the dev server › the office at 1024px
+  -  599 [chromium] › tests/e2e/site-shell.spec.ts:163:7 › /dev/components/site-shell on the dev server › a long name at 1024px
+  -  600 [chromium] › tests/e2e/site-shell.spec.ts:163:7 › /dev/components/site-shell on the dev server › signed out at 1440px
+  -  601 [chromium] › tests/e2e/site-shell.spec.ts:163:7 › /dev/components/site-shell on the dev server › a customer at 1440px
+  -  602 [chromium] › tests/e2e/site-shell.spec.ts:163:7 › /dev/components/site-shell on the dev server › a tradie at 1440px
+  -  603 [chromium] › tests/e2e/site-shell.spec.ts:163:7 › /dev/components/site-shell on the dev server › the office at 1440px
+  -  604 [chromium] › tests/e2e/site-shell.spec.ts:163:7 › /dev/components/site-shell on the dev server › a long name at 1440px
+  -  605 [chromium] › tests/e2e/site-shell.spec.ts:198:3 › /dev/components/site-shell on the dev server › the public site stays green for a signed-in tradie
+  ✓  578 [chromium] › tests/e2e/site-shell.spec.ts:123:3 › at 200% zoom › everything is reachable through the menu with no sideways scroll (1.4s)
+  ✓  606 [chromium] › tests/e2e/verify-email.spec.ts:12:5 › verify email public page › 320px: signed-out form, keyboard and accessibility (987ms)
+  ✓  607 [chromium] › tests/e2e/verify-email.spec.ts:12:5 › verify email public page › 390px: signed-out form, keyboard and accessibility (979ms)
+  ✓  608 [chromium] › tests/e2e/verify-email.spec.ts:12:5 › verify email public page › 768px: signed-out form, keyboard and accessibility (928ms)
+  ✓  609 [chromium] › tests/e2e/verify-email.spec.ts:12:5 › verify email public page › 1024px: signed-out form, keyboard and accessibility (999ms)
+  ✓  610 [chromium] › tests/e2e/verify-email.spec.ts:12:5 › verify email public page › 1440px: signed-out form, keyboard and accessibility (999ms)
+  ✓  611 [chromium] › tests/e2e/verify-email.spec.ts:31:3 › verify email public page › offline preserves the email and reconnecting enables resend (579ms)
+  ✓  612 [chromium] › tests/e2e/verify-email.spec.ts:42:3 › verify email public page › public flags cannot fake verification and Continue preserves the login destination (663ms)
+  -  614 [chromium] › tests/e2e/verify-email.spec.ts:70:5 › verify email preview states › 320px: every state fits and passes axe
+  -  615 [chromium] › tests/e2e/verify-email.spec.ts:70:5 › verify email preview states › 390px: every state fits and passes axe
+  -  616 [chromium] › tests/e2e/verify-email.spec.ts:70:5 › verify email preview states › 768px: every state fits and passes axe
+  -  617 [chromium] › tests/e2e/verify-email.spec.ts:70:5 › verify email preview states › 1024px: every state fits and passes axe
+  -  618 [chromium] › tests/e2e/verify-email.spec.ts:70:5 › verify email preview states › 1440px: every state fits and passes axe
+  -  619 [chromium] › tests/e2e/verify-email.spec.ts:82:3 › verify email preview states › expired and invalid links can resend, announce success, and start the cooldown
+  -  620 [chromium] › tests/e2e/verify-email.spec.ts:98:3 › verify email preview states › already verified continues through the real login page with the original destination
+  -  621 [chromium] › tests/e2e/verify-email.spec.ts:107:3 › verify email preview states › wrong email can be corrected without losing it after a failed send
+  -  622 [chromium] › tests/e2e/verify-email.spec.ts:116:3 › verify email preview states › poll errors keep resend available
+  ✓  613 [chromium] › tests/e2e/verify-email.spec.ts:51:3 › verify email public page › a completion in another tab moves the holding page to password login after five seconds (889ms)
+  ✓  623 [chromium] › tests/e2e/waitlist.spec.ts:9:1 › waitlist previews are guarded; public state flags cannot claim a successful signup (532ms)
+  ✓  624 [chromium] › tests/e2e/waitlist.spec.ts:17:3 › 320px public waitlist keeps form values after a failed save and fits with axe (1.2s)
+  ✓  625 [chromium] › tests/e2e/waitlist.spec.ts:17:3 › 390px public waitlist keeps form values after a failed save and fits with axe (1.2s)
+  ✓  627 [chromium] › tests/e2e/waitlist.spec.ts:17:3 › 1024px public waitlist keeps form values after a failed save and fits with axe (1.2s)
+  ✓  626 [chromium] › tests/e2e/waitlist.spec.ts:17:3 › 768px public waitlist keeps form values after a failed save and fits with axe (1.2s)
+  ✓  629 [chromium] › tests/e2e/waitlist.spec.ts:30:1 › empty location, invalid fields and hostile location parameters remain safe (632ms)
+  ✓  628 [chromium] › tests/e2e/waitlist.spec.ts:17:3 › 1440px public waitlist keeps form values after a failed save and fits with axe (1.2s)
+  ✓  630 [chromium] › tests/e2e/waitlist.spec.ts:42:1 › offline keeps the draft, disables submit, and reconnecting enables retry (599ms)
+  -  632 [chromium] › tests/e2e/waitlist.spec.ts:78:5 › guarded waitlist states › 320px every state fits and passes axe
+  -  633 [chromium] › tests/e2e/waitlist.spec.ts:78:5 › guarded waitlist states › 390px every state fits and passes axe
+  -  634 [chromium] › tests/e2e/waitlist.spec.ts:78:5 › guarded waitlist states › 768px every state fits and passes axe
+  -  635 [chromium] › tests/e2e/waitlist.spec.ts:78:5 › guarded waitlist states › 1024px every state fits and passes axe
+  -  636 [chromium] › tests/e2e/waitlist.spec.ts:78:5 › guarded waitlist states › 1440px every state fits and passes axe
+  -  637 [chromium] › tests/e2e/waitlist.spec.ts:89:3 › guarded waitlist states › keyboard signup keeps the form, repeated signup says You’re on it, and copy shares only location
+  -  638 [chromium] › tests/e2e/waitlist.spec.ts:106:3 › guarded waitlist states › the real server action persists to local Postgres and a repeated request survives reload
+  -  639 [chromium] › tests/e2e/waitlist.spec.ts:118:3 › guarded waitlist states › copy failures are visible and never claim Copied
+  ✓  631 [chromium] › tests/e2e/waitlist.spec.ts:54:1 › pending save keeps values and blocks repeated submissions (660ms)
+
+
+  1) [chromium] › tests/e2e/help.spec.ts:7:5 › Help centre 320px › home, article and every review state fit and remain accessible 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator:  locator('[aria-busy="true"]').first()
+    Expected: visible
+    Received: hidden
+    Timeout:  5000ms
+
+    Call log:
+      - Expect "toBeVisible" locator('[aria-busy="true"]').first() with timeout 5000ms
+      - waiting for locator('[aria-busy="true"]').first()
+        14 × locator resolved to <div aria-busy="true" class="p3XwIG_region">…</div>
+           - unexpected value "hidden"
+
+
+      11 |         if (route.includes("q=pay")) await expect(page.getByRole("combobox")).toHaveValue("pay");
+      12 |         if (route.includes("state=no-results")) await expect(page.getByRole("heading", { name: "No articles found", exact: true })).toBeVisible();
+    > 13 |         if (route.includes("state=loading")) await expect(page.locator('[aria-busy="true"]').first()).toBeVisible();
+         |                                                                                                       ^
+      14 |         if (route.includes("state=error")) await expect(page.getByRole("heading", { name: "Can’t load help articles", exact: true })).toBeVisible();
+      15 |         if (route.includes("state=helpful-voted")) await expect(page.getByRole("status").filter({ hasText: "Thanks for your feedback." })).toBeVisible();
+      16 |         if (route.includes("state=not-helpful")) await expect(page.getByRole("textbox", { name: "What were you looking for?" })).toBeVisible();
+        at /Users/mattmacbook/Documents/Codex/2026-10-31/task/help-centre/tests/e2e/help.spec.ts:13:103
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/help-Help-centre-320px-hom-4517e-e-fit-and-remain-accessible-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/help-Help-centre-320px-hom-4517e-e-fit-and-remain-accessible-chromium/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/help-Help-centre-320px-hom-4517e-e-fit-and-remain-accessible-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/help-Help-centre-320px-hom-4517e-e-fit-and-remain-accessible-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [chromium] › tests/e2e/help.spec.ts:7:5 › Help centre 390px › home, article and every review state fit and remain accessible 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator:  locator('[aria-busy="true"]').first()
+    Expected: visible
+    Received: hidden
+    Timeout:  5000ms
+
+    Call log:
+      - Expect "toBeVisible" locator('[aria-busy="true"]').first() with timeout 5000ms
+      - waiting for locator('[aria-busy="true"]').first()
+        14 × locator resolved to <div aria-busy="true" class="p3XwIG_region">…</div>
+           - unexpected value "hidden"
+
+
+      11 |         if (route.includes("q=pay")) await expect(page.getByRole("combobox")).toHaveValue("pay");
+      12 |         if (route.includes("state=no-results")) await expect(page.getByRole("heading", { name: "No articles found", exact: true })).toBeVisible();
+    > 13 |         if (route.includes("state=loading")) await expect(page.locator('[aria-busy="true"]').first()).toBeVisible();
+         |                                                                                                       ^
+      14 |         if (route.includes("state=error")) await expect(page.getByRole("heading", { name: "Can’t load help articles", exact: true })).toBeVisible();
+      15 |         if (route.includes("state=helpful-voted")) await expect(page.getByRole("status").filter({ hasText: "Thanks for your feedback." })).toBeVisible();
+      16 |         if (route.includes("state=not-helpful")) await expect(page.getByRole("textbox", { name: "What were you looking for?" })).toBeVisible();
+        at /Users/mattmacbook/Documents/Codex/2026-10-31/task/help-centre/tests/e2e/help.spec.ts:13:103
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/help-Help-centre-390px-hom-e3ea7-e-fit-and-remain-accessible-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/help-Help-centre-390px-hom-e3ea7-e-fit-and-remain-accessible-chromium/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/help-Help-centre-390px-hom-e3ea7-e-fit-and-remain-accessible-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/help-Help-centre-390px-hom-e3ea7-e-fit-and-remain-accessible-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3) [chromium] › tests/e2e/help.spec.ts:7:5 › Help centre 768px › home, article and every review state fit and remain accessible 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator:  locator('[aria-busy="true"]').first()
+    Expected: visible
+    Received: hidden
+    Timeout:  5000ms
+
+    Call log:
+      - Expect "toBeVisible" locator('[aria-busy="true"]').first() with timeout 5000ms
+      - waiting for locator('[aria-busy="true"]').first()
+        14 × locator resolved to <div aria-busy="true" class="p3XwIG_region">…</div>
+           - unexpected value "hidden"
+
+
+      11 |         if (route.includes("q=pay")) await expect(page.getByRole("combobox")).toHaveValue("pay");
+      12 |         if (route.includes("state=no-results")) await expect(page.getByRole("heading", { name: "No articles found", exact: true })).toBeVisible();
+    > 13 |         if (route.includes("state=loading")) await expect(page.locator('[aria-busy="true"]').first()).toBeVisible();
+         |                                                                                                       ^
+      14 |         if (route.includes("state=error")) await expect(page.getByRole("heading", { name: "Can’t load help articles", exact: true })).toBeVisible();
+      15 |         if (route.includes("state=helpful-voted")) await expect(page.getByRole("status").filter({ hasText: "Thanks for your feedback." })).toBeVisible();
+      16 |         if (route.includes("state=not-helpful")) await expect(page.getByRole("textbox", { name: "What were you looking for?" })).toBeVisible();
+        at /Users/mattmacbook/Documents/Codex/2026-10-31/task/help-centre/tests/e2e/help.spec.ts:13:103
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/help-Help-centre-768px-hom-47bbc-e-fit-and-remain-accessible-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/help-Help-centre-768px-hom-47bbc-e-fit-and-remain-accessible-chromium/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/help-Help-centre-768px-hom-47bbc-e-fit-and-remain-accessible-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/help-Help-centre-768px-hom-47bbc-e-fit-and-remain-accessible-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3 failed
+    [chromium] › tests/e2e/help.spec.ts:7:5 › Help centre 320px › home, article and every review state fit and remain accessible 
+    [chromium] › tests/e2e/help.spec.ts:7:5 › Help centre 390px › home, article and every review state fit and remain accessible 
+    [chromium] › tests/e2e/help.spec.ts:7:5 › Help centre 768px › home, article and every review state fit and remain accessible 
+  433 skipped
+  203 passed (2.1m)

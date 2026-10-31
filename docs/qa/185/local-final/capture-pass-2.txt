@@ -1,0 +1,122 @@
+[
+  {
+    "state": "home",
+    "width": 1440,
+    "words": 109,
+    "overflow": 0
+  },
+  {
+    "state": "search-results",
+    "width": 1440,
+    "words": 99,
+    "overflow": 0
+  },
+  {
+    "state": "suggestions",
+    "width": 1440,
+    "words": 121,
+    "overflow": 0
+  },
+  {
+    "state": "no-results",
+    "width": 1440,
+    "words": 77,
+    "overflow": 0
+  },
+  {
+    "state": "loading",
+    "width": 1440,
+    "words": 60,
+    "overflow": 0
+  },
+  {
+    "state": "error",
+    "width": 1440,
+    "words": 63,
+    "overflow": 0
+  },
+  {
+    "state": "article",
+    "width": 1440,
+    "words": 179,
+    "overflow": 0
+  },
+  {
+    "state": "helpful-voted",
+    "width": 1440,
+    "words": 178,
+    "overflow": 0
+  },
+  {
+    "state": "not-helpful",
+    "width": 1440,
+    "words": 186,
+    "overflow": 0
+  },
+  {
+    "state": "feedback-error",
+    "width": 1440,
+    "words": 193,
+    "overflow": 0
+  },
+  {
+    "state": "home",
+    "width": 390,
+    "words": 84,
+    "overflow": 0
+  },
+  {
+    "state": "search-results",
+    "width": 390,
+    "words": 84,
+    "overflow": 0
+  },
+  {
+    "state": "suggestions",
+    "width": 390,
+    "words": 109,
+    "overflow": 0
+  },
+  {
+    "state": "no-results",
+    "width": 390,
+    "words": 65,
+    "overflow": 0
+  },
+  {
+    "state": "loading",
+    "width": 390,
+    "words": 49,
+    "overflow": 0
+  },
+  {
+    "state": "error",
+    "width": 390,
+    "words": 52,
+    "overflow": 0
+  },
+  {
+    "state": "article",
+    "width": 390,
+    "words": 148,
+    "overflow": 0
+  },
+  {
+    "state": "helpful-voted",
+    "width": 390,
+    "words": 147,
+    "overflow": 0
+  },
+  {
+    "state": "not-helpful",
+    "width": 390,
+    "words": 155,
+    "overflow": 0
+  },
+  {
+    "state": "feedback-error",
+    "width": 390,
+    "words": 156,
+    "overflow": 0
+  }
+]

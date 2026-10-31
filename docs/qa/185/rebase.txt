@@ -1,0 +1,5 @@
+From https://github.com/trade-marketplace/main
+ * branch            main       -> FETCH_HEAD
+Created autostash: f691b68
+Current branch feat/185-help-centre is up to date.
+Applied autostash.

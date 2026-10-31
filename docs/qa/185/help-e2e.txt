@@ -1,0 +1,31 @@
+[WebServer] 
+[WebServer] > trade-marketplace@0.1.0 start
+[WebServer] > next start --port 3100
+[WebServer] 
+[WebServer] (node:92821) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] ▲ Next.js 16.4.3
+[WebServer] - Local:         http://localhost:3100
+[WebServer] - Network:       http://192.168.88.8:3100
+[WebServer] ✓ Ready in 118ms
+[WebServer] ✓ Running next.config.ts took 128ms
+[WebServer] Database: off. The app runs without it for now.
+[WebServer] To connect, copy .env.example to .env.local and fill in DATABASE_URL and DIRECT_URL from Supabase.
+
+Running 9 tests using 2 workers
+
+(node:92822) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:92823) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  2 [chromium] › tests/e2e/help.spec.ts:7:5 › Help centre 320px › home, article and every review state fit and remain accessible (5.5s)
+  ✓  1 [chromium] › tests/e2e/help.spec.ts:7:5 › Help centre 390px › home, article and every review state fit and remain accessible (5.4s)
+  ✓  3 [chromium] › tests/e2e/help.spec.ts:7:5 › Help centre 768px › home, article and every review state fit and remain accessible (5.1s)
+  ✓  4 [chromium] › tests/e2e/help.spec.ts:7:5 › Help centre 1024px › home, article and every review state fit and remain accessible (5.3s)
+  ✓  6 [chromium] › tests/e2e/help.spec.ts:24:1 › search suggestions support slash, arrows, Enter, Escape and a real article journey (1.4s)
+  ✓  7 [chromium] › tests/e2e/help.spec.ts:34:1 › phone FAQ, topic filters and article back navigation work (789ms)
+  ✓  8 [chromium] › tests/e2e/help.spec.ts:44:1 › feedback keeps the optional note and truthfully reports unavailable persistence (680ms)
+  ✓  9 [chromium] › tests/e2e/help.spec.ts:53:1 › unknown articles return a real 404 (447ms)
+  ✓  5 [chromium] › tests/e2e/help.spec.ts:7:5 › Help centre 1440px › home, article and every review state fit and remain accessible (5.4s)
+
+  9 passed (18.9s)

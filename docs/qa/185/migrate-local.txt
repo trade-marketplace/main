@@ -1,0 +1,37 @@
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma/schema.prisma.
+Datasource "db": PostgreSQL database "postgres", schema "public" at "127.0.0.1:54185"
+
+8 migrations found in prisma/migrations
+
+Applying migration `20261026010404_schema_1_people`
+Applying migration `20261026020007_schema_2_jobs`
+Applying migration `20261026035815_geo_locations`
+Applying migration `20261026040055_schema_3_money`
+Applying migration `20261026045620_schema_4_after`
+Applying migration `20261028010000_notification_preferences`
+Applying migration `20261030010000_area_waitlist`
+Applying migration `20261031010000_help_feedback`
+
+The following migration(s) have been applied:
+
+migrations/
+  └─ 20261026010404_schema_1_people/
+    └─ migration.sql
+  └─ 20261026020007_schema_2_jobs/
+    └─ migration.sql
+  └─ 20261026035815_geo_locations/
+    └─ migration.sql
+  └─ 20261026040055_schema_3_money/
+    └─ migration.sql
+  └─ 20261026045620_schema_4_after/
+    └─ migration.sql
+  └─ 20261028010000_notification_preferences/
+    └─ migration.sql
+  └─ 20261030010000_area_waitlist/
+    └─ migration.sql
+  └─ 20261031010000_help_feedback/
+    └─ migration.sql
+
+All migrations have been successfully applied.
