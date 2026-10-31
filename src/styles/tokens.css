@@ -79,6 +79,7 @@
   --trade-fs-price: 1.75rem;    --trade-lh-price: 1.1;     /* 28 prices, earnings      */
   --trade-fs-heading: 1.5rem;   --trade-lh-heading: 1.15;  /* 24 section headings      */
   --trade-fs-subheading: 1.25rem; --trade-lh-subheading: 1.2; /* 20 names, subsections */
+  --trade-fs-lead: 1.1875rem; --trade-lh-lead: 1.2; /* 19 public hero supporting copy */
   --trade-fs-section: 1.125rem; --trade-lh-section: 1.2;   /* 18 section labels        */
   --trade-fs-label: 0.9375rem;  --trade-lh-label: 1.2;     /* 15 tile overlays, status */
   --trade-fs-body: 1rem;        --trade-lh-body: 1.45;     /* 16 body, inputs (never smaller on inputs: stops iOS zoom) */
@@ -100,6 +101,7 @@
   --trade-radius-action: 11px;    /* buttons                     */
   --trade-radius-category: 11px;  /* cards, category tiles       */
   --trade-radius-card: 11px;
+  --trade-radius-art: 30px;       /* public hero illustration backplates */
   --trade-radius-sheet: 22px;     /* bottom sheets, detail sheet */
   --trade-radius-field: 0px;      /* fields are underlines/boxes with square corners */
   --trade-radius-pill: 999px;     /* chips, status pills, filter pill */
