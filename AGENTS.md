@@ -35,8 +35,9 @@ AI agents have a habit of doing the easy half and stopping. Here, **a task is do
 - Follow navigation with real clicks, taps and keyboard activation through the destination and its Next/Back steps;
   an `href` assertion alone does not verify a journey. Preserve return paths and check menu dismissal.
 - `npm run lint`, `npm run typecheck`, `npm test` and `npm run build` all pass (once the app exists, CI runs them).
-- **Screenshots** (desktop 1440 + phone 390) of every screen you changed are in the PR, next to the mockup it should
-  match. Matt reviews screens from these.
+- **Screenshots** (desktop 1440 + phone 390) of every screen you changed are on the PR. The Screenshots bot takes and
+  posts them for you; Matt compares them with the mockup. **Never commit screenshots, logs or test evidence** to your
+  branch (see section 7).
 
 If you can't finish (blocked, unclear, out of time): **don't open a "done" PR.** Comment on the issue with exactly what
 is finished, what isn't and why, move it back to **Ready** (or **Blocked**) and unassign yourself. A half-built feature
@@ -93,5 +94,9 @@ issue says to ("port X from the old repo"), and when you do, re-check it against
 
 - Use the PR template. Say what changed, why, how you tested it, and include screenshots for anything visible.
 - Say which agent and model made the change.
-- The PR gate fails a PR with no `Closes #`, an unticked box or (for screens) no screenshots. See `docs/PR_GATE.md`.
+- The PR gate fails a PR with no `Closes #`, an unticked box, (for screens) no screenshots, or committed test evidence.
+  See `docs/PR_GATE.md`.
+- **No test evidence in the repo.** No screenshots, mockup pairs, logs, `checks.json`, word counts or QA folders
+  (`docs/qa/`, `docs/reviews/`, `output/`…). The Screenshots bot keeps pictures on the never-merged `pr-screenshots`
+  branch. Write how you tested it as a few lines of text in the PR description.
 - A founder approves before merge: William for code, Matt for screens. Agents never merge their own PRs.

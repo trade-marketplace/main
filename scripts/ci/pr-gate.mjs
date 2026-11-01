@@ -133,18 +133,37 @@ export function isUiFile(path) {
   return path.startsWith("src/app/") || path.startsWith("src/components/") || path.endsWith(".css");
 }
 
+// Test evidence (screenshots, logs, measurement JSON) never goes in the repo: the Screenshots workflow posts pictures
+// on the never-merged `pr-screenshots` branch, and test output belongs in the PR description. (#412)
+const EVIDENCE_FOLDERS = ["docs/reviews/", "docs/qa/", "output/", "test-results/", "playwright-report/", "screenshots/"];
+const EVIDENCE_FOLDER_PATTERN = /^docs\/testing\/issue-[^/]*\//;
+const MEDIA_OR_LOG = /\.(png|jpe?g|gif|webp|avif|mp4|webm|mov|log)$/i;
+// Where real images live: app images and icons, the design spec, seed photos, the app's own icons, email templates.
+const MEDIA_FOLDERS = ["public/", "docs/design/", "prisma/seed/", "src/app/", "supabase/templates/"];
+
 /**
- * @typedef {{ rule: "closes" | "checkboxes" | "screenshots", message: string, details?: string[] }} Failure
+ * Whether an added or changed file is test evidence that shouldn't be committed.
+ * @param {string} path
+ */
+export function isEvidenceFile(path) {
+  if (EVIDENCE_FOLDERS.some((folder) => path.startsWith(folder))) return true;
+  if (EVIDENCE_FOLDER_PATTERN.test(path)) return true;
+  return MEDIA_OR_LOG.test(path) && !MEDIA_FOLDERS.some((folder) => path.startsWith(folder));
+}
+
+/**
+ * @typedef {{ rule: "closes" | "checkboxes" | "screenshots" | "evidence", message: string, details?: string[] }} Failure
  * @typedef {{ skipped: boolean, ok: boolean, failures: Failure[], closes: number[], needsScreens: boolean }} GateResult
  */
 
 /**
  * Check a PR against every rule.
  * `botScreenshots`: the screenshot bot has posted pictures of the PR's latest commit (findScreenshotsComment).
- * @param {{ body?: string | null, labels?: string[], files?: string[], botScreenshots?: boolean }} pr
+ * `addedFiles`: files the PR adds or changes (not deletes), checked for committed test evidence.
+ * @param {{ body?: string | null, labels?: string[], files?: string[], addedFiles?: string[], botScreenshots?: boolean }} pr
  * @returns {GateResult}
  */
-export function evaluate({ body, labels = [], files = [], botScreenshots = false }) {
+export function evaluate({ body, labels = [], files = [], addedFiles = [], botScreenshots = false }) {
   const labelSet = new Set(labels.map((label) => label.toLowerCase()));
   const closes = findClosedIssues(body);
   const needsScreens = labelSet.has(UI_LABEL) || files.some(isUiFile);
@@ -176,6 +195,15 @@ export function evaluate({ body, labels = [], files = [], botScreenshots = false
       rule: "screenshots",
       message:
         "This PR changes screens (`ui` label, or files in `src/app/`, `src/components/` or `*.css`) but has no screenshots of its latest commit. The Screenshots workflow posts them as a comment and re-runs this gate; if it found no routes, list them under `screenshots:` in the description. Or add desktop 1440 and phone 390 screenshots to the description, or ask a founder for the `no-screens` label if nothing visible changed.",
+    });
+  }
+
+  const evidence = addedFiles.filter(isEvidenceFile);
+  if (evidence.length > 0) {
+    failures.push({
+      rule: "evidence",
+      message: `${evidence.length} test-evidence file${evidence.length === 1 ? "" : "s"} committed (screenshots, logs or QA folders). Remove them from the branch: the Screenshots workflow posts pictures for you, and test results go in the description as text. See AGENTS.md section 7.`,
+      details: evidence,
     });
   }
 
@@ -264,10 +292,12 @@ async function paginate(gh, path) {
 export async function runGate({ gh, repo, number, serverUrl = "https://github.com", log = console.warn }) {
   // Read the PR fresh, so a re-run sees the latest description and labels, not the event's copy.
   const pr = await gh(`/repos/${repo}/pulls/${number}`);
-  const files = (await paginate(gh, `/repos/${repo}/pulls/${number}/files`)).flatMap(
-    (/** @type {{ filename: string, previous_filename?: string }} */ file) =>
-      file.previous_filename ? [file.filename, file.previous_filename] : [file.filename],
+  /** @type {{ filename: string, previous_filename?: string, status?: string }[]} */
+  const changed = await paginate(gh, `/repos/${repo}/pulls/${number}/files`);
+  const files = changed.flatMap((file) =>
+    file.previous_filename ? [file.filename, file.previous_filename] : [file.filename],
   );
+  const addedFiles = changed.filter((file) => file.status !== "removed").map((file) => file.filename);
   // Read comments before deciding: the screenshot bot's comment satisfies the screenshots rule. If they can't be
   // read, carry on without them (the rule then needs an image in the description).
   /** @type {{ id: number, body?: string, user?: { login?: string, type?: string } }[] | null} */
@@ -281,6 +311,7 @@ export async function runGate({ gh, repo, number, serverUrl = "https://github.co
     body: pr.body,
     labels: (pr.labels ?? []).map((/** @type {{ name: string }} */ label) => label.name),
     files,
+    addedFiles,
     botScreenshots: Boolean(comments && findScreenshotsComment(comments, pr.head?.sha)),
   });
   const comment = renderComment(result, `${serverUrl}/${repo}/blob/${pr.base?.ref ?? "main"}/docs/PR_GATE.md`);
