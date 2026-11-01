@@ -1,0 +1,18 @@
+/* The office "All jobs" page (#170): pages.html w-o-jobs. The table, chips and pager are the data kit's (#80).
+   Tokens only. */
+
+.page { display: grid; gap: var(--trade-space-4); min-width: 0; max-width: var(--trade-content-max); }
+
+.head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--trade-space-3); }
+.title {
+  margin: 0;
+  font-family: var(--trade-font-heading);
+  font-weight: 900;
+  font-variation-settings: var(--trade-display-axes);
+  /* 30px in the mockup: the price size is the nearest token. */
+  font-size: var(--trade-fs-price);
+  line-height: var(--trade-lh-price);
+}
+.head a[aria-disabled] { opacity: 0.5; cursor: not-allowed; }
+
+.filters { min-width: 0; }

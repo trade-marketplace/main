@@ -53,6 +53,11 @@ export type FilterBarProps = {
   filters: readonly FilterDefinition[];
   values: FilterValues;
   onChange: (values: FilterValues) => void;
+  /**
+   * Clear filters, when the page wants it in one step (filters and search together, one URL change). Without it,
+   * Clear filters calls onChange with the defaults and then search.onChange("").
+   */
+  onClear?: () => void;
   /** Saved filters: the chip and its menu show only when this is given. */
   saved?: {
     filters: readonly SavedFilter[];
@@ -71,11 +76,12 @@ export function defaultsOf(filters: readonly FilterDefinition[]): FilterDefaults
   return Object.fromEntries(filters.map((filter) => [filter.key, filter.defaultValue]));
 }
 
-export function FilterBar({ label, search, filters, values, onChange, saved, defaultOpen, className }: FilterBarProps) {
+export function FilterBar({ label, search, filters, values, onChange, onClear, saved, defaultOpen, className }: FilterBarProps) {
   const defaults = defaultsOf(filters);
   const filtered = hasActiveFilters(values, defaults) || Boolean(search?.value.trim());
 
   const clear = () => {
+    if (onClear) return onClear();
     onChange({ ...defaults });
     search?.onChange("");
   };

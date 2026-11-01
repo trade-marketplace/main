@@ -124,7 +124,8 @@ Nothing: "No results". A page past the end shows the last page (`pageInfo`).
 
 - Each filter is a chip that reads "Status: Active" and opens a menu of its choices (the current one ticked;
   `MenuItem checked`). A chip is filled when it isn't on its default. **Clear filters** shows once anything,
-  search included, is filtering; it puts every chip back and empties the search.
+  search included, is filtering; it puts every chip back and empties the search. Pass `onClear` to do that in one
+  step instead (one URL change for the chips and the search, as the office's All jobs does).
 - The search box has a × (and Esc) to clear it, and is never under 16px so phones don't zoom.
 - **Saved filters:** the chip lists your saved sets (the one on screen ticked, and named on the chip) and "Save
   these filters…", which asks for a name (required, under 40 letters, not a name you already have). Where they're
