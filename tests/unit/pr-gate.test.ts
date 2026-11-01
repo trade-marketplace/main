@@ -9,6 +9,7 @@ import {
   findScreenshotsComment,
   findUntickedBoxes,
   hasImage,
+  isEvidenceFile,
   isUiFile,
   renderComment,
   runGate,
@@ -145,7 +146,47 @@ describe("isUiFile", () => {
   );
 });
 
+describe("isEvidenceFile (#412)", () => {
+  it.each([
+    "docs/reviews/212/pair-1440.png",
+    "docs/qa/185/lint.txt",
+    "output/playwright/issue-180/checks.json",
+    "docs/testing/issue-392/build.log",
+    "test-results/x.txt",
+    "notes/screenshot.png",
+    "tests/e2e/baseline.png",
+    "build.log",
+  ])("%s is test evidence", (path) => expect(isEvidenceFile(path)).toBe(true));
+
+  it.each([
+    "public/images/services/gun.png",
+    "docs/design/img/hero.png",
+    "prisma/seed/photos/job-1.webp",
+    "src/app/icon.png",
+    "supabase/templates/logo.png",
+    "docs/testing/security.md",
+    "src/components/site/ServicePage.tsx",
+    "docs/TESTING.md",
+  ])("%s is not test evidence", (path) => expect(isEvidenceFile(path)).toBe(false));
+});
+
 describe("evaluate", () => {
+  it("fails when the PR adds test evidence, and lists the files", () => {
+    const result = evaluate({
+      body: goodBody,
+      files: ["docs/qa/1/a.png", "src/lib/a.ts"],
+      addedFiles: ["docs/qa/1/a.png", "src/lib/a.ts"],
+    });
+    expect(result.ok).toBe(false);
+    expect(result.failures.map((f) => f.rule)).toEqual(["evidence"]);
+    expect(result.failures[0].details).toEqual(["docs/qa/1/a.png"]);
+  });
+
+  it("allows deleting test evidence (only added or changed files count)", () => {
+    const result = evaluate({ body: goodBody, files: ["docs/reviews/1/a.png"], addedFiles: [] });
+    expect(result.ok).toBe(true);
+  });
+
   it("passes when the issue is linked and every box is ticked", () => {
     const result = evaluate({ body: goodBody, labels: [], files: ["scripts/ci/pr-gate.mjs"] });
     expect(result).toMatchObject({ ok: true, skipped: false, failures: [], closes: [69], needsScreens: false });
@@ -274,6 +315,22 @@ describe("renderComment", () => {
 });
 
 describe("runGate (GitHub API glue)", () => {
+  it("ignores removed files when checking for test evidence", async () => {
+    const gh = async (path: string) => {
+      if (/\/pulls\/\d+$/.test(path)) return { body: goodBody, labels: [], base: { ref: "main" }, head: { sha: "s" } };
+      if (path.includes("/files?"))
+        return path.endsWith("page=1")
+          ? [
+              { filename: "docs/reviews/1/a.png", status: "removed" },
+              { filename: "output/x.log", status: "added" },
+            ]
+          : [];
+      return [];
+    };
+    const { result } = await runGate({ gh, repo: "o/r", number: 1, log: () => {} });
+    expect(result.failures.find((f) => f.rule === "evidence")?.details).toEqual(["output/x.log"]);
+  });
+
   type Call = { path: string; method: string; body?: { body: string } };
   type Comment = { id: number; body: string; user: { type: string } };
   type BotComment = { id: number; body: string; user: { type: string; login: string } };

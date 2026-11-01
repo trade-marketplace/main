@@ -17,7 +17,7 @@ This spec says **what** to build. How is the developer’s call. All prices, nam
 9. **Brand device on every big moment.** Forest band + bolt at 20% on heroes, headers and success screens. Bolt flash (M10) only for real wins.
 10. **Same URL, every device.** Every page works from 320px to 2560px. Same routes; layout adapts.
 
-Keep useful approved supporting copy. Remove extra section taglines that repeat headings and generic AI filler; word counts are measurements, not cutting targets. See DECISIONS.md and AGENTS.md section 5.
+Copy: use the wording in the mockup and this spec. Don't add or remove text on your own; ask Matt if unsure (AGENTS.md section 5).
 
 ## Shells
 
