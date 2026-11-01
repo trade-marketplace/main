@@ -44,6 +44,7 @@ describe("For tradies", () => {
     const html = renderToString(<ForTradiesPage data={tradieEarnings(settings)} />);
     expect(html).toContain("You do the work.");
     expect(html).toContain("We find the jobs.");
+    for (const text of ["Local jobs, already priced and paid.", "No quoting at 9pm.", "Never race to the bottom.", "Materials through Telfer.", "Fill a free Saturday", "We check by hand"]) expect(html).toContain(text);
     expect(html).not.toMatch(/we do the paperwork|testimonials|Sarah|259\.20|96\.00/i);
     for (const trade of SIGNUP_TRADES) expect(html).toContain(trade.licence?.label ?? "photo ID");
     expect(html).toContain('href="/signup/tradie"');

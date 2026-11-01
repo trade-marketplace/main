@@ -5,6 +5,7 @@
 .heroContent { position: relative; z-index: 1; width: min(760px, 60%); margin-left: max(var(--trade-space-10), calc((100% - var(--trade-content-max)) / 2)); padding-top: calc(76px + var(--trade-space-20)); }
 .headline { margin: 0; font-family: var(--trade-font-heading); font-variation-settings: var(--trade-display-axes); font-weight: 900; font-size: calc(var(--trade-fs-display) + var(--trade-space-4)); line-height: var(--trade-lh-display); }
 .headline > span { display: block; }
+.lead { margin: var(--trade-space-4) 0 0; max-width: 520px; font-size: var(--trade-fs-subheading); line-height: var(--trade-lh-body); color: color-mix(in srgb, var(--trade-text-on-dark) 80%, transparent); }
 .actions { display: flex; gap: var(--trade-space-3); margin-top: var(--trade-space-8); }
 .actions > a:last-child { background: transparent; color: var(--trade-text-on-dark); }
 .bolt { position: absolute; width: 1000px; left: calc(50% + var(--trade-space-10)); top: -320px; pointer-events: none; }
@@ -19,6 +20,8 @@
 .reasonIcon { display: grid; place-items: center; width: 52px; height: 52px; border-radius: var(--trade-radius-card); background: var(--trade-tint); color: var(--trade-link); }
 .reasonIcon > span { font-size: var(--trade-fs-price); }
 .reasons article h2 { font-size: var(--trade-fs-subheading); margin-top: var(--trade-space-4); }
+.reasons article p { margin: var(--trade-space-2) 0 0; color: var(--trade-text-2); }
+.requirementsCard > div > p { margin: var(--trade-space-2) 0 0; color: var(--trade-text-2); }
 .requirements { padding-bottom: var(--trade-space-20); }
 .requirementsCard { display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: var(--trade-space-10); padding: var(--trade-space-8); border-radius: var(--trade-radius-card); box-shadow: var(--trade-shadow-category); background: var(--trade-surface); }
 .requirements .requirementsCard h2 { margin: 0; font-size: var(--trade-space-8); }
