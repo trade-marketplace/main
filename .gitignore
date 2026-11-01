@@ -40,3 +40,9 @@ __pycache__/
 
 # generated Prisma client (rebuilt by `npm install` / `npm run build`)
 src/generated/
+
+# test evidence: never committed (the Screenshots workflow posts pictures on the pr-screenshots branch) (#412)
+/docs/reviews/
+/docs/qa/
+/docs/testing/issue-*/
+/output/
