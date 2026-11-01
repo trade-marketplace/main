@@ -5,16 +5,17 @@
 .bolt { position: absolute; width: 700px; left: calc(50% + 180px); top: -260px; fill: var(--trade-signature); opacity: .2; pointer-events: none; }
 .steps { display: grid; gap: var(--trade-space-10); margin-block: 0; padding-block: 56px; list-style: none; }
 .step { display: grid; grid-template-columns: 120px minmax(0, 1fr) 420px; gap: var(--trade-space-10); align-items: center; }
-.step h2 { margin: 0; padding-bottom: var(--trade-space-20); font-size: 34px; }
+.step h2 { margin: 0; font-size: 34px; }
+.stepText { margin: 10px 0 0; max-width: 520px; font-size: var(--trade-fs-section); line-height: var(--trade-lh-body); color: var(--trade-text-2); }
+.lead { margin: 14px 0 0; font-size: var(--trade-fs-subheading); line-height: var(--trade-lh-subheading); color: color-mix(in srgb, var(--trade-text-on-dark) 85%, transparent); }
 .number { font-family: var(--trade-font-heading); font-variation-settings: var(--trade-display-axes); font-size: 96px; font-weight: 900; line-height: var(--trade-lh-display); color: var(--trade-signature); -webkit-text-stroke: 2px var(--trade-forest); }
 .mini { border: 0; border-radius: var(--trade-radius-card); box-shadow: var(--trade-shadow-category); }
 .description > div[data-variant] { min-height: 70px; }
 .description input { text-overflow: ellipsis; }
 .photos { display: flex; gap: var(--trade-gap-photo); margin-top: 10px; }
 .photos img { display: block; object-fit: cover; border-radius: var(--trade-radius-job-tile); }
-.priceIcon { position: relative; display: block; font-size: 52px; color: var(--trade-signature); }
 .accept { margin-top: 10px; min-height: 46px; font-size: 17px; }
-.worker { display: grid; }
+.worker { display: flex; gap: var(--trade-space-3); align-items: center; }
 .sorted { margin-top: var(--trade-space-3); }
 .essentials { padding-block: var(--trade-space-10); }
 .essentials ul { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--trade-space-6); list-style: none; padding: 0; margin: 0; }
@@ -31,7 +32,8 @@
   .hero h1 { font-size: 44px; }
   .bolt { width: 430px; left: auto; right: -250px; top: -164px; }
   .step { grid-template-columns: var(--trade-space-16) minmax(0, 1fr); gap: var(--trade-space-6); }
-  .step h2 { padding-bottom: 0; font-size: var(--trade-fs-price); }
+  .step h2 { font-size: var(--trade-fs-price); }
+  .stepText { font-size: var(--trade-fs-body); }
   .number { font-size: 64px; }
   .mini { grid-column: 2; }
   .essentials ul { grid-template-columns: 1fr; }
