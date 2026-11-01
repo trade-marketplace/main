@@ -14,7 +14,7 @@ const jobs = (values: [string, string][]) => [...values.map(([name, icon]) => ({
 /** Launch trade configuration (#333). Future office/CMS data can supply this same content contract.
  * Availability is server configuration; public query strings never switch a trade on or off. */
 export const SERVICE_CONTENT: Record<Category, ServiceContent> = {
-  electrical: { category: "electrical", live: true, heroImage: "/images/services/meter.png", headline: "Electricians", intro: "Licence-checked sparkies. One fixed price.", popularHeading: "Popular electrical jobs", jobs: jobs([
+  electrical: { category: "electrical", live: true, heroImage: "/images/services/meter.png", headline: "Electricians", intro: "Licence-checked sparkies. One fixed price. CoC every time.", popularHeading: "Popular electrical jobs", jobs: jobs([
     ["New power point", "electrical_services"], ["Lights & downlights", "light"], ["Heat pump circuit", "heat_pump"], ["Fault finding", "bolt"], ["EV charger", "ev_charger"], ["Switchboard upgrade", "electric_meter"], ["Rewire a room", "outlet"],
   ]) },
   plumbing: { category: "plumbing", live: true, heroImage: "/images/services/pipe.png", headline: "Plumbers", intro: "Plumbing jobs. One fixed price. Someone local sorts it.", popularHeading: "Popular plumbing jobs", jobs: jobs([

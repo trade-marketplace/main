@@ -88,7 +88,7 @@ export function ServicePage({ data, submit, preview }: Props) {
             <Button type="submit" variant="hero" className={landing.searchButton}>{outside ? "Get notified" : "Get a price"}</Button>
           </form> : <ServiceWaitlist category={data.category} location={data.coverage.name} submit={submit} initialState={waitlistState} />}
         </div>
-        <div className={styles.art} aria-hidden="true"><span />{"image" in info.art ? <Image src={data.heroImage ?? info.art.image} width={340} height={340} alt="" priority sizes="(min-width: 1024px) 340px, 200px" /> : <Icon name={info.art.icon} decorative fill />}</div>
+        <div className={styles.art} aria-hidden="true">{"image" in info.art ? <Image src={data.heroImage ?? info.art.image} width={340} height={340} alt="" priority sizes="(min-width: 1024px) 340px, 200px" /> : <Icon name={info.art.icon} decorative fill />}</div>
       </div>
     </section>
     {data.live && <>

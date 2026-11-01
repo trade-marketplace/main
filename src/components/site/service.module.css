@@ -12,9 +12,8 @@
 .intro { margin: calc(var(--trade-space-3) + var(--trade-space-1) / 2) 0 0; font-size: var(--trade-fs-lead); line-height: var(--trade-lh-lead); color: color-mix(in srgb, var(--trade-text-on-dark) 85%, transparent); }
 .heroText .search { position: relative; z-index: 2; width: 640px; margin-top: calc(var(--trade-space-6) + var(--trade-space-1) / 2); }
 .art { position: relative; min-height: 0; }
-.art > span:first-child { position: absolute; width: 300px; height: 300px; border-radius: var(--trade-radius-art); background: color-mix(in srgb, var(--service-tint) 83.3333%, transparent); right: var(--trade-space-10); top: var(--trade-space-5); }
 .art img { position: absolute; width: 340px; height: 340px; object-fit: contain; right: var(--trade-space-5); top: 0; }
-.art > span:last-child:not(:first-child) { display: grid; place-items: center; position: relative; width: 340px; height: 340px; margin-left: auto; font-size: 160px; color: var(--trade-text-on-dark); }
+.art > span { display: grid; place-items: center; position: relative; width: 340px; height: 340px; margin-left: auto; font-size: 160px; color: var(--trade-text-on-dark); }
 .popular { padding-block: 56px; }
 .popular .sectionTitle, .how .sectionTitle { margin: 0; font-family: var(--trade-font-heading); font-variation-settings: var(--trade-display-axes); font-weight: 900; font-size: var(--trade-fs-heading); line-height: var(--trade-lh-heading); }
 .jobs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--trade-space-4); margin-top: var(--trade-space-5); }
@@ -31,8 +30,7 @@
 @media (max-width: 1199.98px) {
   .heroGrid { grid-template-columns: minmax(0, 1fr) 300px; gap: var(--trade-space-6); }
   .hero h1 { font-size: calc(var(--trade-fs-title) + var(--trade-space-3)); }
-  .art img, .art > span:last-child:not(:first-child) { width: 280px; height: 280px; right: 0; }
-  .art > span:first-child { width: 260px; height: 260px; right: 0; }
+  .art img, .art > span { width: 280px; height: 280px; right: 0; }
 }
 @media (max-width: 1023.98px) {
   .heroGrid { padding-top: calc(var(--site-header-h) + var(--trade-space-6)); padding-bottom: var(--trade-space-10); }

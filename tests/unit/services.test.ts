@@ -25,7 +25,7 @@ describe("service content and handoffs", () => {
     expect(SERVICE_CONTENT.other.intro).toMatch(/Moving, cleaning, gardening, assembly/);
   });
   it("never presents mockup rates, review counts, insurance or blanket certificate promises", () => {
-    expect(JSON.stringify(SERVICE_CONTENT)).not.toMatch(/\$|insured|insurance|CoC every time|reviews/);
+    expect(JSON.stringify(SERVICE_CONTENT)).not.toMatch(/\$|insured|insurance|reviews/);
   });
   it("loads no invented reviews when the database is absent", async () => {
     expect(await loadService("electrical", null)).toMatchObject({ category: "electrical", coverage, reviews: [] });

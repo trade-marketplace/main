@@ -101,7 +101,6 @@
   --trade-radius-action: 11px;    /* buttons                     */
   --trade-radius-category: 11px;  /* cards, category tiles       */
   --trade-radius-card: 11px;
-  --trade-radius-art: 30px;       /* public hero illustration backplates */
   --trade-radius-sheet: 22px;     /* bottom sheets, detail sheet */
   --trade-radius-field: 0px;      /* fields are underlines/boxes with square corners */
   --trade-radius-pill: 999px;     /* chips, status pills, filter pill */
