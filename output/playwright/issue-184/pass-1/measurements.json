@@ -1,0 +1,338 @@
+[
+  {
+    "state": "empty",
+    "width": 1440,
+    "text": "We’re not in Wellington yet. Tell me Wellington you@email.co.nz",
+    "words": 9,
+    "overflow": 0,
+    "form": {
+      "x": 410,
+      "y": 433.75,
+      "width": 620,
+      "height": 115,
+      "top": 433.75,
+      "right": 1030,
+      "bottom": 548.75,
+      "left": 410
+    },
+    "heading": {
+      "x": 410,
+      "y": 370.15625,
+      "width": 620,
+      "height": 39.59375,
+      "top": 370.15625,
+      "right": 1030,
+      "bottom": 409.75,
+      "left": 410
+    },
+    "axe": []
+  },
+  {
+    "state": "loading",
+    "width": 1440,
+    "text": "We’re not in Wellington yet. Tell me Wellington neighbour@example.test",
+    "words": 9,
+    "overflow": 0,
+    "form": {
+      "x": 410,
+      "y": 433.75,
+      "width": 620,
+      "height": 115,
+      "top": 433.75,
+      "right": 1030,
+      "bottom": 548.75,
+      "left": 410
+    },
+    "heading": {
+      "x": 410,
+      "y": 370.15625,
+      "width": 620,
+      "height": 39.59375,
+      "top": 370.15625,
+      "right": 1030,
+      "bottom": 409.75,
+      "left": 410
+    },
+    "axe": []
+  },
+  {
+    "state": "joined",
+    "width": 1440,
+    "text": "We’re not in Wellington yet. Tell me You’re on the list. copy link Wellington neighbour@example.test",
+    "words": 15,
+    "overflow": 0,
+    "form": {
+      "x": 410,
+      "y": 433.75,
+      "width": 620,
+      "height": 115,
+      "top": 433.75,
+      "right": 1030,
+      "bottom": 548.75,
+      "left": 410
+    },
+    "heading": {
+      "x": 410,
+      "y": 370.15625,
+      "width": 620,
+      "height": 39.59375,
+      "top": 370.15625,
+      "right": 1030,
+      "bottom": 409.75,
+      "left": 410
+    },
+    "axe": []
+  },
+  {
+    "state": "already-on-list",
+    "width": 1440,
+    "text": "We’re not in Wellington yet. Tell me You’re on it. copy link Wellington neighbour@example.test",
+    "words": 14,
+    "overflow": 0,
+    "form": {
+      "x": 410,
+      "y": 433.75,
+      "width": 620,
+      "height": 115,
+      "top": 433.75,
+      "right": 1030,
+      "bottom": 548.75,
+      "left": 410
+    },
+    "heading": {
+      "x": 410,
+      "y": 370.15625,
+      "width": 620,
+      "height": 39.59375,
+      "top": 370.15625,
+      "right": 1030,
+      "bottom": 409.75,
+      "left": 410
+    },
+    "axe": []
+  },
+  {
+    "state": "error",
+    "width": 1440,
+    "text": "We’re not in Wellington yet. Tell me Try again. Wellington neighbour@example.test",
+    "words": 11,
+    "overflow": 0,
+    "form": {
+      "x": 410,
+      "y": 433.75,
+      "width": 620,
+      "height": 115,
+      "top": 433.75,
+      "right": 1030,
+      "bottom": 548.75,
+      "left": 410
+    },
+    "heading": {
+      "x": 410,
+      "y": 370.15625,
+      "width": 620,
+      "height": 39.59375,
+      "top": 370.15625,
+      "right": 1030,
+      "bottom": 409.75,
+      "left": 410
+    },
+    "axe": []
+  },
+  {
+    "state": "offline",
+    "width": 1440,
+    "text": "We’re not in Wellington yet. Tell me You’re offline. Wellington neighbour@example.test",
+    "words": 11,
+    "overflow": 0,
+    "form": {
+      "x": 410,
+      "y": 433.75,
+      "width": 620,
+      "height": 115,
+      "top": 433.75,
+      "right": 1030,
+      "bottom": 548.75,
+      "left": 410
+    },
+    "heading": {
+      "x": 410,
+      "y": 370.15625,
+      "width": 620,
+      "height": 39.59375,
+      "top": 370.15625,
+      "right": 1030,
+      "bottom": 409.75,
+      "left": 410
+    },
+    "axe": []
+  },
+  {
+    "state": "empty",
+    "width": 390,
+    "text": "We’re not in Wellington yet. Tell me Wellington you@email.co.nz",
+    "words": 9,
+    "overflow": 0,
+    "form": {
+      "x": 36,
+      "y": 421.34375,
+      "width": 318,
+      "height": 175,
+      "top": 421.34375,
+      "right": 354,
+      "bottom": 596.34375,
+      "left": 36
+    },
+    "heading": {
+      "x": 36,
+      "y": 318.15625,
+      "width": 318,
+      "height": 79.1875,
+      "top": 318.15625,
+      "right": 354,
+      "bottom": 397.34375,
+      "left": 36
+    },
+    "axe": []
+  },
+  {
+    "state": "loading",
+    "width": 390,
+    "text": "We’re not in Wellington yet. Tell me Wellington neighbour@example.test",
+    "words": 9,
+    "overflow": 0,
+    "form": {
+      "x": 36,
+      "y": 421.34375,
+      "width": 318,
+      "height": 175,
+      "top": 421.34375,
+      "right": 354,
+      "bottom": 596.34375,
+      "left": 36
+    },
+    "heading": {
+      "x": 36,
+      "y": 318.15625,
+      "width": 318,
+      "height": 79.1875,
+      "top": 318.15625,
+      "right": 354,
+      "bottom": 397.34375,
+      "left": 36
+    },
+    "axe": []
+  },
+  {
+    "state": "joined",
+    "width": 390,
+    "text": "We’re not in Wellington yet. Tell me You’re on the list. copy link Wellington neighbour@example.test",
+    "words": 15,
+    "overflow": 0,
+    "form": {
+      "x": 36,
+      "y": 421.34375,
+      "width": 318,
+      "height": 175,
+      "top": 421.34375,
+      "right": 354,
+      "bottom": 596.34375,
+      "left": 36
+    },
+    "heading": {
+      "x": 36,
+      "y": 318.15625,
+      "width": 318,
+      "height": 79.1875,
+      "top": 318.15625,
+      "right": 354,
+      "bottom": 397.34375,
+      "left": 36
+    },
+    "axe": []
+  },
+  {
+    "state": "already-on-list",
+    "width": 390,
+    "text": "We’re not in Wellington yet. Tell me You’re on it. copy link Wellington neighbour@example.test",
+    "words": 14,
+    "overflow": 0,
+    "form": {
+      "x": 36,
+      "y": 421.34375,
+      "width": 318,
+      "height": 175,
+      "top": 421.34375,
+      "right": 354,
+      "bottom": 596.34375,
+      "left": 36
+    },
+    "heading": {
+      "x": 36,
+      "y": 318.15625,
+      "width": 318,
+      "height": 79.1875,
+      "top": 318.15625,
+      "right": 354,
+      "bottom": 397.34375,
+      "left": 36
+    },
+    "axe": []
+  },
+  {
+    "state": "error",
+    "width": 390,
+    "text": "We’re not in Wellington yet. Tell me Try again. Wellington neighbour@example.test",
+    "words": 11,
+    "overflow": 0,
+    "form": {
+      "x": 36,
+      "y": 421.34375,
+      "width": 318,
+      "height": 175,
+      "top": 421.34375,
+      "right": 354,
+      "bottom": 596.34375,
+      "left": 36
+    },
+    "heading": {
+      "x": 36,
+      "y": 318.15625,
+      "width": 318,
+      "height": 79.1875,
+      "top": 318.15625,
+      "right": 354,
+      "bottom": 397.34375,
+      "left": 36
+    },
+    "axe": []
+  },
+  {
+    "state": "offline",
+    "width": 390,
+    "text": "We’re not in Wellington yet. Tell me You’re offline. Wellington neighbour@example.test",
+    "words": 11,
+    "overflow": 0,
+    "form": {
+      "x": 36,
+      "y": 421.34375,
+      "width": 318,
+      "height": 175,
+      "top": 421.34375,
+      "right": 354,
+      "bottom": 596.34375,
+      "left": 36
+    },
+    "heading": {
+      "x": 36,
+      "y": 318.15625,
+      "width": 318,
+      "height": 79.1875,
+      "top": 318.15625,
+      "right": 354,
+      "bottom": 397.34375,
+      "left": 36
+    },
+    "axe": []
+  }
+]
