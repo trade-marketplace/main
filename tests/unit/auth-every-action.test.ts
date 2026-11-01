@@ -16,6 +16,8 @@ const PUBLIC_ACTIONS: Record<string, string[]> = {
   "src/server/landing-actions.ts": ["searchLandingPlacesAction"],
   // A07 accepts a validated email + suburb before sign-in. It cannot read jobs, profiles or waitlist rows.
   "src/app/(site)/coming-soon/actions.ts": ["joinWaitlist"],
+  // A11 accepts only a validated article vote and optional note before sign-in; no read access.
+  "src/app/(site)/help/actions.ts": ["saveHelpFeedback"],
   // A04's signed-out trade waitlist only inserts a validated email, suburb and configured trade.
   "src/app/(site)/services/[trade]/actions.ts": ["joinServiceWaitlist"],
 };
