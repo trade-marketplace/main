@@ -30,7 +30,7 @@ export function TimeWindowPicker({ label, hint, error, success, required, days, 
   const allSelected = enabled.length > 0 && enabled.every((item) => current.includes(item));
   function change(next: string[]) { setOwnValue(next); onChange?.(next); }
   return <fieldset id={field.id} className={styles.group} disabled={disabled} aria-describedby={field.describedBy} aria-invalid={error ? true : undefined}>
-    <legend className={styles.legend}>{label}{required && <span className={styles.required}> (required)</span>}</legend>
+    <legend className={styles.legend}>{label}{required && <span className={styles.required} hidden> (required)</span>}</legend>
     <FieldMessages id={field.id} {...{ hint, error, success }} />
     {enabled.length > 0 && <div className={styles.windowActions}>
       <Button variant="secondary" size="sm" width="auto" disabled={disabled} aria-pressed={allSelected}
