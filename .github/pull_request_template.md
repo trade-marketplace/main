@@ -20,12 +20,10 @@ Closes #
 
 ## Screenshots
 
-<!-- Every screen you changed: desktop 1440 and phone 390, next to the mockup it should match.
-     Show the empty, loading and error states too. Matt approves screens from these. -->
-
-| Mockup | Built |
-|---|---|
-|  |  |
+<!-- The Screenshots bot posts desktop 1440 and phone 390 pictures of every changed screen as a comment.
+     List extra routes or states under `screenshots:` here if it misses any (docs/TESTING.md).
+     Never commit screenshots, logs or QA folders to the branch: the PR gate fails them. Matt approves screens
+     from the bot's pictures. -->
 
 ## How I tested it
 
