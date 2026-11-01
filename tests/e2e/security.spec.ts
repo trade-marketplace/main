@@ -20,10 +20,12 @@ test.describe("security settings isolated UI", () => {
       for (const state of ["", "wrong", "success", "unavailable", "loading", "limited", "invalid-link", "pending-email", "partial", "expired", "offline", "pending", "access-errors"]) {
         await page.goto(url(`?state=${state}`));
         await expect(page.getByRole("heading", { name: "Security", exact: true })).toBeVisible();
+        await expect(page.locator("main .tm-anim-rise")).toHaveCSS("opacity", "1");
         expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth), state).toBe(0);
         await expectNoA11yViolations(page);
       }
       await page.goto(url("?mode=trade"));
+      await expect(page.locator("main .tm-anim-rise")).toHaveCSS("opacity", "1");
       await expectNoA11yViolations(page);
       await expect(page.locator("[data-mode=trade]").first()).toBeVisible();
     });
