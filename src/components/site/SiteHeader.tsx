@@ -115,6 +115,7 @@ export function SiteHeader({ viewer, currentPath }: { viewer: SiteViewer | null;
           {place === "menu" && link.href === FOR_TRADIES_PATH ? (
             <span className={styles.menuLinkText}>
               {link.label}
+              <span className={styles.menuCaption}>Are you a tradie? Join Trade Marketplace</span>
             </span>
           ) : (
             link.label

@@ -47,26 +47,26 @@ describe("logInAgainMessages: what the form says for each answer", () => {
     expect(logInAgainMessages({ ok: false, error: "wrong-credentials", values })).toEqual({
       password: LOG_IN_AGAIN_MESSAGES.wrongCredentials,
     });
-    expect(LOG_IN_AGAIN_MESSAGES.wrongCredentials).toBe("Incorrect email or password.");
+    expect(LOG_IN_AGAIN_MESSAGES.wrongCredentials).toBe("That email and password don’t match. Try again.");
   });
 
   it("shows the field checks under their fields", () => {
     expect(
-      logInAgainMessages({ ok: false, error: "invalid", fieldErrors: { password: "Enter a password." }, values }),
-    ).toEqual({ email: undefined, password: "Enter a password." });
+      logInAgainMessages({ ok: false, error: "invalid", fieldErrors: { password: "Enter your password." }, values }),
+    ).toEqual({ email: undefined, password: "Enter your password." });
   });
 
   it("puts problems that aren't about one field in a banner", () => {
     expect(logInAgainMessages({ ok: false, error: "try-later", values }).banner).toEqual({
       tone: "alert",
-      title: "Try again shortly.",
-      text: "",
+      title: "Too many tries.",
+      text: "Wait a few minutes, then try again.",
     });
     expect(logInAgainMessages({ ok: false, error: "email-not-verified", values }).banner?.tone).toBe("info");
     expect(logInAgainMessages({ ok: false, error: "unavailable", values }).banner).toEqual({
       tone: "alert",
-      title: "Log-in unavailable.",
-      text: "",
+      title: "We can’t log you in right now.",
+      text: "Try again in a minute.",
     });
   });
 });
@@ -125,13 +125,13 @@ describe("<SessionExpiredDialog>", () => {
   it("second step: only the password when the email is known, with a way out for someone else", () => {
     const html = dialog({ initialStep: "form" });
     expect(html).toContain("<form");
-    expect(text(html)).toContain(`${EMAIL}`);
+    expect(text(html)).toContain(`Logging in as ${EMAIL}`);
     const email = input(html, "email");
     for (const part of ['type="email"', 'autoComplete="username"', `value="${EMAIL}"`, 'readOnly=""', 'hidden=""'])
       expect(email).toContain(part);
     expect(input(html, "password")).toContain('type="password"');
     expect(input(html, "password")).toContain('autoComplete="current-password"');
-    expect(html).toMatch(/<a[^>]*href="\/login"[^>]*>Use another account<\/a>/);
+    expect(html).toMatch(/<a[^>]*href="\/login"[^>]*>Not you\? Log in as someone else<\/a>/);
     // The submit button is in the footer, tied to the form by its id.
     const formId = html.match(/<form[^>]*id="([^"]+)"/)?.[1];
     const submit = html.match(/<button\b[^>]*type="submit"[^>]*>/)?.[0] ?? "";
@@ -155,13 +155,13 @@ describe("<SessionExpiredDialog>", () => {
   it("marks a wrong password on the password field", () => {
     const html = dialog({ initialStep: "form", initialState: { ok: false, error: "wrong-credentials", values: { email: EMAIL } } });
     expect(input(html, "password")).toContain('aria-invalid="true"');
-    expect(text(html)).toContain("Incorrect email or password.");
+    expect(text(html)).toContain("That email and password don’t match. Try again.");
   });
 
   it("puts “too many tries” in a banner that's read out", () => {
     const html = dialog({ initialStep: "form", initialState: { ok: false, error: "try-later", values: { email: EMAIL } } });
     expect(html).toMatch(/role="alert"/);
-    expect(text(html)).toContain("Try again shortly.");
+    expect(text(html)).toContain("Too many tries. Wait a few minutes, then try again.");
   });
 });
 
