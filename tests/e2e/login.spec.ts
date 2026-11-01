@@ -35,7 +35,7 @@ test.describe("/login", () => {
     await expect(page.getByLabel("Password", { exact: true })).toHaveAttribute("type", "text");
     await page.getByLabel("Password", { exact: true }).press("Enter");
     // No Supabase in this build: the honest answer.
-    await expect(page.getByText("Log-in unavailable.")).toBeVisible();
+    await expect(page.getByText("We can’t log you in right now.")).toBeVisible();
     await expect(page.getByLabel("Email")).toHaveValue("sarah@email.co.nz");
     await expect(page.getByLabel("Password", { exact: true })).toHaveValue("");
     await expect(page.getByLabel("Password", { exact: true })).toBeFocused();

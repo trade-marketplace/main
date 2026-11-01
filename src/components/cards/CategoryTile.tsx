@@ -69,9 +69,9 @@ export function CategoryTile({ category, href, disabled, sub, headingLevel = 3, 
           info.name
         )}
       </Heading>
-      {(disabled || sub) && <span className={styles.catSub} title={disabled ?? sub}>
-        {disabled ?? sub}
-      </span>}
+      <span className={styles.catSub} title={disabled ?? sub ?? info.sub}>
+        {disabled ?? sub ?? info.sub}
+      </span>
     </article>
   );
 }

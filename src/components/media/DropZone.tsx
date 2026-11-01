@@ -35,8 +35,9 @@ export function DropZone({ onFiles, hint, title = "Drop photos here", accept = P
       {...(disabled ? {} : drop.props)}
     >
       <Icon name="cloud_upload" decorative className={styles.dropIcon} />
-      {title && <p className={styles.dropTitle}>{title}</p>}
+      <p className={styles.dropTitle}>{title}</p>
       <p className={styles.dropHint}>
+        or{" "}
         <button
           type="button"
           className={styles.chooseFiles}
@@ -44,7 +45,7 @@ export function DropZone({ onFiles, hint, title = "Drop photos here", accept = P
           aria-describedby={hint || disabled ? hintId : undefined}
           disabled={Boolean(disabled)}
         >
-          Choose files
+          choose files
         </button>
         {hint && <span id={disabled ? undefined : hintId}> · {hint}</span>}
       </p>

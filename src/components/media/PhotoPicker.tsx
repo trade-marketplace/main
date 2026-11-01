@@ -89,6 +89,7 @@ export function PhotoPicker({
             <UploadOverlay photo={photo} />
             {photo.status === "failed" && (
               <span className={styles.failed}>
+                <span>Failed ·</span>
                 <button type="button" className={styles.retry} onClick={() => onRetry(photo.id)}>
                   Retry<span className={styles.visuallyHidden}> {photo.name}</span>
                 </button>

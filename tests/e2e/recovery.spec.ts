@@ -54,7 +54,7 @@ test.describe("password recovery public journey", () => {
     await page.getByRole("textbox", { name: "Email" }).fill("sarah@example.test");
     await context.setOffline(true);
     await expect(page.getByRole("button", { name: "Send reset link" })).toHaveAttribute("aria-disabled", "true");
-    await expect(page.getByText("Offline.", { exact: true })).toBeVisible();
+    await expect(page.getByText("You’re offline.", { exact: true })).toBeVisible();
     await context.setOffline(false);
     await expect(page.getByRole("button", { name: "Send reset link" })).not.toHaveAttribute("aria-disabled");
     await expect(page.getByRole("textbox", { name: "Email" })).toHaveValue("sarah@example.test");

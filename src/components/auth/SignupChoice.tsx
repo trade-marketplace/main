@@ -15,10 +15,10 @@ import styles from "./auth.module.css";
 
 export type SignupRole = "customer" | "tradie";
 
-export const ROLE_CHOICES: readonly { value: SignupRole; title: string; icon: string }[] = [
+export const ROLE_CHOICES: readonly { value: SignupRole; title: string; text: string; icon: string }[] = [
   // Short lines, as in w-signup. Never "we do the paperwork" (Matt, #341).
-  { value: "customer", title: "I need a job done", icon: "home_repair_service" },
-  { value: "tradie", title: "I’m a tradie", icon: "construction" },
+  { value: "customer", title: "I need a job done", text: "Post jobs, get a price.", icon: "home_repair_service" },
+  { value: "tradie", title: "I’m a tradie", text: "Get local work.", icon: "construction" },
 ];
 
 /** Where Next goes: that side's details, keeping where they were headed (?next=). */
@@ -65,7 +65,8 @@ export function SignupChoice({ next, initialRole = "customer" }: { next?: string
 /** Shared desktop choice cards for the details steps. */
 export function SignupRoleChoices({ role, onChange, name = "role" }: { role: SignupRole; onChange: (role: SignupRole) => void; name?: string }) {
   return (
-    <fieldset className={styles.roles} aria-label="Account type">
+    <fieldset className={styles.roles}>
+      <legend className={styles.lede}>What brings you here?</legend>
       {ROLE_CHOICES.map((choice) => (
         <label key={choice.value} className={styles.roleCard} data-role={choice.value}>
           <input
@@ -80,6 +81,7 @@ export function SignupRoleChoices({ role, onChange, name = "role" }: { role: Sig
           <Icon name={choice.icon} decorative className={styles.roleIcon} />
           <span className={styles.roleText}>
             <span className={styles.roleTitle}>{choice.title}</span>
+            <span className={styles.roleSub}>{choice.text}</span>
           </span>
         </label>
       ))}

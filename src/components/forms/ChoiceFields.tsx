@@ -66,7 +66,7 @@ export function RadioGroup({ label, hint, error, success, required, name, option
           defaultChecked={value === undefined ? defaultValue === option.value : undefined}
           onChange={() => onChange?.(option.value)} className={styles.choiceInput} aria-describedby={field.describedBy} />
         <span className={styles.radio} aria-hidden="true" />
-        <span className={styles.choiceLabel}>{option.label}{option.hint && <span hidden>{option.hint}</span>}</span>
+        <span className={styles.choiceLabel}>{option.label}{option.hint && <span className={styles.optionHint}>{option.hint}</span>}</span>
       </label>)}
     </div>
     <FieldMessages id={field.id} {...{ hint, error, success }} />
