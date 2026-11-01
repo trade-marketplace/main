@@ -15,7 +15,7 @@ async function accountStep(page: Page) {
   await page.getByLabel("Full name", { exact: false }).fill("Jack Wilson");
   await page.getByLabel("Email", { exact: false }).fill("jack@example.test");
   await page.getByLabel("Mobile", { exact: false }).fill("027 555 0192");
-  await page.getByLabel("Password (required)", { exact: true }).fill("korimako-gumboot-41");
+  await page.getByLabel("Password", { exact: true }).fill("korimako-gumboot-41");
   await page.getByRole("button", { name: "Next", exact: true }).click();
   await expect(page.getByRole("checkbox", { name: "Electrical", exact: true })).toBeFocused();
 }
@@ -56,9 +56,9 @@ test.describe("tradie signup", () => {
     await expect(page.getByRole("link", { name: "Worker terms" })).toHaveAttribute("href", "/legal/tradie-terms");
     await page.getByRole("button", { name: "Finish sign-up" }).click();
     await expect(page.getByText("We can’t create your account right now.")).toBeVisible();
-    await expect(page.getByLabel("Password (required)", { exact: true })).toHaveValue("");
+    await expect(page.getByLabel("Password", { exact: true })).toHaveValue("");
     await expect(page.getByLabel("Full name", { exact: false })).toHaveValue("Jack Wilson");
-    await page.getByLabel("Password (required)", { exact: true }).fill("korimako-gumboot-41");
+    await page.getByLabel("Password", { exact: true }).fill("korimako-gumboot-41");
     await page.getByRole("button", { name: "Next", exact: true }).click();
     await expect(other).toBeChecked();
     await expect(page.getByRole("radio", { name: "50 km", exact: true })).toBeChecked();
