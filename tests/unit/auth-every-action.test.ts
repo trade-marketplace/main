@@ -14,6 +14,8 @@ const PUBLIC_ACTIONS: Record<string, string[]> = {
   "src/server/auth/recovery-actions.ts": ["requestRecoveryAction", "saveRecoveryAction"],
   // A01's public location picker returns NZ place suggestions only, with no profile or job access.
   "src/server/landing-actions.ts": ["searchLandingPlacesAction"],
+  // A07 accepts a validated email + suburb before sign-in. It cannot read jobs, profiles or waitlist rows.
+  "src/app/(site)/coming-soon/actions.ts": ["joinWaitlist"],
 };
 
 function sourceFiles(dir: string): string[] {
@@ -34,7 +36,7 @@ describe("server actions", () => {
     expect(serverActionFiles()).toContain(path.join("src", "server", "auth", "actions.ts"));
   });
 
-  it("are all wrapped in withRole(), apart from the public sign-in ones", () => {
+  it("are all wrapped in withRole(), apart from the explicitly public actions", () => {
     const problems: string[] = [];
     for (const file of serverActionFiles()) {
       const source = readFileSync(file, "utf8");
