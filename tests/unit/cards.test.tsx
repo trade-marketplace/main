@@ -113,7 +113,7 @@ describe("<CategoryTile>", () => {
     expect(html).toMatch(/<h3 class="catName"><a class="stretched" href="\/jobs\/new\?type=electrical">Electrical<\/a><\/h3>/);
     expect(html).toMatch(/class="catArt" style="background:var\(--trade-cat-electrical\)"[^>]*aria-hidden="true"/);
     expect(html).toContain('alt=""');
-    expect(html).not.toContain("and related");
+    expect(html).toContain(">and related</span>");
     expect(html).toContain("tm-lift");
   });
 
@@ -214,7 +214,7 @@ describe("the CSS", () => {
   });
 
   it("the sizes from FRONTEND_SPEC: category tile 159 × 162, row photo 64, the desktop board's 191 × 220", () => {
-    expect(css).toMatch(/\.cat \{[^}]*width: 159px;[^}]*height: 162px;/);
+    expect(css).toMatch(/\.cat \{[^}]*width: 159px;[^}]*min-height: 162px;/);
     expect(css).toMatch(/\.rowThumb \{[^}]*width: 64px;[^}]*height: 64px;/);
     expect(css).toContain("aspect-ratio: 191 / 220");
   });

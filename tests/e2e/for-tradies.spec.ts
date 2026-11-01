@@ -37,7 +37,7 @@ for (const viewport of VIEWPORTS) {
       await page.getByRole("button", { name: "Next", exact: true }).click();
       await page.getByRole("checkbox", { name: "Other / general labour", exact: false }).check();
       await expect(page.locator('input[name^="licence_"]')).toHaveCount(0);
-      await page.getByRole("button", { name: "Back", exact: true }).click();
+      await page.getByRole("button", { name: "Back to your details", exact: true }).click();
       await expect(page.getByLabel("Full name", { exact: false })).toHaveValue("Example Worker");
       await page.goBack();
       await expect(page).toHaveURL(/\/for-tradies$/);

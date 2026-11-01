@@ -12,7 +12,6 @@ const url = (query = "") => devUrl ? new URL(`/dev/components/fields${query}`, d
 async function noOverflow(page: Page) {
   expect(await page.evaluate(() => {
     const spilled = [...document.querySelectorAll<HTMLElement>("main label, main legend, main p, main button")]
-      .filter((element) => getComputedStyle(element).clipPath === "none")
       .filter((element) => element.scrollWidth > element.clientWidth + 1)
       .map((element) => element.textContent?.slice(0, 60));
     return { page: document.documentElement.scrollWidth - document.documentElement.clientWidth, spilled };
@@ -107,7 +106,7 @@ test.describe("form fields on the dev server", () => {
     await page.getByLabel("Trade", { exact: true }).selectOption("other");
     const area = page.getByLabel("Tell us about the job", { exact: true });
     await area.fill("Fix my fence");
-    await expect(page.getByText("12 / 500", { exact: true })).toBeVisible();
+    await expect(page.getByText("12 / 500 characters", { exact: true })).toBeVisible();
     await expect(page.getByLabel("Materials (NZD)", { exact: true })).toHaveValue("12.50");
     await expect(page.getByLabel("Preferred date", { exact: true })).toHaveValue("2026-11-04");
     await expect(page.getByLabel("Hours", { exact: true })).toHaveValue("2.5");
@@ -139,14 +138,14 @@ test.describe("form fields on the dev server", () => {
     await page.goto(url());
     const picker = page.getByRole("group", { name: "When are you free?", exact: true });
     await picker.getByRole("button", { name: "Any time", exact: true }).click();
-    await expect(picker.getByRole("status")).toHaveText("20 time windows selected");
+    await expect(picker.getByText("20 time windows selected", { exact: true })).toBeVisible();
     await expect(picker.getByRole("checkbox", { name: "Mon 2 Nov, Morning", exact: true })).not.toBeChecked();
     const tuesday = picker.getByRole("checkbox", { name: "Tue 3 Nov, Afternoon", exact: true });
     await tuesday.focus(); await tuesday.press("Space");
     await expect(tuesday).not.toBeChecked();
-    await expect(picker.getByRole("status")).toHaveText("19 time windows selected");
-    await picker.getByRole("button", { name: "Clear", exact: true }).click();
-    await expect(picker.getByRole("status")).toHaveText("0 time windows selected");
+    await expect(picker.getByText("19 time windows selected", { exact: true })).toBeVisible();
+    await picker.getByRole("button", { name: "Clear selection", exact: true }).click();
+    await expect(picker.getByText("0 time windows selected", { exact: true })).toBeVisible();
     await tuesday.focus(); await tuesday.press("Space");
     expect(await tuesday.inputValue()).toBe("2026-11-03:afternoon");
   });
@@ -186,7 +185,7 @@ test.describe("form fields on the dev server", () => {
     await input.fill("nowhere"); await expect(options).toHaveCount(0);
     await expect(input).toHaveValue("nowhere");
     await input.fill("offline");
-    await expect(page.locator("#address").getByText("Enter address manually.", { exact: true })).toHaveCount(2);
+    await expect(page.locator("#address").getByText("Address search is unavailable. You can type the address by hand.", { exact: true })).toHaveCount(2);
     await input.fill("An address typed by hand"); await expect(input).toHaveValue("An address typed by hand");
     await expectNoA11yViolations(page);
   });
@@ -232,7 +231,7 @@ test.describe("form fields on the dev server", () => {
     await screenshot(page, `validation-success-${width}`);
     await form.getByRole("button", { name: "Reset example", exact: true }).click();
     await expect(email).toHaveValue("");
-    await expect(form.getByText("0 / 500", { exact: true })).toBeVisible();
+    await expect(form.getByText("0 / 500 characters", { exact: true })).toBeVisible();
     await expect(access).not.toBeChecked();
   });
   }

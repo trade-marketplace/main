@@ -85,7 +85,7 @@ test.describe("notification preference UI", () => {
     await page.goto(url());
     const checkbox = page.getByRole("checkbox", { name: emailName, exact: true });
     await context.setOffline(true);
-    await expect(page.getByText("Offline.", { exact: true }).first()).toBeVisible(); await expect(checkbox).toBeDisabled();
+    await expect(page.getByText("You’re offline.", { exact: true }).first()).toBeVisible(); await expect(checkbox).toBeDisabled();
     await expect(checkbox).toHaveAccessibleDescription("Reconnect before changing notifications.");
     await expectNoA11yViolations(page);
     await context.setOffline(false); await expect(checkbox).toBeEnabled(); await checkbox.uncheck();

@@ -3,7 +3,6 @@
 import { useState } from "react";
 
 import { Button } from "@/components/Button";
-import a11y from "@/components/Button.module.css";
 
 import { FieldMessages, type FieldMessageProps, useField } from "./Field";
 import styles from "./forms.module.css";
@@ -23,7 +22,7 @@ export type TimeWindowPickerProps = FieldMessageProps & {
 
 /** The caller supplies dates, availability and unique window values. No scheduling rules live in the UI. */
 export function TimeWindowPicker({ label, hint, error, success, required, days, name, value, defaultValue = [],
-  onChange, disabled, emptyMessage = "No times available.", id }: TimeWindowPickerProps) {
+  onChange, disabled, emptyMessage = "No time windows are available yet.", id }: TimeWindowPickerProps) {
   const field = useField({ id, hint, error, success });
   const [ownValue, setOwnValue] = useState<readonly string[]>(defaultValue);
   const current = value ?? ownValue;
@@ -36,7 +35,7 @@ export function TimeWindowPicker({ label, hint, error, success, required, days, 
     {enabled.length > 0 && <div className={styles.windowActions}>
       <Button variant="secondary" size="sm" width="auto" disabled={disabled} aria-pressed={allSelected}
         onClick={() => change(allSelected ? current.filter((item) => !enabled.includes(item)) : [...new Set([...current, ...enabled])])}>Any time</Button>
-      <Button variant="tertiary" disabled={disabled || current.length === 0} onClick={() => change([])}>Clear</Button>
+      <Button variant="tertiary" disabled={disabled || current.length === 0} onClick={() => change([])}>Clear selection</Button>
     </div>}
     <div className={styles.windowDays}>
       {days.map((day) => <fieldset key={day.value} className={styles.day}>
@@ -54,6 +53,6 @@ export function TimeWindowPicker({ label, hint, error, success, required, days, 
       </fieldset>)}
     </div>
     {enabled.length === 0 && <p className={styles.hint}>{emptyMessage}</p>}
-    <p className={a11y.visuallyHidden} role="status">{current.length} time {current.length === 1 ? "window" : "windows"} selected</p>
+    <p className={styles.hint} role="status">{current.length} time {current.length === 1 ? "window" : "windows"} selected</p>
   </fieldset>;
 }
