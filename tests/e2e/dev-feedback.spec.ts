@@ -26,11 +26,8 @@ async function overflows(page: Page) {
   });
 }
 
-// CSS module class names are hashed in the dev build ("feedback-module__x__region"), so match on the name part.
-const REGION = '#loading [class*="__region"]';
-
-/** The polite status region right after `selector` (LoadingRegion puts it next to the busy area). */
-const statusAfter = (page: Page, selector: string) => page.locator(`${selector} + [role=status]`);
+/** The loading demo's polite announcement, outside the busy area so screen readers can announce it. */
+const loadingStatus = (page: Page) => page.locator("#loading").getByRole("status");
 
 /** A preview row by its name, e.g. "Try it" in #errors. */
 const row = (page: Page, section: string, name: string) =>
@@ -104,15 +101,17 @@ test.describe("/dev/components/feedback on the dev server", () => {
 
   test("a slow load shows the skeleton, says “Loading your jobs” once, then the list cross-fades in", async ({ page }) => {
     await page.goto(url());
-    const region = page.locator(REGION);
+    const status = loadingStatus(page);
+    // LoadingRegion keeps the same content container immediately before its status, including after aria-busy clears.
+    const region = status.locator("xpath=preceding-sibling::*[1]");
     await page.getByRole("button", { name: "Load slowly (3s)" }).click();
     await expect(region).toHaveAttribute("aria-busy", "true");
     await expect(region.locator(".tm-skel").first()).toBeVisible();
-    await expect(statusAfter(page, REGION)).toHaveText("Loading your jobs");
+    await expect(status).toHaveText("Loading your jobs");
     await expect(region.getByText("Leaking kitchen mixer tap")).toBeVisible({ timeout: 5000 });
     await expect(region).not.toHaveAttribute("aria-busy");
     await expect(region.locator(".tm-anim-swap")).toHaveCount(1);
-    await expect(statusAfter(page, REGION)).toHaveText("");
+    await expect(status).toHaveText("");
   });
 
   test("a quick load says nothing", async ({ page }) => {
@@ -120,7 +119,7 @@ test.describe("/dev/components/feedback on the dev server", () => {
     await page.getByRole("button", { name: "Load quickly (0.2s)" }).click();
     await expect(page.getByText("Loaded 1 time")).toBeVisible();
     await page.waitForTimeout(400);
-    await expect(statusAfter(page, REGION)).toHaveText("");
+    await expect(loadingStatus(page)).toHaveText("");
   });
 
   test("Try again works from the keyboard: spinner while it runs, the error is said again, then the list loads", async ({ page }) => {
