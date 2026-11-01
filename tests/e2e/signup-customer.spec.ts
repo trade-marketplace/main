@@ -28,7 +28,7 @@ test.describe("customer sign-up details", () => {
     await page.getByLabel("Full name", { exact: false }).fill("Sarah Thompson");
     await page.getByLabel("Email", { exact: false }).fill("sarah@example.test");
     await page.getByLabel("Mobile", { exact: false }).fill("021 555 0192");
-    await page.getByLabel("Password (required)", { exact: true }).fill("korimako-gumboot-41");
+    await page.getByLabel("Password", { exact: true }).fill("korimako-gumboot-41");
     await expect(page.getByRole("meter", { name: "Password strength" })).toHaveAttribute("aria-valuenow", "3");
     await page.getByRole("button", { name: "Show password" }).click();
     await expect(page.locator('input[name="password"]')).toHaveAttribute("type", "text");
