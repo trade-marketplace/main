@@ -1,0 +1,13 @@
+
+> trade-marketplace@0.1.0 test
+> vitest run tests/unit/no-hex.test.ts tests/unit/icon.test.tsx tests/unit/waitlist.test.ts tests/unit/auth-every-action.test.ts --maxWorkers=2 --pool=threads
+
+Database tests will be skipped: set TEST_DATABASE_URL to a throwaway Postgres to run them (docs/TESTING.md).
+
+ RUN  v5.0.5 /Users/matthewlarsen/Documents/Codex/2026-10-30/task-2/waitlist
+
+
+ Test Files  4 passed (4)
+      Tests  20 passed (20)
+   Start at  12:29:46
+   Duration  3.92s (tests 56%, import 26%, transform 18%)
