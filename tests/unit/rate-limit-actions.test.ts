@@ -6,6 +6,7 @@ import { RATE_LIMITS } from "@/lib/rate-limit";
 const request = vi.hoisted(() => ({ ip: "198.51.100.1" }));
 const deps = vi.hoisted(() => ({
   logIn: vi.fn(),
+  sendContact: vi.fn(async () => ({ status: "sent" })),
   saveWaitlist: vi.fn(async () => ({ status: "joined" })),
   saveServiceWaitlist: vi.fn(async () => ({ status: "joined" })),
   recordHelpFeedback: vi.fn(async () => ({ status: "saved" })),
@@ -22,6 +23,7 @@ vi.mock("next/navigation", () => ({ redirect: vi.fn((to: string) => { throw Obje
 vi.mock("@/server/supabase", () => ({ createSupabaseServerClient: async () => ({ auth: {} }), rememberSessionChoice: async () => {}, authCookieOptions: () => ({}) }));
 vi.mock("@/server/auth/profiles", () => ({ prismaProfiles: () => ({}) }));
 vi.mock("@/server/auth/account", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/server/auth/account")>()), logIn: deps.logIn }));
+vi.mock("@/server/contact", () => ({ CONTACT_HONEYPOT: "website", sendContact: deps.sendContact }));
 vi.mock("@/server/waitlist", () => ({ saveWaitlist: deps.saveWaitlist }));
 vi.mock("@/server/services", () => ({ saveServiceWaitlist: deps.saveServiceWaitlist }));
 vi.mock("@/server/help/feedback", () => ({ recordHelpFeedback: deps.recordHelpFeedback }));
@@ -37,6 +39,7 @@ const { resendVerificationAction } = await import("@/server/auth/verification-ac
 const { joinWaitlist } = await import("@/app/(site)/coming-soon/actions");
 const { joinServiceWaitlist } = await import("@/app/(site)/services/[trade]/actions");
 const { saveHelpFeedback } = await import("@/app/(site)/help/actions");
+const { sendContactMessage } = await import("@/app/(site)/contact/actions");
 
 function form(fields: Record<string, string>) {
   const data = new FormData();
@@ -80,6 +83,13 @@ describe("signed-out actions are rate limited (#111)", () => {
     for (let i = 0; i < RATE_LIMITS.verificationEmail.limit; i++) await resendVerificationAction("a@b.nz");
     expect(await resendVerificationAction("a@b.nz")).toMatchObject({ ok: false, error: "try-later" });
     expect(deps.startVerification).toHaveBeenCalledTimes(RATE_LIMITS.verificationEmail.limit);
+  });
+
+  it("contact form", async () => {
+    const message = () => sendContactMessage(form({ topic: "job", email: "a@b.nz", message: "Hi" }));
+    for (let i = 0; i < RATE_LIMITS.contact.limit; i++) expect(await message()).toEqual({ status: "sent" });
+    expect(await message()).toMatchObject({ status: "error", retryAfter: expect.any(Number) });
+    expect(deps.sendContact).toHaveBeenCalledTimes(RATE_LIMITS.contact.limit);
   });
 
   it("someone else's address is unaffected", async () => {

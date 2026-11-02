@@ -41,6 +41,9 @@ export default defineConfig({
       DIRECT_URL: "",
       NEXT_PUBLIC_SUPABASE_URL: "",
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "",
+      // And away from real email: the Contact form must fail here, never send (#215).
+      RESEND_API_KEY: "",
+      CONTACT_INBOX_EMAIL: "",
     },
   },
 });

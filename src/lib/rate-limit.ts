@@ -16,6 +16,8 @@ export const RATE_LIMITS = {
   placeSearch: { limit: 120, windowSeconds: 10 * 60 },
   areaWaitlist: { limit: 10, windowSeconds: 60 * 60 },
   serviceWaitlist: { limit: 10, windowSeconds: 60 * 60 },
+  /** Each Contact message is an email to the office, so this is tighter than the waitlists. */
+  contact: { limit: 5, windowSeconds: 60 * 60 },
   helpFeedback: { limit: 30, windowSeconds: 60 * 60 },
   // Per signed-in person. Ready for the features that post jobs, add photos and send messages.
   postJob: { limit: 10, windowSeconds: 60 * 60 },

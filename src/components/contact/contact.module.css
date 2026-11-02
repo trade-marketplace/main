@@ -1,0 +1,24 @@
+/* A09 / w-about (contact half): two columns on desktop, one on a phone. Fields, buttons and banners are the kit. */
+.page { padding: calc(var(--trade-space-12) + var(--trade-space-2)) 0; }
+.wrap { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--trade-space-8) var(--trade-space-16); width: min(1200px, 100%); padding-inline: var(--trade-space-6); margin-inline: auto; grid-template-rows: auto 1fr; align-items: start; }
+.title { grid-column: 1; grid-row: 1; min-width: 0; margin: 0; font-family: var(--trade-font-heading); font-variation-settings: var(--trade-display-axes); font-weight: 900; font-size: var(--trade-fs-display); line-height: var(--trade-lh-display); text-wrap: balance; overflow-wrap: anywhere; }
+.help { grid-column: 1; grid-row: 2; min-width: 0; margin-top: var(--trade-space-2); max-width: 520px; }
+.helpTitle { margin: 0; font-size: var(--trade-fs-section); line-height: var(--trade-lh-section); }
+.helpList { list-style: none; margin: var(--trade-space-2) 0 0; padding: 0; }
+.helpList li { border-bottom: 1px solid var(--trade-line); }
+.helpLink { display: flex; align-items: center; justify-content: space-between; gap: var(--trade-space-4); min-height: var(--trade-tap); padding-block: var(--trade-space-2); color: var(--trade-text); font-size: var(--trade-fs-body); text-decoration: none; }
+.helpLink:hover { color: var(--trade-link); }
+.card { grid-column: 2; grid-row: 1 / span 2; min-width: 0; padding: var(--trade-space-8); border-radius: var(--trade-radius-card); background: var(--trade-surface); box-shadow: var(--trade-shadow-category); }
+.fields { display: grid; gap: var(--trade-space-4); }
+.caption { margin: 0; color: var(--trade-text-2); font-size: var(--trade-fs-caption); line-height: var(--trade-lh-caption); }
+/* Off screen, not display:none, so a bot that reads the page still sees a field to fill. Never reachable by keyboard or screen reader. */
+.trap { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+@media (max-width: 1023.98px) {
+  .wrap { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; gap: var(--trade-space-8); }
+  .title, .help, .card { grid-column: 1; grid-row: auto; }
+  .help { max-width: none; }
+}
+@media (max-width: 599.98px) {
+  .page { padding: var(--trade-space-8) 0 var(--trade-space-10); }
+  .card { padding: var(--trade-space-5); }
+}

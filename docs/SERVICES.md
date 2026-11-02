@@ -62,6 +62,8 @@ Used for (DECISIONS.md #58–#61):
 | `SUPABASE_SECRET_KEY` | server only (seed scripts) | **yes** |
 | `MAPBOX_ACCESS_TOKEN` | server only | yes |
 | `RATE_LIMIT_SECRET` | server only (scrambles rate-limit keys, #111) | **yes** |
+| `RESEND_API_KEY` | server only (Contact form email, #215) | **yes** |
+| `CONTACT_INBOX_EMAIL` | server only (where Contact messages go) | no |
 | `SCHEDULER_SECRET` | server only (`/api/scheduler/run`; same value in Supabase Vault, see `docs/server/scheduler.md`) | **yes** |
 | `DATABASE_URL` (pooled) / `DIRECT_URL` | server, migrations | **yes** |
 
