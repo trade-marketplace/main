@@ -1,0 +1,10 @@
+/* Account > Profile (#112): w-account layout, sh-profile-edit fields. Tokens only. */
+.photo { display: grid; gap: var(--trade-space-3); }
+.photoRow { display: flex; align-items: center; gap: var(--trade-space-4); min-width: 0; }
+.emailRow { display: grid; gap: var(--trade-space-2); min-width: 0; }
+.emailRow > p { margin: 0; }
+.actions { display: flex; justify-content: flex-end; }
+.skeletonField { display: grid; gap: var(--trade-space-2); margin-top: var(--trade-space-4); }
+@media (min-width: 1024px) {
+  .actions { justify-content: flex-start; }
+}
