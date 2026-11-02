@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { JobStatus, Prisma, PrismaClient, Role, Trade } from "@/generated/prisma/client";
+import { queuePayoutForJob } from "@/server/payouts/queue-payout";
 
 // The job status machine (#93): the one place a job's status changes. Each transition says which statuses it
 // starts from, who may trigger it (customer / worker / office / system) and what must be true first. It runs in
@@ -470,6 +471,9 @@ export async function applyTransition(
       after: { status: plan.to, workerId: plan.workerId },
       reason: plan.reason,
     });
+    // A finished job queues its worker's payout in the same transaction (#164). Idempotent, so an override back
+    // to COMPLETED never pays twice.
+    if (plan.to === "COMPLETED" && plan.from !== "COMPLETED") await queuePayoutForJob(tx, job.id);
     await deps.notify(tx, change);
     return change;
   }

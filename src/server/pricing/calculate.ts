@@ -147,12 +147,12 @@ export function perHour(rates: PricingRates): { workerEarnsCents: number; custom
 }
 
 /** Basis points of a whole-cent amount, rounded half up. */
-function percentOf(cents: number, bps: number): number {
+export function percentOf(cents: number, bps: number): number {
   return mulDivRound(cents, bps, 10_000);
 }
 
 /** a × b ÷ d rounded half up, exactly (BigInt, so a big job can't lose precision). All inputs are non-negative. */
-function mulDivRound(a: number, b: number, d: number): number {
+export function mulDivRound(a: number, b: number, d: number): number {
   const product = BigInt(a) * BigInt(b);
   const divisor = BigInt(d);
   return Number((product * 2n + divisor) / (divisor * 2n));
