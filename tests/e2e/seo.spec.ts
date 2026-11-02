@@ -34,12 +34,19 @@ test("every published URL has distinct metadata and a canonical on the primary d
 });
 
 test("account and waitlist utilities have their own metadata but stay out of search", async ({ request }) => {
+  const titles = new Set<string>(), descriptions = new Set<string>();
   for (const route of ["/login", "/signup", "/signup/customer", "/signup/tradie", "/recovery", "/verify", "/coming-soon"]) {
     const response = await request.get(route);
     expect(response.status(), route).toBe(200);
     const html = await response.text();
+    const title = /<title>([^<]+)<\/title>/.exec(html)?.[1];
+    const description = meta(html, "description");
+    expect(title, route).toBeTruthy();
+    expect(description, route).toBeTruthy();
+    expect(titles.has(title!), `duplicate utility title at ${route}`).toBe(false);
+    expect(descriptions.has(description!), `duplicate utility description at ${route}`).toBe(false);
+    titles.add(title!); descriptions.add(description!);
     expect(meta(html, "robots"), route).toContain("noindex");
-    expect(meta(html, "description"), route).toBeTruthy();
     expect(/<link rel="canonical" href="([^"]+)"/.exec(html)?.[1], route).toBe(`${origin}${route}`);
   }
 });
