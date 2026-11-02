@@ -57,7 +57,7 @@ Moving to REVIEW, QUOTE_BOUNTY, PRICED or BOOKABLE takes the worker off the job.
 rules (a PRICED job needs a price, an ASSIGNED one a worker), so an impossible override fails and changes nothing.
 
 Not status changes, so not here: re-pricing a PRICED job (`priceJob`), extra work (its own `variations` status),
-booking a window, refunds and payouts (payments / payroll modules).
+booking a window and refunds (payments module). Payouts are queued by the machine itself when a job reaches COMPLETED (`queuePayoutForJob`, #164): one per worker per job, from the frozen pricing plus approved extra work.
 
 ## Refusals
 
