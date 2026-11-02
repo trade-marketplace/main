@@ -33,6 +33,9 @@ const mapboxToken = z
     message: "must be a Mapbox access token (starts pk. or sk.)",
   });
 
+// Shared secret the every-minute database timer sends to /api/scheduler/run (#99). At least 32 characters.
+const schedulerSecret = z.string().trim().min(32, { message: "must be at least 32 characters (see .env.example)" });
+
 const schema = z.object({
   DATABASE_URL: postgresUrl.optional(),
   DIRECT_URL: postgresUrl.optional(),
@@ -40,6 +43,7 @@ const schema = z.object({
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().trim().optional(),
   FIELD_ENCRYPTION_KEY: fieldEncryptionKey.optional(),
   MAPBOX_ACCESS_TOKEN: mapboxToken.optional(),
+  SCHEDULER_SECRET: schedulerSecret.optional(),
 });
 
 export type ServerEnv = {
@@ -49,6 +53,8 @@ export type ServerEnv = {
   fieldEncryption: { enabled: boolean };
   // Off: address search isn't offered and addresses are typed by hand (src/server/geo/address-search.ts).
   mapbox: { enabled: false } | { enabled: true; accessToken: string };
+  // Off: /api/scheduler/run answers "not set up" and no timer rules run (src/server/scheduler).
+  scheduler: { enabled: false } | { enabled: true; secret: string };
 };
 
 export class EnvError extends Error {
@@ -100,6 +106,7 @@ export function parseEnv(raw: RawEnv): ServerEnv {
         : { enabled: false },
     fieldEncryption: { enabled: env.FIELD_ENCRYPTION_KEY !== undefined },
     mapbox: env.MAPBOX_ACCESS_TOKEN ? { enabled: true, accessToken: env.MAPBOX_ACCESS_TOKEN } : { enabled: false },
+    scheduler: env.SCHEDULER_SECRET ? { enabled: true, secret: env.SCHEDULER_SECRET } : { enabled: false },
   };
 }
 

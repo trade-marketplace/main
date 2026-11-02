@@ -61,6 +61,7 @@ Used for (DECISIONS.md #58–#61):
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | browser + server | no (public by design, protected by row-level security) |
 | `SUPABASE_SECRET_KEY` | server only (seed scripts) | **yes** |
 | `MAPBOX_ACCESS_TOKEN` | server only | yes |
+| `SCHEDULER_SECRET` | server only (`/api/scheduler/run`; same value in Supabase Vault, see `docs/server/scheduler.md`) | **yes** |
 | `DATABASE_URL` (pooled) / `DIRECT_URL` | server, migrations | **yes** |
 
 
