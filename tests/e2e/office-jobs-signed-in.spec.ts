@@ -20,6 +20,8 @@ const app = process.env.OFFICE_JOBS_E2E_APP_URL;
 test.describe("/admin/jobs, signed in as the office", () => {
   test.skip(!app, "set OFFICE_JOBS_E2E_APP_URL to a local build with the sign-in stand-in and a seeded database");
   test.use({ reducedMotion: "reduce" });
+  // One sign-in stand-in on its fixed port, so one worker.
+  test.describe.configure({ mode: "serial" });
 
   let stub: Server;
   let secret: string;
@@ -83,6 +85,25 @@ test.describe("/admin/jobs, signed in as the office", () => {
     await expect(rows(page)).toHaveCount(3);
   });
 
+  test("two changes made before the first list arrives keep both", async ({ page }) => {
+    await signIn(page);
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto(`${app}/admin/jobs`);
+    // Hold every list load a moment, as a slow connection would.
+    await page.route(/\/admin\/jobs\?/, async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      await route.continue();
+    });
+    await page.getByRole("button", { name: /^Status: All/ }).click();
+    await page.getByRole("menuitemradio", { name: "To price" }).click();
+    await page.getByRole("button", { name: /^Trade: All/ }).click();
+    await page.getByRole("menuitemradio", { name: "Electrical" }).click();
+    await table(page).getByRole("button", { name: /^Price/ }).click();
+    await expect(page).toHaveURL(`${app}/admin/jobs?status=price&trade=ELECTRICAL&sort=price.desc`);
+    await expect(rows(page)).toHaveCount(1);
+    await expect(page.getByRole("button", { name: /^Status: To price/ })).toBeVisible();
+  });
+
   test("search by job number or words; nothing matching offers Clear filters", async ({ page }) => {
     await signIn(page);
     await page.setViewportSize({ width: 1440, height: 900 });
@@ -111,6 +132,20 @@ test.describe("/admin/jobs, signed in as the office", () => {
     await expect(page).toHaveURL(`${app}/admin/jobs?sort=price.desc`);
     await expect(rows(page).first()).toContainText("$846.98");
     await expect(rows(page).last()).toContainText("—");
+  });
+
+  test("sorting by tradie keeps jobs nobody has claimed last, both ways", async ({ page }) => {
+    await signIn(page);
+    await page.setViewportSize({ width: 1440, height: 900 });
+    const tradies = () => rows(page).locator("td:nth-child(4)").allInnerTexts();
+    for (const direction of ["asc", "desc"]) {
+      await page.goto(`${app}/admin/jobs?sort=tradie.${direction}`);
+      await expect(rows(page)).toHaveCount(10);
+      const names = (await tradies()).map((name) => name.trim());
+      const firstEmpty = names.indexOf("—");
+      expect(firstEmpty, direction).toBeGreaterThan(0);
+      expect(names.slice(firstEmpty).every((name) => name === "—"), `${direction}: ${names.join(", ")}`).toBe(true);
+    }
   });
 
   test("opening a job follows its link; Export CSV downloads the filtered list", async ({ page }) => {

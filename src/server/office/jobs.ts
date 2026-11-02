@@ -158,6 +158,23 @@ async function regionsOf(db: OfficeJobsDatabase): Promise<string[]> {
   return [...seen.values()].sort((a, b) => a.localeCompare(b));
 }
 
+/**
+ * Jobs in the sort's order, skip / take as findMany. Sorted by tradie, jobs nobody has claimed come last in both
+ * directions, as unpriced jobs do for price. Postgres puts them first when descending and Prisma can't say otherwise
+ * through a relation, so that sort reads the claimed jobs, then the rest.
+ */
+async function findJobs(db: OfficeJobsDatabase, where: Prisma.JobWhereInput, sort: OfficeJobsQuery["sort"], skip: number, take: number) {
+  const orderBy = officeJobsOrderBy(sort);
+  if (sort?.key !== "tradie") return db.job.findMany({ where, select: SELECT, orderBy, skip, take });
+  const claimed = { AND: [where, { workerId: { not: null } }] };
+  const first = await db.job.findMany({ where: claimed, select: SELECT, orderBy, skip, take });
+  if (first.length >= take) return first;
+  // Past the claimed jobs: skip whatever of the page's offset they didn't use.
+  const rest = first.length > 0 ? 0 : Math.max(0, skip - (await db.job.count({ where: claimed })));
+  const unclaimed = await db.job.findMany({ where: { AND: [where, { workerId: null }] }, select: SELECT, orderBy, skip: rest, take: take - first.length });
+  return [...first, ...unclaimed];
+}
+
 /** A page of jobs for the list's state. A page past the end shows the last page. */
 export async function listOfficeJobs(
   query: OfficeJobsQuery,
@@ -167,13 +184,7 @@ export async function listOfficeJobs(
   const [total, regions] = await Promise.all([db.job.count({ where }), regionsOf(db)]);
   const lastPage = Math.max(1, Math.ceil(total / OFFICE_JOBS_PAGE_SIZE));
   const page = Math.min(query.page, lastPage);
-  const jobs = await db.job.findMany({
-    where,
-    select: SELECT,
-    orderBy: officeJobsOrderBy(query.sort),
-    skip: (page - 1) * OFFICE_JOBS_PAGE_SIZE,
-    take: OFFICE_JOBS_PAGE_SIZE,
-  });
+  const jobs = await findJobs(db, where, query.sort, (page - 1) * OFFICE_JOBS_PAGE_SIZE, OFFICE_JOBS_PAGE_SIZE);
   return { rows: jobs.map((job) => toRow(job, now)), total, page, regions };
 }
 
@@ -182,12 +193,7 @@ export async function exportOfficeJobs(
   query: OfficeJobsQuery,
   { db = getDb(), now = new Date() }: { db?: OfficeJobsDatabase; now?: Date } = {},
 ): Promise<{ rows: OfficeJobRow[]; truncated: boolean }> {
-  const jobs = await db.job.findMany({
-    where: officeJobsWhere(query, now),
-    select: SELECT,
-    orderBy: officeJobsOrderBy(query.sort),
-    take: OFFICE_JOBS_EXPORT_LIMIT + 1,
-  });
+  const jobs = await findJobs(db, officeJobsWhere(query, now), query.sort, 0, OFFICE_JOBS_EXPORT_LIMIT + 1);
   const truncated = jobs.length > OFFICE_JOBS_EXPORT_LIMIT;
   return { rows: jobs.slice(0, OFFICE_JOBS_EXPORT_LIMIT).map((job) => toRow(job, now)), truncated };
 }

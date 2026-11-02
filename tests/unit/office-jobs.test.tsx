@@ -187,6 +187,46 @@ describe("a page of jobs", () => {
     expect(read.skip).toBe(25);
   });
 
+  describe("sorted by tradie, jobs nobody has claimed come last, both ways", () => {
+    // A database holding `claimed` jobs with a tradie and `unclaimed` without, answering the reads the way Postgres would.
+    const tradieDb = (claimed: number, unclaimed: number) => {
+      const isClaimed = (where: unknown) => JSON.stringify(where ?? {}).includes('"not":null');
+      const isUnclaimed = (where: unknown) => JSON.stringify(where ?? {}).includes('"workerId":null');
+      const jobs = (n: number, prefix: string, worker?: null) => Array.from({ length: n }, (_, i) => dbJob({ id: `${prefix}${i}`, ...(worker === null ? { worker } : {}) }));
+      const sets = { claimed: jobs(claimed, "c"), unclaimed: jobs(unclaimed, "u", null) };
+      const findMany = vi.fn(async (args: { distinct?: string[]; where?: unknown; skip?: number; take?: number }) => {
+        if (args.distinct) return [{ city: "Invercargill" }];
+        const set = isClaimed(args.where) ? sets.claimed : isUnclaimed(args.where) ? sets.unclaimed : [...sets.claimed, ...sets.unclaimed];
+        return set.slice(args.skip ?? 0, (args.skip ?? 0) + (args.take ?? set.length));
+      });
+      const count = vi.fn(async (args?: { where?: unknown }) => (isClaimed(args?.where) ? claimed : claimed + unclaimed));
+      return { job: { findMany, count } } as unknown as OfficeJobsDatabase;
+    };
+    const ids = (rows: OfficeJobRow[]) => rows.map((row) => row.id);
+
+    for (const direction of ["asc", "desc"]) {
+      it(`${direction}: the claimed jobs, then the rest`, async () => {
+        const page = await listOfficeJobs(parseOfficeJobsQuery({ sort: `tradie.${direction}` }), { db: tradieDb(2, 1), now: NOW });
+        expect(ids(page.rows)).toEqual(["c0", "c1", "u0"]);
+      });
+    }
+
+    it("a page that starts in the claimed jobs and ends in the rest", async () => {
+      const page = await listOfficeJobs(parseOfficeJobsQuery({ sort: "tradie.desc", page: "2" }), { db: tradieDb(30, 10), now: NOW });
+      expect(ids(page.rows)).toEqual([...["c25", "c26", "c27", "c28", "c29"], ...Array.from({ length: 10 }, (_, i) => `u${i}`)]);
+    });
+
+    it("a page past every claimed job skips what the earlier pages showed", async () => {
+      const page = await listOfficeJobs(parseOfficeJobsQuery({ sort: "tradie.desc", page: "2" }), { db: tradieDb(10, 40), now: NOW });
+      expect(ids(page.rows)).toEqual(Array.from({ length: 25 }, (_, i) => `u${i + 15}`));
+    });
+
+    it("the export keeps the same order", async () => {
+      const { rows } = await exportOfficeJobs(parseOfficeJobsQuery({ sort: "tradie.desc" }), { db: tradieDb(2, 2), now: NOW });
+      expect(ids(rows)).toEqual(["c0", "c1", "u0", "u1"]);
+    });
+  });
+
   it("nobody claimed it yet: no tradie; not priced yet: no price", async () => {
     const { db } = fakeDb({ jobs: [dbJob({ worker: null, priceCents: null, status: "REVIEW" })] });
     const [row] = (await listOfficeJobs(parseOfficeJobsQuery({}), { db, now: NOW })).rows;

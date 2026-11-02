@@ -21,7 +21,6 @@ import {
   officeJobsSearch,
   type OfficeJobsQuery,
 } from "@/lib/office-jobs";
-import type { DateRange, StatusGroup } from "@/lib/office-jobs";
 import type { OfficeJobRow, OfficeJobsPage } from "@/server/office/jobs";
 
 import styles from "./all-jobs.module.css";
@@ -90,8 +89,11 @@ export function AllJobs({ query, data }: AllJobsProps) {
     latest.current = query;
   }, [query]);
 
+  // Each change is written to `latest` straight away, so a second change made before the first page arrives (a
+  // status, then a trade) keeps both.
   const go = (next: Partial<OfficeJobsQuery>, { replace = false }: { replace?: boolean } = {}) => {
-    const search = officeJobsSearch({ ...latest.current, page: 1, ...next });
+    latest.current = { ...latest.current, page: 1, ...next };
+    const search = officeJobsSearch(latest.current);
     startTransition(() => (replace ? router.replace : router.push)(`${OFFICE_JOBS_PATH}${search}`, { scroll: false }));
   };
 
@@ -119,13 +121,12 @@ export function AllJobs({ query, data }: AllJobsProps) {
   const total = page?.total ?? 0;
   const filtered = isFiltered(query);
 
-  const changeFilters = (values: FilterValues) =>
-    go({
-      status: values.status as StatusGroup,
-      trade: values.trade as OfficeJobsQuery["trade"],
-      region: values.region,
-      date: values.date as DateRange,
-    });
+  // The bar hands back every chip's value as last shown; only the one that changed is new.
+  const shown = filterValuesOf(query);
+  const changeFilters = (values: FilterValues) => {
+    const changed = Object.fromEntries(Object.entries(values).filter(([key, value]) => value !== shown[key]));
+    go(changed as Partial<OfficeJobsQuery>);
+  };
 
   const clearAll = () => {
     typed.current = false;
@@ -212,7 +213,8 @@ export function AllJobs({ query, data }: AllJobsProps) {
               pageSize={OFFICE_JOBS_PAGE_SIZE}
               total={total}
               onPageChange={(next) => {
-                const search = officeJobsSearch(query, { page: next });
+                latest.current = { ...latest.current, page: next };
+                const search = officeJobsSearch(latest.current);
                 startTransition(() => router.push(`${OFFICE_JOBS_PATH}${search}`));
               }}
             />
