@@ -24,8 +24,8 @@ Issue #170 (F04). Route: `/admin/jobs`. Mockup: pages.html `w-o-jobs` ("Office Â
   and a shared link show the same list. Filters, sort and page push a new entry; typing a search replaces it.
 - **Export CSV** downloads every job matching the filters, search and sort (not just the page), up to 5,000 rows.
   It's greyed out when nothing matches. Titles that look like spreadsheet formulas are made safe.
-- **Clicking a row** (or its title link, by keyboard) opens `/admin/jobs/[id]`, the job admin view (F05, #171).
-  Until #171 is built that address is a 404.
+- **Clicking a row** (or its title link, by keyboard) opens `/admin/jobs/[id]`, the job admin view (F05, #171,
+  docs/components/office-job.md).
 
 ## States
 
