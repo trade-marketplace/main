@@ -54,10 +54,10 @@ test.describe("customer sign-up details", () => {
     await page.getByLabel("Full name", { exact: false }).fill("Aroha");
     await page.getByRole("checkbox", { name: /I agree/ }).check();
     await context.setOffline(true);
-    await expect(page.getByText("You’re offline.")).toBeVisible();
+    await expect(page.locator("#main").getByText("You’re offline.")).toBeVisible();
     await expect(page.getByRole("button", { name: "Create account", exact: true })).toHaveAttribute("aria-disabled", "true");
     await context.setOffline(false);
-    await expect(page.getByText("You’re offline.")).toBeHidden();
+    await expect(page.locator("#main").getByText("You’re offline.")).toBeHidden();
     await expect(page.getByLabel("Full name", { exact: false })).toHaveValue("Aroha");
     await expect(page.getByRole("button", { name: "Create account", exact: true })).not.toHaveAttribute("aria-disabled");
   });

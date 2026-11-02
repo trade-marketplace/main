@@ -7,7 +7,7 @@
 //
 //   const online = useOnlineStatus();                        anywhere: true / false
 //   <OfflineBanner onRetry={() => router.refresh()} />       top of a page or layout
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { createContext, useContext, useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import { Button } from "@/components/Button";
 import { Icon } from "@/components/Icon";
@@ -43,6 +43,13 @@ export function useOnlineStatus(): boolean {
   return useSyncExternalStore(subscribe, () => navigator.onLine, () => true);
 }
 
+/**
+ * True below <ConnectionBanner> (mounted once in the root layout). A page's own <OfflineBanner> that just follows the
+ * browser (no `online` prop) then renders nothing, so there is one banner and one announcement; a preview or demo
+ * that sets `online` still shows.
+ */
+export const GlobalBannerContext = createContext(false);
+
 export type OfflineBannerProps = {
   /**
    * Fetch again: called by Retry now, on a backoff timer while offline, and once when the connection is back.
@@ -62,6 +69,7 @@ export type OfflineBannerProps = {
 export function OfflineBanner({ onRetry, online: forced, sticky = true, className }: OfflineBannerProps) {
   const browserOnline = useOnlineStatus();
   const online = forced ?? browserOnline;
+  const suppressed = useContext(GlobalBannerContext) && forced === undefined;
 
   // The latest onRetry, so a new function on every render doesn't restart the backoff.
   const retryRef = useRef(onRetry);
@@ -92,7 +100,7 @@ export function OfflineBanner({ onRetry, online: forced, sticky = true, classNam
   }
 
   // Automatic retries while offline, waiting longer each time.
-  const hasRetry = Boolean(onRetry);
+  const hasRetry = Boolean(onRetry) && !suppressed;
   useEffect(() => {
     if (online || !hasRetry) return;
     let attempt = 0;
@@ -110,11 +118,11 @@ export function OfflineBanner({ onRetry, online: forced, sticky = true, classNam
 
   // Back online: fetch once straight away, then hide the good-news banner after a few seconds.
   useEffect(() => {
-    if (backSince === null) return;
+    if (backSince === null || suppressed) return;
     retryRef.current?.();
     const timer = setTimeout(() => setBackSince(null), BACK_ONLINE_MS);
     return () => clearTimeout(timer);
-  }, [backSince]);
+  }, [backSince, suppressed]);
 
   const classes = [styles.banner, styles.offline, className].filter(Boolean).join(" ");
   let banner = null;
@@ -154,6 +162,7 @@ export function OfflineBanner({ onRetry, online: forced, sticky = true, classNam
 
   // The live region is always in the page (even while online), so screen readers notice the first change.
   const live = <LiveMessage message={changed ? say : null} />;
+  if (suppressed) return null;
   if (sticky) {
     return (
       <section aria-label="Connection" className={styles.sticky}>

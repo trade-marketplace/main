@@ -88,7 +88,15 @@ pass `retrying` instead.
 `size="page"` uses an `h1` and small buttons, as in the mockup (pass a small secondary button to match); a section
 uses an `h2` and default-size buttons. Pass `headingLevel` when the page outline needs another level.
 
-**Offline banner.** Put it once, at the top of the layout, outside `<main>`:
+**Offline banner (#187).** It is already on every page: `<ConnectionBanner>` is mounted once in `src/app/layout.tsx`.
+Don't add another. A page's own `<OfflineBanner />` with no `online` prop renders nothing under it. It also:
+
+- keeps a form submitted while offline (the fields stay as typed, nothing is sent) and, once back online, offers
+  **Send now** / **Not now**. It never sends on its own. A form opts out with `data-offline-queue="off"`; going to
+  another page drops the held form.
+- publishes its height as `--trade-offline-h`, which the shells' sticky headers use as their `top`.
+
+Use `<OfflineBanner>` directly only for previews (`online`, `sticky={false}`) or somewhere outside the root layout:
 
 ```tsx
 <OfflineBanner onRetry={() => refetchJobs()} />

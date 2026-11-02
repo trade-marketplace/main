@@ -70,7 +70,7 @@ function PreferenceMatrix({ initial, source, preview }: { initial: PreferenceSna
   const failure = state.failure?.error;
   const expired = failure === "session-expired" || failure === "forbidden";
   return <>
-    <OfflineBanner online={online} sticky={false} />
+    <OfflineBanner online={preview === "offline" ? false : undefined} sticky={false} />
     {failure && (expired ? <InlineError message="Log in to save." onRetry={() => router.push("/login?next=%2Fprofile%2Fnotifications")} retryLabel="Log in" /> :
       <InlineError message="Couldn’t save." onRetry={online ? editor.retry : undefined} />)}
     <DataTable caption="Notification preferences" rows={state.rows} rowId={row => row.event} rowLabel={row => row.label}

@@ -20,6 +20,7 @@ import {
   Spinner,
   TileSkeleton,
 } from "@/components/feedback";
+import { HeldFormBar } from "@/components/feedback/ConnectionBanner";
 import { TextLink } from "@/components/TextLink";
 import { DEFAULT_MODE, isMode, MODES, type Mode } from "@/lib/mode";
 import { guardDevPage } from "@/server/dev-pages";
@@ -311,6 +312,16 @@ export default async function FeedbackPage({ searchParams }: { searchParams: Sea
           <Row name="Offline, nothing to retry" note="Without onRetry: the copy-sheet line, no button." block>
             <div className={styles.frame}>
               <OfflineBanner online={false} sticky={false} />
+            </div>
+          </Row>
+          <Row name="Form submitted offline" note="The form stays as typed and is held back. Pages get this from the banner at the top; any form, unless it has data-offline-queue=&quot;off&quot;." block>
+            <div className={styles.frame}>
+              <HeldFormBar online={false} />
+            </div>
+          </Row>
+          <Row name="Back online, form still held" note="Never sent on its own: Send now sends it, Not now drops it." block>
+            <div className={styles.frame}>
+              <HeldFormBar online />
             </div>
           </Row>
           <Row name="Try it" note="Go offline, wait for the automatic retries, then come back online." block>

@@ -92,10 +92,10 @@ test.describe("tradie signup", () => {
     await page.getByRole("checkbox", { name: "Other / general labour", exact: true }).check();
     await page.getByRole("checkbox", { name: /I agree/ }).check();
     await context.setOffline(true);
-    await expect(page.getByText("You’re offline.")).toBeVisible();
+    await expect(page.locator("#main").getByText("You’re offline.")).toBeVisible();
     await expect(page.getByRole("button", { name: "Finish sign-up" })).toHaveAttribute("aria-disabled", "true");
     await context.setOffline(false);
-    await expect(page.getByText("You’re offline.")).toBeHidden();
+    await expect(page.locator("#main").getByText("You’re offline.")).toBeHidden();
     await expect(page.getByRole("checkbox", { name: "Other / general labour", exact: true })).toBeChecked();
     await expect(page.locator('input[name="next"]')).toHaveValue("/jobs?view=map");
   });

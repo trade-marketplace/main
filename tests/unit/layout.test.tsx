@@ -9,6 +9,13 @@ import { getViewer } from "@/server/auth/viewer";
 // The layout reads the signed-in visitor on the server. Tests choose who that is; nobody by default.
 vi.mock("@/server/auth/viewer", () => ({ getViewer: vi.fn(async () => null) }));
 
+// The offline banner in the layout (#187) uses the router hooks, which need a mounted app router.
+vi.mock("next/navigation", async (original) => ({
+  ...(await original<typeof import("next/navigation")>()),
+  useRouter: () => ({ refresh: () => {} }),
+  usePathname: () => "/",
+}));
+
 afterEach(() => vi.mocked(getViewer).mockReset().mockResolvedValue(null));
 
 function signInAs(role: Role) {

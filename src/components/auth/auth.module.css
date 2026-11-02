@@ -130,9 +130,9 @@
   }
   .brand {
     flex: 0 0 43%; /* 620 of 1440 */
-    min-height: 100dvh;
+    min-height: calc(100dvh - var(--trade-offline-h, 0px));
     position: sticky;
-    top: 0;
+    top: var(--trade-offline-h, 0px); /* under the offline banner */
     align-self: flex-start;
     display: flex;
     flex-direction: column;
