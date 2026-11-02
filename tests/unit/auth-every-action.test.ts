@@ -12,6 +12,9 @@ const PUBLIC_ACTIONS: Record<string, string[]> = {
   "src/server/auth/actions.ts": ["signUpAction", "logInAction", "logInAgainAction", "logOutAction", "searchSignupAreasAction"],
   "src/server/auth/verification-actions.ts": ["resendVerificationAction", "verificationStatusAction", "changeVerificationAccountAction"],
   "src/server/auth/recovery-actions.ts": ["requestRecoveryAction", "saveRecoveryAction"],
+  // C05 must answer needs-account before sign-up, retaining the browser draft. The posting command rechecks
+  // the server viewer, authoritative CUSTOMER role and verified email before reading or writing a job.
+  "src/server/jobs/actions.ts": ["postJobAction"],
   // A01's public location picker returns NZ place suggestions only, with no profile or job access.
   "src/server/landing-actions.ts": ["searchLandingPlacesAction"],
   // A07 accepts a validated email + suburb before sign-in. It cannot read jobs, profiles or waitlist rows.
