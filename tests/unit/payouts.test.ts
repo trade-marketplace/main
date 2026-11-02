@@ -372,16 +372,23 @@ describe.skipIf(!testDatabaseUrl)("payout on completion (database)", () => {
       data: { sharedRateCents: 9000, holidayPayBps: 1000 },
     });
     const customerId = (await schema.db.job.findUniqueOrThrow({ where: { id } })).customerId;
-    const extra = (status: "APPROVED" | "DECLINED", minutes: number) =>
-      schema.db.$executeRawUnsafe(
-        `INSERT INTO variations (job_id, requested_by_id, description, requested_minutes, status, minutes, materials_cents,
-           worker_gross_cents, holiday_pay_cents, on_cost_cents, margin_cents, gst_cents, price_cents, decided_at, priced_at)
-         VALUES ($1::uuid, $2::uuid, 'Extra', $3, $4::variation_status, $3, 0, 0, 0, 0, 0, 0, 0, now(), now())`,
-        id,
-        workerId,
+    const extra = async (status: "APPROVED" | "DECLINED", minutes: number) => {
+      const { id: variationId } = await schema.db.variation.create({
+        data: { jobId: id, requestedById: workerId, description: "Extra", requestedMinutes: minutes },
+      });
+      const figures = {
         minutes,
-        status,
-      );
+        materialsCents: 0,
+        workerGrossCents: 0,
+        holidayPayCents: 0,
+        onCostCents: 0,
+        marginCents: 0,
+        gstCents: 0,
+        priceCents: 0,
+      };
+      await schema.db.variation.update({ where: { id: variationId }, data: { status: "PRICED", ...figures } });
+      await schema.db.variation.update({ where: { id: variationId }, data: { status } });
+    };
     await extra("APPROVED", 30);
     await extra("DECLINED", 90);
     await transitionJob(schema.db, deps, {
