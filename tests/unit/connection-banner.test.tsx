@@ -96,8 +96,13 @@ describe("resubmit", () => {
 
 describe("how the shells sit under the banner", () => {
   it("every sticky shell header and the office sidebar start below the banner height", () => {
-    for (const file of ["app/app.module.css", "site/site.module.css", "office/office.module.css"]) {
+    for (const file of ["app/app.module.css", "site/site.module.css", "office/office.module.css", "auth/auth.module.css"]) {
       expect(source(file)).toContain(`var(${OFFLINE_HEIGHT_VAR}, 0px)`);
     }
+  });
+
+  it("links to a section and keyboard focus leave room for the banner too", () => {
+    expect(source("site/site.module.css")).toMatch(/\.main :target \{[^}]*var\(--trade-offline-h, 0px\)/);
+    expect(source("app/app.module.css")).toMatch(/scroll-padding-top: calc\(84px \+ var\(--trade-offline-h, 0px\)\)/);
   });
 });

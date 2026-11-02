@@ -15,7 +15,7 @@
 /* The sticky top nav never covers what has keyboard focus (WCAG 2.4.11); the bottom bar's room is already in
    tokens.css (html scroll-padding-bottom). */
 @media (min-width: 1024px) {
-  :global(html):has(.shell) { scroll-padding-top: 84px; }
+  :global(html):has(.shell) { scroll-padding-top: calc(84px + var(--trade-offline-h, 0px)); }
 }
 
 /* ---- Skip link: hidden until it has keyboard focus, then above everything, top left ---- */
