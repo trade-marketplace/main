@@ -1,5 +1,6 @@
 "use client";
 
+import { tryAgainText } from "@/lib/rate-limit";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useRef, useState } from "react";
@@ -123,7 +124,7 @@ export function SignupDetails({ role, next, initialState = null, previewPending 
             {!tradeStep && <div className={styles.desktopChoices}><SignupRoleChoices role={role} name="signupRole" onChange={(choice) => { if (choice !== role) router.push(detailsHref(choice, next)); }} /></div>}
             {!online && <Banner tone="alert" title="You’re offline." live>Your details are kept here. Connect to the internet to create your account.</Banner>}
             {problem?.error === "unavailable" && <Banner tone="alert" title="We can’t create your account right now." live>Your details are kept. Please try again.</Banner>}
-            {problem?.error === "try-later" && <Banner tone="alert" title="Please try again shortly." live>Sign-up is busy right now. Your details are kept.</Banner>}
+            {problem?.error === "try-later" && <Banner tone="alert" title={problem.retryAfter ? "Too many tries." : "Please try again shortly."} live>{problem.retryAfter ? `${tryAgainText(problem.retryAfter)} Your details are kept.` : "Sign-up is busy right now. Your details are kept."}</Banner>}
             {!isTradie && next?.startsWith("/jobs/new") && <p className={styles.draftNote}>Your job draft stays saved while you sign up. Confirm your email before posting it.</p>}
             <input type="hidden" name="role" value={isTradie ? "TRADIE" : "CUSTOMER"} />
             {next && <input type="hidden" name="next" value={next} />}

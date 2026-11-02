@@ -10,6 +10,7 @@ import { TextLink } from "@/components/TextLink";
 import { QuickFilters } from "@/components/data";
 import { EmptyState, ErrorState, InlineError, LiveMessage, LoadingRegion, Skeleton, SkeletonText } from "@/components/feedback";
 import { TextField } from "@/components/forms";
+import { tryAgainText } from "@/lib/rate-limit";
 import { HELP_TOPIC_ICONS, HELP_TOPICS, helpTopicSlug, searchHelp, type HelpArticle, type HelpFeedbackInput, type HelpFeedbackResult, type HelpState, type HelpTopic } from "@/lib/help";
 import { useIsClient } from "@/lib/motion/hooks";
 import { MOTION_MS } from "@/lib/motion/timings";
@@ -38,15 +39,16 @@ function Feedback({ article, submit, state }: { article: HelpArticle; submit: Su
   const [vote, setVote] = useState<boolean | null>(state === "not-helpful" ? false : null);
   const [saved, setSaved] = useState(state === "helpful-voted");
   const [error, setError] = useState(state === "feedback-error");
+  const [wait, setWait] = useState<number>();
   const [pending, setPending] = useState(false);
   const [lookingFor, setLookingFor] = useState("");
   const note = useRef<HTMLInputElement>(null);
   async function save(helpful: boolean, finish = true) {
     if (pending) return;
-    setPending(true); setError(false);
+    setPending(true); setError(false); setWait(undefined);
     try {
       const result = await submit({ slug: article.slug, helpful, lookingFor });
-      if (result.status === "saved") { if (finish) setSaved(true); } else setError(true);
+      if (result.status === "saved") { if (finish) setSaved(true); } else { setError(true); setWait(result.retryAfter); }
     } catch { setError(true); }
     finally { setPending(false); }
   }
@@ -55,7 +57,7 @@ function Feedback({ article, submit, state }: { article: HelpArticle; submit: Su
     {saved ? <p role="status"><Icon name="check_circle" decorative /> Thanks for your feedback.</p> : <>
       <div className={styles.vote}><b>Was this helpful?</b><Button size="sm" width="auto" variant="secondary" icon="thumb_up" loading={pending && vote !== false} disabled={pending} onClick={() => { setVote(true); void save(true); }}>Yes</Button><Button size="sm" width="auto" variant="secondary" icon="thumb_down" disabled={pending} aria-pressed={vote === false} onClick={no}>No</Button></div>
       {vote === false && <form className={styles.note} onSubmit={(event) => { event.preventDefault(); void save(false); }}><TextField ref={note} label="What were you looking for?" value={lookingFor} maxLength={300} onChange={event => setLookingFor(event.target.value)} /><Button type="submit" size="sm" width="auto" loading={pending}>Send feedback</Button></form>}
-      {error && <InlineError message="Couldn’t save your feedback. Try again." onRetry={() => save(vote ?? true)} />}
+      {error && <InlineError message={wait ? `Too many tries. ${tryAgainText(wait)}` : "Couldn’t save your feedback. Try again."} onRetry={() => save(vote ?? true)} />}
     </>}
   </div>;
 }

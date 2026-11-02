@@ -10,6 +10,7 @@
 //   const sessionExpired = useSessionExpired();
 //   const result = await saveDraft(formData);
 //   if (sessionExpired.check(result, { resend: () => saveDraft(formData) })) return;
+import { tryAgainText } from "@/lib/rate-limit";
 import { useRouter } from "next/navigation";
 import {
   createContext,
@@ -70,7 +71,7 @@ export function logInAgainMessages(result: LogInAgainState): {
     case "wrong-credentials":
       return { password: LOG_IN_AGAIN_MESSAGES.wrongCredentials };
     case "try-later":
-      return { banner: { tone: "alert", ...LOG_IN_AGAIN_MESSAGES.locked } };
+      return { banner: { tone: "alert", ...LOG_IN_AGAIN_MESSAGES.locked, ...(problem.retryAfter ? { text: tryAgainText(problem.retryAfter) } : {}) } };
     case "email-not-verified":
       return { banner: { tone: "info", ...LOG_IN_AGAIN_MESSAGES.notVerified } };
     case "unavailable":

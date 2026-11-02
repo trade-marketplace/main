@@ -1,5 +1,6 @@
 "use client";
 
+import { tryAgainText } from "@/lib/rate-limit";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
@@ -101,7 +102,7 @@ export function VerifyEmail({ initialState = "ready", initialEmail = "", initial
         setEmailError("Enter a valid email.");
         field.current?.focus();
       } else {
-        setError(result.error === "try-later" ? "Too many tries. Wait a minute, then resend." : "Couldn’t send the link. Try again.");
+        setError(result.error === "try-later" ? `Too many tries. ${result.retryAt ? tryAgainText((result.retryAt - Date.now()) / 1_000) : "Wait a minute, then resend."}` : "Couldn’t send the link. Try again.");
         if (result.retryAt) {
           setRetryAt(result.retryAt);
           setSeconds(verificationSeconds(result.retryAt, Date.now()));

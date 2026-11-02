@@ -1,5 +1,6 @@
 "use client";
 
+import { tryAgainText } from "@/lib/rate-limit";
 import { useEffect, useId, useRef, useState } from "react";
 
 import { Button } from "@/components/Button";
@@ -100,7 +101,7 @@ export function RecoveryFlow({ initialState = "request", initialEmail = "", init
         setEmailError("Enter a valid email.");
         emailField.current?.focus();
       } else {
-        setError(result.error === "try-later" ? "Too many tries. Wait a minute, then resend." : "Couldn’t send the link. Try again.");
+        setError(result.error === "try-later" ? `Too many tries. ${result.retryAt ? tryAgainText((result.retryAt - Date.now()) / 1_000) : "Wait a minute, then resend."}` : "Couldn’t send the link. Try again.");
         if (result.retryAt) {
           setRetryAt(result.retryAt);
           setSeconds(recoverySeconds(result.retryAt));
