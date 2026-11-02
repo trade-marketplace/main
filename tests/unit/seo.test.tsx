@@ -1,4 +1,4 @@
-import { readdirSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
@@ -77,8 +77,10 @@ describe("private route indexing", () => {
       const route = pagePath(file);
       if (routeAccess(route).kind !== "roles") continue;
       expect(disallow.some(prefix => route.startsWith(prefix)), route).toBe(true);
-      // The noindex metadata is inherited even when an individual page doesn't export metadata.
-      expect(file.startsWith("src/app/(app)/") || file.startsWith("src/app/admin/"), file).toBe(true);
+      // The noindex metadata is inherited from the (app) or admin layout, or (focused pages like the checkout, which
+      // have their own header) the page sets it itself.
+      const inherits = file.startsWith("src/app/(app)/") || file.startsWith("src/app/admin/");
+      expect(inherits || /\.\.\.privateMetadata/.test(readFileSync(file, "utf8")), file).toBe(true);
     }
   });
 });
