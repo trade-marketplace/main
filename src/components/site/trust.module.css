@@ -1,0 +1,38 @@
+/* A06 / w-trust: page composition only; the bolt flash (M10), cards, links and buttons are the existing kit. */
+.hero { display: grid; grid-template-columns: 1fr 1fr; gap: var(--trade-space-16); align-items: center; padding-block: var(--trade-space-16); }
+.eyebrow { margin: 0; font-size: var(--trade-fs-caption); line-height: var(--trade-lh-caption); letter-spacing: .12em; text-transform: uppercase; font-weight: 800; font-variation-settings: "wdth" 125; color: var(--trade-success); }
+.title { margin: var(--trade-space-3) 0 0; font-family: var(--trade-font-heading); font-variation-settings: var(--trade-display-axes); font-weight: 900; font-size: var(--trade-fs-display); line-height: var(--trade-lh-display); text-wrap: balance; }
+.lead { margin: var(--trade-space-4) 0 0; max-width: 560px; font-size: var(--trade-fs-lead); line-height: var(--trade-lh-body); color: var(--trade-text-2); }
+/* Forest panel, big bolt at 20%, the verified shield flashing once. */
+.art { position: relative; height: 360px; overflow: hidden; border-radius: 20px; background: var(--trade-forest); }
+.bolt { position: absolute; width: 420px; left: 260px; top: -60px; fill: var(--trade-signature); opacity: .2; pointer-events: none; }
+.flash { --tm-flash-icon-scale: .4667; position: absolute; left: 130px; top: 40px; }
+.promises { padding-bottom: var(--trade-space-16); }
+.promises ul { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--trade-space-5); list-style: none; margin: 0; padding: 0; }
+.card { position: relative; min-width: 0; padding: 26px; border-radius: var(--trade-radius-card); background: var(--trade-surface); box-shadow: var(--trade-shadow-category); }
+.icon { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 14px; background: var(--trade-success-bg); color: var(--trade-success); }
+.card h2 { margin: var(--trade-space-4) 0 0; font-family: var(--trade-font-heading); font-variation-settings: var(--trade-display-axes); font-weight: 900; font-size: var(--trade-fs-section); line-height: var(--trade-lh-section); overflow-wrap: anywhere; }
+.card h2 a { color: inherit; text-decoration: none; font: inherit; }
+.card p { margin: var(--trade-space-2) 0 0; color: var(--trade-text-2); font-size: var(--trade-fs-body); line-height: var(--trade-lh-body); }
+.more { display: block; margin-top: var(--trade-space-3); color: var(--trade-link); }
+.contact { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--trade-space-4); padding-block: var(--trade-space-8); border-top: 1px solid var(--trade-line); }
+.contact h2 { margin: 0; font-size: var(--trade-fs-heading); line-height: var(--trade-lh-heading); }
+.finalText { margin: var(--trade-space-3) 0 0; color: var(--trade-text-2); font-size: var(--trade-fs-lead); line-height: var(--trade-lh-body); }
+.cta { margin-top: 28px; }
+@media (max-width: 1023.98px) {
+  .hero { grid-template-columns: 1fr; gap: var(--trade-space-8); padding-block: var(--trade-space-10); }
+  .title { font-size: calc(var(--trade-fs-title) + var(--trade-space-2)); }
+  .art { height: 280px; }
+  .bolt { width: 330px; left: auto; right: -40px; top: -40px; }
+  .flash { left: 50%; top: 80px; translate: -50% 0; }
+  .promises ul { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 599.98px) {
+  .title { font-size: var(--trade-fs-title); }
+  .lead { font-size: var(--trade-fs-body); }
+  .promises ul { grid-template-columns: 1fr; }
+  .promises { padding-bottom: var(--trade-space-10); }
+}
+@media (max-width: 359.98px) {
+  .title { font-size: var(--trade-fs-price); }
+}

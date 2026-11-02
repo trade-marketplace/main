@@ -18,12 +18,14 @@ type BoltFlashProps = {
   eventId: string | null;
   /** Tick for customers' wins (Posted, Paid, Sorted); bolt for tradies' (It's yours). */
   mark?: "check" | "bolt";
+  /** A Material Symbols name drawn in place of the tick (Trust & safety uses "verified_user"). Ignored for the bolt. */
+  icon?: string;
   /** Circle diameter in px (mockups: 110 on success pages, 120 on landing). */
   size?: number;
   className?: string;
 };
 
-export function BoltFlash({ eventId, mark = "check", size, className }: BoltFlashProps) {
+export function BoltFlash({ eventId, mark = "check", icon, size, className }: BoltFlashProps) {
   const play = useCelebration(eventId);
   const classes = ["tm-flash", play && "is-playing", className].filter(Boolean).join(" ");
   const style = size ? ({ "--tm-flash-size": `${size}px` } as CSSProperties) : undefined;
@@ -41,7 +43,7 @@ export function BoltFlash({ eventId, mark = "check", size, className }: BoltFlas
           {mark === "bolt" ? (
             <BoltMark className="tm-flash__bolt" />
           ) : (
-            <Icon name="check" decorative className="tm-flash__icon" />
+            <Icon name={icon ?? "check"} fill={Boolean(icon)} decorative className="tm-flash__icon" />
           )}
         </span>
       </div>
