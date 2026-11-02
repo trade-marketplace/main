@@ -8,7 +8,7 @@ import layout from "@/components/site/for-tradies.module.css";
 import site from "@/components/site/site.module.css";
 import { loadTradieData } from "@/server/for-tradies";
 
-export const metadata: Metadata = { title: "For tradies", description: "You do the work. We find the jobs. Any job, Invercargill. Join as a tradie.", alternates: { canonical: "/for-tradies" } };
+export const metadata: Metadata = { title: "For tradies", description: "You do the work. We find the jobs. Local jobs, already priced and paid. No lead fees.", alternates: { canonical: "/for-tradies" } };
 // Office rate changes must be read per request, including when a build ran without a database.
 export const dynamic = "force-dynamic";
 

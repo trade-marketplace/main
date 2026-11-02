@@ -1,5 +1,5 @@
-<!-- {"title": "How is my price worked out?", "topic": "Customers", "group": "Payments", "updated": "2026-10-30", "related": ["when-do-i-pay", "extra-work"]} -->
+<!-- {"title": "How is my price worked out?", "topic": "Customers", "updated": "2026-11-02", "related": ["why-is-my-price-different", "extra-work", "when-do-i-pay"]} -->
 
-You see one fair, fixed price before anyone turns up. That’s what you pay.
+Experienced workers look at your job, your photos and what’s involved, and we turn that into one fair, fixed price.
 
-Posting and getting a price is free. You only pay if you accept the price.
+You see that price before anyone turns up. If you accept it, that’s what you pay. If the job turns out to need more, you’ll see photos and the extra cost first, and nothing extra happens unless you say yes.

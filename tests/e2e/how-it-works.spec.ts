@@ -13,7 +13,8 @@ test.describe("How it works", () => {
       await expect(page).toHaveTitle(/How it works/);
       await expect(page.getByRole("heading", { level: 1, name: "How it works" })).toBeVisible();
       for (const name of ["Post it", "Accept the price", "Sorted"]) await expect(page.getByRole("heading", { name, exact: true })).toBeVisible();
-      await expect(page.getByRole("heading", { name: "Any job in Invercargill." })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Got a job that needs doing?" })).toBeVisible();
+      for (const name of ["Free to post", "One fixed price", "Checked people"]) await expect(page.getByRole("heading", { name, exact: true })).toBeVisible();
       expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
       await expectNoA11yViolations(page);
     });
@@ -52,12 +53,15 @@ test.describe("How it works", () => {
     await expectNoA11yViolations(page);
   });
 
-  test("help questions use the separate Help destination", async ({ page }) => {
+  test("help questions open their help articles and come back", async ({ page }) => {
     await page.goto("/how-it-works");
     await page.getByRole("link", { name: "Is it really free to post?" }).click();
-    await expect(page).toHaveURL(/\/help$/);
-    // Help's implementation is a separate issue. Verify its actual current response, then return.
-    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    await expect(page).toHaveURL(/\/help\/is-it-free$/);
+    await expect(page.getByRole("heading", { level: 1, name: "Is it free?" })).toBeVisible();
+    await page.goBack();
+    await expect(page.getByRole("heading", { level: 1, name: "How it works" })).toBeVisible();
+    await page.getByRole("link", { name: "Who will do my job?" }).press("Enter");
+    await expect(page).toHaveURL(/\/help\/who-will-do-my-job$/);
     await page.goBack();
     await expect(page.getByRole("heading", { level: 1, name: "How it works" })).toBeVisible();
   });

@@ -1,5 +1,5 @@
-<!-- {"title": "Can I cancel a job?", "topic": "Customers", "group": "My job", "updated": "2026-10-30", "related": ["when-do-i-pay", "something-is-not-right"]} -->
+<!-- {"title": "Can I cancel a job?", "topic": "Customers", "updated": "2026-11-02", "related": ["when-do-i-pay", "accepting-or-saying-no", "something-is-not-right"]} -->
 
-Before payment, you can cancel free. After payment, request a cancellation and the office reviews it.
+Before you’ve paid, cancel any time. It’s free.
 
-If you don’t want to go ahead with your price, say no. Posting your job costs nothing.
+After you’ve paid, request a cancellation from your job page. The office reviews it and lets you know what happens next, including any refund.

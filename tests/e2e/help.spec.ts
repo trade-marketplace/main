@@ -24,18 +24,37 @@ for (const viewport of VIEWPORTS) {
 test("search suggestions support slash, arrows, Enter, Escape and a real article journey", async ({ page }) => {
   await page.goto("/help"); await page.keyboard.press("/");
   const search = page.getByRole("combobox"); await expect(search).toBeFocused();
-  await search.fill("When do I"); await expect(page.getByRole("option")).toHaveCount(1); await expectNoA11yViolations(page);
+  await search.fill("When do I"); await expect(page.getByRole("option").first()).toHaveText("When do I pay?"); await expectNoA11yViolations(page);
   await search.press("Escape"); await expect(page.getByRole("listbox")).toHaveCount(0); await expect(search).toHaveValue("When do I");
   await search.press("ArrowDown"); await search.press("Enter");
   await expect(page).toHaveURL(/\/help\/when-do-i-pay$/); await expect(page.getByRole("heading", { name: "When do I pay?", exact: true })).toBeVisible();
   await page.getByRole("navigation", { name: "Breadcrumb" }).getByRole("link", { name: "Help", exact: true }).click();
-  await expect(page).toHaveURL(/\/help$/); await expect(page.getByRole("heading", { name: "Popular articles" })).toBeVisible();
+  await expect(page).toHaveURL(/\/help$/); await expect(page.getByRole("heading", { name: "Getting started", exact: true })).toBeVisible();
+});
+test("home groups every article under the six topics, with the intro line and topic cards", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 }); await page.goto("/help"); await page.locator("[data-help-ready=true]").waitFor();
+  await expect(page.getByText("Answers about posting jobs, prices, payments and doing the work.", { exact: true })).toBeVisible();
+  const topics = ["Getting started", "Customers", "Workers & tradies", "Payments", "Account", "Safety & trust"];
+  const list = page.getByRole("region", { name: "Help articles" });
+  for (const topic of topics) { await expect(list.getByRole("button", { name: topic, exact: true })).toBeVisible(); await expect(list.getByRole("heading", { level: 2, name: topic, exact: true })).toBeVisible(); }
+  await expect(list.getByRole("link", { name: "Paying safely" })).toBeVisible();
+  await list.getByRole("button", { name: "Safety & trust", exact: true }).click();
+  await expect(list.getByRole("button", { name: "Safety & trust", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(list.getByRole("link")).toHaveCount(3);
+  await list.getByRole("link", { name: "How do you check workers?" }).click();
+  await expect(page).toHaveURL(/\/help\/how-do-you-check-workers$/);
+  await expect(page.getByRole("navigation", { name: "Safety & trust help articles" }).getByRole("link", { name: "How do you check workers?" })).toHaveAttribute("aria-current", "page");
+  await expect(page.getByRole("complementary").getByRole("link", { name: "Who will do my job?" })).toBeVisible();
+  await page.getByRole("navigation", { name: "Breadcrumb" }).getByRole("link", { name: "Safety & trust", exact: true }).click();
+  await expect(page).toHaveURL(/\/help\?topic=safety-trust$/);
+  await expect(page.getByRole("region", { name: "Help articles" }).getByRole("button", { name: "Safety & trust", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await page.goBack(); await expect(page).toHaveURL(/\/help\/how-do-you-check-workers$/);
 });
 test("phone FAQ, topic filters and article back navigation work", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 }); await page.goto("/help");
   await page.getByRole("button", { name: "When do I pay?", exact: true }).click();
   await expect(page.getByText("That locks in your booking.", { exact: false })).toBeVisible();
-  await page.getByRole("link", { name: "Read article" }).last().click();
+  await page.locator("#answer-when-do-i-pay").getByRole("link", { name: "Read article" }).click();
   await expect(page).toHaveURL(/\/help\/when-do-i-pay$/);
   await page.getByRole("link", { name: "Back to help" }).click(); await expect(page).toHaveURL(/\/help$/);
   await page.getByRole("button", { name: "Account", exact: true }).click();
@@ -50,7 +69,9 @@ test("feedback keeps the optional note and truthfully reports unavailable persis
   await page.getByRole("button", { name: "Send feedback" }).click();
   await expect(note).toHaveValue("Where is my invoice?"); await expect(page.getByText("Thanks for your feedback.")).toHaveCount(0);
 });
-test("unknown articles return a real 404", async ({ page }) => { const response = await page.goto("/help/not-a-real-article"); expect(response?.status()).toBe(404); });
+test("unknown articles, and articles held for a founder to confirm, return a real 404", async ({ page }) => {
+  for (const slug of ["not-a-real-article", "refunds", "what-will-i-earn"]) { const response = await page.goto(`/help/${slug}`); expect(response?.status()).toBe(404); }
+});
 test("phone shell is correct before hydration", async ({ browser }) => {
   const context = await browser.newContext({ javaScriptEnabled: false, viewport: { width: 390, height: 844 } });
   const page = await context.newPage();

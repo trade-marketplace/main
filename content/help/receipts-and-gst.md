@@ -1,3 +1,3 @@
-<!-- {"title": "Receipts and GST", "topic": "Payments", "group": "Payments", "updated": "2026-10-30", "related": ["when-do-i-pay"]} -->
+<!-- {"title": "Receipts and GST", "topic": "Payments", "updated": "2026-11-02", "related": ["when-do-i-pay", "how-do-i-pay"]} -->
 
-Your receipt is available from Payments & receipts. You can download your invoice for your records.
+Your receipt is in Payments & receipts, and we email it to you too. Prices include GST, and your receipt shows the GST amount for your records.

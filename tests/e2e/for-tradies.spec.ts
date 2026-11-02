@@ -27,7 +27,7 @@ for (const viewport of VIEWPORTS) {
         await page.getByRole("navigation", { name: "Menu", exact: true }).getByRole("link", { name: "For tradies" }).click();
         await expect(page.getByRole("button", { name: "Menu", exact: true })).toHaveAttribute("aria-expanded", "false");
       }
-      await page.getByRole("main").getByRole("link", { name: "Join as a tradie", exact: true }).first().click();
+      await page.getByRole("main").getByRole("link", { name: "Start earning", exact: true }).first().click();
       await expect(page).toHaveURL(/\/signup\/tradie$/);
       await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
       await page.getByLabel("Full name", { exact: false }).fill("Example Worker");
@@ -48,6 +48,25 @@ for (const viewport of VIEWPORTS) {
   });
 }
 
+for (const viewport of VIEWPORTS) {
+  test(`hero buttons match, headline fits and the hero clears its buttons at ${viewport.width}px`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await page.goto("/for-tradies");
+    await page.evaluate(() => document.fonts.ready);
+    const hero = page.locator("[data-site-hero]");
+    const join = hero.getByRole("link", { name: "Start earning", exact: true });
+    const how = hero.getByRole("link", { name: "How it works", exact: true });
+    const look = (el: HTMLElement) => { const s = getComputedStyle(el); return { height: el.getBoundingClientRect().height, size: s.fontSize, family: s.fontFamily, weight: s.fontWeight }; };
+    expect(await how.evaluate(look)).toEqual(await join.evaluate(look));
+    const heroBox = (await hero.boundingBox())!, howBox = (await how.boundingBox())!;
+    expect(heroBox.y + heroBox.height - (howBox.y + howBox.height)).toBeGreaterThanOrEqual(32);
+    const h1 = page.getByRole("heading", { level: 1 });
+    const lines = await h1.evaluate((el) => Math.round(el.getBoundingClientRect().height / parseFloat(getComputedStyle(el).lineHeight)));
+    expect(lines).toBeLessThanOrEqual(viewport.width < 600 ? 3 : 2);
+    expect(parseFloat(await h1.evaluate((el) => getComputedStyle(el).fontSize))).toBeLessThanOrEqual(64);
+  });
+}
+
 test("keyboard skip, FAQ and signup remain usable with visible focus", async ({ page }) => {
   await page.goto("/for-tradies");
   await page.keyboard.press("Tab");
@@ -55,7 +74,7 @@ test("keyboard skip, FAQ and signup remain usable with visible focus", async ({ 
   await page.keyboard.press("Enter");
   await expect(page.getByRole("main")).toBeFocused();
   await page.keyboard.press("Tab");
-  const signup = page.getByRole("main").getByRole("link", { name: "Join as a tradie", exact: true }).first();
+  const signup = page.getByRole("main").getByRole("link", { name: "Start earning", exact: true }).first();
   await expect(signup).toBeFocused();
   expect(await signup.evaluate((el) => getComputedStyle(el).outlineStyle)).toBe("solid");
   await page.keyboard.press("Enter");
@@ -79,7 +98,8 @@ for (const viewport of VIEWPORTS) {
       test.skip(!process.env.E2E_FOR_TRADIES_PREVIEW, "Run against the isolated screenshot build, with guarded dev pages enabled.");
       await page.setViewportSize(viewport);
       await page.goto(`/dev/components/for-tradies?state=${state}`);
-      if (state === "ready") await expect(page.getByRole("heading", { name: "Sub wiring" })).toBeVisible({ visible: viewport.width >= 1024 });
+      // The earnings example shows at every width: beside the words on a computer, compact under them on a phone.
+      if (state === "ready") { await expect(page.getByRole("heading", { name: "Sub wiring" })).toBeVisible(); await expect(page.getByText("It’s yours.", { exact: true })).toBeVisible(); }
       else if (state === "loading") {
         await expect(page.locator('[aria-busy="true"]')).toBeVisible();
         await expect(page.locator(".tm-skel")).toHaveCSS("opacity", "1");
