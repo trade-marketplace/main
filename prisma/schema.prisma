@@ -387,6 +387,8 @@ model JobPhoto {
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   @@index([jobId, position])
+  // Upload service (#96): the same picture sent twice (a retry) is one row.
+  @@unique([jobId, path])
   @@map("job_photos")
 }
 
