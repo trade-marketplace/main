@@ -7,6 +7,7 @@ import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { ADDRESSES, examplePricing, JOBS, moneyIds, PEOPLE, testPaymentRefs } from "../../prisma/seed/data.mjs";
+import { earningsHistory } from "../../prisma/seed/earnings.mjs";
 import { plainAuthUsers, seedDemoData, supabaseAuthUsers } from "../../prisma/seed/run.mjs";
 import { testDatabaseUrl, useTestSchema } from "../support/test-db";
 
@@ -22,6 +23,11 @@ const ALL_STATUSES = [
   "CANCELLED",
 ];
 const ALL_TRADES = ["ELECTRICAL", "PLUMBING", "GAS", "CONSTRUCTION", "OTHER"];
+
+// The demo tradie's earlier, paid-out jobs (#165, prisma/seed/earnings.mjs) sit beside the ten above; the checks on
+// "the" completed job and "the" payout are about the ten, so they look at these ids only.
+const HISTORY_COUNT = earningsHistory(new Date()).length;
+const TEN = JOBS.map((job) => job.id);
 
 const TABLES = [
   "profiles",
@@ -299,11 +305,11 @@ describe.skipIf(!testDatabaseUrl)("npm run db:seed against Postgres", () => {
       worker_profiles: 2,
       licences: 1,
       addresses: 2,
-      jobs: JOBS.length,
-      // One per paid job (five) and the pending one on the priced job.
-      payments: 6,
+      jobs: JOBS.length + HISTORY_COUNT,
+      // One per paid job (five) and the pending one on the priced job, and one for each earlier completed job.
+      payments: 6 + HISTORY_COUNT,
       variations: 1,
-      payouts: 1,
+      payouts: 1 + HISTORY_COUNT,
       job_materials: 3,
       settings: 1,
     });
@@ -313,7 +319,8 @@ describe.skipIf(!testDatabaseUrl)("npm run db:seed against Postgres", () => {
     const { rows } = await db.query(
       `SELECT j.status::text AS job_status, j.price_cents, p.kind::text AS kind, p.status::text AS status,
          p.amount_cents, p.refunded_cents, p.livemode, p.provider_payment_id, p.provider_checkout_id, p.paid_at
-       FROM jobs j LEFT JOIN payments p ON p.job_id = j.id ORDER BY j.job_number`,
+       FROM jobs j LEFT JOIN payments p ON p.job_id = j.id WHERE j.id = ANY($1::uuid[]) ORDER BY j.job_number`,
+      [TEN],
     );
     const paid = rows.filter((row) => PAID_STATUSES.includes(row.job_status));
     expect(paid.map((row) => row.job_status).sort()).toEqual([...PAID_STATUSES].sort());
@@ -358,7 +365,9 @@ describe.skipIf(!testDatabaseUrl)("npm run db:seed against Postgres", () => {
          o.minutes = p.minutes AS minutes, o.rate_cents = p.worker_rate_cents AS rate,
          o.gross_cents = p.worker_gross_cents AS gross, o.holiday_pay_cents = p.holiday_pay_cents AS holiday_pay,
          o.gross_cents, o.holiday_pay_cents
-       FROM payouts o JOIN jobs j ON j.id = o.job_id JOIN job_pricing p ON p.job_id = j.id`,
+       FROM payouts o JOIN jobs j ON j.id = o.job_id JOIN job_pricing p ON p.job_id = j.id
+       WHERE j.id = ANY($1::uuid[])`,
+      [TEN],
     );
     expect(rows).toEqual([
       {
@@ -373,6 +382,30 @@ describe.skipIf(!testDatabaseUrl)("npm run db:seed against Postgres", () => {
         holiday_pay_cents: 1120,
       },
     ]);
+  });
+
+  it("pays out the demo tradie's earlier jobs in weekly Friday payrolls, at exactly what they were priced with (#165)", async () => {
+    const { rows } = await db.query(
+      `SELECT o.status::text AS status, o.created_at, o.exported_at, o.paid_at,
+         o.gross_cents = p.worker_gross_cents AND o.holiday_pay_cents = p.holiday_pay_cents
+           AND o.minutes = p.minutes AND o.rate_cents = p.worker_rate_cents AS as_priced,
+         to_char(o.paid_at AT TIME ZONE 'Pacific/Auckland', 'Dy') AS pay_day, o.worker_id = j.worker_id AS to_worker,
+         j.status::text AS job_status
+       FROM payouts o JOIN jobs j ON j.id = o.job_id JOIN job_pricing p ON p.job_id = j.id
+       WHERE NOT (j.id = ANY($1::uuid[])) ORDER BY o.paid_at, j.job_number`,
+      [TEN],
+    );
+    expect(rows).toHaveLength(HISTORY_COUNT);
+    const now = new Date();
+    for (const row of rows) {
+      expect(row).toMatchObject({ status: "PAID", as_priced: true, pay_day: "Fri", to_worker: true, job_status: "COMPLETED" });
+      // Signed off, then sent to payroll, then paid, all in the past.
+      expect(row.created_at.getTime()).toBeLessThan(row.exported_at.getTime());
+      expect(row.exported_at.getTime()).toBeLessThan(row.paid_at.getTime());
+      expect(row.paid_at.getTime()).toBeLessThanOrEqual(now.getTime());
+    }
+    // More than one payroll, so the page has a chart and a table to show.
+    expect(new Set(rows.map((row) => row.paid_at.toISOString())).size).toBeGreaterThan(3);
   });
 
   it("gives claimed jobs the materials budget they were priced with, and the spend once submitted", async () => {
@@ -481,7 +514,8 @@ describe.skipIf(!testDatabaseUrl)("npm run db:seed against Postgres", () => {
     const { rows } = await db.query(
       `SELECT h.from_status::text AS "from", h.to_status::text AS "to", p.email
        FROM job_status_history h JOIN jobs j ON j.id = h.job_id LEFT JOIN profiles p ON p.id = h.changed_by_id
-       WHERE j.status = 'COMPLETED' ORDER BY h.created_at`,
+       WHERE j.status = 'COMPLETED' AND j.id = ANY($1::uuid[]) ORDER BY h.created_at`,
+      [TEN],
     );
     expect(rows).toEqual([
       { from: null, to: "REVIEW", email: "customer@demo.test" },

@@ -301,6 +301,10 @@ previews always show upcoming ones.
   have the spend reported.
 - **Payout.** The `COMPLETED` job's worker has a `QUEUED` payout: the minutes, rate, gross and holiday pay it was
   priced with.
+- **Earnings history** (#165, `prisma/seed/earnings.mjs`). Eleven more `COMPLETED` electrical jobs for
+  `tradie@demo.test` (TM-1011 onwards), signed off in the last five weeks and paid in weekly Friday payrolls (`PAID`,
+  with `exported_at` and `paid_at`), so the tradie's Earnings page has a chart and a payroll table. The dates come from
+  the day you seed. `worker@demo.test` has none: its Earnings page is the Empty state.
 - **Settings.** The migration makes the one settings row; the seed leaves it alone.
 
 Payments and payouts stop a job from being deleted (and a paid payment or exported payout can't be changed), so a

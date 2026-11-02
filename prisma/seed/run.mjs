@@ -4,6 +4,7 @@
 // else in the database is left alone.
 
 import { ADDRESSES, examplePricing, JOBS, moneyIds, PEOPLE, photoPath, testPaymentRefs } from "./data.mjs";
+import { earningsHistory } from "./earnings.mjs";
 
 /**
  * @typedef {import("./data.mjs").PersonKey} PersonKey
@@ -132,7 +133,9 @@ export async function seedDemoData({ db, auth, now = new Date() }) {
     await upsertAddresses(db, ids.customer);
 
     // Delete and post the demo jobs again, keeping each one's TM number.
-    const jobIds = JOBS.map((job) => job.id);
+    // The demo tradie's earlier, paid-out jobs (earnings.mjs) come after the ten, so the ten keep their TM numbers.
+    const history = earningsHistory(now);
+    const jobIds = [...JOBS, ...history].map((job) => job.id);
     const { rows: previous } = await db.query("SELECT id, job_number FROM jobs WHERE id = ANY($1::uuid[])", [jobIds]);
     const jobNumbers = new Map(previous.map((row) => [row.id, row.job_number]));
     // Payments and payouts keep their job from being deleted (and a paid one can't be changed), so they go first;
@@ -144,6 +147,14 @@ export async function seedDemoData({ db, auth, now = new Date() }) {
     const jobs = [];
     for (const job of JOBS) {
       jobs.push(await postJob(db, job, ids, jobNumbers.get(job.id), { daysAgo, dateIn }));
+    }
+    for (const job of history) {
+      jobs.push(await postJob(db, job, ids, jobNumbers.get(job.id), { daysAgo, dateIn }));
+      // Signed off, sent to payroll the day before, then paid: the payout's amounts stay as the job was priced.
+      await db.query(
+        `UPDATE payouts SET created_at = $2, status = 'PAID', exported_at = $3, paid_at = $4 WHERE id = $1`,
+        [moneyIds(job.id).payout, job.signedOffAt, job.exportedAt, job.paidAt],
+      );
     }
     await db.query("SELECT set_config('app.actor_id', '', true)");
     await db.query("COMMIT");

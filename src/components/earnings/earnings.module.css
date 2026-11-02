@@ -1,0 +1,176 @@
+/* The tradie's Earnings page (#165, D12): pages.html w-t-earnings on a computer, screens.html tr-earnings on a phone.
+   The cards, table, pills and drawer are the kit's; this is the page's own layout. Tokens only. */
+
+.page { min-height: 100%; background: var(--trade-surface); }
+.content {
+  display: grid;
+  gap: var(--trade-space-4);
+  max-width: var(--trade-content-max);
+  margin-inline: auto;
+  padding: var(--trade-space-4) var(--trade-inset-browse) var(--trade-space-8);
+}
+@media (min-width: 1024px) {
+  .content { gap: var(--trade-space-5); padding: var(--trade-space-8) var(--trade-space-6); }
+}
+
+.head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--trade-space-3); }
+.title {
+  margin: 0;
+  font-family: var(--trade-font-heading);
+  font-weight: 900;
+  font-variation-settings: var(--trade-display-axes);
+  font-size: var(--trade-fs-title);
+  line-height: var(--trade-lh-title);
+}
+.head a[aria-disabled] { opacity: 0.5; cursor: not-allowed; }
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---- Computer: KPI cards, chart and table ---------------------------------------------------------------- */
+.kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--trade-space-4); }
+.main { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--trade-space-5); align-items: start; }
+/* Side by side only when the table beside the chart is wide enough to stay a table (the kit turns a table under
+   640px wide into cards); narrower, the chart sits above it. */
+@media (min-width: 1200px) {
+  .main { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); }
+}
+.payrolls { min-width: 0; }
+
+/* Phone: the chart, KPI cards and table step aside for the money card and lists. */
+.phone { display: none; }
+@media (max-width: 639px) {
+  .wide { display: none; }
+  .phone { display: grid; gap: var(--trade-space-2); }
+}
+
+/* ---- Chart ------------------------------------------------------------------------------------------------ */
+.chart {
+  min-width: 0;
+  padding: var(--trade-space-5);
+  border-radius: var(--trade-radius-card);
+  border: 1px solid var(--trade-line);
+  background: var(--trade-surface);
+}
+.chartTitle { margin: 0; font-size: var(--trade-fs-body); line-height: var(--trade-lh-body); font-weight: 700; }
+.bars {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+  height: 140px;
+  margin: var(--trade-space-5) 0 0;
+  padding: 0;
+  list-style: none;
+}
+.bar { position: relative; display: flex; flex: 1; min-width: 0; align-items: flex-end; border-radius: 6px 6px 0 0; }
+.fill {
+  display: block;
+  width: 100%;
+  height: var(--bar);
+  min-height: var(--trade-space-1);
+  border-radius: 6px 6px 0 0;
+  background: var(--trade-tint-strong);
+}
+.current .fill { background: var(--trade-action); }
+.tip {
+  position: absolute;
+  bottom: calc(var(--bar) + 6px);
+  left: 50%;
+  z-index: 1;
+  padding: var(--trade-space-1) var(--trade-space-2);
+  border-radius: 6px;
+  background: var(--trade-forest);
+  color: var(--trade-text-on-dark);
+  font-size: var(--trade-fs-caption);
+  line-height: var(--trade-lh-caption);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+.bar:hover .tip, .bar:focus .tip { opacity: 1; }
+.axis {
+  display: flex;
+  justify-content: space-between;
+  margin-top: var(--trade-space-2);
+  font-size: var(--trade-fs-caption);
+  line-height: var(--trade-lh-caption);
+  color: var(--trade-text-2);
+}
+
+/* ---- Phone lists ------------------------------------------------------------------------------------------ */
+.list { display: grid; gap: 0; }
+.listTitle {
+  margin: var(--trade-space-4) 0 var(--trade-space-2);
+  font-size: var(--trade-fs-caption);
+  line-height: var(--trade-lh-caption);
+  font-weight: 700;
+  font-family: var(--trade-font-body);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.rows { margin: 0; padding: 0; list-style: none; }
+.row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--trade-space-3);
+  padding: var(--trade-space-3) 0;
+  border-bottom: 1px solid var(--trade-line);
+}
+.rowText { display: grid; min-width: 0; }
+.rowName, .rowLink { font-size: 15px; font-weight: 700; color: var(--trade-text); overflow-wrap: anywhere; }
+.rowLink { text-decoration: none; }
+/* The whole row is the link's target. */
+.rowLink::after { content: ""; position: absolute; inset: 0; }
+.rowLink:focus-visible::after { outline: var(--trade-focus-ring, 2px solid var(--trade-focus)); outline-offset: -2px; border-radius: 6px; }
+.rowLink:focus-visible { outline: none; }
+.caption { font-size: var(--trade-fs-caption); line-height: var(--trade-lh-caption); color: var(--trade-text-2); overflow-wrap: anywhere; }
+.rowAmount { display: grid; justify-items: end; gap: 3px; flex: none; font-variant-numeric: tabular-nums; }
+
+/* ---- Payroll detail drawer ------------------------------------------------------------------------------- */
+.eyebrow { display: inline-flex; }
+.detail { margin: 0; padding: 0; list-style: none; display: grid; gap: var(--trade-space-4); }
+.detailJob { display: grid; gap: var(--trade-space-3); padding-bottom: var(--trade-space-4); border-bottom: 1px solid var(--trade-line); }
+.facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--trade-space-3); margin: 0; }
+.facts div { display: grid; gap: 2px; min-width: 0; }
+.facts dt { font-size: var(--trade-fs-caption); line-height: var(--trade-lh-caption); color: var(--trade-text-2); }
+.facts dd { margin: 0; font-size: var(--trade-fs-body); font-weight: 700; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.factTotal { grid-column: 1 / -1; }
+.detailTotal {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--trade-space-3);
+  margin: var(--trade-space-4) 0 0;
+  font-size: var(--trade-fs-body);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Loading ---------------------------------------------------------------------------------------------- */
+.skeleton { display: grid; gap: var(--trade-space-5); }
+.skeletonKpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--trade-space-4); }
+.skeletonMain { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--trade-space-5); }
+.skeletonBlock { border-radius: var(--trade-radius-card); }
+@media (max-width: 1023px) {
+  .skeletonMain { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 639px) {
+  .skeletonKpis { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (forced-colors: active) {
+  .bar { outline: 1px solid CanvasText; }
+  .current .fill { background: Highlight; }
+}
