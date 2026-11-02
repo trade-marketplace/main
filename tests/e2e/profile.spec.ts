@@ -91,6 +91,23 @@ test.describe("profile isolated UI", () => {
     await expect(save).toHaveAttribute("aria-disabled", "true");
   });
 
+  test("typing while a slow save is on its way keeps the newer text and leaves Save on for it", async ({ page }) => {
+    await page.goto(url("?state=saving"));
+    await ready(page);
+    const name = page.getByLabel("Full name");
+    const save = page.getByRole("button", { name: "Save changes" });
+    // Retry until the page has hydrated and takes the typing.
+    await expect(async () => {
+      await name.fill("Sarah Jane");
+      await expect(save).not.toHaveAttribute("aria-disabled", "true", { timeout: 500 });
+    }).toPass();
+    await save.click();
+    await name.fill("Sarah Jane Thompson"); // typed after pressing Save, before the answer
+    await expect(page.getByText("Saved.")).toBeVisible({ timeout: 10_000 });
+    await expect(name).toHaveValue("Sarah Jane Thompson");
+    await expect(save).not.toHaveAttribute("aria-disabled", "true");
+  });
+
   test("each field says what is wrong, focuses the first one, and clears when edited", async ({ page }) => {
     await page.goto(url());
     await ready(page);

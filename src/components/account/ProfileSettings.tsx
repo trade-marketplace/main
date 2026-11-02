@@ -76,8 +76,10 @@ function ProfileForm({ initial, email, pendingEmail, avatarUrl = null, action = 
     catch { result = { ok: false, error: "unavailable" }; }
     if (result.ok) {
       setSaved({ name: result.name, phone: result.phone });
-      setName(result.name);
-      setPhone(result.phone);
+      // Show the tidied values, unless they kept typing while this saved: newer edits stay, and Save stays on for them.
+      const sentName = form.get("name"), sentPhone = form.get("phone");
+      setName(current => (current === sentName ? result.name : current));
+      setPhone(current => (current === sentPhone ? result.phone : current));
       setErrors({});
       toast.show({ message: "Saved." });
     } else if (result.error === "invalid") setErrors(result.fields);
