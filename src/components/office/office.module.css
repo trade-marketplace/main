@@ -26,7 +26,7 @@
   padding-inline: max(var(--trade-inset-browse), env(safe-area-inset-left, 0px)) max(var(--trade-inset-browse), env(safe-area-inset-right, 0px));
   background: var(--trade-forest); color: var(--trade-text-on-dark);
   /* Stays at the top while the page scrolls, like the app nav (WEBAPP_SPEC: app nav sticky). */
-  position: sticky; top: 0; z-index: var(--trade-z-nav);
+  position: sticky; top: var(--trade-offline-h, 0px); z-index: var(--trade-z-nav);
 }
 .mobileHeader .menuButton { color: var(--trade-signature); padding-inline: var(--trade-space-2); }
 .mobileHeader .menuButton:hover { background: color-mix(in srgb, var(--trade-signature) 16%, transparent); }
@@ -67,7 +67,7 @@
      window is too short for every link, the links scroll inside the sidebar (not the whole sidebar, which would
      clip the account menu that opens above the avatar). */
   .sidebar {
-    position: sticky; top: 0; align-self: start; height: 100dvh;
+    position: sticky; top: var(--trade-offline-h, 0px); align-self: start; height: calc(100dvh - var(--trade-offline-h, 0px));
     display: flex; flex-direction: column; min-width: 0;
     padding: calc(var(--trade-space-5) + var(--trade-space-1) / 2) var(--trade-space-3) calc(var(--trade-space-3) + var(--trade-space-1) / 2);
     background: var(--trade-forest); color: var(--trade-text-on-dark);

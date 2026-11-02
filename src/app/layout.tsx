@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { preload } from "react-dom";
 
 import { FocusVisibility } from "@/components/FocusVisibility";
+import { ConnectionBanner } from "@/components/feedback/ConnectionBanner";
 import { FONT_PRELOADS } from "@/lib/fonts";
 import { SITE_NAME, SITE_URL, TITLE_TEMPLATE } from "@/lib/metadata";
 import { modeForRole, type Role } from "@/lib/mode";
@@ -42,7 +43,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
 
   return (
     <html lang="en-NZ" data-mode={modeForRole(role)}>
-      <body><FocusVisibility />{children}</body>
+      <body><FocusVisibility /><ConnectionBanner>{children}</ConnectionBanner></body>
     </html>
   );
 }

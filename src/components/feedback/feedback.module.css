@@ -169,3 +169,12 @@
   white-space: nowrap;
   border: 0;
 }
+
+/* A form held back while offline (#187): a quiet strip under the offline banner, "Not sent yet" with Send now. */
+.held {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 4px 10px;
+  padding: 10px var(--trade-inset-browse);
+  background: var(--trade-surface); color: var(--trade-text); border-bottom: 1px solid var(--trade-field-border);
+  font-size: var(--trade-fs-small); line-height: 1.4;
+}
+.held .bannerAction { margin-left: 0; }

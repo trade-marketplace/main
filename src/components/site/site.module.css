@@ -50,7 +50,7 @@
 /* ---- Header (.w-sitenav). Sticky; its Forest fill is the M06 layer (.tm-navfill in motion.css). ---- */
 .header {
   position: sticky;
-  top: 0;
+  top: var(--trade-offline-h, 0px); /* under the offline banner (#187) */
   z-index: var(--trade-z-nav);
   color: var(--trade-text-on-dark);
 }

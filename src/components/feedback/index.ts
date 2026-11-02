@@ -2,6 +2,7 @@
 // How to use them: docs/components/feedback.md.
 export { EmptyState, type EmptyStateProps, type HeadingLevel } from "./EmptyState";
 export { ErrorState, InlineError, type ErrorStateProps, type InlineErrorProps, type RetryHandler } from "./ErrorState";
+export { ConnectionBanner, type ConnectionBannerProps } from "./ConnectionBanner";
 export { LiveMessage, type LiveMessageProps } from "./LiveMessage";
 export { LoadingRegion, type LoadingRegionProps } from "./LoadingRegion";
 export { OfflineBanner, retryDelayMs, useOnlineStatus, type OfflineBannerProps } from "./OfflineBanner";
