@@ -2,7 +2,7 @@
 // The real pay form (#151): Stripe's Payment Element (cards, Apple Pay and Google Pay, from the methods switched on in
 // the Stripe dashboard, "dynamic payment methods"; Link stays on). The secret comes from the server when the form opens;
 // the amount is never sent from here. Stripe takes the card details itself, they never touch our server.
-import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
+import { Elements, ExpressCheckoutElement, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
 import { loadStripe, type Appearance, type Stripe, type StripeElementsOptions } from "@stripe/stripe-js";
 import { useEffect, useMemo, useState } from "react";
 
@@ -91,6 +91,7 @@ function Confirm({ paymentId, amountCents, initial, initialMessage }: { paymentI
   const elements = useElements();
   const [state, setState] = useState<PayState>(initial);
   const [message, setMessage] = useState<string | null>(initialMessage);
+  const [expressReady, setExpressReady] = useState(false);
 
   async function pay() {
     if (!stripe || !elements) return;
@@ -112,8 +113,22 @@ function Confirm({ paymentId, amountCents, initial, initialMessage }: { paymentI
   }
 
   return (
-    <PayFormView state={stripe && elements ? state : "loading"} amountCents={amountCents} message={message} onSubmit={pay}>
-      <PaymentElement />
+    <PayFormView
+      state={stripe && elements ? state : "loading"}
+      amountCents={amountCents}
+      message={message}
+      onSubmit={pay}
+      expressReady={expressReady}
+      express={
+        <ExpressCheckoutElement
+          options={{ buttonHeight: 48, buttonType: { applePay: "plain", googlePay: "plain" }, paymentMethods: { link: "never" } }}
+          onReady={({ availablePaymentMethods }) => setExpressReady(Boolean(availablePaymentMethods && Object.values(availablePaymentMethods).some(Boolean)))}
+          onConfirm={() => void pay()}
+        />
+      }
+    >
+      {/* Wallets are the buttons above; this is the card form (and Link). */}
+      <PaymentElement options={{ layout: "tabs", wallets: { applePay: "never", googlePay: "never" } }} />
     </PayFormView>
   );
 }

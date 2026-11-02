@@ -7,6 +7,7 @@ import { type FormEvent, type ReactNode, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 
 import { Button } from "@/components/Button";
+import { Icon } from "@/components/Icon";
 import { Skeleton } from "@/components/feedback";
 import { Banner } from "@/components/overlays/Banner";
 import { money } from "@/lib/office-job";
@@ -23,10 +24,14 @@ export type PayFormViewProps = {
   message?: string | null;
   /** The card fields: Stripe's Payment Element, or a mock in the preview. */
   children?: ReactNode;
+  /** One-tap wallet buttons (Apple Pay, Google Pay) shown above the card form, as most checkouts do. */
+  express?: ReactNode;
+  /** Whether this device has a wallet to show (until Stripe says so, the buttons stay out of sight). */
+  expressReady?: boolean;
   onSubmit?: () => void;
 };
 
-export function PayFormView({ state, amountCents, message, children, onSubmit }: PayFormViewProps) {
+export function PayFormView({ state, amountCents, message, children, express, expressReady = false, onSubmit }: PayFormViewProps) {
   const locked = state === "processing" || state === "succeeded";
   // The Pay button lives in the order summary (C10). It submits this form through the form attribute. Without a
   // summary on the page (or before the browser takes over) it stays under the fields.
@@ -69,6 +74,16 @@ export function PayFormView({ state, amountCents, message, children, onSubmit }:
       )}
       <fieldset className={styles.fields} disabled={locked}>
         <legend className={styles.legend}>Pay with</legend>
+        {express && (
+          <div className={expressReady ? styles.express : styles.expressPending} aria-hidden={expressReady ? undefined : true}>
+            {express}
+          </div>
+        )}
+        {express && expressReady && (
+          <p className={styles.divider}>
+            <span>Or pay with card</span>
+          </p>
+        )}
         {state === "loading" ? (
           <div className={styles.skeleton} role="status" aria-label="Loading the payment form">
             <Skeleton height={55} />
@@ -79,6 +94,10 @@ export function PayFormView({ state, amountCents, message, children, onSubmit }:
           children
         )}
       </fieldset>
+      <p className={styles.secured}>
+        <Icon name="lock" size="sm" decorative fill />
+        Secured by Stripe. We never see your card details.
+      </p>
       {!slot && action}
     </form>
     </>

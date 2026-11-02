@@ -89,15 +89,18 @@
   color: var(--trade-text-2);
 }
 .mockRow { display: grid; grid-template-columns: 1fr 1fr; gap: var(--trade-space-3); }
-.mockTabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--trade-space-2); }
-.mockTab {
-  display: grid;
-  gap: var(--trade-space-1);
-  padding: var(--trade-space-3);
-  border: 1px solid var(--trade-line);
-  border-radius: var(--trade-radius-card);
-  font-size: var(--trade-fs-small);
-  font-weight: 700;
-  color: var(--trade-text-2);
-}
-.mockTab[data-on] { border-color: var(--trade-forest); box-shadow: inset 0 0 0 1px var(--trade-forest); color: var(--trade-text); }
+
+/* Familiar checkout pieces: wallet buttons first, "Or pay with card", a quiet "secured by" line, trust ticks. */
+.express { display: grid; gap: var(--trade-space-2); }
+.expressPending { position: absolute; width: 1px; height: 1px; overflow: hidden; opacity: 0; pointer-events: none; }
+.divider { display: flex; align-items: center; gap: var(--trade-space-3); margin: var(--trade-space-1) 0; color: var(--trade-text-2); font-size: var(--trade-fs-small); }
+.divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: var(--trade-line); }
+.secured { display: flex; align-items: center; justify-content: center; gap: var(--trade-space-1); margin: 0; color: var(--trade-text-2); font-size: var(--trade-fs-caption); }
+.back { display: inline-flex; align-items: center; gap: var(--trade-space-1); justify-self: start; font-size: var(--trade-fs-small); }
+.promises { display: grid; gap: var(--trade-space-2); margin: var(--trade-space-4) 0 0; padding: var(--trade-space-3) var(--trade-space-4); list-style: none; border-radius: var(--trade-radius-card); background: var(--trade-tint); font-size: var(--trade-fs-small); }
+.promises li { display: flex; align-items: center; gap: var(--trade-space-2); }
+.promises li > span { color: var(--trade-success); flex: none; }
+.mockWallet { display: flex; align-items: center; justify-content: center; gap: var(--trade-space-1); height: 48px; border-radius: var(--trade-radius-action); background: var(--trade-forest); color: var(--trade-text-on-dark); font-weight: 700; }
+.brands { display: flex; gap: var(--trade-space-1); }
+.brands > span { padding: 2px 5px; border: 1px solid var(--trade-line); border-radius: 3px; font-size: 10px; font-weight: 800; letter-spacing: 0.02em; color: var(--trade-text-2); }
+.mockGrow { flex: 1; }

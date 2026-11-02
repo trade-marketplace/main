@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 
 import { Icon } from "@/components/Icon";
+import { TextLink } from "@/components/TextLink";
 import { Banner } from "@/components/overlays/Banner";
 import { Wordmark } from "@/components/Wordmark";
 import { money } from "@/lib/office-job";
@@ -16,6 +17,8 @@ export type CheckoutSummary = {
   suburb: string;
   amountCents: number;
   gstCents: number | null;
+  /** For the "Back to job" link. */
+  jobId?: string;
   /** The job's cover photo (a short-lived signed link), if it has one. */
   photoUrl?: string | null;
 };
@@ -36,6 +39,12 @@ export function CheckoutPage({ summary, testMode, children }: { summary: Checkou
             <Banner tone="test" title="Test mode.">
               No real money moves. Use card 4242 4242 4242 4242.
             </Banner>
+          )}
+          {summary.jobId && (
+            <TextLink href={`/jobs/${summary.jobId}`} className={styles.back}>
+              <Icon name="arrow_back" size="sm" decorative />
+              Back to job
+            </TextLink>
           )}
           <h1 className={styles.title}>Pay &amp; book</h1>
           <div className={styles.card}>{children}</div>
@@ -72,6 +81,10 @@ export function CheckoutPage({ summary, testMode, children }: { summary: Checkou
               <span>Total</span>
               <span className={styles.totalPrice}>{money(summary.amountCents)}</span>
             </li>
+          </ul>
+          <ul className={styles.promises}>
+            <li><Icon name="check_circle" size="sm" decorative fill />Fixed price. It won’t go up.</li>
+            <li><Icon name="check_circle" size="sm" decorative fill />Extra work only if you say yes.</li>
           </ul>
           {/* The Pay button and receipt line land here from the pay form (PayFormView), as in C10. */}
           <div id={PAY_ACTION_ID} className={styles.action} />

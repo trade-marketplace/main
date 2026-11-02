@@ -21,34 +21,42 @@ const STATES: readonly { state: PayState; title: string; message?: string }[] = 
 ];
 
 // Example values only: real prices come from the server.
-const SUMMARY = { title: "Sub wiring", jobNumber: 1005, suburb: "Windsor", amountCents: 37200, gstCents: 4852, photoUrl: "/images/examples/large/wires.jpg" };
+const SUMMARY = { jobId: "preview", title: "Sub wiring", jobNumber: 1005, suburb: "Windsor", amountCents: 37200, gstCents: 4852, photoUrl: "/images/examples/large/wires.jpg" };
 
 function MockCardFields() {
-  // Like the Payment Element's tabs: the methods Stripe offers on this device (Card, Apple Pay, Google Pay).
+  // Stands in for Stripe's Payment Element as it looks with our appearance: labelled fields, card brands, country.
   return (
     <>
-      <div className={styles.mockTabs} aria-hidden="true">
-        {[["credit_card", "Card"], ["phone_iphone", "Apple Pay"], ["android", "Google Pay"]].map(([icon, label], i) => (
-          <span key={label} className={styles.mockTab} data-on={i === 0 || undefined}>
-            <Icon name={icon} decorative />
-            {label}
-          </span>
-        ))}
-      </div>
       <div className={styles.mockField}>
         <span className={styles.mockLabel}>Card number</span>
-        <div className={styles.mockInput}>4242 4242 4242 4242</div>
+        <div className={styles.mockInput}>
+          <span className={styles.mockGrow}>1234 1234 1234 1234</span>
+          <span className={styles.brands} aria-hidden="true"><span>VISA</span><span>MC</span><span>AMEX</span></span>
+        </div>
       </div>
       <div className={styles.mockRow}>
         <div className={styles.mockField}>
-          <span className={styles.mockLabel}>Expiry</span>
-          <div className={styles.mockInput}>12 / 28</div>
+          <span className={styles.mockLabel}>Expiration date</span>
+          <div className={styles.mockInput}>MM / YY</div>
         </div>
         <div className={styles.mockField}>
-          <span className={styles.mockLabel}>CVC</span>
-          <div className={styles.mockInput}>•••</div>
+          <span className={styles.mockLabel}>Security code</span>
+          <div className={styles.mockInput}>CVC</div>
         </div>
       </div>
+      <div className={styles.mockField}>
+        <span className={styles.mockLabel}>Country</span>
+        <div className={styles.mockInput}>New Zealand</div>
+      </div>
+    </>
+  );
+}
+
+function MockWallets() {
+  return (
+    <>
+      <span className={styles.mockWallet}><Icon name="phone_iphone" size="sm" decorative /> Pay</span>
+      <span className={styles.mockWallet}>G Pay</span>
     </>
   );
 }
@@ -62,7 +70,7 @@ export default async function PayPreview({ searchParams }: { searchParams: Promi
       {shown.map((entry) => (
         <section key={entry.state} id={entry.state} aria-label={entry.title}>
           <CheckoutPage summary={SUMMARY} testMode>
-            <PayFormView state={entry.state} amountCents={SUMMARY.amountCents} message={entry.message}>
+            <PayFormView state={entry.state} amountCents={SUMMARY.amountCents} message={entry.message} express={<MockWallets />} expressReady>
               <MockCardFields />
             </PayFormView>
           </CheckoutPage>
