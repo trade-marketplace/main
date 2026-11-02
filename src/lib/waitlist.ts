@@ -10,7 +10,7 @@ export const waitlistInput = z.object({
 export type WaitlistInput = z.infer<typeof waitlistInput>;
 export type WaitlistResult =
   | { status: "joined" | "already-on-list" }
-  | { status: "error"; field?: "email" | "suburb" };
+  | { status: "error"; field?: "email" | "suburb"; /** Seconds until a rate limit lets them in again (#111). */ retryAfter?: number };
 export type WaitlistState = "empty" | "loading" | "joined" | "already-on-list" | "error" | "offline";
 
 /** jobStartPath passes location, description, type and coordinates. Only the bounded location belongs here. */

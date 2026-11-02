@@ -18,4 +18,4 @@ export function searchHelp(articles: HelpArticle[], query: string, topic = "All"
 }
 export const helpFeedbackInput = z.object({ slug: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).max(100), helpful: z.boolean(), lookingFor: z.string().trim().max(300).default("") });
 export type HelpFeedbackInput = z.infer<typeof helpFeedbackInput>;
-export type HelpFeedbackResult = { status: "saved" } | { status: "error" };
+export type HelpFeedbackResult = { status: "saved" } | { status: "error"; /** Seconds until a rate limit lets them in again (#111). */ retryAfter?: number };

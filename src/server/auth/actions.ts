@@ -26,6 +26,7 @@ import {
 import { searchSignupAreas, type SignupAreaResult } from "@/server/auth/work-area";
 import { prismaProfiles } from "@/server/auth/profiles";
 import { rememberVerification, startVerification, verificationEmailUrl } from "@/server/auth/verification";
+import { checkForClient, consumeForClient } from "@/server/rate-limit";
 import { createSupabaseServerClient, rememberSessionChoice } from "@/server/supabase";
 
 /** `useActionState` starts with null: nothing sent yet. */
@@ -50,6 +51,19 @@ function notSetUp(formData: FormData) {
   return { ok: false as const, error: "unavailable" as const, values: { email: typeof email === "string" ? email : "" } };
 }
 
+/**
+ * Log in, slowed down for bots but never locking anyone out (DECISIONS.md, #340). Only wrong passwords count, and
+ * they're counted per connection, not per email, so typing someone else's address can't stop them logging in.
+ */
+async function limitedLogIn(auth: AuthClient, formData: FormData): Promise<LogInResult> {
+  const input = readLogInForm(formData);
+  const blocked = await checkForClient("logInFailures");
+  if (!blocked.allowed) return { ok: false, error: "try-later", values: { email: input.email.trim() }, retryAfter: blocked.retryAfter };
+  const result = await logIn({ auth, profiles }, input);
+  if (!result.ok && result.error === "wrong-credentials") await consumeForClient("logInFailures");
+  return result;
+}
+
 /** The whole page tree re-renders on the next navigation, so the layout picks up the new role's colours. */
 function refreshEverything() {
   revalidatePath("/", "layout");
@@ -64,6 +78,8 @@ export async function signUpAction(_previous: SignUpState, formData: FormData): 
     return { ...unavailable, values: { email: input.email, firstName: input.firstName, lastName: input.lastName, phone: input.phone, role: input.role, terms: input.terms ? "on" : "", ...workerSignupValues(input.worker) } };
   }
   const input = readSignUpForm(formData);
+  const limit = await consumeForClient("signUp");
+  if (!limit.allowed) return { ok: false, error: "try-later", retryAfter: limit.retryAfter, values: { email: input.email, firstName: input.firstName, lastName: input.lastName, phone: input.phone, role: input.role, terms: input.terms ? "on" : "", ...workerSignupValues(input.worker) } };
   const result = await signUp({ auth, profiles, emailRedirectTo: verificationEmailUrl(input.next) }, input);
   if (result.ok) {
     const email = input.email.trim().toLowerCase();
@@ -85,7 +101,7 @@ export async function logInAction(_previous: LogInState, formData: FormData): Pr
   const sessionOnly = formData.get("remember") !== "on";
   const auth = await authClient({ sessionOnly });
   if (!auth) return notSetUp(formData);
-  const result = await logIn({ auth, profiles }, readLogInForm(formData));
+  const result = await limitedLogIn(auth, formData);
   if (result.ok) {
     await rememberSessionChoice(sessionOnly);
     refreshEverything();
@@ -102,7 +118,7 @@ export async function logInAction(_previous: LogInState, formData: FormData): Pr
 export async function logInAgainAction(_previous: LogInState, formData: FormData): Promise<LogInState> {
   const auth = await authClient();
   if (!auth) return notSetUp(formData);
-  const result = await logIn({ auth, profiles }, readLogInForm(formData));
+  const result = await limitedLogIn(auth, formData);
   if (result.ok) refreshEverything();
   return result;
 }
@@ -118,5 +134,7 @@ export async function logOutAction(): Promise<void> {
 
 /** Suburb autocomplete is available before sign-in. It never changes an account or verification. */
 export async function searchSignupAreasAction(query: string): Promise<SignupAreaResult> {
+  // Too many searches: fall back to typing the suburb by hand, which always works.
+  if (!(await consumeForClient("placeSearch")).allowed) return { mode: "manual", reason: "unavailable" };
   return searchSignupAreas(query);
 }

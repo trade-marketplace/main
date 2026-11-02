@@ -8,6 +8,7 @@ import { VERIFICATION_COOLDOWN_SECONDS, verificationDestination, type Verificati
 import { safeNextPath } from "@/lib/auth/routes";
 import { logOut } from "@/server/auth/account";
 import { getViewer } from "@/server/auth/viewer";
+import { consumeForClient } from "@/server/rate-limit";
 import { pendingVerification, startVerification, VERIFICATION_COMPLETE_COOKIE, VERIFICATION_PENDING_COOKIE } from "@/server/auth/verification";
 import { createSupabaseServerClient } from "@/server/supabase";
 
@@ -19,6 +20,8 @@ export async function resendVerificationAction(email: string, next?: string): Pr
     if (pending?.email.toLowerCase() === target.trim().toLowerCase() && pending.retryAt > Date.now()) {
       return { ok: false, error: "try-later", retryAt: Math.min(pending.retryAt, Date.now() + VERIFICATION_COOLDOWN_SECONDS * 1_000) };
     }
+    const limit = await consumeForClient("verificationEmail");
+    if (!limit.allowed) return { ok: false, error: "try-later", retryAt: Date.now() + limit.retryAfter * 1_000 };
     return await startVerification(target, next);
   } catch {
     return { ok: false, error: "unavailable" };

@@ -1,5 +1,6 @@
 // What the log-in form says for each answer from logInAction (#102). Safe on server and browser.
 // One message for a wrong email or a wrong password, so the form never says who has an account (#101).
+import { tryAgainText } from "@/lib/rate-limit";
 import type { LogInResult } from "@/server/auth/account";
 
 export type LogInProblem = Exclude<LogInResult, { ok: true }>;
@@ -30,7 +31,8 @@ export function logInMessages(result: LogInProblem | null): LogInMessages {
     case "wrong-credentials":
       return { password: LOGIN_MESSAGES.wrongCredentials };
     case "try-later":
-      return { banner: { tone: "alert", ...LOGIN_MESSAGES.locked } };
+      // Our own limit knows how long; Supabase's doesn't say.
+      return { banner: { tone: "alert", ...LOGIN_MESSAGES.locked, ...(result.retryAfter ? { text: tryAgainText(result.retryAfter) } : {}) } };
     case "email-not-verified":
       return { banner: { tone: "info", ...LOGIN_MESSAGES.notVerified } };
     case "unavailable":

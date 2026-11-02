@@ -9,6 +9,7 @@ import { Banner } from "@/components/overlays/Banner";
 import { CATEGORY_INFO, type Category } from "@/lib/cards";
 import { LANDING_LOCATION_MAX } from "@/lib/landing";
 import { serviceWaitlistInput } from "@/lib/services";
+import { tryAgainText } from "@/lib/rate-limit";
 import type { WaitlistResult, WaitlistState } from "@/lib/waitlist";
 
 import styles from "./service.module.css";
@@ -22,6 +23,7 @@ export function ServiceWaitlist({ category, location, submit, initialState = "em
   const [field, setField] = useState<"email" | "suburb">();
   const emailRef = useRef<HTMLInputElement>(null);
   const suburbRef = useRef<HTMLInputElement>(null);
+  const [wait, setWait] = useState<number>();
   const pending = useRef(false);
   const online = useOnlineStatus();
   const offline = !online || initialState === "offline";
@@ -33,10 +35,10 @@ export function ServiceWaitlist({ category, location, submit, initialState = "em
       const next = parsed.error.issues[0]?.path[0] === "suburb" ? "suburb" : "email";
       setField(next); setState("error"); (next === "email" ? emailRef : suburbRef).current?.focus(); return;
     }
-    pending.current = true; setField(undefined); setState("loading");
+    pending.current = true; setField(undefined); setWait(undefined); setState("loading");
     const form = new FormData();
     for (const [key, value] of Object.entries(parsed.data)) form.set(key, value);
-    try { const result = await submit(form); setState(result.status); if (result.status === "error") setField(result.field); }
+    try { const result = await submit(form); setState(result.status); if (result.status === "error") { setField(result.field); setWait(result.retryAfter); } }
     catch { setState("error"); }
     finally { pending.current = false; }
   }
@@ -51,7 +53,7 @@ export function ServiceWaitlist({ category, location, submit, initialState = "em
       </div>
     </form>
     {offline && <Banner tone="alert" title="You’re offline. Your details are still here." live />}
-    {state === "error" && !field && !offline && <Banner tone="alert" title="Couldn’t join the list. Try again." live />}
+    {state === "error" && !field && !offline && <Banner tone="alert" title={wait ? "Too many tries." : "Couldn’t join the list. Try again."} live>{wait ? tryAgainText(wait) : null}</Banner>}
     {(state === "joined" || state === "already-on-list") && <Banner tone="good" title={state === "joined" ? "You’re on the list." : "You’re already on the list."} live />}
   </div>;
 }

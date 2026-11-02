@@ -10,6 +10,7 @@ import { Banner } from "@/components/overlays/Banner";
 import { ToastProvider, useToast } from "@/components/overlays/Toast";
 import type { Coverage } from "@/lib/geo/coverage";
 import { LANDING_LOCATION_MAX } from "@/lib/landing";
+import { tryAgainText } from "@/lib/rate-limit";
 import { waitlistInput, waitlistSharePath, type WaitlistResult, type WaitlistState } from "@/lib/waitlist";
 
 import styles from "./waitlist.module.css";
@@ -57,6 +58,7 @@ function WaitlistForm({ location, coverage, submit, initialState = "empty", init
   const emailRef = useRef<HTMLInputElement>(null);
   const suburbRef = useRef<HTMLInputElement>(null);
   const online = useOnlineStatus();
+  const [wait, setWait] = useState<number>();
   const offline = !online || initialState === "offline";
   const toast = useToast();
 
@@ -77,13 +79,13 @@ function WaitlistForm({ location, coverage, submit, initialState = "empty", init
       return;
     }
     pending.current = true;
-    setField(undefined); setState("loading");
+    setField(undefined); setWait(undefined); setState("loading");
     const form = new FormData();
     form.set("email", parsed.data.email); form.set("suburb", parsed.data.suburb);
     try {
       const result = await submit(form);
       setState(result.status);
-      if (result.status === "error") setField(result.field);
+      if (result.status === "error") { setField(result.field); setWait(result.retryAfter); }
     } catch { setState("error"); } finally { pending.current = false; }
   }
 
@@ -112,7 +114,7 @@ function WaitlistForm({ location, coverage, submit, initialState = "empty", init
         </div>
       </form>
       {offline && <Banner className={styles.message} tone="alert" title="You’re offline." live />}
-      {state === "error" && !field && !offline && <Banner className={styles.message} tone="alert" title="Try again." live />}
+      {state === "error" && !field && !offline && <Banner className={styles.message} tone="alert" title={wait ? "Too many tries." : "Try again."} live>{wait ? tryAgainText(wait) : null}</Banner>}
       {success && <Banner className={`${styles.message} tm-anim-rise`} tone="good" title={state === "joined" ? "You’re on the list." : "You’re on it."} live
         action={<Button className={styles.copy} variant="tertiary" onClick={copy}>copy link</Button>} />}
       {copyError && <Banner className={styles.message} tone="alert" title="Try again." live />}

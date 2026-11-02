@@ -1000,3 +1000,16 @@ model HelpArticleFeedback {
   @@unique([articleSlug, voterKey])
   @@map("help_article_feedback")
 }
+
+// Rate limits (#111): counts per window, keyed by an HMAC digest (never an IP or user id). Server-only; rows are
+// deleted after "expires_at". William reviews this table before migration.
+model RateLimitBucket {
+  key         String   @db.VarChar(64)
+  windowStart DateTime @map("window_start") @db.Timestamptz
+  count       Int      @default(1)
+  expiresAt   DateTime @map("expires_at") @db.Timestamptz
+
+  @@id([key, windowStart])
+  @@index([expiresAt])
+  @@map("rate_limit_buckets")
+}

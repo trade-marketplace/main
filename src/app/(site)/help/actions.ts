@@ -1,11 +1,14 @@
 "use server";
 import { createHash, randomUUID } from "node:crypto";
 import { cookies } from "next/headers";
-import type { HelpFeedbackInput } from "@/lib/help";
+import type { HelpFeedbackInput, HelpFeedbackResult } from "@/lib/help";
 import { loadHelpArticles } from "@/server/help/articles";
 import { recordHelpFeedback } from "@/server/help/feedback";
+import { consumeForClient } from "@/server/rate-limit";
 
-export async function saveHelpFeedback(input: HelpFeedbackInput) {
+export async function saveHelpFeedback(input: HelpFeedbackInput): Promise<HelpFeedbackResult> {
+  const limit = await consumeForClient("helpFeedback");
+  if (!limit.allowed) return { status: "error", retryAfter: limit.retryAfter };
   const jar = await cookies();
   let token = jar.get("trade-help-voter")?.value;
   if (!token || !/^[a-f0-9-]{36}$/.test(token)) {

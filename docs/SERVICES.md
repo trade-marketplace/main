@@ -61,6 +61,7 @@ Used for (DECISIONS.md #58–#61):
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | browser + server | no (public by design, protected by row-level security) |
 | `SUPABASE_SECRET_KEY` | server only (seed scripts) | **yes** |
 | `MAPBOX_ACCESS_TOKEN` | server only | yes |
+| `RATE_LIMIT_SECRET` | server only (scrambles rate-limit keys, #111) | **yes** |
 | `DATABASE_URL` (pooled) / `DIRECT_URL` | server, migrations | **yes** |
 
 

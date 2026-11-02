@@ -7,6 +7,7 @@ import { RECOVERY_COOLDOWN_SECONDS, type RecoverySaveResult, type RecoverySendRe
 import { finishRecovery, saveRecoveryPassword, sendRecovery } from "@/server/auth/password-recovery";
 import { clearRecovery, pendingRecovery, RECOVERY_PENDING_COOKIE, RECOVERY_SAVED_COOKIE, recoveryClient, recoveryEmailUrl } from "@/server/auth/recovery";
 import { verificationAuth } from "@/server/auth/verification";
+import { consumeForClient } from "@/server/rate-limit";
 import { authCookieOptions, createSupabaseServerClient } from "@/server/supabase";
 
 export async function requestRecoveryAction(email: string, next?: string): Promise<RecoverySendResult> {
@@ -15,6 +16,8 @@ export async function requestRecoveryAction(email: string, next?: string): Promi
     if (pending?.email.toLowerCase() === email.trim().toLowerCase() && pending.retryAt > Date.now()) {
       return { ok: false, error: "try-later", retryAt: Math.min(pending.retryAt, Date.now() + RECOVERY_COOLDOWN_SECONDS * 1_000) };
     }
+    const limit = await consumeForClient("passwordReset");
+    if (!limit.allowed) return { ok: false, error: "try-later", retryAt: Date.now() + limit.retryAfter * 1_000 };
     const result = await sendRecovery(verificationAuth(), email, recoveryEmailUrl(next));
     if (result.ok || result.error === "try-later") {
       const jar = await cookies();

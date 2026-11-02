@@ -81,7 +81,7 @@ export type SignUpResult =
   | { ok: true; status: "signed-in"; role: Role; redirectTo: string }
   | { ok: true; status: "check-email"; email: string }
   | { ok: false; error: "invalid"; fieldErrors: FieldErrors<SignUpField>; values: Record<string, string> }
-  | { ok: false; error: "email-taken" | "try-later" | "unavailable"; values: Record<string, string> };
+  | { ok: false; error: "email-taken" | "try-later" | "unavailable"; values: Record<string, string>; /** `try-later` from our own rate limit: seconds to wait (#111). */ retryAfter?: number };
 
 /**
  * - `wrong-credentials`: one message for a wrong email or a wrong password, so it doesn't reveal who has an
@@ -96,6 +96,8 @@ export type LogInResult =
       ok: false;
       error: "wrong-credentials" | "email-not-verified" | "try-later" | "unavailable";
       values: { email: string };
+      /** `try-later` from our own rate limit: seconds to wait (#111). */
+      retryAfter?: number;
     };
 
 // ---------------------------------------------------------------- input
