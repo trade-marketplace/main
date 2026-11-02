@@ -9,6 +9,13 @@ describe.skipIf(!testDatabaseUrl)("rate limits in a migrated disposable schema (
   it("counts simultaneous tries exactly, stores no address, and clears finished windows", async () => {
     const store = prismaRateLimitStore(schema.db);
     const deps = { store, now: () => Date.UTC(2026, 10, 2, 10, 0, 0), secret: "s" };
+    // Straight to the store first: consume() fails open, which would hide a broken query.
+    const probe = "f".repeat(64);
+    const window = new Date(deps.now());
+    expect(await store.hit(probe, window, new Date(deps.now() + 1_000))).toBe(1);
+    expect(await store.hit(probe, window, new Date(deps.now() + 1_000))).toBe(2);
+    expect(await store.count(probe, window)).toBe(2);
+    await store.purge(new Date(deps.now() + 2_000));
     const results = await Promise.all(Array.from({ length: 12 }, () => consume("areaWaitlist", "ip:203.0.113.9", deps)));
     expect(results.filter((r) => r.allowed)).toHaveLength(10);
     expect((await check("areaWaitlist", "ip:203.0.113.9", deps)).allowed).toBe(false);
