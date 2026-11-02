@@ -30,4 +30,6 @@ licence when required, and a work area containing the job receive them. A typed 
 location check before area matching.
 
 The migration adds server-only `job_drafts` (RLS enabled, no browser grants/policies) and nullable unique
-`jobs.post_key`. William reviews the schema and authorization changes before merge.
+`jobs.post_key`. The C03 no-photo path is allowed and sets `jobs.photos_need_check` for office review, also recorded
+in the posting audit; any supplied photo must still have finished uploading. William reviews the schema and
+authorization changes before merge.

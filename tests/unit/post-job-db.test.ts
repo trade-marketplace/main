@@ -109,8 +109,19 @@ describe.skipIf(!testDatabaseUrl)("drafts and posting a job (database)", () => {
     expect(await post(customer, data, key, { photoExists: async () => false })).toEqual({ status: "photos-pending" });
     expect(await post(customer, data, key, { photoExists: async () => { throw new Error("storage unavailable"); } })).toEqual({ status: "photos-pending" });
     expect(await post(customer, { ...data, photoPaths: [`drafts/${randomUUID()}/${key}/${"a".repeat(32)}.webp`] }, key)).toEqual({ status: "photos-pending" });
-    expect(await post(customer, { ...data, photoPaths: [] }, key)).toMatchObject({ status: "invalid", fields: { photoPaths: "Add some photos" } });
     expect(await loadDraft(schema.db, customer)).not.toBeNull();
+  });
+
+  it("allows the C03 no-photo path and persists its office review flag", async () => {
+    const customer = await person(); const key = randomUUID();
+    const photoExists = vi.fn(async () => true);
+    const result = await post(customer, { ...input(customer, key), photoPaths: [] }, key, { photoExists });
+    expect(result.status).toBe("posted"); if (result.status !== "posted") return;
+    expect(photoExists).not.toHaveBeenCalled();
+    const job = await schema.db.job.findUniqueOrThrow({ where: { id: result.jobId }, include: { photos: true } });
+    expect(job).toMatchObject({ status: "REVIEW", photosNeedCheck: true, photos: [] });
+    const audit = await schema.db.auditLog.findFirstOrThrow({ where: { action: "job.posted", recordId: job.id } });
+    expect(audit.after).toMatchObject({ photosNeedCheck: true });
   });
 
   it("uses the postJob rate limit without creating a job or deleting a draft", async () => {

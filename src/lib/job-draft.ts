@@ -32,7 +32,6 @@ const fields = {
 export const jobDraftSchema = z.object(fields).partial().strict();
 export type JobDraft = z.infer<typeof jobDraftSchema>;
 export const postJobSchema = z.object({ ...fields, asap: fields.asap.default(false), anyTime: fields.anyTime.default(false), timeWindows: fields.timeWindows.default([]) }).strict().superRefine((data, ctx) => {
-  if (!data.photoPaths.length) ctx.addIssue({ code: "custom", path: ["photoPaths"], message: "Add some photos" });
   if (data.locationSource !== "TYPED" && !data.point) {
     ctx.addIssue({ code: "custom", path: ["point"], message: "Address" });
   }

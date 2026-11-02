@@ -20,10 +20,10 @@ describe("the shared job draft schema", () => {
     expect(jobDraftSchema.safeParse({ description: "short" }).success).toBe(false);
     expect(jobDraftSchema.safeParse({ customerId: randomUUID() }).success).toBe(false);
   });
-  it("requires complete details and a maximum of six unique photos at post time", () => {
+  it("requires complete details and allows zero through six unique photos at post time", () => {
     const data = { description: "Move a sofa upstairs", category: "OTHER", photoPaths: ["a"], addressLine1: "1 Example St", suburb: "Gladstone", city: "Invercargill", locationSource: "TYPED", anyTime: true };
     expect(postJobSchema.safeParse(data).success).toBe(true);
-    expect(postJobSchema.safeParse({ ...data, photoPaths: [] }).success).toBe(false);
+    expect(postJobSchema.safeParse({ ...data, photoPaths: [] }).success).toBe(true);
     expect(postJobSchema.safeParse({ ...data, photoPaths: ["a", "a"] }).success).toBe(false);
     expect(postJobSchema.safeParse({ ...data, photoPaths: Array.from({ length: 7 }, (_, i) => String(i)) }).success).toBe(false);
     expect(postJobSchema.safeParse({ ...data, locationSource: "PIN" }).success).toBe(false);

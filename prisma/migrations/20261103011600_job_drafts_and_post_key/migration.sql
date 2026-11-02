@@ -19,4 +19,5 @@ BEGIN
 END
 $roles$;
 ALTER TABLE "jobs" ADD COLUMN "post_key" uuid;
+ALTER TABLE "jobs" ADD COLUMN "photos_need_check" boolean NOT NULL DEFAULT false;
 CREATE UNIQUE INDEX "jobs_post_key_key" ON "jobs"("post_key");

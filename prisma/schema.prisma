@@ -315,6 +315,8 @@ model Job {
   // Shown as TM-1001 (also the order number for supplier accounts). Starts at 1001.
   jobNumber          Int             @unique @default(autoincrement()) @map("job_number")
   postKey            String?         @unique @map("post_key") @db.Uuid
+  // C03 permits no photos, but asks the office to check the job before it is priced.
+  photosNeedCheck    Boolean         @default(false) @map("photos_need_check")
   customerId         String          @map("customer_id") @db.Uuid
   customer           Profile         @relation("JobCustomer", fields: [customerId], references: [id], onDelete: Restrict)
   category           Trade

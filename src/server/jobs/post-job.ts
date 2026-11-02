@@ -84,7 +84,7 @@ export async function postJob(db: PrismaClient, viewer: Viewer | null, input: un
       return { status: "photos-pending" };
     }
     const job = await createJobInReview(tx, viewer.userId, {
-      postKey, category: data.category,
+      postKey, category: data.category, photosNeedCheck: data.photoPaths.length === 0,
       title: data.description.split("\n")[0].slice(0, 100), description: data.description,
       addressLine1: data.addressLine1, addressLine2: data.addressLine2,
       suburb: data.suburb, city: data.city, postcode: data.postcode,
@@ -94,7 +94,7 @@ export async function postJob(db: PrismaClient, viewer: Viewer | null, input: un
     await tx.jobPhoto.createMany({ data: data.photoPaths.map((path, position) => ({ jobId: job.id, path, position, uploadedById: viewer.userId })) });
     if (data.timeWindows.length) await tx.jobTimeWindow.createMany({ data: data.timeWindows.map((window) => ({ jobId: job.id, date: new Date(`${window.date}T00:00:00Z`), timeOfDay: window.timeOfDay })) });
     await tx.jobDraft.deleteMany({ where: { profileId: viewer.userId } });
-    await createAudit(tx)(viewer, "job.posted", { type: "jobs", id: job.id }, null, { status: "REVIEW", category: job.category });
+    await createAudit(tx)(viewer, "job.posted", { type: "jobs", id: job.id }, null, { status: "REVIEW", category: job.category, photosNeedCheck: job.photosNeedCheck });
     return { status: "posted", jobId: job.id, jobNumber: job.jobNumber };
   }, { timeout: 20_000 });
 
