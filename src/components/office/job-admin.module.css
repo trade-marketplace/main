@@ -8,6 +8,8 @@
 .crumbs a:hover { color: var(--trade-link); text-decoration: underline; }
 
 .head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--trade-space-3); }
+/* When the Actions menu wraps under the title (phones), keep it on the right so its menu opens on screen. */
+.head > :last-child { margin-left: auto; }
 .headText { min-width: 0; }
 .title {
   margin: 0;
