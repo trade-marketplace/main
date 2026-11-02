@@ -23,6 +23,7 @@ import type { Point } from "@/lib/geo/distance";
 import { GEO_ASKED_KEY, LANDING_DRAFT_KEY, LANDING_QUERY_MAX, LANDING_LOCATION_MAX, jobStartPath, type LandingData, type LandingLocation } from "@/lib/landing";
 import { staggerStyle } from "@/lib/motion/helpers";
 import { useOncePerEvent, useParallax } from "@/lib/motion/hooks";
+import { LANDING_FAQ as FAQ } from "@/lib/site-faqs";
 import { searchLandingPlacesAction } from "@/server/landing-actions";
 import type { AddressSearchResult } from "@/server/geo/address-search";
 
@@ -39,12 +40,6 @@ const PROMISES = [
   { icon: "sell", text: "One fair, fixed price", detail: "You see the price before anyone turns up. That's what you pay." },
   { icon: "verified", text: "Checked, local tradies", detail: "Licences checked by hand. Rated by people near you." },
   { icon: "photo_camera", text: "No surprise bills", detail: "Extra work? You see photos and the cost and say yes first." },
-];
-const FAQ = [
-  ["Is it really free to post?", "Yes. Posting and getting a price is free. You only pay if you accept the price."],
-  ["Who are the tradies?", "Local tradies and workers. Restricted work needs a licence checked by the office."],
-  ["What if the job needs more work?", "Your tradie sends photos and details of the extra work. You see the price and say yes before it starts."],
-  ["When do I pay?", "You pay when you accept the fixed price. If you don't want to go ahead, say no. Posting your job costs nothing."],
 ];
 let browserLocation: Promise<Point | null> | undefined;
 function locationOnce(): Promise<Point | null> {

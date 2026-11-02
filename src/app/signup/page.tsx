@@ -3,8 +3,9 @@
 import type { Metadata } from "next";
 
 import { SignupChoice } from "@/components/auth/SignupChoice";
+import { privateMetadata } from "@/lib/metadata";
 
-export const metadata: Metadata = { title: "Create account" };
+export const metadata: Metadata = { ...privateMetadata, title: "Create account", description: "Create an account to post a job or find work near you.", alternates: { canonical: "/signup" } };
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 

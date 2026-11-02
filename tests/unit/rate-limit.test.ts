@@ -47,8 +47,8 @@ describe("rate limits (#111)", () => {
   it("stores only a digest: no address or user id, and a different secret gives a different key", async () => {
     const keys: string[] = [];
     const spy: RateLimitStore = { hit: async (key) => (keys.push(key), 1), count: async () => 0, purge: async () => {} };
-    await consume("signUp", "ip:203.0.113.7", { store: spy, secret: "one" });
-    await consume("signUp", "ip:203.0.113.7", { store: spy, secret: "two" });
+    await consume("signUp", "ip:203.0.113.7", { store: spy, secret: "one", now: () => T0 });
+    await consume("signUp", "ip:203.0.113.7", { store: spy, secret: "two", now: () => T0 });
     expect(keys[0]).toMatch(/^[a-f0-9]{64}$/);
     expect(keys[0]).not.toContain("203");
     expect(keys[0]).not.toBe(keys[1]);
