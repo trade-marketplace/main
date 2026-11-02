@@ -12,7 +12,14 @@ describe("parseEnv", () => {
       supabase: { enabled: false },
       fieldEncryption: { enabled: false },
       mapbox: { enabled: false },
+      scheduler: { enabled: false },
     });
+  });
+
+  it("turns the scheduler on with a long enough secret and rejects a short one", () => {
+    const secret = "s".repeat(32);
+    expect(parseEnv({ SCHEDULER_SECRET: secret })).toMatchObject({ scheduler: { enabled: true, secret } });
+    expect(() => parseEnv({ SCHEDULER_SECRET: "short" })).toThrow(/SCHEDULER_SECRET/);
   });
 
   it("treats empty values copied from .env.example as unset", () => {

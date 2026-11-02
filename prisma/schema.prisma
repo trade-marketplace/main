@@ -362,6 +362,7 @@ model Job {
   review        Review?
   problems      ProblemReport[]
   support       SupportThread[]
+  scheduledMarks ScheduledJobMark[]
 
   // Job board and office queues by status and trade; the map by status and location.
   @@index([status, category])
@@ -999,4 +1000,21 @@ model HelpArticleFeedback {
   updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz
   @@unique([articleSlug, voterKey])
   @@map("help_article_feedback")
+}
+
+// ---------------------------------------------------------------- Scheduled jobs (#99)
+
+// One row each time the scheduled-jobs runner (src/server/scheduler) has done a once-only, time-based thing for a
+// job: `bounty.expired`, `job.unclaimed`, `price.slow` (the "taking longer than 24h" banner) or `review.reminded`.
+// The primary key is what makes a rule safe to run twice or late: the second insert finds the row and does nothing.
+// Only the server reads this table: no Data API policy.
+model ScheduledJobMark {
+  rule     String
+  jobId    String   @map("job_id") @db.Uuid
+  job      Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  markedAt DateTime @default(now()) @map("marked_at") @db.Timestamptz
+
+  @@id([rule, jobId])
+  @@index([jobId])
+  @@map("scheduled_job_marks")
 }
