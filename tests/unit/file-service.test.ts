@@ -1,11 +1,11 @@
 import sharp from "sharp";
 import { describe, expect, it, vi } from "vitest";
 
-import { canViewJobFiles } from "@/server/uploads/access";
-import { detectFileKind } from "@/server/uploads/file-type";
-import { MAX_UPLOAD_BYTES } from "@/server/uploads/images";
-import { createUploadService, type UploadDb } from "@/server/uploads/service";
-import type { FileStore } from "@/server/uploads/storage";
+import { canViewJobFiles } from "@/server/files/access";
+import { detectFileKind } from "@/server/files/file-type";
+import { MAX_UPLOAD_BYTES } from "@/server/files/images";
+import { createUploadService, type UploadDb } from "@/server/files/service";
+import type { FileStore } from "@/server/files/storage";
 
 // A fake iPhone decoder: real HEVC decoding is the library's job, ours is the wiring around it.
 vi.mock("heic-decode", () => ({

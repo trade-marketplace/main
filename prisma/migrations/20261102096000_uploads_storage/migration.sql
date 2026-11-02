@@ -21,7 +21,7 @@ BEGIN
 
   -- Files are written by the server with the secret key (which skips these policies). Nobody gets insert, update or
   -- delete from the browser. Reading is allowed to exactly the people who may see the job (mirrors
-  -- src/server/uploads/access.ts); the app hands out signed links, and these stop anyone listing or fetching around it.
+  -- src/server/files/access.ts); the app hands out signed links, and these stop anyone listing or fetching around it.
   DROP POLICY IF EXISTS "Job photos readable by people who can see the job" ON storage.objects;
   CREATE POLICY "Job photos readable by people who can see the job" ON storage.objects FOR SELECT TO authenticated
     USING (
