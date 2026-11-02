@@ -11,7 +11,7 @@ import { calculatePayout } from "@/server/payouts/calculate";
 import { checkPayrollDetails, type PayrollDetailsCheck } from "@/server/payouts/queue-payout";
 
 /** Just the parts of Prisma this read uses, so tests pass a fake and nothing connects to a database. */
-export type EarningsDatabase = Pick<PrismaClient, "payout" | "job" | "payrollDetails">;
+export type EarningsDatabase = { payout: Pick<PrismaClient["payout"], "findMany" | "count">; job: Pick<PrismaClient["job"], "findMany">; payrollDetails: Pick<PrismaClient["payrollDetails"], "findUnique"> };
 
 export type EarningsData = {
   view: EarningsView;
@@ -35,6 +35,7 @@ export async function loadEarnings(db: EarningsDatabase, workerId: string, now: 
         holidayPayCents: true,
         status: true,
         createdAt: true,
+        exportedAt: true,
         paidAt: true,
         job: { select: { jobNumber: true, title: true } },
       },
@@ -67,6 +68,7 @@ export async function loadEarnings(db: EarningsDatabase, workerId: string, now: 
     holidayPayCents: payout.holidayPayCents,
     status: payout.status,
     createdAt: payout.createdAt.toISOString(),
+    exportedAt: payout.exportedAt?.toISOString() ?? null,
     paidAt: payout.paidAt?.toISOString() ?? null,
   }));
 
@@ -93,5 +95,9 @@ export async function loadEarnings(db: EarningsDatabase, workerId: string, now: 
     }
   }
 
-  return { view: buildEarnings({ payouts: records, waiting, now }), payrollDetails: checkPayrollDetails(details) };
+  // The page lists a limited stretch of history. Someone paid long ago, with nothing since, isn't new: only a tradie
+  // who has never had a payout sees "No earnings yet".
+  const hadEarnings = records.length === 0 && waiting.length === 0 ? (await db.payout.count({ where: { workerId } })) > 0 : false;
+
+  return { view: buildEarnings({ payouts: records, waiting, now, hadEarnings }), payrollDetails: checkPayrollDetails(details) };
 }

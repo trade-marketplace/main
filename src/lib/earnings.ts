@@ -18,6 +18,8 @@ export const CHART_WEEKS = 8;
 
 /** The id of the not-yet-paid payroll in the URL (`/earnings?payroll=next`). Paid ones use their date. */
 export const NEXT_PAYROLL_ID = "next";
+/** The id of a queued payroll whose payday has passed (`queued-2026-10-30`). */
+export const LATE_PREFIX = "queued-";
 
 export type PayoutRecord = {
   id: string;
@@ -31,6 +33,8 @@ export type PayoutRecord = {
   status: "QUEUED" | "EXPORTED" | "PAID";
   /** When the customer signed the job off and the payout was queued (ISO). */
   createdAt: string;
+  /** When it was sent to payroll in an export (ISO). EXPORTED and PAID payouts have one. */
+  exportedAt?: string | null;
   /** When payroll confirmed it (ISO). Only PAID payouts have one. */
   paidAt: string | null;
 };
@@ -72,6 +76,8 @@ export type Payroll = {
   /** "7 Nov": the title of the detail view and the phone's "Payroll 31 Oct". */
   short: string;
   status: "Queued" | "Paid";
+  /** Queued, but sent to payroll for an earlier payday that payroll hasn't confirmed yet. It keeps that date. */
+  late: boolean;
   totalCents: number;
   lines: PayoutLine[];
 };
@@ -92,7 +98,7 @@ export type EarningsView = {
   next: { label: string; totalCents: number; jobs: number };
   waiting: { totalCents: number; jobs: number; items: WaitingJob[] };
   weeks: Week[];
-  /** The next payroll first (when anything is queued), then paid ones, newest first. */
+  /** The next payroll first (when anything is queued), then the rest by payday, newest first. */
   payrolls: Payroll[];
   /** Nothing earned and nothing on its way: the Empty state. */
   isEmpty: boolean;
@@ -193,7 +199,18 @@ export function payoutLine(payout: PayoutRecord): PayoutLine {
 
 const sum = (values: readonly number[]) => values.reduce((total, value) => total + value, 0);
 
-export function buildEarnings({ payouts, waiting, now }: { payouts: readonly PayoutRecord[]; waiting: readonly WaitingJob[]; now: Date }): EarningsView {
+export function buildEarnings({
+  payouts,
+  waiting,
+  now,
+  hadEarnings = false,
+}: {
+  payouts: readonly PayoutRecord[];
+  waiting: readonly WaitingJob[];
+  now: Date;
+  /** The tradie has been paid before, even if none of it is in `payouts` (older than the page lists). */
+  hadEarnings?: boolean;
+}): EarningsView {
   const today = nzDay(now);
   const month = today.slice(0, 7);
 
@@ -203,34 +220,43 @@ export function buildEarnings({ payouts, waiting, now }: { payouts: readonly Pay
   const paidThisMonth = paid.filter((payout) => nzDay(payout.paidAt as string).startsWith(month));
   const payday = nextPayday(today);
 
-  const payrolls: Payroll[] = [];
-  if (unpaid.length > 0) {
-    const ordered = [...unpaid].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
-    payrolls.push({
-      id: NEXT_PAYROLL_ID,
-      label: weekdayDayMonth(payday),
-      short: dayMonth(payday),
-      status: "Queued",
+  // Queued payouts wait for the next payday. One already sent to payroll belongs to the payday it was sent for (the
+  // first Friday on or after the export); if that has passed and payroll hasn't confirmed it, it stays on that date
+  // rather than sliding to the next Friday.
+  const upcoming: PayoutRecord[] = [];
+  const overdue = new Map<string, PayoutRecord[]>();
+  for (const payout of unpaid) {
+    const day = payout.status === "EXPORTED" ? nextPayday(nzDay(payout.exportedAt ?? payout.createdAt)) : payday;
+    if (day < today) overdue.set(day, [...(overdue.get(day) ?? []), payout]);
+    else upcoming.push(payout);
+  }
+
+  const byCreated = (a: PayoutRecord, b: PayoutRecord) => a.createdAt.localeCompare(b.createdAt);
+  const payroll = (id: string, day: string, status: Payroll["status"], late: boolean, group: PayoutRecord[]): Payroll => {
+    const ordered = [...group].sort(byCreated);
+    return {
+      id,
+      label: weekdayDayMonth(day),
+      short: dayMonth(day),
+      status,
+      late,
       totalCents: sum(ordered.map(payoutTotal)),
       lines: ordered.map(payoutLine),
-    });
-  }
+    };
+  };
+
+  const payrolls: Payroll[] = [];
+  if (upcoming.length > 0) payrolls.push(payroll(NEXT_PAYROLL_ID, payday, "Queued", false, upcoming));
+  const earlier: { day: string; late: boolean; payroll: Payroll }[] = [];
+  for (const [day, group] of overdue) earlier.push({ day, late: true, payroll: payroll(`${LATE_PREFIX}${day}`, day, "Queued", true, group) });
   const byDay = new Map<string, PayoutRecord[]>();
   for (const payout of paid) {
     const day = nzDay(payout.paidAt as string);
     byDay.set(day, [...(byDay.get(day) ?? []), payout]);
   }
-  for (const day of [...byDay.keys()].sort().reverse()) {
-    const group = (byDay.get(day) as PayoutRecord[]).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
-    payrolls.push({
-      id: day,
-      label: weekdayDayMonth(day),
-      short: dayMonth(day),
-      status: "Paid",
-      totalCents: sum(group.map(payoutTotal)),
-      lines: group.map(payoutLine),
-    });
-  }
+  for (const [day, group] of byDay) earlier.push({ day, late: false, payroll: payroll(day, day, "Paid", false, group) });
+  earlier.sort((a, b) => b.day.localeCompare(a.day) || Number(b.late) - Number(a.late));
+  for (const entry of earlier) payrolls.push(entry.payroll);
 
   // The chart: what was signed off in each of the last eight weeks, queued or paid, this week last.
   const thisMonday = mondayOf(today);
@@ -256,7 +282,7 @@ export function buildEarnings({ payouts, waiting, now }: { payouts: readonly Pay
     waiting: { totalCents: sum(waiting.map((job) => job.totalCents)), jobs: waiting.length, items: [...waiting] },
     weeks,
     payrolls,
-    isEmpty: payouts.length === 0 && waiting.length === 0,
+    isEmpty: payouts.length === 0 && waiting.length === 0 && !hadEarnings,
   };
 }
 
@@ -286,7 +312,7 @@ export function parseEarningsQuery(params: Record<string, string | string[] | un
   const payroll = one(params.payroll)?.trim();
   return {
     state: (EARNINGS_STATES as readonly string[]).includes(state ?? "") ? (state as EarningsState) : "default",
-    payroll: payroll && (payroll === NEXT_PAYROLL_ID || /^\d{4}-\d{2}-\d{2}$/.test(payroll)) ? payroll : null,
+    payroll: payroll && (payroll === NEXT_PAYROLL_ID || /^(queued-)?\d{4}-\d{2}-\d{2}$/.test(payroll)) ? payroll : null,
   };
 }
 

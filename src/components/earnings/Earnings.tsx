@@ -27,6 +27,7 @@ import {
   type EarningsView,
   formatCents,
   jobsText,
+  NEXT_PAYROLL_ID,
   type Payroll,
   STATEMENT_PATH,
   weekName,
@@ -162,8 +163,10 @@ export function Earnings({
     );
   }
 
-  const next = view.payrolls.find((item) => item.id === "next") ?? null;
+  const next = view.payrolls.find((item) => item.id === NEXT_PAYROLL_ID) ?? null;
   const paid = view.payrolls.filter((item) => item.status === "Paid");
+  // Queued for an earlier payday that payroll hasn't confirmed: it keeps its date instead of sliding to the next one.
+  const overdue = view.payrolls.filter((item) => item.late);
   const open = view.payrolls.find((item) => item.id === payroll) ?? null;
   const missingDetails = payrollDetails && !payrollDetails.complete && (view.next.jobs > 0 || view.waiting.jobs > 0);
 
@@ -267,6 +270,30 @@ export function Earnings({
           </section>
         )}
 
+        {overdue.length > 0 && (
+          <section aria-labelledby="queued-heading" className={styles.list}>
+            <h2 id="queued-heading" className={styles.listTitle}>
+              Queued
+            </h2>
+            <ul className={styles.rows}>
+              {overdue.map((item) => (
+                <li key={item.id} className={styles.row}>
+                  <div className={styles.rowText}>
+                    <Link className={styles.rowLink} href={href(item.id)}>
+                      Payroll {item.short}
+                    </Link>
+                    <span className={styles.caption}>{jobsText(item.lines.length)}</span>
+                  </div>
+                  <div className={styles.rowAmount}>
+                    <b>{money(item.totalCents)}</b>
+                    <Pill kind="waiting">Queued</Pill>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
         {paid.length > 0 && (
           <section aria-labelledby="paid-heading" className={styles.list}>
             <h2 id="paid-heading" className={styles.listTitle}>
@@ -345,7 +372,7 @@ function PayrollDrawer({ payroll, onClose }: { payroll: Payroll | null; onClose:
       open={payroll !== null}
       onClose={onClose}
       eyebrow={shown && <span className={styles.eyebrow}>{payrollPill(shown)}</span>}
-      title={shown ? (shown.status === "Paid" ? `Payroll ${shown.short}` : `Next payroll · ${shown.label}`) : "Payroll"}
+      title={shown ? (shown.id === NEXT_PAYROLL_ID ? `Next payroll · ${shown.label}` : `Payroll ${shown.short}`) : "Payroll"}
     >
       {shown && (
         <>

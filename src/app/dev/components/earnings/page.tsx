@@ -1,5 +1,5 @@
 // /dev/components/earnings: the tradie's Earnings page (#165, D12) in every state, with pretend payouts and no
-// database. Flags: ?state=default|empty|loading|error|long|no-paid · ?payroll=next|2026-10-30 (the detail drawer
+// database. Flags: ?state=default|empty|loading|error|long|no-paid|late · ?payroll=next|2026-10-30 (the detail drawer
 // open) · ?details=missing (payroll has no bank / IRD details yet).
 // Development only: in a production build this page is a 404. Names, hours and amounts are examples.
 import type { Metadata, Viewport } from "next";

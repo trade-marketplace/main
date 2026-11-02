@@ -141,11 +141,32 @@ describe("what the page shows", () => {
   });
 
   it("a payout that is queued or on its way to payroll says Queued, never Paid", () => {
-    const view = buildEarnings({ payouts: [payout(), payout({ status: "EXPORTED" })], waiting: [], now: NOW });
+    // Sent to payroll on Monday 2 November for the Friday run.
+    const exported = payout({ status: "EXPORTED", exportedAt: "2026-11-01T20:00:00Z" });
+    const view = buildEarnings({ payouts: [payout(), exported], waiting: [], now: NOW });
     expect(view.payrolls).toHaveLength(1);
-    expect(view.payrolls[0]).toMatchObject({ id: "next", status: "Queued", label: "Fri 6 Nov", totalCents: 30240 });
+    expect(view.payrolls[0]).toMatchObject({ id: "next", status: "Queued", label: "Fri 6 Nov", late: false, totalCents: 30240 });
     expect(view.payrolls[0].lines).toHaveLength(2);
     expect(view.paidThisMonth.totalCents).toBe(0);
+  });
+
+  it("a payout sent to payroll for a payday that has passed keeps that date instead of sliding to the next Friday", () => {
+    // Exported on Tuesday 27 October for Friday 30 October; payroll hasn't confirmed it by Monday 2 November.
+    const stuck = payout({ id: "stuck", status: "EXPORTED", exportedAt: "2026-10-26T20:00:00Z" });
+    const view = buildEarnings({ payouts: [payout(), stuck, paid("2026-10-30T02:00:00Z")], waiting: [], now: NOW });
+    expect(view.payrolls.map((p) => [p.id, p.status, p.late, p.label, p.lines.length])).toEqual([
+      ["next", "Queued", false, "Fri 6 Nov", 1],
+      ["queued-2026-10-30", "Queued", true, "Fri 30 Oct", 1],
+      ["2026-10-30", "Paid", false, "Fri 30 Oct", 1],
+    ]);
+    expect(view.paidThisMonth.totalCents).toBe(0);
+    // It is still money on its way, so it is in the next payroll's figure.
+    expect(view.next).toMatchObject({ jobs: 2, totalCents: 30240 });
+  });
+
+  it("only a stuck payout, nothing new queued: there is no 'next' row, just the one that kept its date", () => {
+    const view = buildEarnings({ payouts: [payout({ status: "EXPORTED", exportedAt: "2026-10-26T20:00:00Z" })], waiting: [], now: NOW });
+    expect(view.payrolls.map((p) => p.id)).toEqual(["queued-2026-10-30"]);
   });
 
   it("groups paid payouts into one payroll for each day they were paid, newest first, after the queued one", () => {
@@ -205,6 +226,10 @@ describe("what the page shows", () => {
     expect(buildEarnings({ payouts: [payout()], waiting: [], now: NOW }).isEmpty).toBe(false);
   });
 
+  it("someone paid long ago, with nothing in the stretch the page lists, is not new", () => {
+    expect(buildEarnings({ payouts: [], waiting: [], now: NOW, hadEarnings: true }).isEmpty).toBe(false);
+  });
+
   it("a payout's total is its gross plus holiday pay, the same as the payout maths", () => {
     const amounts = calculatePayout({ jobMinutes: 150, approvedExtraMinutes: [], workerRateCents: 7000, holidayPayBps: 800 });
     const [line] = buildEarnings({ payouts: [payout({ grossCents: amounts.grossCents, holidayPayCents: amounts.holidayPayCents })], waiting: [], now: NOW }).payrolls[0].lines;
@@ -217,6 +242,7 @@ describe("the URL", () => {
     expect(parseEarningsQuery({})).toEqual({ state: "default", payroll: null });
     expect(parseEarningsQuery({ state: "empty", payroll: "next" })).toEqual({ state: "empty", payroll: "next" });
     expect(parseEarningsQuery({ payroll: "2026-10-30" }).payroll).toBe("2026-10-30");
+    expect(parseEarningsQuery({ payroll: "queued-2026-10-30" }).payroll).toBe("queued-2026-10-30");
     expect(parseEarningsQuery({ state: "<script>", payroll: "../../etc" })).toEqual({ state: "default", payroll: null });
     expect(parseEarningsQuery({ state: ["error", "empty"] }).state).toBe("error");
   });
@@ -231,16 +257,17 @@ describe("the URL", () => {
 
 // ---- the database read ----------------------------------------------------------------------------------------
 
-function fakeDb(rows: { payouts?: unknown[]; jobs?: unknown[]; details?: unknown } = {}) {
+function fakeDb(rows: { payouts?: unknown[]; jobs?: unknown[]; details?: unknown; everPaid?: number } = {}) {
   const payoutFindMany = vi.fn(async () => rows.payouts ?? []);
+  const payoutCount = vi.fn(async () => rows.everPaid ?? 0);
   const jobFindMany = vi.fn(async () => rows.jobs ?? []);
   const detailsFind = vi.fn(async () => rows.details ?? null);
   const db = {
-    payout: { findMany: payoutFindMany },
+    payout: { findMany: payoutFindMany, count: payoutCount },
     job: { findMany: jobFindMany },
     payrollDetails: { findUnique: detailsFind },
   } as unknown as EarningsDatabase;
-  return { db, payoutFindMany, jobFindMany, detailsFind };
+  return { db, payoutFindMany, payoutCount, jobFindMany, detailsFind };
 }
 
 const dbPayout = (overrides: Record<string, unknown> = {}) => ({
@@ -251,6 +278,7 @@ const dbPayout = (overrides: Record<string, unknown> = {}) => ({
   holidayPayCents: 1120,
   status: "QUEUED",
   createdAt: new Date("2026-10-28T20:00:00Z"),
+  exportedAt: null,
   paidAt: null,
   job: { jobNumber: 1008, title: "Outdoor double plug" },
   ...overrides,
@@ -306,6 +334,23 @@ describe("reading one tradie's earnings", () => {
     expect(view.waiting.items.map((job) => job.jobNumber)).toEqual(["TM-1007"]);
     expect(log).toHaveBeenCalled();
     log.mockRestore();
+  });
+
+  it("someone paid long ago, with nothing in the listed stretch, isn't shown the first-earnings Empty state", async () => {
+    const { db, payoutCount } = fakeDb({ everPaid: 3 });
+    expect((await loadEarnings(db, "tradie-1", NOW)).view.isEmpty).toBe(false);
+    expect(payoutCount.mock.calls[0]).toMatchObject([{ where: { workerId: "tradie-1" } }]);
+    // A tradie who has never been paid still gets it, and one with rows to show doesn't need the extra read.
+    expect((await loadEarnings(fakeDb().db, "tradie-1", NOW)).view.isEmpty).toBe(true);
+    const busy = fakeDb({ payouts: [dbPayout()] });
+    await loadEarnings(busy.db, "tradie-1", NOW);
+    expect(busy.payoutCount).not.toHaveBeenCalled();
+  });
+
+  it("passes on when a payout was sent to payroll, so it can stay on its own payday", async () => {
+    const { db } = fakeDb({ payouts: [dbPayout({ status: "EXPORTED", exportedAt: new Date("2026-10-26T20:00:00Z") })] });
+    const { view } = await loadEarnings(db, "tradie-1", NOW);
+    expect(view.payrolls.map((p) => [p.id, p.late])).toEqual([["queued-2026-10-30", true]]);
   });
 
   it("says whether payroll has the tradie's bank, IRD and tax code", async () => {
@@ -448,6 +493,17 @@ describe("<Earnings>", () => {
     expect(words).toContain("TM-1005 · in progress");
     expect(words).toContain("After sign-off");
     expect(words).toContain("Payroll 30 Oct");
+  });
+
+  it("a payroll still Queued after its payday keeps its date, in the table and in the phone's Queued list", () => {
+    const stuck = payout({ id: "stuck", status: "EXPORTED", exportedAt: "2026-10-26T20:00:00Z", title: "Stuck job" });
+    const html = render(<Earnings view={view({ payouts: [stuck] })} />);
+    expect(html).toContain('href="/earnings?payroll=queued-2026-10-30"');
+    const words = text(html);
+    expect(words).toContain("Fri 30 Oct");
+    expect(words).toContain("Payroll 30 Oct");
+    expect(words).toMatch(/Queued Payroll 30 Oct 1 job \$151\.20 Queued/);
+    expect(text(render(<Earnings view={view({ payouts: [stuck] })} payroll="queued-2026-10-30" />))).toContain("Stuck job");
   });
 
   it("every bar has a name with its amount, and this week's is the Hi-Vis one", () => {

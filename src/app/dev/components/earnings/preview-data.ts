@@ -5,7 +5,7 @@ import { buildEarnings, type EarningsView, type PayoutRecord, type WaitingJob } 
 export const PREVIEW_NOW = new Date("2026-11-02T01:00:00Z");
 export const PREVIEW_BASE = "/dev/components/earnings";
 
-export const PREVIEW_STATES = ["default", "empty", "loading", "error", "long", "no-paid"] as const;
+export const PREVIEW_STATES = ["default", "empty", "loading", "error", "long", "no-paid", "late"] as const;
 export type PreviewState = (typeof PREVIEW_STATES)[number];
 
 export function isPreviewState(value: string | undefined): value is PreviewState {
@@ -53,5 +53,8 @@ export function previewView(state: PreviewState): EarningsView | null {
   if (state === "empty") return buildEarnings({ payouts: [], waiting: [], now: PREVIEW_NOW });
   const long = state === "long";
   const seeds = state === "no-paid" ? SEEDS.filter(([, , , , , paid]) => !paid) : SEEDS;
-  return buildEarnings({ payouts: seeds.map((seed) => payout(seed, long)), waiting: WAITING, now: PREVIEW_NOW });
+  const payouts = seeds.map((seed) => payout(seed, long));
+  // "late": sent to payroll on Tuesday 27 October for Friday 30 October, and payroll hasn't confirmed it yet.
+  if (state === "late") payouts.push({ ...payout(["c1", 984, "Spa pool wiring", 240, "2026-10-26T20:00:00Z", null], false), status: "EXPORTED", exportedAt: "2026-10-26T20:00:00Z" });
+  return buildEarnings({ payouts, waiting: WAITING, now: PREVIEW_NOW });
 }

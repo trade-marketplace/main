@@ -35,6 +35,8 @@ test.describe("/dev/components/earnings", () => {
         ["", (p) => expect(p.getByRole("heading", { name: lists })).toBeVisible()],
         ["?state=long", (p) => expect(p.getByRole("heading", { name: lists })).toBeVisible()],
         ["?state=no-paid", (p) => expect(p.getByRole("heading", { name: lists })).toBeVisible()],
+        ["?state=late", (p) => expect(p.getByRole("heading", { name: lists })).toBeVisible()],
+        ["?state=late&payroll=queued-2026-10-30", (p) => expect(p.getByRole("dialog").getByRole("heading", { name: "Payroll 30 Oct" })).toBeVisible()],
         ["?details=missing", (p) => expect(p.getByText("Add bank account & IRD number.")).toBeVisible()],
         ["?state=empty", (p) => expect(p.getByRole("heading", { name: "No earnings yet." })).toBeVisible()],
         ["?state=error", (p) => expect(p.getByRole("heading", { name: "Can’t load your earnings" })).toBeVisible()],
