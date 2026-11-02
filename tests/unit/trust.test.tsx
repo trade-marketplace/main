@@ -24,9 +24,10 @@ describe("Trust & safety", () => {
     expect(metadata.title).toBe("Trust & safety");
   });
 
-  it("says any job and Invercargill, not just sparkies", () => {
+  it("keeps the displayed area and describes trades and everyday jobs in search", () => {
     expect(text).toContain("Any kind of job, in Invercargill.");
-    expect(String(metadata.description)).toMatch(/any job in Invercargill/);
+    expect(String(metadata.description)).toContain("trades and everyday jobs");
+    expect(String(metadata.description)).not.toContain("Invercargill");
     expect(text).not.toMatch(/sparkie|electricians? only/i);
   });
 

@@ -8,7 +8,7 @@ import { verificationDestination, type VerificationState } from "@/lib/auth/veri
 import { getViewer } from "@/server/auth/viewer";
 import { pendingVerification, verificationTiming, VERIFICATION_COMPLETE_COOKIE } from "@/server/auth/verification";
 
-export const metadata: Metadata = { title: "Verify email", robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "Verify email", description: "Verify your email address to finish setting up your account.", alternates: { canonical: "/verify" }, robots: { index: false, follow: false } };
 
 export default async function VerifyPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const params = await searchParams;

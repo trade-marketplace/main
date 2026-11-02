@@ -12,7 +12,7 @@ test.describe("customer sign-up details", () => {
     test(`${viewport.width}px: fields, responsive layout and accessibility`, async ({ page }) => {
       await page.setViewportSize(viewport);
       await page.goto("/signup/customer");
-      await expect(page).toHaveTitle("Create account | Trade Marketplace");
+      await expect(page).toHaveTitle("Create a customer account | Trade Marketplace");
       await expect(page.getByLabel("Full name", { exact: false })).toBeVisible();
       await expect(page.getByLabel("Mobile", { exact: false })).toBeVisible();
       await expect(page.getByRole("radio", { name: /I need a job done/ })).toBeVisible({ visible: viewport.width >= 1024 });

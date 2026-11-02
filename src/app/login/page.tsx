@@ -4,8 +4,9 @@ import Link from "next/link";
 
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import { LoginForm } from "@/components/auth/LoginForm";
+import { privateMetadata } from "@/lib/metadata";
 
-export const metadata: Metadata = { title: "Log in" };
+export const metadata: Metadata = { ...privateMetadata, title: "Log in", description: "Log in to manage your jobs and account.", alternates: { canonical: "/login" } };
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 

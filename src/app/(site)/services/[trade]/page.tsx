@@ -3,7 +3,9 @@ import { notFound } from "next/navigation";
 import { cache, Suspense } from "react";
 
 import { ServiceLoading, ServicePage } from "@/components/site/ServicePage";
+import { StructuredData } from "@/components/site/StructuredData";
 import { CATEGORIES, isCategory, type Category } from "@/lib/cards";
+import { serviceStructuredData } from "@/lib/seo";
 import { loadService } from "@/server/services";
 
 import { joinServiceWaitlist } from "./actions";
@@ -33,5 +35,6 @@ export default async function Service({ params }: Props) {
 }
 
 async function ServiceContent({ trade }: { trade: Category }) {
-  return <ServicePage data={await readService(trade)} submit={joinServiceWaitlist} />;
+  const data = await readService(trade);
+  return <><StructuredData data={serviceStructuredData(data)} /><ServicePage data={data} submit={joinServiceWaitlist} /></>;
 }
