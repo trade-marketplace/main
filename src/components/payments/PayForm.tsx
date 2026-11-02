@@ -73,8 +73,9 @@ function tokenAppearance(): Appearance {
     },
     rules: {
       ".Label": { fontWeight: "700", fontSize: "14px", color: token("--trade-text") ?? "" },
-      ".Input": { borderColor: token("--trade-field-border") ?? "", boxShadow: "none", padding: "13px 12px" },
-      ".Input:focus": { borderColor: token("--trade-forest") ?? "", boxShadow: `0 0 0 2px ${token("--trade-signature") ?? "transparent"}` },
+      ".Input": { borderColor: token("--trade-field-stroke") ?? token("--trade-field-border") ?? "", boxShadow: "0 1px 2px rgb(12 37 29 / 5%)", padding: "13px 14px" },
+      ".Input:hover": { borderColor: token("--trade-field-border") ?? "" },
+      ".Input:focus": { borderColor: token("--trade-forest") ?? "", boxShadow: `0 0 0 3px ${token("--trade-tint") ?? "transparent"}` },
       ".Tab": { borderColor: token("--trade-line") ?? "", boxShadow: "none" },
       ".Tab--selected": { borderColor: token("--trade-forest") ?? "", boxShadow: `inset 0 0 0 1px ${token("--trade-forest") ?? ""}` },
     },

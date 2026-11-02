@@ -84,7 +84,7 @@
   display: flex;
   align-items: center;
   padding-inline: var(--trade-space-3);
-  border: 1px solid var(--trade-field-border);
+  border: 1px solid var(--trade-field-stroke, var(--trade-field-border));
   border-radius: var(--trade-radius-field);
   color: var(--trade-text-2);
 }
