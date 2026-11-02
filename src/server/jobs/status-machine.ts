@@ -413,6 +413,12 @@ const MAX_ATTEMPTS = 5;
 
 type Db = Pick<PrismaClient, "$transaction">;
 
+/** Initial state, inside the posting transaction. The existing INSERT trigger records null → REVIEW. */
+export async function createJobInReview(tx: Tx, customerId: string, data: Omit<Prisma.JobUncheckedCreateInput, "customerId" | "status" | "workerId" | "priceCents">) {
+  await tx.$queryRaw`SELECT set_config('app.actor_id', ${customerId}, true)`;
+  return tx.job.create({ data: { ...data, customerId, status: "REVIEW", workerId: null, priceCents: null } });
+}
+
 /** Runs one transition in its own database transaction. */
 export async function transitionJob(
   db: Db,

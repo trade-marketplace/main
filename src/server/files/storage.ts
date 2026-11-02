@@ -20,7 +20,9 @@ export type FileStore = {
   remove(bucket: string, paths: string[]): Promise<void>;
 };
 
-export function createSupabaseFileStore(env: Record<string, string | undefined> = process.env): FileStore {
+export type InspectableFileStore = FileStore & { exists(bucket: string, path: string): Promise<boolean> };
+
+export function createSupabaseFileStore(env: Record<string, string | undefined> = process.env): InspectableFileStore {
   const url = env.NEXT_PUBLIC_SUPABASE_URL?.trim();
   const secretKey = env.SUPABASE_SECRET_KEY?.trim();
   if (!url || !secretKey) {
@@ -29,6 +31,11 @@ export function createSupabaseFileStore(env: Record<string, string | undefined> 
   const storage = createClient(url, secretKey, { auth: { persistSession: false, autoRefreshToken: false } }).storage;
   const failed = () => new UploadError("storage-failed", MESSAGES.storageFailed);
   return {
+    async exists(bucket, path) {
+      const { data, error } = await storage.from(bucket).exists(path);
+      if (error) throw failed();
+      return data;
+    },
     async put(bucket, path, bytes, contentType) {
       const { error } = await storage.from(bucket).upload(path, bytes, { contentType, upsert: true });
       if (error) throw failed();

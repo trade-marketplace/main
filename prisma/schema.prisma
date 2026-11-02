@@ -99,6 +99,7 @@ model Profile {
   addresses        Address[]
   payrollDetails   PayrollDetails?
   jobsPosted       Job[]              @relation("JobCustomer")
+  jobDraft         JobDraft?
   jobsAssigned     Job[]              @relation("JobWorker")
   jobPhotos        JobPhoto[]
   estimates        Estimate[]
@@ -299,10 +300,21 @@ enum TimeOfDay {
 
 // A job a customer has posted. Customers see their own jobs, including the price they pay (`priceCents`).
 // What the worker earns and how the price was built are in `job_pricing`, which customers never see.
+// One private server draft per customer. Signed-out clients use the same shared JSON schema locally.
+model JobDraft {
+  profileId String @id @map("profile_id") @db.Uuid
+  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  data Json
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("job_drafts")
+}
+
 model Job {
   id                 String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   // Shown as TM-1001 (also the order number for supplier accounts). Starts at 1001.
   jobNumber          Int             @unique @default(autoincrement()) @map("job_number")
+  postKey            String?         @unique @map("post_key") @db.Uuid
   customerId         String          @map("customer_id") @db.Uuid
   customer           Profile         @relation("JobCustomer", fields: [customerId], references: [id], onDelete: Restrict)
   category           Trade
