@@ -24,23 +24,31 @@ export type RateLimitStore = {
 
 export type RateLimitDeps = { store?: RateLimitStore; now?: () => number; secret?: string };
 
-export function prismaRateLimitStore(db: Pick<PrismaClient, "$queryRaw" | "$executeRaw">): RateLimitStore {
+export function prismaRateLimitStore(db: Pick<PrismaClient, "rateLimitBucket">): RateLimitStore {
+  const bucket = (key: string, windowStart: Date) => ({ key_windowStart: { key, windowStart } });
   return {
     async hit(key, windowStart, expiresAt) {
-      const rows = await db.$queryRaw<{ count: number }[]>`
-        INSERT INTO "rate_limit_buckets" ("key", "window_start", "count", "expires_at")
-        VALUES (${key}, ${windowStart}, 1, ${expiresAt})
-        ON CONFLICT ("key", "window_start") DO UPDATE SET "count" = "rate_limit_buckets"."count" + 1
-        RETURNING "count"`;
-      return Number(rows[0]?.count ?? 1);
+      // An upsert is one atomic statement in Postgres; two first tries at the same moment can still collide, so try again.
+      for (let attempt = 0; ; attempt++) {
+        try {
+          const row = await db.rateLimitBucket.upsert({
+            where: bucket(key, windowStart),
+            create: { key, windowStart, count: 1, expiresAt },
+            update: { count: { increment: 1 } },
+            select: { count: true },
+          });
+          return row.count;
+        } catch (error) {
+          const code = typeof error === "object" && error !== null && "code" in error ? error.code : undefined;
+          if (code !== "P2002" || attempt >= 2) throw error;
+        }
+      }
     },
     async count(key, windowStart) {
-      const rows = await db.$queryRaw<{ count: number }[]>`
-        SELECT "count" FROM "rate_limit_buckets" WHERE "key" = ${key} AND "window_start" = ${windowStart}`;
-      return Number(rows[0]?.count ?? 0);
+      return (await db.rateLimitBucket.findUnique({ where: bucket(key, windowStart), select: { count: true } }))?.count ?? 0;
     },
     async purge(before) {
-      await db.$executeRaw`DELETE FROM "rate_limit_buckets" WHERE "expires_at" < ${before}`;
+      await db.rateLimitBucket.deleteMany({ where: { expiresAt: { lt: before } } });
     },
   };
 }
