@@ -16,6 +16,9 @@ export const POST_JOB_PATH = "/jobs/new";
 export const SIGNUP_PATH = "/signup";
 export const TRADIE_SIGNUP_PATH = "/signup/tradie";
 export const FOR_TRADIES_PATH = "/for-tradies";
+/** The worker sign-up label on For tradies. Broader than "Join as a tradie": anyone can take Other jobs (DECISIONS #1).
+ *  Proposed in #419; Matt approves the final wording. */
+export const WORKER_JOIN_LABEL = "Start earning";
 
 /** The header's nav, in the mockup's order (w-landing). "For tradies" is shown in Amber. */
 export const SITE_NAV: readonly SiteLink[] = [
@@ -100,7 +103,7 @@ export type HeaderActions = {
 /** Which actions the header shows for this visitor (null = signed out). */
 export function headerActions(viewer: SiteViewer | null, pathname?: string | null): HeaderActions {
   if (!viewer) {
-    if (isCurrent(pathname ?? null, FOR_TRADIES_PATH)) return { postJob: null, guest: { logIn: LOG_IN, signUp: { label: "Join as a tradie", href: TRADIE_SIGNUP_PATH } }, app: null, account: null };
+    if (isCurrent(pathname ?? null, FOR_TRADIES_PATH)) return { postJob: null, guest: { logIn: LOG_IN, signUp: { label: WORKER_JOIN_LABEL, href: TRADIE_SIGNUP_PATH } }, app: null, account: null };
     return { postJob: { label: "Post a job", href: POST_JOB_PATH }, guest: { logIn: LOG_IN, signUp: SIGN_UP }, app: null, account: null };
   }
   const accountPath = ACCOUNT_PATH[viewer.role];

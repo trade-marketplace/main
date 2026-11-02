@@ -10,15 +10,17 @@ import { TextLink } from "@/components/TextLink";
 import { QuickFilters } from "@/components/data";
 import { EmptyState, ErrorState, InlineError, LiveMessage, LoadingRegion, Skeleton, SkeletonText } from "@/components/feedback";
 import { TextField } from "@/components/forms";
-import { HELP_TOPICS, searchHelp, type HelpArticle, type HelpFeedbackInput, type HelpFeedbackResult, type HelpState } from "@/lib/help";
+import { HELP_TOPIC_ICONS, HELP_TOPICS, helpTopicSlug, searchHelp, type HelpArticle, type HelpFeedbackInput, type HelpFeedbackResult, type HelpState, type HelpTopic } from "@/lib/help";
 import { useIsClient } from "@/lib/motion/hooks";
 import { MOTION_MS } from "@/lib/motion/timings";
+import hero from "@/components/site/hero.module.css";
 import styles from "./help.module.css";
 
 type Submit = (input: HelpFeedbackInput) => Promise<HelpFeedbackResult>;
-type Props = { articles: HelpArticle[]; article?: HelpArticle; query?: string; state?: HelpState; submit: Submit };
-const filters = ["All", "Payments", "My job", "Account", "Tradies"].map(value => ({ value, label: value }));
-const railSlugs = ["posting-a-job", "how-is-my-price-worked-out", "when-do-i-pay", "extra-work", "cancelling-a-job", "something-is-not-right"];
+type Topic = HelpTopic | "All";
+type Props = { articles: HelpArticle[]; article?: HelpArticle; query?: string; topic?: HelpTopic | null; state?: HelpState; submit: Submit };
+const filters = (["All", ...HELP_TOPICS] as Topic[]).map(value => ({ value, label: value }));
+const INTRO = "Answers about posting jobs, prices, payments and doing the work.";
 const railNames: Record<string, string> = { "cancelling-a-job": "Cancelling", "extra-work": "Extra work" };
 const relatedNames: Record<string, string> = { "cancelling-a-job": "Cancelling a job", "extra-work": "Extra work" };
 
@@ -27,7 +29,10 @@ function SupportCard() {
   return <div className={styles.supportCard}><Icon name="support_agent" decorative /><div><b>Still stuck?</b><p>We reply within one working day.</p></div><Button href="mailto:hello@trademarketplace.nz" size="sm" width="auto">Message us</Button></div>;
 }
 function ArticleBody({ article }: { article: HelpArticle }) {
-  return <div className={styles.prose}>{article.blocks.map((block, index) => block.type === "heading" ? <h2 key={index}>{block.text}</h2> : <p key={index}>{block.text}</p>)}</div>;
+  return <div className={styles.prose}>{article.blocks.map((block, index) => {
+    const text = block.spans.map((span, part) => span.strong ? <strong key={part}>{span.text}</strong> : span.text);
+    return block.type === "heading" ? <h2 key={index}>{text}</h2> : <p key={index}>{text}</p>;
+  })}</div>;
 }
 function Feedback({ article, submit, state }: { article: HelpArticle; submit: Submit; state: HelpState }) {
   const [vote, setVote] = useState<boolean | null>(state === "not-helpful" ? false : null);
@@ -101,34 +106,40 @@ function Search({ articles, value, resultQuery, onChange }: { articles: HelpArti
 export function HelpLoading() {
   return <div className={styles.page}><div className={styles.loading}><LoadingRegion loading label="Loading help articles" skeleton={<><Skeleton width="65%" height={38} /><SkeletonText lines={4} /><SkeletonText lines={3} /></>} /></div></div>;
 }
-export function HelpCentre({ articles, article, query = "", state = "default", submit }: Props) {
+function ArticleRow({ item, expanded, onToggle }: { item: HelpArticle; expanded: boolean; onToggle: () => void }) {
+  return <div className={styles.faqRow}>
+    <Link href={`/help/${item.slug}`} className={styles.desktopArticle}>{item.title}<Icon name="chevron_right" decorative /></Link>
+    <div className={styles.phoneArticle}><button aria-expanded={expanded} aria-controls={`answer-${item.slug}`} onClick={onToggle}><span className={styles.helpIcon}><Icon name="help" size="sm" decorative /></span><span>{item.title}</span><Icon name="expand_more" decorative /></button><div className="tm-accordion" data-open={expanded}><div id={`answer-${item.slug}`} inert={!expanded}><ArticleBody article={item} /><TextLink href={`/help/${item.slug}`}>Read article</TextLink></div></div></div>
+  </div>;
+}
+export function HelpCentre({ articles, article, query = "", topic: initialTopic = null, state = "default", submit }: Props) {
   const ready = useIsClient();
   const [search, setSearch] = useState(state === "search-results" ? "pay" : state === "no-results" ? "unmatched search" : query);
   const [debounced, setDebounced] = useState(search);
-  const [topic, setTopic] = useState("All");
+  const [topic, setTopic] = useState<Topic>(initialTopic ?? "All");
   const [expanded, setExpanded] = useState<string | null>(null);
   const router = useRouter();
   useEffect(() => { const timer = setTimeout(() => setDebounced(search), MOTION_MS.m08Debounce); return () => clearTimeout(timer); }, [search]);
   const results = searchHelp(articles, debounced, topic);
   const searching = debounced.trim().length > 0;
   const showingArticle = article && !searching;
-  const navigationArticles = article?.topic === "Customers" ? railSlugs.map(slug => articles.find(item => item.slug === slug)).filter((item): item is HelpArticle => Boolean(item)) : articles.filter(item => item.topic === article?.topic || item.group === article?.topic);
+  const navigationArticles = articles.filter(item => item.topic === article?.topic);
+  const row = (item: HelpArticle) => <ArticleRow key={item.slug} item={item} expanded={expanded === item.slug} onToggle={() => setExpanded(expanded === item.slug ? null : item.slug)} />;
+  const grouped = !searching && topic === "All";
   const HeroHeading = showingArticle ? "h2" : "h1";
   const PhoneHeading = showingArticle ? "h2" : "h1";
   return <div className={styles.page} data-help-ready={ready || undefined}>
     <div className={styles.phoneBar}><TextLink href={article ? "/help" : "/"} aria-label={article ? "Back to help" : "Go home"}><Icon name="arrow_back" decorative /></TextLink><PhoneHeading>Help & support</PhoneHeading></div>
-    <section className={styles.hero} data-site-hero><div className={styles.boltClip}><BoltMark variant="hero" className={styles.bolt} /></div><div className={styles.heroInner}><HeroHeading>How can we help?</HeroHeading><Search articles={articles} value={search} resultQuery={debounced} onChange={setSearch} /></div></section>
+    <section className={`${hero.hero} ${hero.short} ${styles.hero}`} data-site-hero><div className={styles.boltClip}><BoltMark variant="hero" className={styles.bolt} /></div><div className={styles.heroInner}><HeroHeading className={hero.title}>How can we help?</HeroHeading><p className={`${hero.lead} ${styles.intro}`}>{INTRO}</p><Search articles={articles} value={search} resultQuery={debounced} onChange={setSearch} /></div></section>
     <div className={`${styles.wrap} ${showingArticle ? styles.articleLayout : styles.homeLayout}`}>
       {state === "loading" ? <div className={styles.loading}><h1 className={styles.srOnly}>Loading help articles</h1><LoadingRegion loading label="Loading help articles" skeleton={<><Skeleton width="65%" height={38} /><SkeletonText lines={4} /></>} /></div> : state === "error" ? <ErrorState title="Can’t load help articles" headingLevel={article ? 1 : 2} onRetry={() => router.push(article ? `/help/${article.slug}` : "/help")} /> : <>
-        {showingArticle && <nav aria-label="Customer help articles" className={styles.topicNav}><h2>{article.topic}</h2>{navigationArticles.map(item => <Link key={item.slug} href={`/help/${item.slug}`} aria-current={article.slug === item.slug ? "page" : undefined}>{railNames[item.slug] ?? item.title}</Link>)}</nav>}
-        {showingArticle ? <article className={styles.article}><nav aria-label="Breadcrumb" className={styles.crumbs}><Link href="/help">Help</Link><Icon name="chevron_right" size="sm" decorative /><Link href={`/help?q=${encodeURIComponent(article.topic)}`}>{article.topic}</Link><Icon name="chevron_right" size="sm" decorative /><span>{article.group}</span></nav><h1>{article.title}</h1><p className={styles.meta}>Updated {new Intl.DateTimeFormat("en-NZ", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(article.updated))} · {article.minutes} min read</p><ArticleBody article={article} /><Feedback key={article.slug} article={article} state={state} submit={submit} /></article> : <section className={styles.home} aria-label="Help articles">
-          <div className={styles.topics}>{HELP_TOPICS.map(value => <button key={value} aria-pressed={topic === value} onClick={() => setTopic(topic === value ? "All" : value)}><Icon name={value === "Payments" ? "payments" : value === "Tradies" ? "construction" : value === "Account" ? "account_circle" : "home_repair_service"} decorative /><span>{value}</span><Icon name="chevron_right" decorative /></button>)}</div>
+        {showingArticle && <nav aria-label={`${article.topic} help articles`} className={styles.topicNav}><h2>{article.topic}</h2>{navigationArticles.map(item => <Link key={item.slug} href={`/help/${item.slug}`} aria-current={article.slug === item.slug ? "page" : undefined}>{railNames[item.slug] ?? item.title}</Link>)}</nav>}
+        {showingArticle ? <article className={styles.article}><nav aria-label="Breadcrumb" className={styles.crumbs}><Link href="/help">Help</Link><Icon name="chevron_right" size="sm" decorative /><Link href={`/help?topic=${helpTopicSlug(article.topic)}`}>{article.topic}</Link></nav><h1>{article.title}</h1><p className={styles.meta}>Updated {new Intl.DateTimeFormat("en-NZ", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(article.updated))} · {article.minutes} min read</p><ArticleBody article={article} /><Feedback key={article.slug} article={article} state={state} submit={submit} /></article> : <section className={styles.home} aria-label="Help articles">
+          <div className={styles.topics}>{HELP_TOPICS.map(value => <button key={value} aria-pressed={topic === value} onClick={() => setTopic(topic === value ? "All" : value)}><Icon name={HELP_TOPIC_ICONS[value]} decorative /><span>{value}</span><Icon name="chevron_right" decorative /></button>)}</div>
           <div className={styles.filters}><QuickFilters label="Help topics" items={filters} value={topic} onChange={setTopic} /></div>
-          <h2 className={styles.listTitle}>{searching ? "Search results" : topic === "All" ? "Popular articles" : topic}</h2>
-          {results.length === 0 ? <EmptyState icon="search_off" title="No articles found" action={<Button href="mailto:hello@trademarketplace.nz" width="auto">Message us</Button>} /> : <div className={styles.articleList}>{results.map((item, index) => <div key={item.slug} className={styles.faqRow} data-secondary={index >= 4 && topic === "All" && !searching || undefined}>
-            <Link href={`/help/${item.slug}`} className={styles.desktopArticle}>{item.title}<Icon name="chevron_right" decorative /></Link>
-            <div className={styles.phoneArticle}><button aria-expanded={expanded === item.slug} aria-controls={`answer-${item.slug}`} onClick={() => setExpanded(expanded === item.slug ? null : item.slug)}><span className={styles.helpIcon}><Icon name="help" size="sm" decorative /></span><span>{item.title}</span><Icon name="expand_more" decorative /></button><div className="tm-accordion" data-open={expanded === item.slug}><div id={`answer-${item.slug}`} inert={expanded !== item.slug}><ArticleBody article={item} /><TextLink href={`/help/${item.slug}`}>Read article</TextLink></div></div></div>
-          </div>)}</div>}
+          {results.length === 0 ? <><h2 className={styles.listTitle}>{searching ? "Search results" : topic}</h2><EmptyState icon="search_off" title="No articles found" action={<Button href="mailto:hello@trademarketplace.nz" width="auto">Message us</Button>} /></>
+            : grouped ? HELP_TOPICS.map(value => ({ value, items: results.filter(item => item.topic === value) })).filter(group => group.items.length > 0).map(group => <section key={group.value} className={styles.group} aria-labelledby={`topic-${helpTopicSlug(group.value)}`}><h2 id={`topic-${helpTopicSlug(group.value)}`} className={styles.listTitle}>{group.value}</h2><div className={styles.articleList}>{group.items.map(row)}</div></section>)
+            : <><h2 className={styles.listTitle}>{searching ? "Search results" : topic}</h2><div className={styles.articleList}>{results.map(row)}</div></>}
           <LiveMessage message={searching ? `${results.length} articles found` : null} />
         </section>}
         <aside className={styles.support}><SupportCard />{showingArticle && <div className={styles.related}><h2>Related</h2>{article.related.map(slug => articles.find(item => item.slug === slug)).filter((item): item is HelpArticle => Boolean(item)).map(item => <TextLink key={item.slug} href={`/help/${item.slug}`}>{relatedNames[item.slug] ?? item.title}</TextLink>)}</div>}</aside>

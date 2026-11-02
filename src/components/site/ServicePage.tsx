@@ -26,6 +26,7 @@ import { searchLandingPlacesAction } from "@/server/landing-actions";
 import type { AddressSearchResult } from "@/server/geo/address-search";
 
 import { ServiceWaitlist } from "./ServiceWaitlist";
+import hero from "./hero.module.css";
 import landing from "./landing.module.css";
 import styles from "./service.module.css";
 
@@ -74,14 +75,14 @@ export function ServicePage({ data, submit, preview }: Props) {
   if (preview?.state === "error") return <ErrorState size="page" title="Couldn’t load this service." message="Try again in a minute." onRetry={() => router.refresh()} />;
   if (preview?.state === "loading") return <ServiceLoading />;
   return <>
-    <section className={styles.hero} data-site-hero style={{ "--service-tint": info.tint } as CSSProperties}>
+    <section className={`${hero.hero} ${hero.tall} ${styles.hero}`} data-site-hero style={{ "--service-tint": info.tint } as CSSProperties}>
       <BoltMark variant="hero" className={styles.heroBolt} />
       <div className={`${landing.wrap} ${styles.heroGrid}`}>
         <div className={styles.heroText}>
           <nav className={styles.crumbs} aria-label="Breadcrumb"><Link href="/#category-heading">Services</Link><Icon name="chevron_right" decorative /><span aria-current="page">{info.name}</span></nav>
-          <h1>{data.headline} in<br />{data.coverage.name}</h1>
+          <h1 className={hero.title}>{data.headline} in<br />{data.coverage.name}</h1>
           {!data.live && <Pill kind="waiting">Coming soon</Pill>}
-          {data.live && <p className={styles.intro}>{data.intro}</p>}
+          {data.live && <p className={hero.lead}>{data.intro}</p>}
           {data.live ? <form className={`${landing.search} ${styles.search}`} aria-label="What needs doing?" onSubmit={search}>
             <TextField ref={input} className={landing.jobField} label="What needs doing?" labelHidden name="description" placeholder="What needs doing?" icon="search" maxLength={LANDING_QUERY_MAX} value={description} onChange={(e) => setDescription(e.target.value)} autoComplete="off" />
             <button className={`${landing.location} ${styles.location}`} type="button" aria-label={`Location: ${location.label}. Change location`} onClick={() => { setQuery(location.label); setLookup({ status: "idle" }); setLocationOpen(true); }}><Icon name="near_me" decorative /><span>{location.label}</span></button>

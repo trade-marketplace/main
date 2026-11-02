@@ -1,5 +1,7 @@
-<!-- {"title": "Posting a job", "topic": "Customers", "group": "My job", "updated": "2026-10-30", "related": ["how-is-my-price-worked-out", "when-do-i-pay"]} -->
+<!-- {"title": "Posting a job", "topic": "Customers", "updated": "2026-11-02", "related": ["how-is-my-price-worked-out", "do-i-need-an-account", "accepting-or-saying-no"]} -->
 
-Tell us what needs doing and snap a photo or two. Free, no sign-up to start.
+Tell us what needs doing in your own words. The more detail the better: what’s wrong, where it is, and anything that might help, like access or pets.
 
-Someone local turns up and gets it done. You check it, rate it, done.
+Add a photo or two. Photos help get your price right and save a trip.
+
+Pick when suits you, add your address, and send it. We’ll let you know when your price is ready.
