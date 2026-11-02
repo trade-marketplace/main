@@ -1,0 +1,83 @@
+/* Checkout (#151): docs/design/pages.html "Checkout" (C10) and "Payment success" (C11). Tokens only. */
+
+.page { min-height: 100dvh; background: var(--trade-surface); display: flex; flex-direction: column; }
+.nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: var(--trade-header-h);
+  padding: var(--trade-space-2) var(--trade-inset-browse);
+  background: var(--trade-forest);
+  color: var(--trade-text-on-dark-2);
+  font-size: var(--trade-fs-small);
+}
+.secure { display: inline-flex; align-items: center; gap: var(--trade-space-1); }
+.wrap {
+  width: 100%;
+  max-width: var(--trade-content-max);
+  margin-inline: auto;
+  padding: var(--trade-space-5) var(--trade-inset-browse) var(--trade-space-8);
+  display: grid;
+  gap: var(--trade-space-5);
+  align-content: start;
+}
+@media (min-width: 1024px) {
+  .wrap { grid-template-columns: minmax(0, 1fr) 420px; gap: var(--trade-space-8); padding-top: var(--trade-space-8); }
+  .summary { position: sticky; top: var(--trade-space-5); align-self: start; }
+}
+.main { display: grid; gap: var(--trade-space-4); min-width: 0; align-content: start; }
+.title {
+  margin: 0;
+  font-family: var(--trade-font-heading);
+  font-weight: 900;
+  font-variation-settings: var(--trade-display-axes);
+  font-size: var(--trade-fs-title);
+  line-height: var(--trade-lh-title);
+}
+.card {
+  background: var(--trade-paper);
+  border-radius: var(--trade-radius-card);
+  box-shadow: inset 0 0 0 1px var(--trade-line);
+  padding: var(--trade-space-5);
+  min-width: 0;
+}
+.form { display: grid; gap: var(--trade-space-4); }
+.fields { border: 0; margin: 0; padding: 0; min-width: 0; display: grid; gap: var(--trade-space-3); }
+.legend { padding: 0; margin-bottom: var(--trade-space-2); font-size: var(--trade-fs-small); font-weight: 700; color: var(--trade-text); }
+.skeleton { display: grid; gap: var(--trade-space-3); }
+.reassure { margin: 0; text-align: center; color: var(--trade-text-2); font-size: var(--trade-fs-caption); }
+
+.jobName { margin: 0; font-weight: 700; overflow-wrap: anywhere; }
+.jobMeta { margin: 0; color: var(--trade-text-2); font-size: var(--trade-fs-caption); }
+.lines { display: grid; gap: var(--trade-space-2); margin: var(--trade-space-4) 0 0; padding: 0; list-style: none; font-size: var(--trade-fs-small); }
+.lines li { display: flex; justify-content: space-between; gap: var(--trade-space-3); }
+.total { padding-top: var(--trade-space-3); border-top: 1px solid var(--trade-line); align-items: baseline; font-weight: 700; }
+.totalPrice { font-family: var(--trade-font-heading); font-weight: 900; font-variation-settings: var(--trade-display-axes); font-size: var(--trade-fs-price); }
+
+.done { display: grid; justify-items: center; gap: var(--trade-space-4); text-align: center; padding: var(--trade-space-8) var(--trade-inset-browse); max-width: 600px; margin-inline: auto; }
+.tick {
+  display: grid;
+  place-items: center;
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  background: var(--trade-signature);
+  color: var(--trade-on-signature);
+}
+.doneTitle { margin: 0; font-family: var(--trade-font-heading); font-weight: 900; font-variation-settings: var(--trade-display-axes); font-size: var(--trade-fs-display); line-height: 1.05; }
+.doneText { margin: 0; color: var(--trade-text-2); font-size: var(--trade-fs-lead); }
+.doneActions { display: flex; flex-wrap: wrap; gap: var(--trade-space-3); justify-content: center; }
+
+/* The preview's stand-in for Stripe's card fields. */
+.mockField { display: grid; gap: var(--trade-space-1); }
+.mockLabel { font-size: var(--trade-fs-small); font-weight: 700; }
+.mockInput {
+  min-height: var(--trade-field-h);
+  display: flex;
+  align-items: center;
+  padding-inline: var(--trade-space-3);
+  border: 1px solid var(--trade-field-border);
+  border-radius: var(--trade-radius-field);
+  color: var(--trade-text-2);
+}
+.mockRow { display: grid; grid-template-columns: 1fr 1fr; gap: var(--trade-space-3); }

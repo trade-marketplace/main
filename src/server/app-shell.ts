@@ -9,6 +9,7 @@ import type { ShellViewer } from "@/components/app/AppShellView";
 import { isAppRole } from "@/components/app/app-links";
 import { DatabaseNotConfiguredError, getDb } from "@/server/db";
 import type { Viewer } from "@/server/auth/viewer";
+import { paymentsInTestMode as stripeTestMode } from "@/server/payments/stripe";
 
 export type ShellExtras = { lastName: string | null; unreadNotifications: number };
 
@@ -52,9 +53,10 @@ export async function loadShellViewer(viewer: Viewer | null, sources: ShellSourc
 export const getShellViewer = cache((viewer: Viewer | null) => loadShellViewer(viewer, { findExtras: findShellExtras }));
 
 /**
- * Payments are in test mode until both founders agree in writing to switch them on (AGENTS.md). There is no live
- * switch yet, so this is always true; the payments work adds the real check (and William reviews it).
+ * Payments are in test mode until both founders agree in writing to switch them on (AGENTS.md). The banner shows
+ * whenever the Stripe keys are test keys or missing; only a live key with PAYMENTS_LIVE=1 hides it (#151, the lock
+ * is in src/server/payments/stripe.ts).
  */
 export function paymentsInTestMode(): boolean {
-  return true;
+  return stripeTestMode();
 }

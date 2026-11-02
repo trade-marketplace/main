@@ -16,7 +16,7 @@ and passwords live in Vercel's environment variables, Supabase Auth's encrypted 
 | **Domain** trademarketplace.nz (+ intended .co.nz redirect) | Real web address, email sender | Registrar/account details to confirm | ~NZ$30–40/yr each | ✅ Primary verified/live; .co.nz not yet verified |
 | **Resend** (email) | Decided sender: `hello@trademarketplace.nz` for sign-in and job emails | Matt / William to configure Auth SMTP; Resend account status not inspected | Free tier | ⚠️ Auth dashboard requests custom SMTP setup; default templates active |
 | **Firebase** (push) | Job alerts and pings | Not set up yet | Free tier | ⏳ |
-| **Stripe** (test mode) | Payments, Apple Pay | Not set up yet (#151, William) | — | ⏳ |
+| **Stripe** (test mode) | Payments, Apple Pay, Google Pay | Account and keys: Matt (#151); code is built and waits for the keys | Pay as you go | ⏳ Keys not added yet |
 | **Plausible or Fathom** | Privacy-friendly analytics | Not chosen yet | Paid (small) | ⏳ |
 
 When an account changes hands or a new service is added, update this table in the same PR.
@@ -66,6 +66,10 @@ Used for (DECISIONS.md #58–#61):
 | `CONTACT_INBOX_EMAIL` | server only (where Contact messages go) | no |
 | `SCHEDULER_SECRET` | server only (`/api/scheduler/run`; same value in Supabase Vault, see `docs/server/scheduler.md`) | **yes** |
 | `DATABASE_URL` (pooled) / `DIRECT_URL` | server, migrations | **yes** |
+| `STRIPE_SECRET_KEY` | server only (`sk_test_…` / `rk_test_…`; #151) | **yes** |
+| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | browser + server (`pk_test_…`) | no (public by design) |
+| `STRIPE_WEBHOOK_SECRET` | server only (`/api/stripe/webhook`) | **yes** |
+| `PAYMENTS_LIVE` | server only. The live-key lock: live keys are refused unless this is exactly `1`. Leave empty. | no |
 
 
 ### Auth email configuration (30 October 2026)
@@ -136,3 +140,19 @@ or connect those tests to Supabase.
 The Supabase connector also confirmed project metadata: Trade Marketplace Sydney, `ACTIVE_HEALTHY`, region
 `ap-southeast-2`. It exposed no Auth-template/SMTP management tool in this session; the template facts above came
 from the signed-in dashboard. No service settings were changed, no email was sent and no database command was run.
+
+
+## Stripe (payments, test mode only)
+
+Code: `src/server/payments/` (keys and the lock in `stripe.ts`, taking a payment in `payments.ts`, the webhook in `webhook.ts`
+and `webhook-events.ts`), checkout at `/pay/[paymentId]`. Payments are in **test mode** until both founders agree in writing
+(DECISIONS.md 7). Live keys (`sk_live_`, `rk_live_`, `pk_live_`) are refused unless `PAYMENTS_LIVE=1`. Missing keys just mean
+"payments aren't switched on yet". Never put a key in the repo or a PR; set the variables above in Vercel (Production + Preview).
+
+**Webhook endpoint** (Stripe dashboard → Developers → Webhooks, test mode): `https://<site>/api/stripe/webhook`, events:
+`payment_intent.succeeded`, `payment_intent.payment_failed`, `charge.refunded`. Copy its signing secret into `STRIPE_WEBHOOK_SECRET`.
+
+**Payment methods:** the Payment Element uses the methods switched on in the dashboard (Settings → Payment methods): turn on
+cards, Apple Pay, Google Pay (and leave Link on). Apple Pay on the web also needs the domain verified (#210).
+**Refunds:** the office's refund (#171) is still a record only. To send it to Stripe later, call `stripe.refunds.create({ payment_intent: payment.providerPaymentId, amount })` in
+`src/server/office/job-mutations.ts` with the refund's idempotency key before recording it; `charge.refunded` is already handled and never double counts.
