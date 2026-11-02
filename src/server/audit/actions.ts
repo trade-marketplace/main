@@ -79,6 +79,8 @@ export const AUDIT_ACTIONS = {
   "evidence_rule.updated": { record: "trade_evidence_rules" },
 
   // People.
+  "office_user.added": { record: "profiles" },
+  "office_user.removed": { record: "profiles" },
   "licence.verified": { record: "licences" },
   "licence.rejected": { record: "licences", reason: "required" },
   "licence.expired": { record: "licences" },
