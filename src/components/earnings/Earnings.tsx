@@ -190,7 +190,7 @@ export function Earnings({
       <Head statement={statementHref} />
 
       {missingDetails && (
-        <Banner tone="info" title="Add bank account & IRD number." action={<TextLink href="/profile/payroll">Add</TextLink>}>
+        <Banner tone="info" title="Add bank account & IRD number." action={<TextLink href="/profile/payroll" inline>Add</TextLink>}>
           So we can pay you through payroll.
         </Banner>
       )}

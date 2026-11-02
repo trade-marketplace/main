@@ -530,6 +530,9 @@ describe("<Earnings>", () => {
     const html = render(<Earnings view={view()} payrollDetails={{ complete: false, missing: ["bank"] }} />);
     expect(text(html)).toContain("Add bank account &amp; IRD number.");
     expect(html).toContain('href="/profile/payroll"');
+    // The link sits in a line of text, so it must be the inline kind: the plain link is a 44px tap target that
+    // stretches the line and leaves the banner's icon out of line with its words.
+    expect(html).toMatch(/<a [^>]*class="[^"]*linkInline[^"]*"[^>]*href="\/profile\/payroll"|<a [^>]*href="\/profile\/payroll"[^>]*class="[^"]*linkInline/);
     expect(text(render(<Earnings view={view()} payrollDetails={{ complete: true, missing: [] }} />))).not.toContain("Add bank account");
     const nothingOnItsWay = view({ payouts: [paid("2026-10-30T02:00:00Z")], waiting: [] });
     expect(text(render(<Earnings view={nothingOnItsWay} payrollDetails={{ complete: false, missing: ["bank"] }} />))).not.toContain("Add bank account");
