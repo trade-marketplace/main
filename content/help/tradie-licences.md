@@ -1,5 +1,3 @@
-<!-- {"title": "Trades & licences", "topic": "Tradies", "group": "Tradies", "updated": "2026-10-30", "related": ["posting-a-job"]} -->
+<!-- {"title": "Trades & licences", "topic": "Workers & tradies", "updated": "2026-11-02", "related": ["joining", "uploading-your-coc"]} -->
 
-Restricted work needs a licence checked by the office.
-
-Each trade has its own status: Checked, Checking or Rejected. If a licence is rejected, you’ll see the reason and can try again.
+Each trade you add has its own status: Checked, Checking or Rejected. You can take restricted work only once that trade’s licence is checked. If a licence is rejected, you’ll see why and can try again.

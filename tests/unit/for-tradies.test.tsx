@@ -48,8 +48,15 @@ describe("For tradies", () => {
     expect(html).not.toMatch(/we do the paperwork|testimonials|Sarah|259\.20|96\.00/i);
     for (const trade of SIGNUP_TRADES) expect(html).toContain(trade.licence?.label ?? "photo ID");
     expect(html).toContain('href="/signup/tradie"');
-    expect(html).toContain("Invercargill");
-    expect(html).toContain("any job");
+    expect(html).not.toContain("Invercargill");
+    expect(html).not.toContain("Join as a tradie");
+    expect(html.match(/>Start earning</g)).toHaveLength(2);
+  });
+
+  it("explains each worker step with a sentence, and holds back the unconfirmed payment-timing line", () => {
+    const html = renderToString(<ForTradiesPage data={tradieEarnings(settings)} />);
+    for (const text of ["Pick a job", "Browse jobs near you. Each one shows what you earn before you take it.", "Book a time", "Message the customer through the app and lock in a time that suits you both.", "Do the work", "Turn up, do a good job, and add photos when you’re done. Extra work? Send photos and the cost through the app first.", "Get paid"]) expect(html).toContain(text);
+    expect(html).not.toContain("48 hours");
   });
 
   it.each(["empty", "error", "loading"] as const)("never invents figures in the %s state", (status) => {
@@ -59,7 +66,7 @@ describe("For tradies", () => {
   });
 
   it("offers tradie signup on this route and preserves other public and signed-in actions", () => {
-    expect(headerActions(null, "/for-tradies")).toMatchObject({ postJob: null, guest: { signUp: { label: "Join as a tradie", href: "/signup/tradie" } } });
+    expect(headerActions(null, "/for-tradies")).toMatchObject({ postJob: null, guest: { signUp: { label: "Start earning", href: "/signup/tradie" } } });
     expect(headerActions(null, "/")).toEqual(headerActions(null));
     expect(headerActions(null, "/how-it-works")).toEqual(headerActions(null));
     for (const role of ["CUSTOMER", "TRADIE", "ADMIN"] as const) expect(headerActions({ firstName: "Sam", role }, "/for-tradies")).toEqual(headerActions({ firstName: "Sam", role }));

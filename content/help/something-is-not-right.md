@@ -1,5 +1,5 @@
-<!-- {"title": "Something’s not right", "topic": "Customers", "group": "My job", "updated": "2026-10-30", "related": ["extra-work", "cancelling-a-job"]} -->
+<!-- {"title": "Something’s not right", "topic": "Customers", "updated": "2026-11-02", "related": ["extra-work", "checking-and-signing-off", "cancelling-a-job"]} -->
 
-Report a problem from your job page. This pauses the automatic sign-off.
+Report a problem from your job page. This pauses the automatic sign-off so nothing is finalised while we sort it.
 
-Send the details and photos so the office can review what happened.
+Tell us what happened and add photos. The office reviews it and gets back to you, usually within one working day.
