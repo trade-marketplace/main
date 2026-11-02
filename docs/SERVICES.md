@@ -26,6 +26,26 @@ When an account changes hands or a new service is added, update this table in th
 Not set (on purpose): `FIELD_ENCRYPTION_KEY` (needed before bank/tax details go live), `SUPABASE_SECRET_KEY`,
 `ALLOW_SEED`, `SEED_DEMO_PASSWORD` (seed/test only, never production).
 
+## Office users
+
+Run from a trusted terminal with Node 22 and `DATABASE_URL` set (or in `.env.local`). The account must already
+exist: ask them to sign up normally first. Review the printed change and answer `y`, or pass `--yes` for a
+reviewed, non-interactive command:
+
+```sh
+npm run office-user -- add person@example.nz
+npm run office-user -- remove person@example.nz
+npm run office-user -- list
+```
+
+Adding is idempotent. Removal changes ADMIN to CUSTOMER and refuses to remove the last office user, including
+concurrent removals. It revokes all current Supabase sessions and refresh tokens in the same database transaction;
+the database connection must be allowed to delete from `auth.sessions` and `auth.refresh_tokens`. No Auth secret
+key is needed. Office access ends on the next request because the app reads the profile role afresh. Already-issued
+access tokens can remain valid for ordinary customer access until expiry, as with password resets (DECISIONS #107).
+Each change writes an audit row with the system actor and reason `script`. `list` shows when the latest office-user
+grant was audited; older grants without an audit record show “Since unknown” rather than inventing a date.
+
 ## Supabase (database, sign-in, file storage, timers)
 
 | | |

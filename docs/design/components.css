@@ -78,7 +78,7 @@
 .tm-input-line--error { border-bottom: 2px solid var(--trade-danger); }
 /* Box field: longer forms, textarea, money */
 .tm-input { display: flex; align-items: center; gap: 10px; min-height: var(--trade-field-h); padding: 0 14px;
-  border: 1px solid var(--trade-field-border); border-radius: var(--trade-radius-field); background: var(--trade-surface);
+  border: 1px solid var(--trade-field-stroke); border-radius: var(--trade-radius-field); background: var(--trade-surface);
   font-size: var(--trade-fs-body); color: var(--trade-text); }
 .tm-input--area { min-height: 112px; align-items: flex-start; padding: 12px 14px; line-height: 1.45; }
 .tm-input--placeholder { color: var(--trade-text-3); }

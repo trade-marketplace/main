@@ -18,7 +18,8 @@
     "db:migrate": "node --env-file-if-exists=.env.local --env-file-if-exists=.env scripts/require-db.mjs && prisma migrate dev",
     "db:seed": "node --env-file-if-exists=.env.local --env-file-if-exists=.env scripts/require-db.mjs && prisma db seed",
     "postinstall": "prisma generate",
-    "next-task": "node scripts/next-task.mjs"
+    "next-task": "node scripts/next-task.mjs",
+    "office-user": "node --conditions=react-server --import tsx --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/office-user.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "7.10.1",
@@ -47,6 +48,7 @@
     "eslint": "9.39.5",
     "eslint-config-next": "16.4.3",
     "prisma": "7.10.1",
+    "tsx": "4.21.0",
     "typescript": "6.0.3",
     "vitest": "5.0.5"
   }

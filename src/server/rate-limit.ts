@@ -93,10 +93,12 @@ function windowFor(name: RateLimitName, nowMs: number) {
   return { start: new Date(start), end: new Date(start + size), retryAfter: Math.max(1, Math.ceil((start + size - nowMs) / 1_000)) };
 }
 
-let lastPurge = 0;
+// When each store last cleared finished windows (per store, so separate stores and tests don't share a clock).
+const lastPurge = new WeakMap<RateLimitStore, number>();
 async function maybePurge(s: RateLimitStore, nowMs: number) {
-  if (nowMs - lastPurge < 5 * 60_000) return;
-  lastPurge = nowMs;
+  const last = lastPurge.get(s);
+  if (last !== undefined && nowMs - last >= 0 && nowMs - last < 5 * 60_000) return;
+  lastPurge.set(s, nowMs);
   await s.purge(new Date(nowMs));
 }
 

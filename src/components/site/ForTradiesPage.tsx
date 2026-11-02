@@ -12,6 +12,7 @@ import { PriceBlock, formatCents } from "@/components/status/PriceBlock";
 import { SIGNUP_TRADES } from "@/lib/auth/worker-signup";
 import { staggerStyle } from "@/lib/motion/helpers";
 import { useOncePerEvent, useParallax } from "@/lib/motion/hooks";
+import { WORKER_FAQ } from "@/lib/site-faqs";
 import type { TradieData } from "@/server/for-tradies";
 
 import { TRADIE_SIGNUP_PATH, WORKER_JOIN_LABEL } from "./site-links";
@@ -61,8 +62,7 @@ export function ForTradiesPage({ data }: { data: TradieData }) {
         : <EmptyCard icon="payments" title="Rates unavailable" />}
     </section>
     <section className={`${site.wrap} ${layout.faq}`} aria-labelledby="faq-title"><h2 id="faq-title">Questions?</h2><div>
-      <details><summary>Any job?</summary><p>Yes. Other work needs photo ID. Restricted work needs a current licence.</p></details>
-      <details><summary>Lead fees?</summary><p>None.</p></details>
+      {WORKER_FAQ.map(([question, answer]) => <details key={question}><summary>{question}</summary><p>{answer}</p></details>)}
     </div></section>
     <section className={site.final}><div className={site.wrap}><Button href={TRADIE_SIGNUP_PATH} variant="hero">{WORKER_JOIN_LABEL}</Button></div></section>
   </div>;

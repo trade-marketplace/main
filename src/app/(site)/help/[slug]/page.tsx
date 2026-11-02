@@ -10,7 +10,8 @@ type Props = { params: Promise<{ slug: string }>; searchParams: Promise<Record<s
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const article = (await loadHelpArticles()).find(article => article.slug === slug);
-  return { title: article?.title ?? "Help centre", description: article?.blocks[0]?.text };
+  if (!article) notFound();
+  return { title: article.title, description: article.blocks[0].text, alternates: { canonical: `/help/${article.slug}` } };
 }
 export default async function HelpArticlePage({ params, searchParams }: Props) {
   const [{ slug }, query, articles] = await Promise.all([params, searchParams, loadHelpArticles()]);

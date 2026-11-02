@@ -5,7 +5,7 @@ import { RecoveryFlow } from "@/components/auth/RecoveryFlow";
 import { recoveryNext, recoverySeconds, type RecoveryState } from "@/lib/auth/recovery";
 import { pendingRecovery, RECOVERY_AUTH_COOKIE, RECOVERY_SAVED_COOKIE, recoveryClient } from "@/server/auth/recovery";
 
-export const metadata: Metadata = { title: "Reset password", robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "Reset password", description: "Reset the password for your Trade Marketplace account.", alternates: { canonical: "/recovery" }, robots: { index: false, follow: false } };
 
 export default async function RecoveryPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const params = await searchParams;

@@ -34,6 +34,7 @@ type ActionRule = { readonly record: AuditRecordType; readonly reason?: "require
 
 export const AUDIT_ACTIONS = {
   // Jobs. The status machine (#93) names the transition when there is one; `job.status_changed` is for the rest.
+  "job.posted": { record: "jobs" },
   "job.priced": { record: "jobs" },
   "job.sent_to_bounty": { record: "jobs" },
   "job.price_sent": { record: "jobs" },
@@ -79,6 +80,8 @@ export const AUDIT_ACTIONS = {
   "evidence_rule.updated": { record: "trade_evidence_rules" },
 
   // People.
+  "office_user.added": { record: "profiles" },
+  "office_user.removed": { record: "profiles" },
   "licence.verified": { record: "licences" },
   "licence.rejected": { record: "licences", reason: "required" },
   "licence.expired": { record: "licences" },
