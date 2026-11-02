@@ -3,12 +3,14 @@
 // /dev/components/pay shows each state with a mocked card field. States (WEBAPP_SPEC C10): loading, ready,
 // processing (button spinner, page locked), failed/declined (alert banner at top, method kept), succeeded,
 // not configured. Words are from docs/design/pages.html (checkout); the error wording is a draft for Matt.
-import type { FormEvent, ReactNode } from "react";
+import { type FormEvent, type ReactNode, useSyncExternalStore } from "react";
+import { createPortal } from "react-dom";
 
 import { Button } from "@/components/Button";
 import { Skeleton } from "@/components/feedback";
 import { Banner } from "@/components/overlays/Banner";
 import { money } from "@/lib/office-job";
+import { PAY_ACTION_ID, PAY_FORM_ID } from "@/lib/payments/results";
 
 import styles from "./payments.module.css";
 
@@ -26,6 +28,9 @@ export type PayFormViewProps = {
 
 export function PayFormView({ state, amountCents, message, children, onSubmit }: PayFormViewProps) {
   const locked = state === "processing" || state === "succeeded";
+  // The Pay button lives in the order summary (C10). It submits this form through the form attribute. Without a
+  // summary on the page (or before the browser takes over) it stays under the fields.
+  const slot = useSyncExternalStore(noSubscribe, findActionSlot, noSlot);
   const submit = (event: FormEvent) => {
     event.preventDefault();
     if (state === "ready" || state === "failed") onSubmit?.();
@@ -39,8 +44,19 @@ export function PayFormView({ state, amountCents, message, children, onSubmit }:
     );
   }
 
+  const action = (
+    <>
+      <Button type="submit" form={PAY_FORM_ID} width="full" icon="lock" loading={state === "processing"} disabled={state === "loading" || state === "succeeded" ? "Hang on a moment" : undefined}>
+        Pay {money(amountCents)}
+      </Button>
+      <p className={styles.reassure}>You’ll get a receipt by email. Something wrong later? We sort it.</p>
+    </>
+  );
+
   return (
-    <form className={styles.form} onSubmit={submit} aria-busy={state === "loading" || state === "processing"}>
+    <>
+    {slot && createPortal(action, slot)}
+    <form id={PAY_FORM_ID} className={styles.form} onSubmit={submit} aria-busy={state === "loading" || state === "processing"}>
       {state === "failed" && (
         <Banner tone="alert" title="Payment didn’t go through." live>
           {message || "Check your details or try another way to pay."}
@@ -63,10 +79,12 @@ export function PayFormView({ state, amountCents, message, children, onSubmit }:
           children
         )}
       </fieldset>
-      <Button type="submit" icon="lock" loading={state === "processing"} disabled={state === "loading" || state === "succeeded" ? "Hang on a moment" : undefined}>
-        Pay {money(amountCents)}
-      </Button>
-      <p className={styles.reassure}>You’ll get a receipt by email. Something wrong later? We sort it.</p>
+      {!slot && action}
     </form>
+    </>
   );
 }
+
+const noSubscribe = () => () => {};
+const findActionSlot = () => document.getElementById(PAY_ACTION_ID);
+const noSlot = () => null;

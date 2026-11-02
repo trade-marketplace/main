@@ -6,6 +6,7 @@ import { Icon } from "@/components/Icon";
 import { Banner } from "@/components/overlays/Banner";
 import { Wordmark } from "@/components/Wordmark";
 import { money } from "@/lib/office-job";
+import { PAY_ACTION_ID } from "@/lib/payments/results";
 
 import styles from "./payments.module.css";
 
@@ -15,6 +16,8 @@ export type CheckoutSummary = {
   suburb: string;
   amountCents: number;
   gstCents: number | null;
+  /** The job's cover photo (a short-lived signed link), if it has one. */
+  photoUrl?: string | null;
 };
 
 export function CheckoutPage({ summary, testMode, children }: { summary: CheckoutSummary; testMode: boolean; children: ReactNode }) {
@@ -38,10 +41,20 @@ export function CheckoutPage({ summary, testMode, children }: { summary: Checkou
           <div className={styles.card}>{children}</div>
         </div>
         <aside className={`${styles.card} ${styles.summary}`} aria-label="Order summary">
-          <p className={styles.jobName}>{summary.title}</p>
-          <p className={styles.jobMeta}>
-            TM-{summary.jobNumber} · {summary.suburb}
-          </p>
+          <div className={styles.job}>
+            {summary.photoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element -- a short-lived signed Storage link, not a static asset
+              <img className={styles.thumb} src={summary.photoUrl} alt="" width={64} height={64} />
+            ) : (
+              <span className={styles.thumb} aria-hidden="true"><Icon name="handyman" decorative /></span>
+            )}
+            <div className={styles.jobText}>
+              <p className={styles.jobName}>{summary.title}</p>
+              <p className={styles.jobMeta}>
+                TM-{summary.jobNumber} · {summary.suburb}
+              </p>
+            </div>
+          </div>
           <ul className={styles.lines}>
             {summary.gstCents !== null && (
               <>
@@ -60,6 +73,8 @@ export function CheckoutPage({ summary, testMode, children }: { summary: Checkou
               <span className={styles.totalPrice}>{money(summary.amountCents)}</span>
             </li>
           </ul>
+          {/* The Pay button and receipt line land here from the pay form (PayFormView), as in C10. */}
+          <div id={PAY_ACTION_ID} className={styles.action} />
         </aside>
       </main>
     </div>

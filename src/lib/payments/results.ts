@@ -41,3 +41,7 @@ export type PreparePaymentResult =
 
 export const payPath = (paymentId: string) => `/pay/${paymentId}`;
 export const payDonePath = (paymentId: string) => `/pay/${paymentId}/done`;
+
+/** The pay form and the Pay button (which sits in the order summary, C10) are joined by these ids. */
+export const PAY_FORM_ID = "pay-form";
+export const PAY_ACTION_ID = "pay-action";

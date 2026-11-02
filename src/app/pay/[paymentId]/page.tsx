@@ -12,6 +12,7 @@ import { requireRole } from "@/server/auth/guard";
 import { DatabaseNotConfiguredError, getDb } from "@/server/db";
 import { type CheckoutView, loadCheckout } from "@/server/payments/payments";
 import { getStripeConfig, paymentsInTestMode } from "@/server/payments/stripe";
+import { getUploadService } from "@/server/files/service";
 
 export const metadata: Metadata = { ...privateMetadata, title: "Pay & book" };
 
@@ -30,8 +31,15 @@ export default async function PayPage({ params }: { params: Promise<{ paymentId:
   if (view.status !== "PENDING") redirect(view.status === "FAILED" ? `/jobs/${view.jobId}` : payDonePath(paymentId));
 
   const config = getStripeConfig();
+  // The job's cover photo for the summary. Storage being down never blocks paying.
+  let photoUrl: string | null = null;
+  try {
+    photoUrl = (await getUploadService().jobPhotoUrls({ userId: viewer.userId, role: "CUSTOMER" }, view.jobId))[0]?.url ?? null;
+  } catch {
+    photoUrl = null;
+  }
   return (
-    <CheckoutPage summary={view} testMode={paymentsInTestMode()}>
+    <CheckoutPage summary={{ ...view, photoUrl }} testMode={paymentsInTestMode()}>
       {config.status === "ready" ? (
         <PayForm paymentId={view.paymentId} amountCents={view.amountCents} publishableKey={config.publishableKey} />
       ) : (

@@ -3,6 +3,7 @@
 // `?state=` shows one state on its own. Dev only: the shared guard makes it a 404 in production.
 import type { Metadata } from "next";
 
+import { Icon } from "@/components/Icon";
 import { CheckoutPage } from "@/components/payments/Checkout";
 import { PayFormView, type PayState } from "@/components/payments/PayFormView";
 import styles from "@/components/payments/payments.module.css";
@@ -20,11 +21,20 @@ const STATES: readonly { state: PayState; title: string; message?: string }[] = 
 ];
 
 // Example values only: real prices come from the server.
-const SUMMARY = { title: "Sub wiring", jobNumber: 1005, suburb: "Windsor", amountCents: 37200, gstCents: 4852 };
+const SUMMARY = { title: "Sub wiring", jobNumber: 1005, suburb: "Windsor", amountCents: 37200, gstCents: 4852, photoUrl: "/images/examples/large/wires.jpg" };
 
 function MockCardFields() {
+  // Like the Payment Element's tabs: the methods Stripe offers on this device (Card, Apple Pay, Google Pay).
   return (
     <>
+      <div className={styles.mockTabs} aria-hidden="true">
+        {[["credit_card", "Card"], ["phone_iphone", "Apple Pay"], ["android", "Google Pay"]].map(([icon, label], i) => (
+          <span key={label} className={styles.mockTab} data-on={i === 0 || undefined}>
+            <Icon name={icon} decorative />
+            {label}
+          </span>
+        ))}
+      </div>
       <div className={styles.mockField}>
         <span className={styles.mockLabel}>Card number</span>
         <div className={styles.mockInput}>4242 4242 4242 4242</div>
