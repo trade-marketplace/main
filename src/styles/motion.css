@@ -167,7 +167,7 @@
 .tm-flash__sparks > i { position: absolute; left: 50%; top: 50%; width: 4px; height: 14px; border-radius: 2px; background: var(--trade-signature); opacity: 0; transform: translate(-50%, -50%) rotate(var(--a)) translateY(var(--tm-spark-from)); }
 .tm-flash__circle { position: relative; width: 100%; height: 100%; border-radius: 50%; background: var(--trade-signature); color: var(--trade-on-signature); display: grid; place-items: center; }
 .tm-flash__mark { display: grid; place-items: center; }
-.tm-flash .tm-flash__icon { font-size: calc(var(--tm-flash-size) * .58); }   /* 64px tick in a 110px circle */
+.tm-flash .tm-flash__icon { font-size: calc(var(--tm-flash-size) * var(--tm-flash-icon-scale, .58)); }   /* 64px tick in a 110px circle */
 .tm-flash .tm-flash__bolt { width: calc(var(--tm-flash-size) * .3); fill: currentColor; }
 .tm-flash.is-playing .tm-flash__glow { animation: tm-glow var(--tm-m10-total) var(--trade-ease-out) both; }
 .tm-flash.is-playing .tm-flash__sparks > i { animation: tm-spark var(--tm-m10-burst) var(--trade-ease-out) var(--tm-m10-delay); }
