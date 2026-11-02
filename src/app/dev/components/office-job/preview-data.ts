@@ -40,8 +40,8 @@ export function previewJob(state: PreviewState): OfficeJobView {
     status: "ASSIGNED",
     trade: "Electrical",
     suburb: "Windsor",
-    customer: { id: "c1", name: "Sarah Thompson" },
-    tradie: { id: "w1", name: "Jack Wilson" },
+    customer: { id: "00000000-0000-4000-8000-000000004001", name: "Sarah Thompson" },
+    tradie: { id: "00000000-0000-4000-8000-000000003001", name: "Jack Wilson" },
     priceCents: 37200,
     pricing: { minutes: 150, materialsCents: 12000 },
     money: {
@@ -52,8 +52,8 @@ export function previewJob(state: PreviewState): OfficeJobView {
       payroll: { label: "After sign-off", kind: "waiting" },
     },
     payments: [
-      { id: "p1", label: "Job", amountCents: 37200, refundableCents: 37200 },
-      { id: "p2", label: "Extra work", amountCents: 14800, refundableCents: 14800 },
+      { id: "00000000-0000-4000-8000-000000002001", label: "Job", amountCents: 37200, refundableCents: 37200 },
+      { id: "00000000-0000-4000-8000-000000002002", label: "Extra work", amountCents: 14800, refundableCents: 14800 },
     ],
     messages: [
       { id: "m1", from: "Sarah Thompson", fromOffice: false, body: "Kia ora Sarah, Thursday 8am suit?", at: "2026-11-02T00:00:00.000Z", when: "Mon 17:30" },
@@ -61,9 +61,9 @@ export function previewJob(state: PreviewState): OfficeJobView {
     ],
     timeline: TIMELINE,
     reassignOptions: [
-      { id: "w2", name: "Aroha Ngata" },
-      { id: "w3", name: "Tom Fraser" },
-      { id: "w4", name: "Priya Patel" },
+      { id: "00000000-0000-4000-8000-000000003002", name: "Aroha Ngata" },
+      { id: "00000000-0000-4000-8000-000000003003", name: "Tom Fraser" },
+      { id: "00000000-0000-4000-8000-000000003004", name: "Priya Patel" },
     ],
   };
 
@@ -87,7 +87,7 @@ export function previewJob(state: PreviewState): OfficeJobView {
         status: "BOOKABLE",
         tradie: null,
         money: { ...base.money, extraWorkCents: 0, tradieEarnsCents: 25920 },
-        payments: [{ id: "p1", label: "Job", amountCents: 37200, refundableCents: 37200 }],
+        payments: [{ id: "00000000-0000-4000-8000-000000002001", label: "Job", amountCents: 37200, refundableCents: 37200 }],
         reassignOptions: [],
         timeline: TIMELINE.filter((row) => !["t1", "t2", "t3", "t4"].includes(row.id)),
       };
@@ -114,8 +114,8 @@ export function previewJob(state: PreviewState): OfficeJobView {
       return {
         ...base,
         title: "Rewire the whole of the upstairs of the villa including the sleepouts, garage and the long driveway lights",
-        customer: { id: "c1", name: "Alexandria-Anahera Te Aho-Williams-Montgomery" },
-        tradie: { id: "w1", name: "Bartholomew Featherstonehaugh-Cholmondeley" },
+        customer: { id: "00000000-0000-4000-8000-000000004001", name: "Alexandria-Anahera Te Aho-Williams-Montgomery" },
+        tradie: { id: "00000000-0000-4000-8000-000000003001", name: "Bartholomew Featherstonehaugh-Cholmondeley" },
         messages: [],
         timeline: [
           entry("q1", "office", "Matt", "Reassigned to Bartholomew Featherstonehaugh-Cholmondeley", "11:40 today", "Alexandria-Anahera asked for someone closer, and Jack was running two jobs on the same day, so Matt moved this one across after checking the new tradie’s licence."),
