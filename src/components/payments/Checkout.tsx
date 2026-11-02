@@ -21,7 +21,7 @@ export function CheckoutPage({ summary, testMode, children }: { summary: Checkou
   return (
     <div className={styles.page}>
       <header className={styles.nav}>
-        <Wordmark />
+        <Wordmark className={styles.logo} />
         <span className={styles.secure}>
           <Icon name="lock" size="sm" decorative fill />
           Secure checkout
