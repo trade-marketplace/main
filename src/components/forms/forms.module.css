@@ -9,7 +9,9 @@
 .success { color: var(--trade-success); }
 .error > span, .success > span { flex: none; }
 .control { display: flex; align-items: center; gap: 10px; min-width: 0; min-height: var(--trade-field-h); color: var(--trade-text-2); background: var(--trade-surface); }
-.control[data-variant="box"] { padding: 0 14px; border: 1px solid var(--trade-field-border); border-radius: var(--trade-radius-field); }
+.control[data-variant="box"] { padding: 0 14px; border: 1px solid var(--trade-field-stroke); border-radius: var(--trade-radius-field); box-shadow: 0 1px 2px rgb(12 37 29 / 5%); transition: border-color 120ms ease-out; }
+.control[data-variant="box"]:hover:not([data-disabled]) { border-color: var(--trade-field-border); }
+.control[data-variant="box"]:focus-within { border-color: var(--trade-forest); }
 .control[data-variant="underline"] { border-bottom: 1px solid var(--trade-field-border); }
 .control:focus-within { outline: var(--trade-focus-ring, 2px solid var(--trade-focus)); outline-offset: 2px; }
 :global(html:not([data-focus-input="pointer"])) .control[data-variant="underline"]:focus-within { border-bottom: 2px solid var(--trade-focus); }
