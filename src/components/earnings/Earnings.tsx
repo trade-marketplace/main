@@ -190,7 +190,9 @@ export function Earnings({
       <Head statement={statementHref} />
 
       {missingDetails && (
-        <Banner tone="info" title="Add bank account & IRD number." action={<TextLink href="/profile/payroll" inline>Add</TextLink>}>
+        payrollDetails.missing.includes("review") ? <Banner tone="info" title="Check your bank & tax details." action={<TextLink href="/profile/payroll" inline>Review</TextLink>}>
+          Payroll needs a review before you can be paid.
+        </Banner> : <Banner tone="info" title="Add bank account & IRD number." action={<TextLink href="/profile/payroll" inline>Add</TextLink>}>
           So we can pay you through payroll.
         </Banner>
       )}

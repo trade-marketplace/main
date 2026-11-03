@@ -4,17 +4,16 @@ The shared validators use IRD's [Payroll Calculations & Business Rules 2026/27, 
 The IRD number's secondary weights apply only when the primary result is 10. Bank checks select the current bank's
 A/B/D/F/X algorithm and left-pad each component separately. A checksum cannot establish ownership or account existence.
 
-Matt approved 3.5% support after the plan was written. Current options are unenrolled, 3.5/4/6/8/10%, plus 3% labelled
-as an approved temporary reduction. IRD's 2026/27 specification says the default increases to 4% on 1 April 2028.
+Matt approved 3.5% support after the plan was written. Self-service options are unenrolled or 3.5/4/6/8/10%. New 3% elections are rejected until verified approval periods exist (#455). IRD's 2026/27 specification says the default increases to 4% on 1 April 2028.
 The application stores the worker's selected rate; it does not automatically alter an existing choice or payroll deductions.
-Existing integer rates are retained by the decimal-column migration.
+Existing integer rates are retained by the decimal-column migration. A preserved 3% election or unsupported tax code (including STC/NSW) fails payroll readiness closed and receives an office-review handoff; it is not silently corrected. STC needs certificate instructions and validity. NSW is for recognized seasonal workers/foreign fishing-vessel crew, not ordinary local-tradie work: see [IRD tax-code guidance](https://www.ird.govt.nz/income-tax/income-tax-for-individuals/tax-codes-and-tax-rates-for-individuals/what-tax-code-should-i-use) and [INZ RSE work conditions](https://www.immigration.govt.nz/visas/recognised-seasonal-employer-limited-visa/). Approval/certificate verification is tracked in #455.
 
 `tests/unit/payroll-db.test.ts` uses migrated throwaway Postgres to check encryption contexts, password and current-role
 proof, masked responses, field-name-only audit rows, rejected writes and the new contribution rate. The payout tests
 check that a missing-details payout remains queued and receives exactly one in-app reminder. The existing Earnings
 missing-details banner points to `/profile/payroll`; saving refreshes both pages.
 
-Guarded previews: `/dev/components/payroll?state=missing|saved|editing|validation|error|no-key|loading|offline|saving|load-error`.
+Guarded previews: `/dev/components/payroll?state=missing|saved|editing|validation|error|no-key|loading|offline|saving|load-error|review`. Earnings office-review preview: `/dev/components/earnings?details=review`.
 The screenshots bot can capture each state. Preview actions use synthetic values and never Auth or a database.
 `E2E_DEV_BASE_URL` enables the preview browser tests: five widths, every state, axe, keyboard, validation, save/masks,
 password rejection, cancelled edits, offline recovery and a tax-help popup.
@@ -27,5 +26,5 @@ Run `tests/e2e/payroll.spec.ts` with `PAYROLL_E2E_APP_URL` and `PAYROLL_E2E_DATA
 The test starts the existing isolated Security Auth double on 54334 (override with `PAYROLL_E2E_AUTH_PORT`), logs in a
 synthetic tradie, clicks the Account link, saves through the real Supabase SDK/server action, checks encrypted database
 values and absence of plaintext in the action response, reloads masked values, and visits Earnings and back.
-It does not contact a real Supabase project or modify live accounts. Standard CI keeps the opt-in local journeys off,
+The real journey also loads preserved 3%/STC details, follows the working office contact handoff and confirms no automatic rewrite. It does not contact a real Supabase project or modify live accounts. Standard CI keeps the opt-in local journeys off,
 while always checking production route protection and preview 404s. Never use real keys or commit verification artifacts.

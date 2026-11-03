@@ -262,6 +262,16 @@ model LicenceUploadStage {
   @@map("licence_upload_stages")
 }
 
+// Retired final documents are removed only after checking that no current licence shares the path.
+model LicenceDocumentCleanup {
+  path      String   @id
+  userId    String   @map("user_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([createdAt])
+  @@map("licence_document_cleanup")
+}
+
 // ---------------------------------------------------------------- Schema 2 (#87): jobs
 
 // Where a job is. QUOTE_BOUNTY is when the price can't be settled from photos and estimates and someone has to

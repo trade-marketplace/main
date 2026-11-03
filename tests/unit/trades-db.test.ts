@@ -2,9 +2,10 @@ import { randomUUID } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
 import type { Role, Trade } from "@/generated/prisma/client";
 import { beginLicenceStage, claimLicenceStage, MAX_PENDING_LICENCE_UPLOADS, SIGNED_STAGE_MS, STAGE_CLEANUP_GRACE_MS, type LicenceStaging } from "@/server/account/licence-upload";
+import { licenceDocumentCleanup } from "@/server/scheduler/licence-document-cleanup";
 import { licenceUploadCleanup } from "@/server/scheduler/licence-upload-cleanup";
 import { tradesRoute } from "@/server/account/trades-route";
-import { createUploadService, type UploadDb } from "@/server/files/service";
+import { createLicenceDocumentUploader } from "@/server/account/licence-documents";
 import type { FileStore } from "@/server/files/storage";
 import { loadTrades, saveTrade } from "@/server/account/trades";
 import { transitionJob, TransitionPreconditionError, type StatusMachineDeps } from "@/server/jobs/status-machine";
@@ -36,6 +37,9 @@ describe.skipIf(!testDatabaseUrl)("trades, licences and expiry reminders (Postgr
     expect(tables).toEqual([{ relrowsecurity: true }]);
     const grants = await schema.db.$queryRawUnsafe<{ allowed: boolean }[]>(`SELECT has_table_privilege(oid, '"${schema.name}".licence_upload_stages', 'SELECT,INSERT,UPDATE,DELETE') AS allowed FROM pg_roles WHERE rolname IN ('anon', 'authenticated')`);
     expect(grants.every(row => !row.allowed)).toBe(true);
+    expect(await schema.db.$queryRawUnsafe(`SELECT relrowsecurity FROM pg_class WHERE oid = '"${schema.name}".licence_document_cleanup'::regclass`)).toEqual([{ relrowsecurity: true }]);
+    const cleanupGrants = await schema.db.$queryRawUnsafe<{ allowed: boolean }[]>(`SELECT has_table_privilege(oid, '"${schema.name}".licence_document_cleanup', 'SELECT,INSERT,UPDATE,DELETE') AS allowed FROM pg_roles WHERE rolname IN ('anon', 'authenticated')`);
+    expect(cleanupGrants.every(row => !row.allowed)).toBe(true);
   });
   it("adds Other without a licence or upload, and repeated requests never duplicate the trade", async () => {
     const id = await person(); const input = { trade: "OTHER", number: "", expiresOn: "" };
@@ -134,12 +138,12 @@ describe.skipIf(!testDatabaseUrl)("trades, licences and expiry reminders (Postgr
     const files = new Map<string, Uint8Array>();
     const staging: LicenceStaging = { sign: vi.fn(async () => "https://files.test/signed-write"), read: async path => files.get(path)!, remove: vi.fn(async path => { files.delete(path); }) };
     const store: FileStore = { put: vi.fn(), signedUrl: vi.fn(), remove: vi.fn() };
-    const service = createUploadService({ db: schema.db as unknown as UploadDb, store });
+    const upload = createLicenceDocumentUploader(schema.db, store);
     const viewer = { userId: id, role: "TRADIE" as const, firstName: "Test", email: "test@example.test", emailVerified: true };
     const send = async (bytes: Uint8Array) => {
       const stage = (await beginLicenceStage(schema.db, id, staging, instant))!; files.set(stage.path, bytes);
       const form = new FormData(); form.set("trade", "ELECTRICAL"); form.set("number", "E 123456"); form.set("expiresOn", "2027-03-31"); form.set("stagedDocument", stage.path);
-      const response = await tradesRoute(viewer, new Request("https://example.test/api/profile/trades", { method: "POST", body: form }), { db: () => schema.db, limit: async () => ({ allowed: true }), staging: () => staging, upload: (who, input) => service.addDocument(who, "licences", input) });
+      const response = await tradesRoute(viewer, new Request("https://example.test/api/profile/trades", { method: "POST", body: form }), { db: () => schema.db, limit: async () => ({ allowed: true }), staging: () => staging, upload });
       expect(files.has(stage.path)).toBe(false); expect(await schema.db.licenceUploadStage.findUnique({ where: { path: stage.path } })).toMatchObject({ finalizedAt: expect.any(Date) });
       return response;
     };
@@ -164,6 +168,75 @@ describe.skipIf(!testDatabaseUrl)("trades, licences and expiry reminders (Postgr
     expect((await rule.run({ db: schema.db, now: expired, limit: 1 })).done).toBe(1);
     expect(staging.remove).toHaveBeenCalledWith(first.path); expect(staging.remove).toHaveBeenCalledWith(second.path);
     expect(await schema.db.licenceUploadStage.count({ where: { userId: id } })).toBe(0);
+  });
+
+  it("queues superseded documents after successful replacement, preserves shared/current files and retries failed deletion", async () => {
+    await schema.db.licenceDocumentCleanup.deleteMany();
+    const id = await person(); const old = document(id); const replacement = `licences/${id}/${"b".repeat(32)}.pdf`; const another = `licences/${id}/${"c".repeat(32)}.pdf`;
+    await save(id);
+    await saveTrade(schema.db, id, details("PLUMBING"), async () => old, now);
+    await saveTrade(schema.db, id, details(), async () => replacement, now);
+    expect(await schema.db.licenceDocumentCleanup.findUnique({ where: { path: old } })).toMatchObject({ userId: id });
+    const store = { remove: vi.fn(async () => {}) }; const rule = licenceDocumentCleanup(() => store);
+    expect((await rule.run({ db: schema.db, now, limit: 1 })).skipped).toBe(1); expect(store.remove).not.toHaveBeenCalled();
+    await saveTrade(schema.db, id, details("PLUMBING"), async () => another, now);
+    vi.mocked(store.remove).mockRejectedValueOnce(new Error("storage down")); const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    try { expect((await rule.run({ db: schema.db, now, limit: 1 })).failed).toBe(1); } finally { log.mockRestore(); }
+    expect(await schema.db.licenceDocumentCleanup.findUnique({ where: { path: old } })).not.toBeNull();
+    expect((await rule.run({ db: schema.db, now, limit: 1 })).done).toBe(1); expect(store.remove).toHaveBeenLastCalledWith("documents", [old]);
+    expect(await schema.db.licenceDocumentCleanup.findUnique({ where: { path: old } })).toBeNull();
+    await saveTrade(schema.db, id, details(), async () => replacement, now);
+    expect(await schema.db.licenceDocumentCleanup.findUnique({ where: { path: replacement } })).toBeNull();
+    expect((await schema.db.licence.findUniqueOrThrow({ where: { userId_trade: { userId: id, trade: "ELECTRICAL" } } })).documentPath).toBe(replacement);
+  });
+  it("serializes a new shared-path attachment with cleanup so a currently uploaded file survives", async () => {
+    await schema.db.licenceDocumentCleanup.deleteMany();
+    const id = await person(); const old = document(id); const next = `licences/${id}/${"d".repeat(32)}.pdf`;
+    await save(id); await saveTrade(schema.db, id, details(), async () => next, now);
+    const files = new Set([old, next]); const store = { remove: vi.fn(async (_bucket: string, paths: string[]) => { for (const path of paths) files.delete(path); }) };
+    let started!: () => void; const entered = new Promise<void>(resolve => { started = resolve; }); let release!: () => void; const ready = new Promise<void>(resolve => { release = resolve; });
+    const saving = saveTrade(schema.db, id, details("GAS"), async () => { files.add(old); started(); await ready; return old; }, now);
+    await entered; const cleanup = licenceDocumentCleanup(() => store).run({ db: schema.db, now, limit: 1 }); release();
+    await saving; await cleanup;
+    expect(files.has(old)).toBe(true); expect(store.remove).not.toHaveBeenCalled();
+    expect((await schema.db.licence.findUniqueOrThrow({ where: { userId_trade: { userId: id, trade: "GAS" } } })).documentPath).toBe(old);
+  });
+
+  it("commits a new-file cleanup intent before Storage put, so an audit rollback cannot strand the final document", async () => {
+    await schema.db.licenceDocumentCleanup.deleteMany();
+    const id = await person(); const files = new Map<string, Uint8Array>();
+    const store: FileStore = {
+      signedUrl: vi.fn(),
+      put: vi.fn(async (_bucket, path, bytes) => { expect(await schema.db.licenceDocumentCleanup.findUnique({ where: { path } })).toMatchObject({ userId: id }); files.set(path, bytes); }),
+      remove: vi.fn(async (_bucket, paths) => { for (const path of paths) files.delete(path); }),
+    };
+    const upload = createLicenceDocumentUploader(schema.db, store);
+    const viewer = { userId: id, role: "TRADIE" as const };
+    await schema.db.$executeRawUnsafe(`CREATE FUNCTION "${schema.name}".reject_licence_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.action = 'licence.submitted' THEN RAISE EXCEPTION 'test audit failure'; END IF; RETURN NEW; END $$`);
+    await schema.db.$executeRawUnsafe(`CREATE TRIGGER reject_licence_audit BEFORE INSERT ON "${schema.name}".audit_log FOR EACH ROW EXECUTE FUNCTION "${schema.name}".reject_licence_audit()`);
+    try { await expect(saveTrade(schema.db, id, details(), async () => (await upload(viewer, Buffer.from("%PDF-1.7\nlicence"))).path, now)).rejects.toThrow(); }
+    finally { await schema.db.$executeRawUnsafe(`DROP TRIGGER reject_licence_audit ON "${schema.name}".audit_log`); }
+    expect(await schema.db.licence.count({ where: { userId: id } })).toBe(0); expect(files.size).toBe(1);
+    const path = [...files.keys()][0]!; expect(await schema.db.licenceDocumentCleanup.findUnique({ where: { path } })).not.toBeNull();
+    expect((await licenceDocumentCleanup(() => store).run({ db: schema.db, now, limit: 1 })).done).toBe(1);
+    expect(files.size).toBe(0); expect(await schema.db.licenceDocumentCleanup.findUnique({ where: { path } })).toBeNull();
+  });
+
+  it("gives identical uploads different final keys so an ambiguous late delete cannot remove a new attachment", async () => {
+    await schema.db.licenceDocumentCleanup.deleteMany();
+    const id = await person(); const files = new Map<string, Uint8Array>(); let failDelete = true;
+    const store: FileStore = { signedUrl: vi.fn(), put: vi.fn(async (_bucket, path, bytes) => { files.set(path, bytes); }),
+      remove: vi.fn(async (_bucket, paths) => { for (const path of paths) files.delete(path); if (failDelete) { failDelete = false; throw new Error("response lost after removal"); } }),
+    };
+    const upload = createLicenceDocumentUploader(schema.db, store); const viewer = { userId: id, role: "TRADIE" as const }; const pdf = Buffer.from("%PDF-1.7\nsame licence");
+    const send = async (trade = "ELECTRICAL") => { await saveTrade(schema.db, id, details(trade), async () => (await upload(viewer, pdf)).path, now); return (await schema.db.licence.findUniqueOrThrow({ where: { userId_trade: { userId: id, trade: trade as "ELECTRICAL" | "GAS" } } })).documentPath!; };
+    const old = await send(); const replacement = await send(); expect(replacement).not.toBe(old);
+    const rule = licenceDocumentCleanup(() => store); const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    try { expect((await rule.run({ db: schema.db, now, limit: 1 })).failed).toBe(1); } finally { log.mockRestore(); }
+    const sharedTrade = await send("GAS"); expect(sharedTrade).not.toBe(old); expect(sharedTrade).not.toBe(replacement);
+    expect((await rule.run({ db: schema.db, now, limit: 1 })).done).toBe(1);
+    // The original removal arrives after its retry and the later uploads. It still names only the old key.
+    files.delete(old); expect(files.has(replacement)).toBe(true); expect(files.has(sharedTrade)).toBe(true);
   });
 
 });

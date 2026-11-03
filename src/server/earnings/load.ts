@@ -54,7 +54,7 @@ export async function loadEarnings(db: EarningsDatabase, workerId: string, now: 
     }),
     db.payrollDetails.findUnique({
       where: { userId: workerId },
-      select: { irdNumberEncrypted: true, bankAccountEncrypted: true, taxCode: true },
+      select: { irdNumberEncrypted: true, bankAccountEncrypted: true, taxCode: true, kiwiSaverRatePct: true },
     }),
   ]);
 

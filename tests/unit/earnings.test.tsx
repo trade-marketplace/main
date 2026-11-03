@@ -358,6 +358,11 @@ describe("reading one tradie's earnings", () => {
     const full = { irdNumberEncrypted: "x", bankAccountEncrypted: "y", taxCode: "M" };
     expect((await loadEarnings(fakeDb({ details: full }).db, "t", NOW)).payrollDetails).toEqual({ complete: true, missing: [] });
   });
+  it.each([{ taxCode: "M", kiwiSaverRatePct: 3 }, { taxCode: "STC", kiwiSaverRatePct: 3.5 }, { taxCode: "UNKNOWN", kiwiSaverRatePct: null }])("holds payroll for preserved unverified details: %j", async details => {
+    const fake = fakeDb({ details: { irdNumberEncrypted: "encrypted", bankAccountEncrypted: "encrypted", ...details } });
+    expect((await loadEarnings(fake.db, "t", NOW)).payrollDetails).toEqual({ complete: false, missing: ["review"] });
+    expect(fake.detailsFind).toHaveBeenCalledWith(expect.objectContaining({ select: expect.objectContaining({ kiwiSaverRatePct: true, taxCode: true }) }));
+  });
 });
 
 // ---- the statement ----------------------------------------------------------------------------------------------
@@ -536,6 +541,13 @@ describe("<Earnings>", () => {
     expect(text(render(<Earnings view={view()} payrollDetails={{ complete: true, missing: [] }} />))).not.toContain("Add bank account");
     const nothingOnItsWay = view({ payouts: [paid("2026-10-30T02:00:00Z")], waiting: [] });
     expect(text(render(<Earnings view={nothingOnItsWay} payrollDetails={{ complete: false, missing: ["bank"] }} />))).not.toContain("Add bank account");
+  });
+  it("explains the office-review hold without asking again for bank details already supplied", () => {
+    const html = render(<Earnings view={view()} payrollDetails={{ complete: false, missing: ["review"] }} />);
+    expect(text(html)).toContain("Check your bank &amp; tax details.");
+    expect(text(html)).toContain("Payroll needs a review before you can be paid.");
+    expect(html).toContain('href="/profile/payroll"');
+    expect(text(html)).not.toContain("Add bank account");
   });
 
   it("Empty: says so, offers Find work, and the statement button is greyed out", () => {

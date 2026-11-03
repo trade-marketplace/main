@@ -5,6 +5,7 @@ import { JobTransitionError, transitionJob } from "@/server/jobs/status-machine"
 import { createNotify } from "@/server/notifications/notify";
 
 import { schedulerDeps } from "./deps";
+import { licenceDocumentCleanup } from "./licence-document-cleanup";
 import { licenceUploadCleanup } from "./licence-upload-cleanup";
 import { licenceExpiryReminder } from "./licence-reminders";
 
@@ -245,4 +246,4 @@ export const reviewReminder: SchedulerRule = {
 };
 
 /** In the order they run. Money-relevant (sign-off) first. */
-export const SCHEDULER_RULES: readonly SchedulerRule[] = [autoSignOff, bountyExpiry, priceSlowBanner, unclaimedAlert, reviewReminder, licenceExpiryReminder, licenceUploadCleanup()];
+export const SCHEDULER_RULES: readonly SchedulerRule[] = [autoSignOff, bountyExpiry, priceSlowBanner, unclaimedAlert, reviewReminder, licenceExpiryReminder, licenceUploadCleanup(), licenceDocumentCleanup()];
