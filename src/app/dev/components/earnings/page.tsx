@@ -23,6 +23,7 @@ export default async function EarningsPreview({ searchParams }: { searchParams: 
   const state = isPreviewState(stateParam) ? stateParam : "default";
   const { payroll } = parseEarningsQuery(params);
   const missing = one(params.details) === "missing";
+  const review = one(params.details) === "review";
   return (
     <AppShellView
       viewer={{ role: "TRADIE", firstName: "Jack", lastName: "Wilson", email: "tradie@example.test", emailVerified: true, counts: { messages: 0, notifications: 0 } }}
@@ -37,7 +38,7 @@ export default async function EarningsPreview({ searchParams }: { searchParams: 
         flag={state}
         basePath={PREVIEW_BASE}
         statementHref="#statement"
-        payrollDetails={missing ? { complete: false, missing: ["bank", "ird"] } : { complete: true, missing: [] }}
+        payrollDetails={review ? { complete: false, missing: ["review"] } : missing ? { complete: false, missing: ["bank", "ird"] } : { complete: true, missing: [] }}
       />
     </AppShellView>
   );

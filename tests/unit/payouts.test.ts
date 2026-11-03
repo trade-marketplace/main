@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import type { Prisma, Role } from "@/generated/prisma/client";
 import { transitionJob, type StatusMachineDeps } from "@/server/jobs/status-machine";
 import { calculatePayout } from "@/server/payouts/calculate";
+import { encryptField } from "@/server/crypto";
 import { checkPayrollDetails, queuePayoutForJob } from "@/server/payouts/queue-payout";
 import { PricingInputError, priceWork } from "@/server/pricing/calculate";
 import { priceJob } from "@/server/pricing/price-job";
@@ -165,6 +166,9 @@ describe("calculatePayout", () => {
 });
 
 describe("checkPayrollDetails", () => {
+  it.each([{ taxCode: "M", kiwiSaverRatePct: 3 }, { taxCode: "STC", kiwiSaverRatePct: 3.5 }, { taxCode: "NSW", kiwiSaverRatePct: null }, { taxCode: "UNKNOWN", kiwiSaverRatePct: 4 }])("holds unverified preserved elections/codes for office review: %j", details => {
+    expect(checkPayrollDetails({ irdNumberEncrypted: "encrypted", bankAccountEncrypted: "encrypted", ...details })).toEqual({ complete: false, missing: ["review"] });
+  });
   it("is complete only with an IRD number, a bank account and a tax code", () => {
     expect(
       checkPayrollDetails({
@@ -207,6 +211,7 @@ describe("queuePayoutForJob (mocked transaction)", () => {
       irdNumberEncrypted: string | null;
       bankAccountEncrypted: string | null;
       taxCode: string | null;
+      kiwiSaverRatePct?: number | null;
     } | null;
   }) {
     const created: unknown[] = [];
@@ -285,6 +290,12 @@ describe("queuePayoutForJob (mocked transaction)", () => {
     expect(created).toHaveLength(0);
   });
 
+  it("sends a review reminder rather than asking for bank details already supplied", async () => {
+    const { tx, nudges } = fakeTx({ details: { irdNumberEncrypted: "encrypted", bankAccountEncrypted: "encrypted", taxCode: "M", kiwiSaverRatePct: 3 } });
+    expect(await queuePayoutForJob(tx, "j1")).toMatchObject({ queued: true, payrollDetails: { complete: false, missing: ["review"] } });
+    expect(nudges[0]).toMatchObject({ type: "payout.details_missing", payload: { payoutId: "p1", needsPayrollReview: true } });
+  });
+
   it("queues nothing without a worker or without frozen pricing", async () => {
     const noWorker = fakeTx({ job: { workerId: null } });
     expect(await queuePayoutForJob(noWorker.tx, "j1")).toEqual({
@@ -346,6 +357,19 @@ describe.skipIf(!testDatabaseUrl)("payout on completion (database)", () => {
   }
 
   const payoutsFor = (jobId: string) => schema.db.payout.findMany({ where: { jobId } });
+
+  it("holds a legacy3% payout with a once-only review nudge and never rewrites the election", async () => {
+    const { id, workerId } = await submittedJob(60);
+    const env = { FIELD_ENCRYPTION_KEY: Buffer.alloc(32, 134).toString("base64") };
+    await schema.db.payrollDetails.create({ data: { userId: workerId, bankAccountEncrypted: encryptField("01-0902-0068389-00", `payroll_details.bank_account:${workerId}`, env), bankAccountLast4: "8900", irdNumberEncrypted: encryptField("49091850", `payroll_details.ird_number:${workerId}`, env), irdNumberLast3: "850", taxCode: "M", kiwiSaverRatePct: 3 } });
+    expect(await schema.db.$transaction(tx => queuePayoutForJob(tx, id))).toMatchObject({ queued: true, payrollDetails: { complete: false, missing: ["review"] } });
+    await schema.db.$transaction(tx => queuePayoutForJob(tx, id));
+    expect((await payoutsFor(id))[0].status).toBe("QUEUED");
+    const notices = await schema.db.notification.findMany({ where: { userId: workerId, type: "payout.details_missing" } });
+    expect(notices).toHaveLength(1); expect(notices[0].payload).toMatchObject({ needsPayrollReview: true });
+    expect(Number((await schema.db.payrollDetails.findUniqueOrThrow({ where: { userId: workerId } })).kiwiSaverRatePct)).toBe(3);
+    expect(JSON.stringify(notices)).not.toMatch(/49091850|01-0902-0068389-00/);
+  });
 
   it("queues one QUEUED payout when the customer signs off", async () => {
     const { id, workerId } = await submittedJob(30); // below the 1 h Other minimum

@@ -35,6 +35,9 @@ describe("inbox presentation boundary", () => {
     expect(JSON.stringify(item)).not.toMatch(/50000|30000|private|steal|margin/);
     expect(item.href).toBe("/jobs/TM-1005");
   });
+  it("shows the office-review reminder without exposing saved contribution/code values", () => {
+    expect(inboxItem(row({ type: "payout.details_missing", payload: { needsPayrollReview: true, privateRate: 3, taxCode: "STC" } }))).toMatchObject({ line: "Bank & tax review", href: "/profile/payroll", icon: "account_balance" });
+  });
 
   it.each(["//example.test", "../other", "one?owner=other", "one#different", "https://example.test"])("does not turn a malformed job identifier into a destination: %s", (jobId) => {
     const source = row({ payload: { jobId, href: "javascript:alert(1)" } });

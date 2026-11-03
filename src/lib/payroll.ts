@@ -4,11 +4,20 @@
 export const PAYROLL_PATH = "/profile/payroll";
 export const TAX_CODE_HELP = "https://www.ird.govt.nz/income-tax/income-tax-for-individuals/tax-codes-and-tax-rates-for-individuals/what-tax-code-should-i-use";
 export const TAX_CODES = ["M", "ME", "M SL", "ME SL", "SB", "S", "SH", "ST", "SA", "SB SL", "S SL", "SH SL", "ST SL", "SA SL", "CAE", "EDW", "ND"] as const;
-export const KIWISAVER_RATES = [3.5, 4, 6, 8, 10, 3] as const;
+export const KIWISAVER_RATES = [3.5, 4, 6, 8, 10] as const;
+export const OFFICE_TAX_CODE = "office-review";
+export type PayrollReview = "kiwisaver" | "tax-code";
+/** Certificates/temporary reductions need verified approval metadata; a saved election alone is not proof. */
+export function payrollReviewReasons(details: { taxCode: string | null; kiwiSaverRatePct?: unknown } | null): PayrollReview[] {
+  const review: PayrollReview[] = [];
+  if (details?.kiwiSaverRatePct != null && Number(details.kiwiSaverRatePct) === 3) review.push("kiwisaver");
+  if (details?.taxCode?.trim() && !(TAX_CODES as readonly string[]).includes(details.taxCode)) review.push("tax-code");
+  return review;
+}
 
 export type PayrollInput = { bankAccount: string; irdNumber: string; taxCode: string; kiwiSaverRate: string; currentPassword: string };
 export type PayrollFields = Partial<Record<keyof PayrollInput, string>>;
-export type PayrollSummary = { bankAccountLast4: string | null; irdNumberLast3: string | null; taxCode: string | null; kiwiSaverRatePct: number | null; saved: boolean; complete: boolean; canSave: boolean };
+export type PayrollSummary = { bankAccountLast4: string | null; irdNumberLast3: string | null; taxCode: string | null; kiwiSaverRatePct: number | null; saved: boolean; complete: boolean; canSave: boolean; review: PayrollReview[] };
 export type PayrollResult = { ok: true; summary: PayrollSummary } | { ok: false; error: "invalid" | "wrong-password" | "session-expired" | "forbidden" | "try-later" | "unavailable" | "no-key"; fields?: PayrollFields };
 
 const clean = (value: string) => value.trim().replace(/[ -]/g, "");
@@ -65,7 +74,7 @@ export function validatePayroll(input: PayrollInput): { ok: true; data: { bankAc
   const fields: PayrollFields = {};
   if (!validBankAccount(input.bankAccount)) fields.bankAccount = "Enter a valid New Zealand bank account number.";
   if (!validIrdNumber(input.irdNumber)) fields.irdNumber = "Enter a valid IRD number.";
-  if (!(TAX_CODES as readonly string[]).includes(input.taxCode)) fields.taxCode = "Choose your tax code.";
+  if (!(TAX_CODES as readonly string[]).includes(input.taxCode)) fields.taxCode = [OFFICE_TAX_CODE, "STC", "NSW"].includes(input.taxCode) ? "Contact us to check your tax code before saving." : "Choose your tax code.";
   if (input.kiwiSaverRate !== "none" && !(KIWISAVER_RATES as readonly number[]).includes(Number(input.kiwiSaverRate))) fields.kiwiSaverRate = "Choose your KiwiSaver rate.";
   if (!input.currentPassword || input.currentPassword.length > 200) fields.currentPassword = "Enter your current password.";
   if (Object.keys(fields).length) return { ok: false, fields };
