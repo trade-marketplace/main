@@ -7,6 +7,7 @@ import { createAudit } from "@/server/audit/audit";
 import { applyTransition, type Tx } from "@/server/jobs/status-machine";
 import { createNotify } from "@/server/notifications/notify";
 import { priceJob } from "@/server/pricing/price-job";
+import { lockPricingSettings } from "./settings-lock";
 import { canPublishPrice, loadPricingSource, previewPrice, pricingRates, readPriceFields, requirePricingOffice, type PricingDatabase } from "./pricing-read";
 
 type Db = Pick<PrismaClient, "$transaction">;
@@ -60,6 +61,9 @@ export async function publishOfficePrice(db: Db, viewer: JobViewer, raw: unknown
       throw new Replayed();
     }
     if (!canPublishPrice(job.status)) throw new Refusal(failure("frozen"));
+    // Saved REVIEW drafts use their own frozen rates. New drafts depend on live Settings: a real row
+    // lock makes an earlier save visible before validation and keeps later saves behind this commit.
+    if (!job.pricing) await lockPricingSettings(db, tx);
     const rates = await pricingRates(tx, job), preview = previewPrice(job, parsed.fields, rates);
     if ("ok" in preview) throw new Refusal(preview);
     if (preview.token !== data.token) throw new Refusal(failure("changed"));

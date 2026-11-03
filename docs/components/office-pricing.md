@@ -17,6 +17,11 @@ job title/suburb and customer total/GST, with no worker pay, estimates, margin o
 
 Publish locks the job, then takes the existing office-user capability lock `(178, 1)` and re-reads the actor's current
 ADMIN role. A removal that wins first denies the write; an authorized transaction holds capability through commit.
+For a new price using live Settings, publication next takes a native `FOR SHARE` lock on Settings through commit.
+An earlier Settings save finishes before rate validation; a later save waits until the exact confirmed price commits.
+The read lock never updates Settings' revision/timestamp. Saved REVIEW rate snapshots remain independent of Settings.
+The database-client factory binds schema metadata to each client so the raw lock targets the same relation as its ORM
+queries, including disposable test schemas, without changing connection/pool options or relying on SQL `search_path`.
 The confirmation digest covers the exact inputs, rates, breakdown, draft and job content/photo version. Changed
 inputs/rates/content require another explicit confirmation. The trusted server passes those rechecked rates to
 `priceJob`'s optional `confirmedRates` argument, avoiding a second settings sample. Pricing, status-machine `send-price`,

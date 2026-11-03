@@ -2,8 +2,13 @@ import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { JobStatus, Role } from "@/generated/prisma/client";
+import { RATE_FIELDS, displayNumber, type SettingsInput } from "@/lib/office-settings";
+import * as auditModule from "@/server/audit/audit";
 import { readOfficePricePreview, publishOfficePrice, requestPricingPhotos } from "@/server/office/pricing-commands";
 import { readPricingWorkspace } from "@/server/office/pricing-read";
+import * as pricingRead from "@/server/office/pricing-read";
+import * as settingsLocks from "@/server/office/settings-lock";
+import { readOfficeSettings, saveOfficeSettings } from "@/server/office/settings";
 import { priceJob } from "@/server/pricing/price-job";
 import { officeUsers } from "@/server/office/users";
 import { getMessages, sendProblemMessage } from "@/server/messages/service";
@@ -30,12 +35,19 @@ describe.skipIf(!testDatabaseUrl)("office pricing transactions with real Postgre
     if (!preview.ok) throw new Error(`expected preview: ${preview.error}`);
     return { jobId: f.job.id, ...fields, token: preview.preview.token, requestId: randomUUID() };
   }
+  async function rateChange(actor: { userId: string }): Promise<SettingsInput> {
+    const { record } = await readOfficeSettings(schema.db, actor);
+    return { tab: "rates", version: record.version, values: { ...Object.fromEntries(RATE_FIELDS.map(field => [field.key, displayNumber(field, record.values[field.key])])), otherRateCents: "42" } };
+  }
   it("previews without writes, then atomically publishes the exact confirmed amount/history/audit and only customer notification", async () => {
     const f = await fixture(), unchanged = await schema.db.job.findUniqueOrThrow({ where: { id: f.job.id } });
+    const settingsBefore = await schema.db.settings.findUniqueOrThrow({ where: { id: 1 } });
     const input = await confirmation(f);
     expect(await schema.db.jobPricing.findUnique({ where: { jobId: f.job.id } })).toBeNull();
     expect((await schema.db.job.findUniqueOrThrow({ where: { id: f.job.id } })).updatedAt).toEqual(unchanged.updatedAt);
     expect(await publishOfficePrice(schema.db, f.office, input)).toEqual({ ok: true });
+    // A read lock must not increment the Settings revision or fire its updated_at trigger.
+    expect(await schema.db.settings.findUniqueOrThrow({ where: { id: 1 } })).toEqual(settingsBefore);
     const job = await schema.db.job.findUniqueOrThrow({ where: { id: f.job.id }, include: { pricing: true } });
     expect(job).toMatchObject({ status: "PRICED", priceCents: 14123, pricing: { workerRateCents: 3800, minutes: 120, materialsCents: 1000, workerGrossCents: 7600, holidayPayCents: 608, onCostCents: 1026 } });
     expect(await schema.db.jobStatusHistory.count({ where: { jobId: f.job.id, toStatus: "PRICED", changedById: f.office.userId } })).toBe(1);
@@ -57,6 +69,89 @@ describe.skipIf(!testDatabaseUrl)("office pricing transactions with real Postgre
     expect(await schema.db.job.findUniqueOrThrow({ where: { id: f.job.id } })).toEqual(before);
     expect(await publishOfficePrice(schema.db, f.office, await confirmation(f))).toEqual({ ok: true });
     expect((await schema.db.jobPricing.findUniqueOrThrow({ where: { jobId: f.job.id } })).workerRateCents).toBe(4200);
+  });
+  it("holds live rates until publication commits, so a real concurrent Settings save waits", async () => {
+    const f = await fixture(), input = await confirmation(f), settingsInput = await rateChange(f.office);
+    let release!: () => void, publisherPid: number | undefined;
+    const held = new Promise<void>(resolve => { release = resolve; });
+    const original = pricingRead.pricingRates;
+    const rates = vi.spyOn(pricingRead, "pricingRates").mockImplementationOnce(async (db, job) => {
+      const result = await original(db, job);
+      const [row] = await (db as typeof schema.db).$queryRaw<{ pid: number }[]>`SELECT pg_backend_pid() AS pid`;
+      publisherPid = row.pid;
+      await held;
+      return result;
+    });
+    const publishing = publishOfficePrice(schema.db, f.office, input);
+    let saving: ReturnType<typeof saveOfficeSettings> | undefined;
+    try {
+      await vi.waitFor(() => expect(publisherPid).toBeTypeOf("number"));
+      saving = saveOfficeSettings(schema.db, f.office, settingsInput);
+      await vi.waitFor(async () => {
+        const [row] = await schema.db.$queryRaw<{ count: number }[]>`
+          SELECT COUNT(*)::int AS count FROM pg_stat_activity
+          WHERE ${publisherPid}::int = ANY(pg_blocking_pids(pid))
+            AND query LIKE ${`UPDATE "${schema.name}"."settings"%`}`;
+        expect(row.count).toBe(1);
+      }, { timeout: 2500, interval: 20 });
+    } finally {
+      release(); rates.mockRestore();
+      await Promise.allSettled([publishing, ...(saving ? [saving] : [])]);
+    }
+    expect(await publishing).toEqual({ ok: true });
+    expect(await saving).toMatchObject({ ok: true });
+    expect(await schema.db.job.findUniqueOrThrow({ where: { id: f.job.id } })).toMatchObject({ status: "PRICED", priceCents: 14123 });
+    expect(await schema.db.jobPricing.findUniqueOrThrow({ where: { jobId: f.job.id } })).toMatchObject({ workerRateCents: 3800 });
+    expect(await schema.db.settings.findUniqueOrThrow({ where: { id: 1 } })).toMatchObject({ otherRateCents: 4200, revision: Number(settingsInput.version) + 1 });
+    expect(await schema.db.notification.count({ where: { userId: f.customer.userId, type: "job.priced" } })).toBe(1);
+  });
+  it("waits for an earlier real Settings save, then rejects the old confirmation without publication writes", async () => {
+    const f = await fixture(), input = await confirmation(f), settingsInput = await rateChange(f.office);
+    const before = await schema.db.job.findUniqueOrThrow({ where: { id: f.job.id } });
+    let release!: () => void, settingsPid: number | undefined, publisherPid: number | undefined;
+    const held = new Promise<void>(resolve => { release = resolve; });
+    const originalAudit = auditModule.createAudit, originalLock = settingsLocks.lockPricingSettings;
+    const audit = vi.spyOn(auditModule, "createAudit").mockImplementationOnce(db => {
+      const write = originalAudit(db);
+      const paused: auditModule.AuditWriter = async (actor, action, record, old, next, ...reason) => {
+        const result = await write(actor, action, record, old, next, ...reason);
+        const [row] = await db.$queryRaw<{ pid: number }[]>`SELECT pg_backend_pid() AS pid`;
+        settingsPid = row.pid;
+        await held;
+        return result;
+      };
+      return paused;
+    });
+    const lock = vi.spyOn(settingsLocks, "lockPricingSettings").mockImplementationOnce(async (db, tx) => {
+      const [row] = await tx.$queryRaw<{ pid: number }[]>`SELECT pg_backend_pid() AS pid`;
+      publisherPid = row.pid;
+      await originalLock(db, tx);
+    });
+    const saving = saveOfficeSettings(schema.db, f.office, settingsInput);
+    let publishing: ReturnType<typeof publishOfficePrice> | undefined;
+    try {
+      await vi.waitFor(() => expect(settingsPid).toBeTypeOf("number"));
+      publishing = publishOfficePrice(schema.db, f.office, input);
+      await vi.waitFor(() => expect(publisherPid).toBeTypeOf("number"));
+      await vi.waitFor(async () => {
+        const [row] = await schema.db.$queryRaw<{ blocked: boolean }[]>`
+          SELECT ${settingsPid}::int = ANY(pg_blocking_pids(pid)) AS blocked
+          FROM pg_stat_activity WHERE pid = ${publisherPid}::int`;
+        expect(row?.blocked).toBe(true);
+      }, { timeout: 2500, interval: 20 });
+    } finally {
+      release(); audit.mockRestore(); lock.mockRestore();
+      await Promise.allSettled([saving, ...(publishing ? [publishing] : [])]);
+    }
+    expect(await saving).toMatchObject({ ok: true });
+    expect(await publishing).toMatchObject({ ok: false, error: "changed" });
+    expect(await schema.db.job.findUniqueOrThrow({ where: { id: f.job.id } })).toEqual(before);
+    expect(await schema.db.jobPricing.count({ where: { jobId: f.job.id } })).toBe(0);
+    expect(await schema.db.jobStatusHistory.count({ where: { jobId: f.job.id, toStatus: "PRICED" } })).toBe(0);
+    expect(await schema.db.auditLog.count({ where: { recordId: f.job.id, action: "job.priced" } })).toBe(0);
+    expect(await schema.db.notification.count({ where: { userId: f.customer.userId, type: "job.priced" } })).toBe(0);
+    expect(await publishOfficePrice(schema.db, f.office, await confirmation(f))).toEqual({ ok: true });
+    expect(await schema.db.jobPricing.findUniqueOrThrow({ where: { jobId: f.job.id } })).toMatchObject({ workerRateCents: 4200 });
   });
   it("keeps a legacy REVIEW draft's saved rates after Settings changes and freezes the confirmed result", async () => {
     const f = await fixture();
