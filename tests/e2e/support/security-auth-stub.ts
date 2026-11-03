@@ -20,10 +20,10 @@ export async function startSecurityAuthStub(port: number, options: SecurityAuthS
   if (options.signup) {
     let database: URL;
     try { database = new URL(options.signup.databaseUrl); }
-    catch { throw new Error("Signup fixture requires the dedicated localhost issue120 database"); }
+    catch { throw new Error("Signup fixture requires a dedicated localhost issue120 or issue121 database"); }
     // pg accepts host overrides in query parameters; rejecting them keeps the parsed loopback guard binding.
-    if (!loopback(database) || !["postgres:", "postgresql:"].includes(database.protocol) || database.pathname !== "/issue120" || database.search || database.hash) {
-      throw new Error("Signup fixture requires the dedicated localhost issue120 database");
+    if (!loopback(database) || !["postgres:", "postgresql:"].includes(database.protocol) || !["/issue120", "/issue121"].includes(database.pathname) || database.search || database.hash) {
+      throw new Error("Signup fixture requires a dedicated localhost issue120 or issue121 database");
     }
     registrationDb = new pg.Pool({ connectionString: options.signup.databaseUrl, max: 1 });
   }

@@ -11,6 +11,7 @@ import { createSupabaseFileStore, PHOTO_BUCKET } from "@/server/files/storage";
 import { loadCoverage, settingsCoverageSource } from "@/server/geo/coverage-settings";
 import { resolveJobLocation } from "@/server/geo/job-location";
 import { createNotify } from "@/server/notifications/notify";
+import { enqueuePostConfirmation } from "@/server/notifications/post-confirmation";
 import { consumeForUser, type RateLimitDecision } from "@/server/rate-limit";
 
 import { ownsDraftPhoto } from "./draft-photos";
@@ -108,6 +109,7 @@ export async function postJob(db: PrismaClient, viewer: Viewer | null, input: un
     if (data.timeWindows.length) await tx.jobTimeWindow.createMany({ data: data.timeWindows.map((window) => ({ jobId: job.id, date: new Date(`${window.date}T00:00:00Z`), timeOfDay: window.timeOfDay })) });
     await tx.jobDraft.deleteMany({ where: { profileId: viewer.userId, data: { path: ["postKey"], equals: postKey } } });
     await createAudit(tx)(viewer, "job.posted", { type: "jobs", id: job.id }, null, { status: "REVIEW", category: job.category, photosNeedCheck: job.photosNeedCheck });
+    await enqueuePostConfirmation(tx, { jobId: job.id, customerId: viewer.userId, recipientEmail: customer.email, jobNumber: job.jobNumber, title: job.title });
     return { status: "posted", jobId: job.id, jobNumber: job.jobNumber };
   }, { timeout: 20_000 });
 
@@ -120,7 +122,7 @@ export async function postJob(db: PrismaClient, viewer: Viewer | null, input: un
 }
 
 export async function notifyEligibleWorkers(db: PrismaClient, posted: Posted, now: Date) {
-  const job = await db.job.findUniqueOrThrow({ where: { id: posted.jobId } });
+  const job = await db.job.findUniqueOrThrow({ where: { id: posted.jobId }, include: { timeWindows: { select: { date: true } } } });
   // A typed address needs the office to locate it before a work-area match can be made.
   if (job.status !== "REVIEW") return;
   const workers = await db.profile.findMany({

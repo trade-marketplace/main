@@ -48,7 +48,7 @@ export function PostingDraft({ ownerId, verified, initialDraft, hasServerDraft, 
         const status = await inspectPostKeyAction(ownerId, intent.postKey, false, true);
         if (!("status" in status)) throw new Error("Session changed");
         if (status.status === "unverified") { router.replace(verificationPath(next)); return; }
-        if (status.status === "posted") { router.replace(`${path}?posted=${status.jobId}`); return; }
+        if (status.status === "posted") { router.replace(`/jobs/${status.jobId}?posted=1`); return; }
         if (status.status !== "unposted") throw new Error("Draft status unavailable");
         if (hasServerDraft && initialDraft.postKey !== intent.postKey) throw new Error("Different current draft");
         if (!writePostIntent(localStorage, bound)) throw new Error("Intent could not be kept");

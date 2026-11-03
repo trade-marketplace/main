@@ -16,16 +16,18 @@ export type RunOptions = {
   now?: Date;
   limit?: number;
   rules?: readonly SchedulerRule[];
+  deadlineAt?: Date;
 };
 
 /** Runs the rules. A rule that fails as a whole is counted and logged; the rules after it still run. */
 export async function runScheduledRules(db: PrismaClient, options: RunOptions = {}): Promise<RunSummary> {
   const now = options.now ?? new Date();
   const limit = options.limit ?? DEFAULT_LIMIT;
+  const deadlineAt = options.deadlineAt ?? new Date(Date.now() + 45_000);
   const rules: RuleResult[] = [];
   for (const rule of options.rules ?? SCHEDULER_RULES) {
     try {
-      rules.push(await rule.run({ db, now, limit }));
+      rules.push(await rule.run({ db, now, limit, deadlineAt }));
     } catch (error) {
       console.error(`Scheduled rule ${rule.name} failed.`, error instanceof Error ? error.message : error);
       rules.push({ rule: rule.name, due: 0, done: 0, skipped: 0, failed: 1 });

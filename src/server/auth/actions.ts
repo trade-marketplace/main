@@ -9,6 +9,9 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
+import { getDb } from "@/server/db";
+import { PUSH_DEVICE_COOKIE, revokeBrowserPush, validDeviceProof } from "@/server/notifications/browser-push";
 
 import { workerSignupValues } from "@/lib/auth/worker-signup";
 import { VERIFICATION_COOLDOWN_SECONDS, verificationPath } from "@/lib/auth/verification";
@@ -125,6 +128,10 @@ export async function logInAgainAction(_previous: LogInState, formData: FormData
 
 /** Use as a form's action (a POST, so it's CSRF-safe; never a GET link). Ends the session and goes home. */
 export async function logOutAction(): Promise<void> {
+  try {
+    const proof = (await cookies()).get(PUSH_DEVICE_COOKIE)?.value;
+    if (validDeviceProof(proof)) await revokeBrowserPush(getDb(), proof);
+  } catch { /* Logout still ends the session; display resolution refuses signed-out browsers. */ }
   const auth = await authClient();
   if (auth) await logOut(auth);
   await rememberSessionChoice(false);

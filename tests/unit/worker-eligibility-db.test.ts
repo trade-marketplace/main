@@ -50,7 +50,7 @@ describe.skipIf(!testDatabaseUrl)("worker eligibility at the real mutation bound
   it("checks mutations again after an eligible discovery, never trusting a stored decision", async () => {
     const tradie = await worker(), ready = await job(), review = await job("REVIEW");
     const before = await schema.db.profile.findUniqueOrThrow({ where: { id: tradie.id }, select: WORKER_ELIGIBILITY_SELECT });
-    expect(canClaim(before, ready)).toBe(true);
+    expect(canClaim(before, await schema.db.job.findUniqueOrThrow({ where: { id: ready.id }, select: JOB_ELIGIBILITY_SELECT }))).toBe(true);
     await schema.db.licence.updateMany({ where: { userId: tradie.id }, data: { expiresOn: new Date("2026-11-02") } });
     await expect(claim(tradie.id, ready.id)).rejects.toMatchObject({ failure: "licence-required" });
     await expect(saveEligibleEstimate(schema.db, { userId: tradie.id }, review.id, { minutes: 60 })).rejects.toMatchObject({ failure: "licence-required" });

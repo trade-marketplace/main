@@ -49,7 +49,7 @@ export function usePostReview({ ownerId, verified, draft, manager, state, save, 
       const guestFiles = !guestIds || await clearPhotoDraft({ ownerId: null, postKey }, guestIds);
       if (ownedMetadata && guestMetadata && intentCleared && ownedFiles && guestFiles) await releasePhotoClaim(ownerId, postKey);
     } catch { /* An owned consumed-key probe prevents reuse when device cleanup is blocked. */ }
-    router.replace(`${path}?posted=${jobId}`);
+    router.replace(`/jobs/${jobId}?posted=1`);
   }
   async function post(automatic = false) {
     if (pending.current || offline || !photosReady(manager.getSnapshot())) return;

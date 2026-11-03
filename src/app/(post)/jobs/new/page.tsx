@@ -18,18 +18,17 @@ export default async function NewJob({ searchParams }: { searchParams: Promise<R
   const viewer = await getViewer();
   if (viewer && viewer.role !== "CUSTOMER") redirect(homeForRole(viewer.role));
   const params = await searchParams;
-  let posted;
   if (params.posted !== undefined) {
     const id = z.uuid().safeParse(params.posted);
     if (!id.success) notFound();
     if (!viewer) redirect(signupLink("/login", `/jobs/new?posted=${id.data}`));
     const job = await getDb().job.findFirst({ where: { id: id.data, customerId: viewer.userId }, select: { id: true, jobNumber: true } });
     if (!job) notFound();
-    posted = { jobId: job.id, jobNumber: job.jobNumber };
+    redirect(`/jobs/${job.id}?posted=1`);
   }
   let draft = null; let loadFailed = false;
   if (viewer) { try { draft = await loadWizardDraft(getDb(), viewer); } catch { loadFailed = true; } }
   return <SessionExpiredProvider logIn={logInAgainAction} email={viewer?.email} role={viewer?.role}>
-    <PostJobWizard key={viewer?.userId ?? "guest"} ownerId={viewer?.userId} verified={viewer?.emailVerified} initialPosted={posted} initialDraft={draft?.draft ?? landingWizardDraft(params)} initialManualCategory={draft?.manualCategory} hasServerDraft={Boolean(draft)} loadFailed={loadFailed} save={saveDraftAction} initialNow={new Date().toISOString()} />
+    <PostJobWizard key={viewer?.userId ?? "guest"} ownerId={viewer?.userId} verified={viewer?.emailVerified} initialDraft={draft?.draft ?? landingWizardDraft(params)} initialManualCategory={draft?.manualCategory} hasServerDraft={Boolean(draft)} loadFailed={loadFailed} save={saveDraftAction} initialNow={new Date().toISOString()} />
   </SessionExpiredProvider>;
 }

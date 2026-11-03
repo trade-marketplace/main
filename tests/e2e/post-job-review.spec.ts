@@ -15,7 +15,7 @@ test.describe("review and verified posting through real services", () => {
   test.describe.configure({ mode: "serial" }); test.use({ reducedMotion: "reduce" });
   let storage: Awaited<ReturnType<typeof startPhotoStorageStub>>; let db: pg.Client;
   test.beforeAll(async () => {
-    if (!["localhost", "127.0.0.1"].includes(new URL(app!).hostname) || new URL(database!).hostname !== "127.0.0.1" || new URL(database!).pathname !== "/issue120") throw new Error("Task-owned localhost app and database required");
+    if (!["localhost", "127.0.0.1"].includes(new URL(app!).hostname) || new URL(database!).hostname !== "127.0.0.1" || !["/issue120", "/issue121"].includes(new URL(database!).pathname)) throw new Error("Task-owned localhost app and database required");
     storage = await startPhotoStorageStub(54320, { signup: { databaseUrl: database! } }); db = new pg.Client({ connectionString: database }); await db.connect();
     for (const user of [SECURITY_USER, SECURITY_TRADIE]) {
       await db.query("INSERT INTO auth.users(id,email) VALUES($1,$2) ON CONFLICT(id) DO NOTHING", [user.id, user.email]);
@@ -61,6 +61,8 @@ test.describe("review and verified posting through real services", () => {
     expect(photos).toHaveLength(1); expect(photos[0].path).toContain(`drafts/${user.id}/${data.postKey}/`);
     expect((await db.query("SELECT email_verified_at FROM profiles WHERE id=$1", [user.id])).rows[0].email_verified_at).not.toBeNull();
     await page.reload(); await expect(page.getByRole("heading", { name: "Posted.", exact: true })).toBeVisible();
+    await page.getByRole("link", { name: "View my job", exact: true }).click(); await expect(page).toHaveURL(`${app}/jobs/${posted[0].id}`);
+    await expect(page.getByRole("heading", { name: "Repair the leaking tap downstairs.", exact: true })).toBeVisible();
     await page.getByRole("link", { name: "Home", exact: true }).click(); await expect(page).toHaveURL(`${app}/`);
   });
   for (const held of [0, 1]) test(`partial refresh resumes reviewed order when selected photo ${held + 1} is still uploading`, async ({ page }) => {
@@ -90,7 +92,7 @@ test.describe("review and verified posting through real services", () => {
     await login(page, SECURITY_USER.email, "/jobs/new?step=review"); await expect(page.getByRole("heading", { name: "All good?", exact: true })).toBeVisible();
     await page.evaluate(() => { const remove = Storage.prototype.removeItem; Storage.prototype.removeItem = function(key) { if (key === "trade.job-draft.v1") throw new DOMException("Blocked", "SecurityError"); remove.call(this, key); }; });
     await page.getByRole("button", { name: "Post it", exact: true }).click(); await expect(page.getByRole("heading", { name: "Posted.", exact: true })).toBeVisible();
-    await page.getByRole("link", { name: "Home", exact: true }).click(); await page.goto(`${app}/jobs/new`);
+    await page.getByRole("link", { name: "View my job", exact: true }).click(); await page.getByRole("link", { name: "Home", exact: true }).click(); await page.goto(`${app}/jobs/new`);
     await expect(page.getByRole("textbox", { name: "Describe the job", exact: true })).toHaveValue("");
     await page.getByRole("textbox", { name: "Describe the job", exact: true }).fill("Check the upstairs lights and wiring."); await page.getByRole("button", { name: "Next", exact: true }).click();
     await expect(page.getByRole("heading", { name: "Add some photos", exact: true })).toBeVisible();
