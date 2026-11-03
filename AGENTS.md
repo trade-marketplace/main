@@ -67,6 +67,10 @@ that claims to be done is worse than none.
 | The full visual guides (PDF) | The `design-pdfs` branch (kept off `main` so clones stay small) |
 
 - Build **what** the spec describes; choose **how** to build it yourself.
+- **Style (Matt, 3 Nov): clean and familiar.** New screens should feel like apps people already trust: white cards on
+  the soft page background, softly rounded fields with a light stroke (tokens `--trade-radius-field`,
+  `--trade-field-stroke`), one clear primary action, plain trust lines where money or personal details are involved.
+  Reference screens: the checkout (`/pay`, PR #442) and the contact form (`/contact`). Familiar patterns beat novel ones.
 - **Copy:** use the wording in the mockup and the spec. Don't add or remove text on your own; ask Matt if unsure.
 - **No focus boxes after clicks or taps.** Reuse the shared `FocusVisibility` behaviour and `--trade-focus-ring`.
   Keep M05 focus visible for keyboard navigation, including Tab, arrows and focus moved by keyboard interactions.
