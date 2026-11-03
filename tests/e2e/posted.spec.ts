@@ -9,6 +9,7 @@ import { expectNoA11yViolations } from "./support/a11y";
 import { VIEWPORTS } from "./support/viewports";
 
 const app = process.env.POSTED_E2E_APP_URL, database = process.env.POSTED_E2E_DATABASE_URL;
+const previewApp = app || process.env.POSTED_PREVIEW_E2E_URL || "http://127.0.0.1:3101";
 // channel is worker-scoped, so Playwright requires this at file scope. Opt-in runtime runs use full
 // Chromium's real Notification implementation; ordinary CI preview runs keep the configured default browser.
 if (app && database) test.use({ channel: "chromium" });
@@ -18,9 +19,20 @@ for (const viewport of VIEWPORTS) test(`posted, permission, current-status, owne
   await page.setViewportSize(viewport);
   for (const state of ["ready", "loading", "requesting", "enabled", "denied", "unsupported", "unavailable", "error", "status-gallery", "detail", "legacy", "email"]) {
     await test.step(state, async () => {
-      await page.goto(`/dev/components/posted?state=${state}`);
+      const response = await page.goto(`${previewApp}/dev/components/posted?state=${state}`);
+      expect(response?.status(), `Posted ${state} preview must render, not a guarded 404/error page`).toBe(200);
       if (state === "email") await expect(page.getByTitle("Posted confirmation email")).toBeVisible();
-      else await expect(page.locator("h1").first()).toBeVisible();
+      else if (state === "detail" || state === "legacy") await expect(page.getByRole("heading", { name: "Flickering lounge lights", exact: true })).toBeVisible();
+      else await expect(page.getByRole("heading", { name: "Posted.", exact: true }).first()).toBeVisible();
+      if (state === "loading") await expect(page.getByRole("status", { name: "Loading notifications", exact: true })).toBeVisible();
+      if (state === "ready") await expect(page.getByRole("button", { name: "Yes please", exact: true })).toBeEnabled();
+      if (state === "requesting") await expect(page.getByRole("button", { name: /^Yes please/ })).toHaveAttribute("aria-busy", "true");
+      if (state === "enabled") await expect(page.getByText("Notifications are on.", { exact: true })).toBeVisible();
+      if (state === "denied") await expect(page.getByText("Browser notifications are blocked.", { exact: true })).toBeVisible();
+      if (state === "unsupported" || state === "unavailable") await expect(page.getByText("Browser notifications aren’t available.", { exact: true })).toBeVisible();
+      if (state === "error") { await expect(page.getByText("Couldn’t turn on notifications.", { exact: true })).toBeVisible(); await expect(page.getByRole("button", { name: "Try again", exact: true })).toBeEnabled(); }
+      if (state === "status-gallery") await expect(page.getByRole("heading", { name: "Posted.", exact: true })).toHaveCount(8);
+      if (state === "legacy") { await expect(page.getByText("Time to be arranged", { exact: true })).toBeVisible(); await expect(page.getByText("ASAP", { exact: true })).toBeVisible(); }
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
       if (state === "email") {
         // The product correctly blocks scripts in its email iframe. Modern axe still collects child-frame
