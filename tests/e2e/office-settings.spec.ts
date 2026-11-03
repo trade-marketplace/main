@@ -118,7 +118,10 @@ test.describe("signed-in office settings", () => {
     }).toPass();
     await page.getByLabel("Email", { exact: true }).fill(SECURITY_TRADIE.email);
     await page.getByLabel("Password", { exact: true }).fill(SECURITY_PASSWORD);
-    await page.getByRole("button", { name: "Log in", exact: true }).click();
+    await Promise.all([
+      page.waitForResponse(response => response.request().method() === "POST" && new URL(response.url()).pathname === "/login"),
+      page.getByRole("button", { name: "Log in", exact: true }).click(),
+    ]);
     await expect(page).toHaveURL(`${app}/admin/settings`);
     await expect(page.locator("html")).toHaveAttribute("data-mode", "office");
     const card = page.getByRole("group", { name: "Licensed trades", exact: true });
@@ -162,8 +165,10 @@ test.describe("signed-in office settings", () => {
       const home = await guest.newPage(); await home.goto(`${app}/`);
       const tile = home.locator('article[data-category="gas"]');
       await expect(tile).toContainText("Coming soon");
-      await tile.getByRole("link", { name: "Gas fitting", exact: true }).click();
-      await expect(home).toHaveURL(`${app}/services/gas`);
+      await Promise.all([
+        home.waitForURL(`${app}/services/gas`),
+        tile.getByRole("link", { name: "Gas fitting", exact: true }).click(),
+      ]);
       const waitlist = home.getByRole("form", { name: "Gas fitting waitlist", exact: true });
       await expect(waitlist).toBeVisible();
       const email = `settings-${Date.now()}@example.test`;
@@ -183,7 +188,10 @@ test.describe("signed-in office settings", () => {
     await expect(expired).toBeVisible();
     await expired.getByRole("button", { name: "Log in again", exact: true }).click();
     await expired.getByLabel("Password", { exact: true }).fill(SECURITY_PASSWORD);
-    await expired.getByRole("button", { name: "Log in", exact: true }).click();
+    await Promise.all([
+      page.waitForResponse(response => response.request().method() === "POST" && Boolean(response.request().postData()?.includes('"sharedRateCents":"80"'))),
+      expired.getByRole("button", { name: "Log in", exact: true }).click(),
+    ]);
     await expect(expired).not.toBeVisible(); await expect(dialog).not.toBeVisible();
     await expect(card.getByLabel("Tradie hourly rate")).toHaveValue("80");
     expect((await db.query("SELECT shared_rate_cents FROM settings WHERE id=1")).rows[0].shared_rate_cents).toBe(8000);
