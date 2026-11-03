@@ -3,6 +3,8 @@ import "server-only";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { draftFieldErrors, POST_KEY_SCHEMA, postJobSchema, type DraftFieldErrors } from "@/lib/job-draft";
 import { haversineKm } from "@/lib/geo/distance";
+import { postingDateRange } from "@/lib/job-time-windows";
+export { postingDateRange } from "@/lib/job-time-windows";
 import { createAudit } from "@/server/audit/audit";
 import type { Viewer } from "@/server/auth/viewer";
 import { createSupabaseFileStore, PHOTO_BUCKET } from "@/server/files/storage";
@@ -27,14 +29,6 @@ export type PostJobDeps = {
   notifyWorkers?: (job: Posted) => Promise<void>;
   now?: () => Date;
 };
-
-/** Auckland calendar days, because a UTC midnight must not reject a New Zealand customer's window. */
-export function postingDateRange(now: Date) {
-  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Pacific/Auckland", year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
-  const last = new Date(`${today}T00:00:00Z`);
-  last.setUTCDate(last.getUTCDate() + 6);
-  return { today, last: last.toISOString().slice(0, 10) };
-}
 
 /** Full posting command. All durable changes commit together; postKey retries never duplicate a job. */
 export async function postJob(db: PrismaClient, viewer: Viewer | null, input: unknown, postKey: string, deps: PostJobDeps = {}): Promise<PostJobResult> {
