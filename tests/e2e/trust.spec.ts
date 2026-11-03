@@ -64,7 +64,7 @@ test.describe("Trust & safety", () => {
   test("Post a job and Contact us follow real clicks", async ({ page }) => {
     await page.goto("/trust");
     await page.getByRole("main").getByRole("link", { name: "Post a job", exact: true }).click();
-    await expect(page).toHaveURL(/\/login\?next=%2Fjobs%2Fnew$/);
+    await expect(page).toHaveURL(/\/jobs\/new$/);
     await page.goBack();
     const contact = page.getByRole("link", { name: "Contact us", exact: true });
     await expect(contact).toHaveAttribute("href", "/contact");

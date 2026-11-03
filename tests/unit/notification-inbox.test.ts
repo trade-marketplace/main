@@ -18,6 +18,11 @@ const NOW = new Date("2026-10-28T00:00:00Z");
 const row = (changes: Partial<Parameters<typeof inboxItem>[0]> = {}) => ({ id: randomUUID(), type: "job.priced", payload: { jobId: "TM-1005", jobTitle: "Sub wiring" }, createdAt: NOW, readAt: null, ...changes });
 
 describe("inbox presentation boundary", () => {
+  it("raises urgent posted jobs in worker pings and links expired-window requests to the owned editor", () => {
+    expect(inboxItem(row({ type: "job.posted", payload: { jobId: "TM-1005", asap: true } }))).toMatchObject({ line: "ASAP · Job posted", icon: "bolt", href: "/jobs/TM-1005" });
+    expect(inboxItem(row({ type: "job.reschedule_requested", payload: { jobId: "TM-1005", refreshWindows: true } }))).toMatchObject({ line: "New time requested", href: "/jobs/TM-1005/windows" });
+    expect(inboxItem(row({ type: "job.reschedule_requested", payload: { jobId: "TM-1005" } })).href).toBe("/jobs/TM-1005");
+  });
   it.each([
     ["job.priced", "/jobs/TM-1005", "sell"],
     ["message.received", "/messages/TM-1005", "chat_bubble"],

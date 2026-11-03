@@ -17,12 +17,14 @@ export type AddressFieldProps = Omit<InputHTMLAttributes<HTMLInputElement>, "onC
   onQueryChange?: (query: string) => void;
   onSelect?: (suggestion: AddressSuggestion) => void;
   ref?: Ref<HTMLInputElement>;
+  /** Opt-in for screens whose mockup shows the reassurance beneath the field. */
+  hintVisible?: boolean;
 };
 
 /** Accessible autocomplete shell. Fetching, debounce, coverage and stale-response protection belong to the caller. */
 export function AddressField({ label, hint, error, success, required, id, className, value, defaultValue = "",
   suggestions, status = "idle", lookupError = "Address search is unavailable. You can type the address by hand.",
-  onQueryChange, onSelect, onFocus, onBlur, onKeyDown, "aria-describedby": describedBy, ...input }: AddressFieldProps) {
+  onQueryChange, onSelect, onFocus, onBlur, onKeyDown, hintVisible = false, "aria-describedby": describedBy, ...input }: AddressFieldProps) {
   const field = useField({ id, hint, error, success, describedBy });
   const [ownValue, setOwnValue] = useState(defaultValue);
   const [open, setOpen] = useState(false);
@@ -44,7 +46,7 @@ export function AddressField({ label, hint, error, success, required, id, classN
     setOpen(false);
     setActive(null);
   }
-  return <Field {...{ label, hint, error, success, required }} id={field.id} className={className}>
+  return <Field {...{ label, hint: hintVisible ? undefined : hint, error, success, required }} id={field.id} className={className}>
     <div className={styles.address}>
       <div className={styles.control} data-variant="box" data-error={Boolean(error)} data-disabled={input.disabled || undefined}>
         <Icon name="location_on" size="sm" decorative />
@@ -80,5 +82,6 @@ export function AddressField({ label, hint, error, success, required, id, classN
           : status === "ready" ? results.length === 0 ? "No matches. You can type the address by hand." : `${results.length} suggestions. Use up and down arrows, then Enter to choose.` : ""}
       </p>
     </div>
+    {hintVisible && hint && <p id={`${field.id}-hint`} className={styles.hint}>{hint}</p>}
   </Field>;
 }

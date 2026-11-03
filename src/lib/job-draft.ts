@@ -31,18 +31,20 @@ const fields = {
 // A save is a complete snapshot of fields entered so far: absent later steps are valid.
 export const jobDraftSchema = z.object(fields).partial().strict();
 export type JobDraft = z.infer<typeof jobDraftSchema>;
+function selectedWindows(data: { anyTime: boolean; timeWindows: { date: string; timeOfDay: string }[] }, ctx: z.RefinementCtx) {
+  if (!data.anyTime && !data.timeWindows.length) ctx.addIssue({ code: "custom", path: ["timeWindows"], message: "When do you need it?" });
+  if (new Set(data.timeWindows.map(window => `${window.date}:${window.timeOfDay}`)).size !== data.timeWindows.length) ctx.addIssue({ code: "custom", path: ["timeWindows"], message: "When do you need it?" });
+}
+/** The same scheduling rules for a new job and the customer's unclaimed-job window refresh. */
+export const jobScheduleSchema = z.object({ asap: fields.asap.default(false), anyTime: fields.anyTime.default(false), timeWindows: fields.timeWindows.default([]) }).strict().superRefine(selectedWindows);
+export type JobSchedule = z.infer<typeof jobScheduleSchema>;
 export const postJobSchema = z.object({ ...fields, asap: fields.asap.default(false), anyTime: fields.anyTime.default(false), timeWindows: fields.timeWindows.default([]) }).strict().superRefine((data, ctx) => {
   if (data.locationSource !== "TYPED" && !data.point) {
     ctx.addIssue({ code: "custom", path: ["point"], message: "Address" });
   }
-  if (!data.anyTime && !data.timeWindows.length) {
-    ctx.addIssue({ code: "custom", path: ["timeWindows"], message: "When do you need it?" });
-  }
+  selectedWindows(data, ctx);
   if (new Set(data.photoPaths).size !== data.photoPaths.length) {
     ctx.addIssue({ code: "custom", path: ["photoPaths"], message: "Add some photos" });
-  }
-  if (new Set(data.timeWindows.map((w) => `${w.date}:${w.timeOfDay}`)).size !== data.timeWindows.length) {
-    ctx.addIssue({ code: "custom", path: ["timeWindows"], message: "When do you need it?" });
   }
 });
 export type PostJobInput = z.infer<typeof postJobSchema>;

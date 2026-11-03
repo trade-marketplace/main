@@ -20,7 +20,7 @@ test.describe("How it works", () => {
     });
   }
 
-  test("keyboard job start preserves the existing login return destination", async ({ page }) => {
+  test("keyboard job start opens the focused guest wizard", async ({ page }) => {
     await page.goto("/how-it-works");
     await page.keyboard.press("Tab");
     await expect(page.getByRole("link", { name: "Skip to content" })).toBeFocused();
@@ -31,12 +31,10 @@ test.describe("How it works", () => {
     await expect(cta).toBeFocused();
     await expect(cta).not.toHaveCSS("outline-style", "none");
     await page.keyboard.press("Enter");
-    await expect(page).toHaveURL(/\/login\?next=%2Fjobs%2Fnew$/);
-    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-    await page.getByRole("link", { name: "Sign up", exact: true }).click();
-    await expect(page).toHaveURL(/\/signup\?next=%2Fjobs%2Fnew$/);
+    await expect(page).toHaveURL(/\/jobs\/new$/);
+    await expect(page.getByRole("heading", { name: "What needs doing?", exact: true })).toBeVisible();
     await page.goBack();
-    await expect(page).toHaveURL(/\/login\?next=%2Fjobs%2Fnew$/);
+    await expect(page).toHaveURL(/\/how-it-works#main$/);
   });
 
   test("phone menu marks the current page and dismisses after keyboard navigation", async ({ page }) => {

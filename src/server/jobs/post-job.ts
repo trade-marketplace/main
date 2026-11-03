@@ -1,8 +1,10 @@
 import "server-only";
 
 import type { PrismaClient } from "@/generated/prisma/client";
-import { draftFieldErrors, POST_KEY_SCHEMA, postJobSchema, type DraftFieldErrors } from "@/lib/job-draft";
+import { draftFieldErrors, jobDraftSchema, POST_KEY_SCHEMA, postJobSchema, type DraftFieldErrors, type JobDraft } from "@/lib/job-draft";
 import { haversineKm } from "@/lib/geo/distance";
+import { currentSchedule, postingDateRange } from "@/lib/job-time-windows";
+export { postingDateRange } from "@/lib/job-time-windows";
 import { createAudit } from "@/server/audit/audit";
 import type { Viewer } from "@/server/auth/viewer";
 import { createSupabaseFileStore, PHOTO_BUCKET } from "@/server/files/storage";
@@ -16,7 +18,7 @@ import { createJobInReview } from "./status-machine";
 
 type Posted = { status: "posted"; jobId: string; jobNumber: number };
 export type PostJobResult = Posted
-  | { status: "needs-account" | "forbidden" | "photos-pending" | "trade-unavailable" }
+  | { status: "needs-account" | "forbidden" | "photos-pending" | "trade-unavailable" | "draft-changed" }
   | { status: "invalid"; fields: DraftFieldErrors }
   | { status: "rate-limited"; retryAfter: number }
   | { status: "outside-area"; waitlist: { path: string; suburb: string; areaName: string; email: string } };
@@ -26,15 +28,9 @@ export type PostJobDeps = {
   rateLimit?: (userId: string) => Promise<RateLimitDecision>;
   notifyWorkers?: (job: Posted) => Promise<void>;
   now?: () => Date;
+  /** The wizard confirms its complete canonical checkpoint; existing #116 callers retain their contract. */
+  expectedDraft?: { postKey: string; paths: readonly string[] };
 };
-
-/** Auckland calendar days, because a UTC midnight must not reject a New Zealand customer's window. */
-export function postingDateRange(now: Date) {
-  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Pacific/Auckland", year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
-  const last = new Date(`${today}T00:00:00Z`);
-  last.setUTCDate(last.getUTCDate() + 6);
-  return { today, last: last.toISOString().slice(0, 10) };
-}
 
 /** Full posting command. All durable changes commit together; postKey retries never duplicate a job. */
 export async function postJob(db: PrismaClient, viewer: Viewer | null, input: unknown, postKey: string, deps: PostJobDeps = {}): Promise<PostJobResult> {
@@ -57,10 +53,24 @@ export async function postJob(db: PrismaClient, viewer: Viewer | null, input: un
       ? { status: "posted", jobId: previous.id, jobNumber: previous.jobNumber }
       : { status: "forbidden" };
 
+    let currentDraft: JobDraft | undefined;
+    if (deps.expectedDraft) {
+      const current = await tx.jobDraft.findUnique({ where: { profileId: viewer.userId } });
+      const saved = jobDraftSchema.safeParse(current?.data);
+      if (!saved.success || saved.data.postKey !== postKey || deps.expectedDraft.postKey !== postKey
+        || JSON.stringify(saved.data.photoPaths ?? []) !== JSON.stringify(deps.expectedDraft.paths)) return { status: "draft-changed" };
+      currentDraft = saved.data;
+    }
+
     const parsed = postJobSchema.safeParse(input);
     if (!parsed.success) return { status: "invalid", fields: draftFieldErrors(parsed.error) };
     const data = parsed.data;
     if (data.postKey && data.postKey.toLowerCase() !== postKey) return { status: "invalid", fields: { postKey: "Post it" } };
+    if (deps.expectedDraft && JSON.stringify(data.photoPaths) !== JSON.stringify(deps.expectedDraft.paths)) return { status: "photos-pending" };
+    if (currentDraft) {
+      const saved = postJobSchema.safeParse({ ...currentDraft, postKey, photoPaths: currentDraft.photoPaths ?? [], ...currentSchedule(currentDraft, now) });
+      if (!saved.success || JSON.stringify(saved.data) !== JSON.stringify(postJobSchema.parse({ ...data, postKey }))) return { status: "draft-changed" };
+    }
     const { today, last } = postingDateRange(now);
     if (data.timeWindows.some((w) => w.date < today || w.date > last)) {
       return { status: "invalid", fields: { timeWindows: "When do you need it?" } };
@@ -79,6 +89,7 @@ export async function postJob(db: PrismaClient, viewer: Viewer | null, input: un
       : { status: "invalid", fields: { point: "Address" } };
 
     if (data.photoPaths.some((path) => !ownsDraftPhoto(viewer.userId, postKey, path))) return { status: "photos-pending" };
+    if (data.photoPaths.length && await tx.draftPhotoCleanup.count({ where: { path: { in: data.photoPaths }, deleting: true } })) return { status: "photos-pending" };
     const exists = deps.photoExists ?? ((path: string) => createSupabaseFileStore().exists(PHOTO_BUCKET, path));
     try {
       if (!(await Promise.all(data.photoPaths.map(exists))).every(Boolean)) return { status: "photos-pending" };
@@ -95,7 +106,7 @@ export async function postJob(db: PrismaClient, viewer: Viewer | null, input: un
     });
     await tx.jobPhoto.createMany({ data: data.photoPaths.map((path, position) => ({ jobId: job.id, path, position, uploadedById: viewer.userId })) });
     if (data.timeWindows.length) await tx.jobTimeWindow.createMany({ data: data.timeWindows.map((window) => ({ jobId: job.id, date: new Date(`${window.date}T00:00:00Z`), timeOfDay: window.timeOfDay })) });
-    await tx.jobDraft.deleteMany({ where: { profileId: viewer.userId } });
+    await tx.jobDraft.deleteMany({ where: { profileId: viewer.userId, data: { path: ["postKey"], equals: postKey } } });
     await createAudit(tx)(viewer, "job.posted", { type: "jobs", id: job.id }, null, { status: "REVIEW", category: job.category, photosNeedCheck: job.photosNeedCheck });
     return { status: "posted", jobId: job.id, jobNumber: job.jobNumber };
   }, { timeout: 20_000 });
@@ -123,5 +134,5 @@ export async function notifyEligibleWorkers(db: PrismaClient, posted: Posted, no
       && (job.category === "OTHER" || worker.licences.some((licence) => !licence.expiresOn || licence.expiresOn >= today))
       && haversineKm({ lat: area.areaLat, lng: area.areaLng }, { lat: job.lat!, lng: job.lng! }) <= area.areaRadiusKm;
   }).map((worker) => worker.id);
-  await createNotify(db)("job.posted", recipients, { eventId: `job.posted:${job.id}`, payload: { jobId: job.id, jobNumber: job.jobNumber } });
+  await createNotify(db)("job.posted", recipients, { eventId: `job.posted:${job.id}`, payload: { jobId: job.id, jobNumber: job.jobNumber, asap: job.asap } });
 }
