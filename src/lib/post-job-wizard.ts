@@ -98,9 +98,34 @@ export function recoverServerWizard(local: WizardDraft | null, server: JobDraft,
 }
 
 /** Canonical omission must never be mistaken for saving a partial postcode or other unfinished input. */
-export function serverRepresentsWhere(draft: WizardDraft): boolean {
+export function serverRepresentsWhere(draft: WizardDraft, saved: JobDraft = canonicalDraft(draft)): boolean {
   const canonical = canonicalDraft(draft); const raw = whereInputs(draft);
-  return (Object.keys(WHERE_TEXT_LIMITS) as (keyof WhereInputs)[]).every(key => (canonical[key] ?? "") === raw[key].trim());
+  return (Object.keys(WHERE_TEXT_LIMITS) as (keyof WhereInputs)[]).every(key => (saved[key] ?? "") === raw[key].trim())
+    && saved.locationSource === canonical.locationSource && JSON.stringify(saved.point) === JSON.stringify(canonical.point)
+    && (saved.asap ?? false) === (canonical.asap ?? false) && (saved.anyTime ?? false) === (canonical.anyTime ?? false)
+    && JSON.stringify(saved.timeWindows ?? []) === JSON.stringify(canonical.timeWindows ?? []);
+}
+
+/** A step-owned save may preserve newer fields from another device; only its committed result proves durability. */
+export function serverRepresentsInput(draft: WizardDraft, saved: JobDraft, manualCategory?: boolean | null): boolean {
+  return saved.postKey === draft.data.postKey && typeof saved.description === "string" && saved.description === draft.description.trim()
+    && saved.category === draft.data.category && (manualCategory ?? Boolean(saved.category)) === draft.manualCategory
+    && serverRepresentsWhere(draft, saved);
+}
+
+/** Completed or unvisited other steps follow the committed server checkpoint; unfinished raw typing stays local. */
+export function reconcileStepSave(draft: WizardDraft, saved: JobDraft, manualCategory: boolean | null, step: "describe" | "photos" | "where" | "review", now: Date): WizardDraft {
+  let next = draft;
+  if (step !== "describe" && draft.completedDescribe) {
+    const describe = initialWizardDraft(saved, true, manualCategory);
+    next = { ...next, description: describe.description, manualCategory: describe.manualCategory, completedDescribe: describe.completedDescribe,
+      data: { ...next.data, description: saved.description, category: saved.category } };
+  }
+  if (step !== "where" && (!draft.where || draft.completedWhere)) {
+    next = { ...next, data: withServerWhere(next.data, saved), ...(draft.where ? { where: whereInputs(initialWizardDraft(saved)) } : {}) };
+    next = { ...next, completedWhere: !Object.keys(whereErrors(next, now)).length };
+  }
+  return next;
 }
 
 /** Later raw steps and local-only location hints cannot be discarded by a Describe recovery. */

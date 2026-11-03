@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Browser, type Page } from "@playwright/test";
 import pg from "pg";
 import { postingDateRange } from "../../src/lib/job-time-windows";
 import { DRAFT_STORAGE_KEY } from "../../src/lib/job-draft";
@@ -43,6 +43,56 @@ test.describe("signed-in scheduling through real actions and PostgreSQL", () => 
       Storage.prototype.removeItem = function(key) { if (key === "trade.job-draft.v1" && fixture.denyDraftWrites) throw new DOMException("Storage blocked", "SecurityError"); remove.call(this, key); };
     });
   }
+  async function otherDevice(page: Page, browser: Browser, step: string) {
+    const state = await page.context().storageState();
+    const context = await browser.newContext({ storageState: { cookies: state.cookies, origins: [] }, reducedMotion: "reduce" });
+    const other = await context.newPage(); await other.goto(`${app}/jobs/new?step=${step}`);
+    return { context, page: other };
+  }
+  test("stale Describe Next and Photos exit preserve another device's newer address and time windows", async ({ page, browser }) => {
+    await recoverableDraft(page, false); await page.goto(`${app}/jobs/new?step=describe`);
+    await page.getByRole("textbox", { name: "Describe the job", exact: true }).fill("Check the upstairs lights and wiring in detail.");
+    const device = await otherDevice(page, browser, "where");
+    try {
+      await device.page.getByRole("combobox", { name: "Address", exact: true }).fill("2 New Street");
+      await device.page.getByLabel("Postcode (optional)", { exact: true }).fill("9811");
+      await device.page.getByRole("button", { name: "Clear selection", exact: true }).click(); await device.page.locator('input[name="time-windows"]').nth(2).check();
+      await device.page.getByRole("checkbox", { name: "ASAP: today if possible", exact: true }).check();
+      await device.page.getByRole("button", { name: "Next", exact: true }).click(); await expect(device.page.getByRole("heading", { name: "All good?", exact: true })).toBeVisible();
+    } finally { await device.context.close(); }
+    await page.getByRole("button", { name: "Next", exact: true }).click(); await expect(page.getByRole("heading", { name: "Add some photos", exact: true })).toBeVisible();
+    await expect(page.getByRole("complementary", { name: "Your job" })).toContainText("2 New Street");
+    await page.getByRole("button", { name: "Save & exit", exact: true }).click(); await expect(page).toHaveURL(`${app}/`);
+    const saved = (await db.query("SELECT data FROM job_drafts WHERE profile_id=$1", [SECURITY_USER.id])).rows[0].data;
+    expect(saved).toMatchObject({ description: "Check the upstairs lights and wiring in detail.", addressLine1: "2 New Street", postcode: "9811", anyTime: false, asap: true });
+    expect(saved.timeWindows).toEqual([{ date: postingDateRange(new Date()).today, timeOfDay: "EVENING" }]);
+    await page.evaluate(() => localStorage.clear()); await page.goto(`${app}/jobs/new?step=where`);
+    await expect(page.getByRole("combobox", { name: "Address", exact: true })).toHaveValue("2 New Street"); await expect(page.getByLabel("Postcode (optional)", { exact: true })).toHaveValue("9811");
+    await expect(page.locator('input[name="time-windows"]:checked')).toHaveCount(1); await expect(page.locator('input[name="time-windows"]').nth(2)).toBeChecked();
+  });
+  test("Where Next preserves another device's newer description and explicit category origin", async ({ page, browser }) => {
+    await recoverableDraft(page, false); await page.goto(`${app}/jobs/new?step=where`);
+    await page.getByLabel("Postcode (optional)", { exact: true }).fill("9812");
+    const device = await otherDevice(page, browser, "describe");
+    try {
+      await device.page.getByRole("textbox", { name: "Describe the job", exact: true }).fill("Repair the leaking tap downstairs.");
+      await device.page.getByRole("radio", { name: "Electrical", exact: true }).check(); await device.page.getByRole("radio", { name: "Plumbing", exact: true }).check();
+      await device.page.getByRole("button", { name: "Next", exact: true }).click(); await expect(device.page.getByRole("heading", { name: "Add some photos", exact: true })).toBeVisible();
+    } finally { await device.context.close(); }
+    await page.getByRole("button", { name: "Next", exact: true }).click(); await expect(page.getByRole("heading", { name: "All good?", exact: true })).toBeVisible();
+    const saved = (await db.query("SELECT data,manual_category FROM job_drafts WHERE profile_id=$1", [SECURITY_USER.id])).rows[0];
+    expect(saved).toMatchObject({ data: { description: "Repair the leaking tap downstairs.", category: "PLUMBING", postcode: "9812" }, manual_category: true });
+    await expect(page.getByRole("complementary", { name: "Your job" })).toContainText("Repair the leaking tap downstairs.");
+  });
+  test("server-only Describe exit refuses unfinished Where and invalid raw description without discarding valid checkpoints", async ({ page }) => {
+    const data = await recoverableDraft(page); await blockDraftWrites(page); await page.goto(`${app}/jobs/new?step=describe`);
+    await page.getByRole("button", { name: "Save & exit", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "What needs doing?", exact: true })).toBeVisible(); await expect(page.getByText("Couldn’t save.", { exact: true })).toBeVisible();
+    expect((await db.query("SELECT data->>'postcode' AS postcode FROM job_drafts WHERE profile_id=$1", [SECURITY_USER.id])).rows[0].postcode).toBe("9810");
+    await page.getByRole("textbox", { name: "Describe the job", exact: true }).fill("   "); await page.getByRole("button", { name: "Save & exit", exact: true }).click();
+    await expect(page.getByRole("textbox", { name: "Describe the job", exact: true })).toHaveValue("   "); await expect(page.getByText("Draft saved", { exact: true })).toHaveCount(0);
+    expect((await db.query("SELECT data->>'description' AS description FROM job_drafts WHERE profile_id=$1", [SECURITY_USER.id])).rows[0].description).toBe(data.description);
+  });
   test("confirmed Where survives stale-readable storage, Back and refresh; a later local edit clears recovery", async ({ page }) => {
     const data = await recoverableDraft(page); await blockDraftWrites(page); await page.goto(`${app}/jobs/new?step=where`);
     const postcode = page.getByLabel("Postcode (optional)", { exact: true }); await expect(postcode).toHaveValue("98"); await postcode.fill("9810");

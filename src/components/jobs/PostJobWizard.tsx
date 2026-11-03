@@ -18,7 +18,7 @@ import { PhotoThumbnail } from "@/components/media/PhotoPicker";
 import { DRAFT_STORAGE_KEY, type JobDraft } from "@/lib/job-draft";
 import { wentUp } from "@/lib/motion/helpers";
 import { useBump } from "@/lib/motion/hooks";
-import { applyLandingHandoff, canClearStaleDescribe, canonicalDraft, decodeWizardDraft, describeErrors, editDescription, encodeWizardDraft, inheritUneditedWhere, initialWizardDraft, landingLocationHint, landingWizardDraft, localEnvelopeMatchesInput, recoverServerWizard, reconcileWizardPhotos, serverRepresentsWhere, whereErrors, JOB_TYPES, WIZARD_STEPS, type WizardDraft } from "@/lib/post-job-wizard";
+import { applyLandingHandoff, canClearStaleDescribe, canonicalDraft, decodeWizardDraft, describeErrors, editDescription, encodeWizardDraft, inheritUneditedWhere, initialWizardDraft, landingLocationHint, landingWizardDraft, localEnvelopeMatchesInput, recoverServerWizard, reconcileStepSave, reconcileWizardPhotos, serverRepresentsInput, serverRepresentsWhere, whereErrors, JOB_TYPES, WIZARD_STEPS, type WizardDraft } from "@/lib/post-job-wizard";
 import { loadDraftPhotosAction, type saveDraftAction } from "@/server/jobs/actions";
 import { canResumeSavedPhotos } from "@/lib/jobs/draft-photo-path";
 import { currentSchedule, postingDateRange } from "@/lib/job-time-windows";
@@ -239,12 +239,13 @@ function PostJobWizardForm({ ownerId = null, initialDraft = {}, initialManualCat
         if (current.status === "loaded") photoVersion = { postKey: commandKey, paths: photos.manager.confirmedPaths() };
         if (!exit && step === 1 && photos.manager.getSnapshot().photos.some(photo => photo.status !== "done")) return;
       }
-      const kept = keep({ ...effectiveDraft, data: { ...effectiveDraft.data, ...(step === 2 ? currentSchedule(draft.data, now) : {}), postKey: commandKey, ...(photos.active ? { photoPaths: photos.manager.paths() } : {}) } });
+      let kept = keep({ ...effectiveDraft, data: { ...effectiveDraft.data, ...(step === 2 ? currentSchedule(draft.data, now) : {}), postKey: commandKey, ...(photos.active ? { photoPaths: photos.manager.paths() } : {}) } });
       let durable = kept.persisted; let envelopePersisted = kept.persisted; let savedToServer = false;
       if (offline && !exit) return;
       if (ownerId && !offline) {
         const canonical = canonicalDraft(kept.draft);
-        const result = await save(canonical, ownerId, photoVersion, kept.draft.manualCategory);
+        const saveStep = (["describe", "photos", "where", "review"] as const)[step];
+        const result = await save(canonical, ownerId, photoVersion, kept.draft.manualCategory, saveStep);
         if (session?.check(result, { resend: () => advance(exit) })) return;
         if ("status" in result && result.status === "photos-changed") { photos.manager.reconcile(result.photoPaths, true); await photos.manager.flush(); setError(true); return; }
         if ("status" in result && result.status === "draft-changed") { setError(true); router.refresh(); return; }
@@ -252,14 +253,19 @@ function PostJobWizardForm({ ownerId = null, initialDraft = {}, initialManualCat
           if ("status" in result && result.status === "invalid") setFields(result.fields);
           setError(true); return;
         }
-        await photos.manager.confirmSaved(kept.draft.data.photoPaths ?? []);
+        const committed = result.draft;
+        const reconciled = reconcileStepSave(kept.draft, committed, result.manualCategory, saveStep, now);
+        if (JSON.stringify(reconciled) !== JSON.stringify(kept.draft)) {
+          kept = keep(reconciled); durable = kept.persisted; envelopePersisted = kept.persisted;
+        }
+        await photos.manager.confirmSaved(committed.photoPaths ?? []);
         savedToServer = true;
-        durable ||= typeof canonical.description === "string" && canonical.description === kept.draft.description.trim() && serverRepresentsWhere(kept.draft)
-          && localEnvelopeMatchesInput(kept.draft, inheritUneditedWhere(decodeWizardDraft(snapshot(), ownerId), canonical, true));
+        durable ||= serverRepresentsInput(kept.draft, committed, result.manualCategory)
+          && localEnvelopeMatchesInput(kept.draft, inheritUneditedWhere(decodeWizardDraft(snapshot(), ownerId), committed, true));
       } else if (previewState === "save-error") { setError(true); return; }
       if (exit && !durable) { setError(true); return; }
       if (!exit) {
-        const completed = keep({ ...kept.draft, completedDescribe: true, completedPhotos: step >= 1 ? true : kept.draft.completedPhotos, completedWhere: step === 2 ? true : kept.draft.completedWhere });
+        const completed = keep({ ...kept.draft, completedDescribe: step === 0 ? true : kept.draft.completedDescribe, completedPhotos: step >= 1 ? true : kept.draft.completedPhotos, completedWhere: step === 2 ? true : kept.draft.completedWhere });
         envelopePersisted ||= completed.persisted;
         durable = completed.persisted;
         // Photos may still hold local-only raw files and completion state; use its owned server fallback.
@@ -270,7 +276,7 @@ function PostJobWizardForm({ ownerId = null, initialDraft = {}, initialManualCat
       if (durable) { setSaved(true); setError(false); }
       const destination = new URL(envelopePersisted || durable ? withoutLandingFallback(nextHref) : nextHref, window.location.origin);
       if (!exit && savedToServer) for (const name of HANDOFF_PARAMS) destination.searchParams.delete(name);
-      // A later partial full save supersedes the earlier confirmed Where snapshot.
+      // Unfinished raw Where must not retain an earlier confirmed-Where recovery context.
       if (!exit && savedToServer && !serverRepresentsWhere(kept.draft)) destination.searchParams.delete(SERVER_WHERE_PARAM);
       if (!exit && savedToServer && !durable) destination.searchParams.set(SERVER_DRAFT_PARAM, kept.draft.data.postKey!);
       if (!exit && savedToServer && !durable && step === 2) destination.searchParams.set(SERVER_WHERE_PARAM, kept.draft.data.postKey!);
