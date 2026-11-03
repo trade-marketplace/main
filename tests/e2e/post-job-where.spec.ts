@@ -18,7 +18,7 @@ async function address(page: Page) {
   await page.getByRole("textbox", { name: "Suburb", exact: true }).fill("Gladstone");
   await page.getByRole("textbox", { name: "City", exact: true }).fill("Invercargill");
 }
-test("guest: real Describe/Photos → address fallback → multiple windows/ASAP → review boundary → Back/refresh/exit", async ({ page }) => {
+test("guest: real Describe/Photos → address fallback → multiple windows/ASAP → review → Back/refresh/exit", async ({ page }) => {
   test.setTimeout(90_000); await page.setViewportSize({ width: 390, height: 844 }); await start(page);
   await expect(page.getByText("Only shared with the person who takes the job.", { exact: true })).toBeVisible();
   await expect(page.getByText("Pick all the times someone can come.", { exact: true })).toBeVisible();
@@ -29,7 +29,8 @@ test("guest: real Describe/Photos → address fallback → multiple windows/ASAP
   await windows.nth(0).press("Space"); await windows.nth(4).press("Space"); await page.getByRole("checkbox", { name: "ASAP: today if possible", exact: true }).check();
   const key = await page.evaluate(key => JSON.parse(localStorage.getItem(key)!).data.postKey, DRAFT_STORAGE_KEY);
   await page.getByRole("button", { name: "Next", exact: true }).press("Enter"); await expect(page.getByRole("heading", { name: "All good?", exact: true })).toBeFocused();
-  await expect(page.getByRole("button", { name: "Post it", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Post it", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Post it", exact: true })).not.toHaveAttribute("aria-disabled", "true");
   await expect(page.getByRole("complementary", { name: "Your job" })).toContainText("ASAP");
   await page.getByRole("link", { name: "Back", exact: true }).click(); await expect(windows.nth(0)).toBeChecked(); await expect(windows.nth(4)).toBeChecked(); await page.reload();
   await expect(page.getByRole("textbox", { name: "Unit / flat (optional)", exact: true })).toHaveValue("Shop 2");
