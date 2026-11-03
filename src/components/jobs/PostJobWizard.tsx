@@ -24,6 +24,7 @@ import styles from "./post-job.module.css";
 type Props = {
   ownerId?: string | null;
   initialDraft?: JobDraft;
+  initialManualCategory?: boolean | null;
   hasServerDraft?: boolean;
   loadFailed?: boolean;
   save: typeof saveDraftAction;
@@ -80,7 +81,7 @@ export function WizardFrame({ step = 0, saved, saveExit, children, summary, back
   </div>;
 }
 
-export function PostJobWizard({ ownerId = null, initialDraft = {}, hasServerDraft = false, loadFailed = false, save, previewState }: Props) {
+export function PostJobWizard({ ownerId = null, initialDraft = {}, initialManualCategory, hasServerDraft = false, loadFailed = false, save, previewState }: Props) {
   const router = useRouter(); const path = usePathname(); const params = useSearchParams();
   const raw = useSyncExternalStore(subscribeDraft, snapshot, () => null);
   const restored = previewState ? null : decodeWizardDraft(raw, ownerId);
@@ -90,7 +91,7 @@ export function PostJobWizard({ ownerId = null, initialDraft = {}, hasServerDraf
   const queryHint = previewState ? undefined : landingLocationHint(Object.fromEntries(params));
   const handoffKey = handoff.description || handoff.category ? JSON.stringify(handoff) : null;
   const appliedHandoff = useRef<string | null>(null); const [consumedHandoff, setConsumedHandoff] = useState<string | null>(null);
-  const baseDraft = edited ?? restored ?? initialWizardDraft(initialDraft, hasServerDraft || previewState === "photos");
+  const baseDraft = edited ?? restored ?? initialWizardDraft(initialDraft, hasServerDraft || previewState === "photos", initialManualCategory);
   const describedDraft = handoffKey && handoffKey !== consumedHandoff ? applyLandingHandoff(baseDraft, handoff) : baseDraft;
   const draft = queryHint ? { ...describedDraft, locationHint: queryHint } : describedDraft;
   const [saved, setSaved] = useState<boolean>();
@@ -133,8 +134,8 @@ export function PostJobWizard({ ownerId = null, initialDraft = {}, hasServerDraf
     const describe = Boolean(key && appliedHandoff.current !== key);
     if (!describe && !hint) return;
     // Read the device snapshot here too: useSyncExternalStore hydrates after its empty server snapshot.
-    let current = edited ?? decodeWizardDraft(snapshot(), ownerId) ?? initialWizardDraft(initialDraft, hasServerDraft);
-    if (ownerId && hasServerDraft && current.data.postKey !== initialDraft.postKey) current = initialWizardDraft(initialDraft, true);
+    let current = edited ?? decodeWizardDraft(snapshot(), ownerId) ?? initialWizardDraft(initialDraft, hasServerDraft, initialManualCategory);
+    if (ownerId && hasServerDraft && current.data.postKey !== initialDraft.postKey) current = initialWizardDraft(initialDraft, true, initialManualCategory);
     if (ownerId && hasServerDraft) current = { ...current, data: { ...current.data, photoPaths: initialDraft.photoPaths } };
     if (hint) current = { ...current, locationHint: hint };
     if (describe) appliedHandoff.current = key;
@@ -171,7 +172,7 @@ export function PostJobWizard({ ownerId = null, initialDraft = {}, hasServerDraf
       pending.current = true; setBusy(true);
       try {
         const canonical = canonicalDraft(kept.draft);
-        const result = await save(canonical, ownerId);
+        const result = await save(canonical, ownerId, kept.draft.manualCategory);
         if (session?.check(result, { resend: () => advance(exit) })) return;
         if (!("status" in result) || result.status !== "saved") {
           if ("status" in result && result.status === "invalid") setFields(result.fields);

@@ -40,8 +40,8 @@ export function guessJobType(description: string): JobType | undefined {
   if (/\b(build(?:er|ing)?|carpenter|deck|fence|construction|renovation|wall|roof)\b/i.test(description)) return "CONSTRUCTION";
 }
 
-export function initialWizardDraft(data: JobDraft = {}, completedDescribe = false): WizardDraft {
-  return { data: { ...data, category: data.category ?? guessJobType(data.description ?? "") }, description: data.description ?? "", manualCategory: Boolean(data.category),
+export function initialWizardDraft(data: JobDraft = {}, completedDescribe = false, manualCategory?: boolean | null): WizardDraft {
+  return { data: { ...data, category: data.category ?? guessJobType(data.description ?? "") }, description: data.description ?? "", manualCategory: manualCategory ?? Boolean(data.category),
     completedDescribe: completedDescribe && describeJobSchema.safeParse({ description: data.description, category: data.category }).success };
 }
 

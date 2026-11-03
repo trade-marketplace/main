@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
 import type { Role } from "@/generated/prisma/client";
 import type { Viewer } from "@/server/auth/viewer";
-import { loadDraft, saveDraft } from "@/server/jobs/drafts";
+import { loadDraft, loadWizardDraft, saveDraft } from "@/server/jobs/drafts";
 import { postJob, postingDateRange, type PostJobDeps } from "@/server/jobs/post-job";
 import { testDatabaseUrl, useTestSchema } from "../support/test-db";
 
@@ -33,6 +33,27 @@ describe.skipIf(!testDatabaseUrl)("drafts and posting a job (database)", () => {
     await saveDraft(schema.db, customer, { description: "Move two sofas upstairs" });
     expect(await loadDraft(schema.db, customer)).toMatchObject({ anyTime: true, timeWindows: [{ date: "2026-11-03", timeOfDay: "MORNING" }] });
     expect(await saveDraft(schema.db, null, {})).toEqual({ status: "needs-account" });
+  });
+
+  it("restores category origin outside canonical fields and does not carry it onto changed legacy drafts", async () => {
+    const customer = await person(); const other = await person(); const key = randomUUID();
+    const data = { postKey: key, description: "Repair a leaking tap downstairs", category: "PLUMBING" as const };
+    expect(await saveDraft(schema.db, customer, data, { manualCategory: false })).toEqual({ status: "saved" });
+    expect(await loadWizardDraft(schema.db, customer)).toEqual({ draft: data, manualCategory: false });
+    expect(await loadDraft(schema.db, customer)).toEqual(data); expect(await loadWizardDraft(schema.db, other)).toBeNull();
+    await saveDraft(schema.db, customer, { photoPaths: [] });
+    expect((await loadWizardDraft(schema.db, customer))?.manualCategory).toBe(false);
+    // Choosing the same type as the keyword guess is still an explicit choice.
+    await saveDraft(schema.db, customer, data, { manualCategory: true });
+    expect((await loadWizardDraft(schema.db, customer))?.manualCategory).toBe(true);
+    await saveDraft(schema.db, customer, { description: "Move a sofa upstairs" });
+    expect((await loadWizardDraft(schema.db, customer))?.manualCategory).toBeNull();
+    await saveDraft(schema.db, customer, data, { manualCategory: false });
+    await saveDraft(schema.db, customer, { postKey: randomUUID() });
+    expect((await loadWizardDraft(schema.db, customer))?.manualCategory).toBeNull();
+    await schema.db.profile.update({ where: { id: customer.userId }, data: { role: "TRADIE" } });
+    expect(await loadWizardDraft(schema.db, customer)).toBeNull();
+    expect(await saveDraft(schema.db, customer, data, { manualCategory: false })).toEqual({ status: "forbidden" });
   });
 
   it("posts REVIEW with the job number, actor history, photos, windows and audit, then deletes the draft", async () => {

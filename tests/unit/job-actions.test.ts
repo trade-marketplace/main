@@ -26,4 +26,9 @@ describe("job actions before sign-in", () => {
     expect(await saveDraftAction({ description: "Customer A's private job" }, "customer-a")).toEqual({ status: "forbidden" });
     expect(getDb).not.toHaveBeenCalled();
   });
+  it("rejects an invalid category-origin argument before accessing the database", async () => {
+    vi.mocked(getViewer).mockResolvedValueOnce({ userId: "customer-a", email: "a@example.test", firstName: "A", role: "CUSTOMER", emailVerified: true });
+    expect(await saveDraftAction({}, "customer-a", "false")).toEqual({ status: "invalid", fields: { category: "Type of job" } });
+    expect(getDb).not.toHaveBeenCalled();
+  });
 });

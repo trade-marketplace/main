@@ -44,6 +44,15 @@ describe("Describe step", () => {
     const explicit = initialWizardDraft(landingWizardDraft({ description: "Fix the fence", type: "construction" }));
     expect(explicit.manualCategory).toBe(true); expect(editDescription(explicit, "Repair a leaking tap").data.category).toBe("CONSTRUCTION");
   });
+  it("restores inferred and explicit server categories without guessing their origin from matching words", () => {
+    const data = { description: "Repair a leaking tap downstairs", category: "PLUMBING" as const };
+    const inferred = initialWizardDraft(data, true, false);
+    expect(editDescription(inferred, "Check the lights and wiring upstairs").data.category).toBe("ELECTRICAL");
+    const manual = initialWizardDraft(data, true, true);
+    expect(editDescription(manual, "Check the lights and wiring upstairs").data.category).toBe("PLUMBING");
+    expect(initialWizardDraft(data, true, null).manualCategory).toBe(true);
+    expect(canonicalDraft(inferred)).toEqual(data);
+  });
   it.each([
     ["Lights keep flickering", "ELECTRICAL"], ["A leaking tap", "PLUMBING"], ["Install gas hob", "GAS"],
     ["Build a deck", "CONSTRUCTION"], ["Moving a sofa", "OTHER"], ["Not sure what needs fixing", "OTHER"],
