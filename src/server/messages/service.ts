@@ -123,9 +123,10 @@ export async function markThreadRead(db: PrismaClient, actor: Actor, threadId: s
     await requireThread(tx, actor, threadId, false);
     const message = await tx.supportMessage.findFirst({ where: { id: messageId, threadId, internal: false }, select: { createdAt: true } });
     if (!message) throw new ProblemThreadError("forbidden");
-    const previous = await tx.supportThreadRead.findUnique({ where: { threadId_userId: { threadId, userId: actor.userId } } });
-    if (previous && previous.readAt >= message.createdAt) return;
-    await tx.supportThreadRead.upsert({ where: { threadId_userId: { threadId, userId: actor.userId } }, create: { threadId, userId: actor.userId, readAt: message.createdAt }, update: { readAt: message.createdAt } });
+    await tx.supportThreadRead.createMany({ data: [{ threadId, userId: actor.userId, readAt: message.createdAt }], skipDuplicates: true });
+    // Recheck the timestamp in the write predicate after PostgreSQL acquires the row lock, so older tabs
+    // cannot move a receipt backwards even when both requests initially found no receipt.
+    await tx.supportThreadRead.updateMany({ where: { threadId, userId: actor.userId, readAt: { lt: message.createdAt } }, data: { readAt: message.createdAt } });
   });
 }
 

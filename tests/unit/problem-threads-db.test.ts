@@ -115,6 +115,18 @@ describe.skipIf(!testDatabaseUrl)("shared job problem threads (database)", () =>
     expect((await schema.db.job.findUniqueOrThrow({ where: { id: f.job.id } })).updatedAt).toEqual(beforeRead);
     expect((await getMessages(schema.db, f.customer, id)).selected?.messages[0].seen).toBe(true);
   });
+  it("never moves a read receipt backwards when tabs acknowledge different messages concurrently", async () => {
+    const f = await fixture(); const id = await opened(f); const at = Date.now() - 60_000;
+    const older = await schema.db.supportMessage.create({ data: { threadId: id, authorId: f.customer.userId, body: "Older message", createdAt: new Date(at) } });
+    const newer = await schema.db.supportMessage.create({ data: { threadId: id, authorId: f.customer.userId, body: "Newer message", createdAt: new Date(at + 1000) } });
+    const before = (await schema.db.job.findUniqueOrThrow({ where: { id: f.job.id } })).updatedAt;
+    for (let i = 0; i < 6; i++) {
+      await schema.db.supportThreadRead.deleteMany({ where: { threadId: id, userId: f.worker.userId } });
+      await Promise.all([markThreadRead(schema.db, f.worker, id, newer.id), markThreadRead(schema.db, f.worker, id, older.id)]);
+      expect((await schema.db.supportThreadRead.findUniqueOrThrow({ where: { threadId_userId: { threadId: id, userId: f.worker.userId } } })).readAt).toEqual(newer.createdAt);
+    }
+    expect((await schema.db.job.findUniqueOrThrow({ where: { id: f.job.id } })).updatedAt).toEqual(before);
+  });
   it("saves notifications atomically with the message and leaves a failed send retryable", async () => {
     const f = await fixture(); const result = await openProblemThread(schema.db, f.customer, input(f.job.id), { rateLimit: deps.rateLimit });
     if (!result.ok) throw new Error(result.error);
