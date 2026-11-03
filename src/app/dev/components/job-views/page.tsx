@@ -2,24 +2,24 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { guardDevPage } from "@/server/dev-pages";
 import { customerJobView, officeJobView, publicJobView, workerJobView } from "@/server/views/jobs";
-import { exampleJob, VIEWERS } from "./preview-data";
+import { JOB_VIEW_PREVIEW_STATES as STATES, jobViewExample, type JobViewPreviewState as State, VIEWERS } from "./preview-data";
+import { NotFoundView } from "@/components/errors/NotFoundView";
 import styles from "./preview.module.css";
 
 export const metadata: Metadata = { title: "Job data views (dev)", robots: { index: false, follow: false } };
-const STATES = ["customer", "worker-unclaimed", "worker-assigned", "worker-reassigned", "worker-cancelled", "missing-pin", "office", "public", "loading", "error"] as const;
-type State = typeof STATES[number];
 const money = (cents: number | null) => cents === null ? "—" : new Intl.NumberFormat("en-NZ", { style: "currency", currency: "NZD" }).format(cents / 100);
 
 export default async function JobViewsPreview({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   guardDevPage();
   const params = await searchParams;
   const state: State = STATES.includes(params.state as State) ? params.state as State : "worker-unclaimed";
-  const job = exampleJob(state === "worker-unclaimed" || state === "worker-reassigned" || state === "missing-pin" ? { status: "BOOKABLE", workerId: null, ...(state === "missing-pin" ? { approxLat: null, approxLng: null } : {}) } : state === "worker-cancelled" ? { status: "CANCELLED" } : {});
+  const job = jobViewExample(state);
   const office = state === "office" ? officeJobView(VIEWERS.office, job) : null;
   const view = state === "customer" ? customerJobView(VIEWERS.customer, job) : office ?? (state === "public" ? publicJobView() : workerJobView(VIEWERS.worker, job));
   const mode = state === "customer" ? "customer" : state === "office" ? "office" : "trade";
   const customer = state === "customer" ? customerJobView(VIEWERS.customer, job) : null;
   const worker = mode === "trade" && state !== "public" ? workerJobView(VIEWERS.worker, job) : null;
+  if (state === "worker-reassigned" && !view) return <main className={styles.page} data-mode={mode}><NotFoundView /></main>;
   return <main className={styles.page} data-mode={mode}>
     <header><p className={styles.eyebrow}>Dev only · example data</p><h1>Who sees what</h1></header>
     <nav className={styles.states} aria-label="Preview state">{STATES.map(value => <Link key={value} href={`?state=${value}`} aria-current={state === value ? "page" : undefined}>{value.replaceAll("-", " ")}</Link>)}</nav>
