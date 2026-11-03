@@ -82,4 +82,16 @@ test.describe("customer Describe draft through the real server action", () => {
     await page.getByRole("button", { name: "Save & exit", exact: true }).click(); await expect(page).toHaveURL(`${app}/`);
     await page.goto(`${app}/jobs/new`); await expect(page.getByRole("textbox", { name: "Describe the job", exact: true })).toHaveValue("Check the upstairs lights and wiring.");
   });
+  test("an explicit handoff updates a signed-in server draft once, retaining its key and later fields", async ({ page }) => {
+    const key = crypto.randomUUID(); const data = { postKey: key, description: "Fix the fence beside the garage.", category: "CONSTRUCTION", photoPaths: [`drafts/${SECURITY_USER.id}/${key}/${"a".repeat(32)}.webp`], addressLine1: "1 Example Street", suburb: "Gladstone", city: "Invercargill" };
+    await db.query("INSERT INTO job_drafts(profile_id,data,updated_at) VALUES($1,$2,now()) ON CONFLICT(profile_id) DO UPDATE SET data=EXCLUDED.data", [SECURITY_USER.id, data]);
+    const next = "/jobs/new?description=Move+a+sofa+upstairs&type=other&step=photos";
+    await page.goto(`${app}/login?next=${encodeURIComponent(next)}`); await page.getByLabel("Email", { exact: true }).fill(SECURITY_USER.email); await page.getByLabel("Password", { exact: true }).fill(SECURITY_PASSWORD); await page.getByRole("button", { name: "Log in", exact: true }).click();
+    await expect(page).toHaveURL(`${app}/jobs/new`); await expect(page.getByRole("heading", { name: "What needs doing?", exact: true })).toBeVisible();
+    await expect(page.getByRole("form", { name: "Describe the job", exact: true }).getByRole("textbox")).toHaveValue("Move a sofa upstairs"); await expect(page.getByRole("radio", { name: "Other (anything)", exact: true })).toBeChecked();
+    await page.getByRole("button", { name: "Next", exact: true }).click(); await expect(page.getByRole("heading", { name: "Photos", exact: true })).toBeVisible();
+    expect((await db.query("SELECT data FROM job_drafts WHERE profile_id=$1", [SECURITY_USER.id])).rows[0].data).toMatchObject({ ...data, description: "Move a sofa upstairs", category: "OTHER" });
+    await page.getByRole("link", { name: "Back", exact: true }).click(); await page.getByRole("form", { name: "Describe the job", exact: true }).getByRole("textbox").fill("Assemble the new garden bench."); await page.reload();
+    await expect(page.getByRole("form", { name: "Describe the job", exact: true }).getByRole("textbox")).toHaveValue("Assemble the new garden bench.");
+  });
 });

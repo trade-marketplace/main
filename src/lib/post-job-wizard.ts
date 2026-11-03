@@ -62,3 +62,11 @@ export function landingWizardDraft(params: Record<string, string | string[] | un
   const category = JOB_TYPES.find((item) => item.value === type)?.value;
   return { ...(description ? { description } : {}), ...(category ? { category } : {}) };
 }
+
+/** A new home handoff edits Describe once, preserving the existing draft's key and later-step fields. */
+export function applyLandingHandoff(draft: WizardDraft, handoff: JobDraft): WizardDraft {
+  let next = draft;
+  if (handoff.description !== undefined) next = editDescription({ ...draft, manualCategory: Boolean(handoff.category), data: { ...draft.data, category: handoff.category } }, handoff.description);
+  if (handoff.category) next = { ...next, data: { ...next.data, category: handoff.category }, manualCategory: true, completedDescribe: false };
+  return next;
+}

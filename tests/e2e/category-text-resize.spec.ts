@@ -73,10 +73,10 @@ test("200% text: keyboard reaches every category and starts the selected job", a
     await expect(rail.getByRole("article").nth(index)).toHaveCSS("outline-style", "solid");
   }
   await page.keyboard.press("Enter");
-  await expect(page).toHaveURL(/\/jobs\/new\?/);
+  await expect(page).toHaveURL(/\/jobs\/new$/);
   const next = new URL(page.url());
   expect(next.pathname).toBe("/jobs/new");
-  expect(next.searchParams.get("type")).toBe("other");
+  expect(next.search).toBe("");
   await expect(page.getByRole("radio", { name: "Other (anything)", exact: true })).toBeChecked();
 });
 

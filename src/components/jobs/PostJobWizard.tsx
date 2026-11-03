@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useRef, useState, useSyncExternalStore, type FormEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useEffectEvent, useRef, useState, useSyncExternalStore, type FormEvent, type ReactNode } from "react";
 
 import { Button } from "@/components/Button";
 import { Icon } from "@/components/Icon";
@@ -16,7 +16,7 @@ import { Banner } from "@/components/overlays/Banner";
 import { DRAFT_STORAGE_KEY, type JobDraft } from "@/lib/job-draft";
 import { wentUp } from "@/lib/motion/helpers";
 import { useBump } from "@/lib/motion/hooks";
-import { canonicalDraft, decodeWizardDraft, describeErrors, editDescription, encodeWizardDraft, initialWizardDraft, JOB_TYPES, WIZARD_STEPS, type WizardDraft } from "@/lib/post-job-wizard";
+import { applyLandingHandoff, canonicalDraft, decodeWizardDraft, describeErrors, editDescription, encodeWizardDraft, initialWizardDraft, landingWizardDraft, JOB_TYPES, WIZARD_STEPS, type WizardDraft } from "@/lib/post-job-wizard";
 import type { saveDraftAction } from "@/server/jobs/actions";
 
 import styles from "./post-job.module.css";
@@ -30,6 +30,7 @@ type Props = {
   /** Only the guarded component preview passes this. */
   previewState?: string;
 };
+const HANDOFF_PARAMS = ["description", "type", "location", "lat", "lng"] as const;
 function subscribeDraft(onChange: () => void) {
   window.addEventListener("storage", onChange);
   return () => window.removeEventListener("storage", onChange);
@@ -78,7 +79,12 @@ export function PostJobWizard({ ownerId = null, initialDraft = {}, hasServerDraf
   const raw = useSyncExternalStore(subscribeDraft, snapshot, () => null);
   const restored = previewState ? null : decodeWizardDraft(raw, ownerId);
   const [edited, setEdited] = useState<WizardDraft>();
-  const draft = edited ?? restored ?? initialWizardDraft(initialDraft, hasServerDraft || previewState === "photos");
+  const queryString = params.toString();
+  const handoff = previewState ? {} : landingWizardDraft(Object.fromEntries(params));
+  const handoffKey = handoff.description || handoff.category ? JSON.stringify(handoff) : null;
+  const appliedHandoff = useRef<string | null>(null); const [consumedHandoff, setConsumedHandoff] = useState<string | null>(null);
+  const baseDraft = edited ?? restored ?? initialWizardDraft(initialDraft, hasServerDraft || previewState === "photos");
+  const draft = handoffKey && handoffKey !== consumedHandoff ? applyLandingHandoff(baseDraft, handoff) : baseDraft;
   const [saved, setSaved] = useState<boolean>();
   const [error, setError] = useState(previewState === "save-error");
   const [fields, setFields] = useState<Record<string, string>>(previewState === "invalid" ? { description: "Describe the job", category: "Type of job" } : {});
@@ -89,9 +95,10 @@ export function PostJobWizard({ ownerId = null, initialDraft = {}, hasServerDraf
   const describeValid = !Object.keys(describeErrors(draft)).length;
   const step = (params.get("step") === "photos" || (!params.has("step") && previewState === "photos")) && draft.completedDescribe && describeValid ? 1 : 0;
   const query = new URLSearchParams(params.toString()); query.delete("step");
+  for (const name of HANDOFF_PARAMS) query.delete(name);
   if (previewState === "photos") query.set("step", "describe");
   const backHref = `${path}${query.size ? `?${query}` : ""}`;
-  const nextQuery = new URLSearchParams(params.toString()); nextQuery.set("step", "photos");
+  const nextQuery = new URLSearchParams(query); nextQuery.set("step", "photos");
   const nextHref = `${path}?${nextQuery}`;
   const restoredNotice = previewState === "restored" || Boolean(!edited && (restored || hasServerDraft));
   const previousStep = useRef(step);
@@ -100,14 +107,36 @@ export function PostJobWizard({ ownerId = null, initialDraft = {}, hasServerDraf
     previousStep.current = step;
   }, [step]);
 
-  function keep(next: WizardDraft) {
+  const keep = useCallback((next: WizardDraft) => {
     const withKey = { ...next, data: { ...next.data, postKey: next.data.postKey ?? crypto.randomUUID() } };
     setEdited(withKey); setError(false);
     try {
       if (!previewState) localStorage.setItem(DRAFT_STORAGE_KEY, encodeWizardDraft(withKey, ownerId));
       setSaved(true); return { draft: withKey, persisted: true };
     } catch { setSaved(false); setError(true); return { draft: withKey, persisted: false }; }
-  }
+  }, [ownerId, previewState]);
+
+  const consumeHandoff = useEffectEvent((key: string | null, incomingQuery: string) => {
+    if (!key) { appliedHandoff.current = null; if (consumedHandoff !== null) setConsumedHandoff(null); return; }
+    if (appliedHandoff.current === key) return;
+    appliedHandoff.current = key;
+    // Read the device snapshot here too: useSyncExternalStore hydrates after its empty server snapshot.
+    let current = edited ?? decodeWizardDraft(snapshot(), ownerId) ?? initialWizardDraft(initialDraft, hasServerDraft);
+    if (ownerId && hasServerDraft && current.data.postKey !== initialDraft.postKey) current = initialWizardDraft(initialDraft, true);
+    if (ownerId && hasServerDraft) current = { ...current, data: { ...current.data, photoPaths: initialDraft.photoPaths } };
+    keep(applyLandingHandoff(current, landingWizardDraft(Object.fromEntries(new URLSearchParams(incomingQuery)))));
+    setConsumedHandoff(key);
+    const clean = new URLSearchParams(incomingQuery);
+    for (const name of [...HANDOFF_PARAMS, "step"]) clean.delete(name);
+    // Next copies its router state itself; forwarding __NA would bypass its search-param update.
+    window.history.replaceState(null, "", `${path}${clean.size ? `?${clean}` : ""}`);
+  });
+  // Settle hydration's device snapshot first; a superseded navigation must never consume an old handoff.
+  useEffect(() => {
+    let active = true;
+    queueMicrotask(() => { if (active) consumeHandoff(handoffKey, queryString); });
+    return () => { active = false; };
+  }, [handoffKey, queryString]);
 
   async function advance(exit = false) {
     if (pending.current) return;

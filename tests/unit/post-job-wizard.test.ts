@@ -1,8 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { jobDraftSchema } from "@/lib/job-draft";
-import { canonicalDraft, decodeWizardDraft, describeErrors, editDescription, encodeWizardDraft, guessJobType, initialWizardDraft, landingWizardDraft } from "@/lib/post-job-wizard";
+import { applyLandingHandoff, canonicalDraft, decodeWizardDraft, describeErrors, editDescription, encodeWizardDraft, guessJobType, initialWizardDraft, landingWizardDraft } from "@/lib/post-job-wizard";
 
 describe("Describe step", () => {
+  it("applies a new landing description/type over an existing draft without resetting its private later fields", () => {
+    const original = initialWizardDraft({ postKey: "9b58063b-12c2-4b46-9c45-38353f41173e", description: "Fix the fence", category: "CONSTRUCTION", photoPaths: ["private/photo.webp"], addressLine1: "1 Example St", suburb: "Gladstone", city: "Invercargill" }, true);
+    const inferred = applyLandingHandoff(original, landingWizardDraft({ description: "Repair a leaking tap" }));
+    expect(inferred).toMatchObject({ description: "Repair a leaking tap", manualCategory: false, completedDescribe: false, data: { postKey: original.data.postKey, category: "PLUMBING", photoPaths: original.data.photoPaths, addressLine1: "1 Example St" } });
+    const explicit = applyLandingHandoff(inferred, landingWizardDraft({ type: "electrical" }));
+    expect(explicit).toMatchObject({ description: "Repair a leaking tap", manualCategory: true, completedDescribe: false, data: { category: "ELECTRICAL", postKey: original.data.postKey } });
+    expect(applyLandingHandoff(original, {})).toBe(original);
+  });
   it("keeps homepage free-text inference editable but preserves an explicit landing type", () => {
     const inferred = initialWizardDraft(landingWizardDraft({ description: "Fix the fence" }));
     expect(inferred).toMatchObject({ manualCategory: false, data: { category: "CONSTRUCTION" } });
