@@ -1,7 +1,7 @@
 import "server-only";
 
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
-import { readPayrollInput, validatePayroll, type PayrollResult, type PayrollSummary } from "@/lib/payroll";
+import { payrollReviewReasons, readPayrollInput, validatePayroll, type PayrollResult, type PayrollSummary } from "@/lib/payroll";
 import { createAudit } from "@/server/audit/audit";
 import { readSecurityUser, type SecurityDeps } from "@/server/auth/security";
 import { encryptField, lastDigits, parseFieldEncryptionKey } from "@/server/crypto";
@@ -15,7 +15,8 @@ export function payrollCanSave(env: Env = process.env): boolean {
   try { parseFieldEncryptionKey(env.FIELD_ENCRYPTION_KEY); return true; } catch { return false; }
 }
 function summary(row: { bankAccountLast4: string | null; irdNumberLast3: string | null; taxCode: string | null; kiwiSaverRatePct: Prisma.Decimal | number | null; bankAccountEncrypted: string | null; irdNumberEncrypted: string | null } | null, canSave: boolean): PayrollSummary {
-  return { bankAccountLast4: row?.bankAccountLast4 ?? null, irdNumberLast3: row?.irdNumberLast3 ?? null, taxCode: row?.taxCode ?? null, kiwiSaverRatePct: row?.kiwiSaverRatePct == null ? null : Number(row.kiwiSaverRatePct), saved: Boolean(row?.bankAccountEncrypted || row?.irdNumberEncrypted), complete: Boolean(row?.bankAccountEncrypted && row.irdNumberEncrypted && row.taxCode), canSave };
+  const review = payrollReviewReasons(row);
+  return { bankAccountLast4: row?.bankAccountLast4 ?? null, irdNumberLast3: row?.irdNumberLast3 ?? null, taxCode: row?.taxCode ?? null, kiwiSaverRatePct: row?.kiwiSaverRatePct == null ? null : Number(row.kiwiSaverRatePct), saved: Boolean(row?.bankAccountEncrypted || row?.irdNumberEncrypted), complete: Boolean(row?.bankAccountEncrypted && row.irdNumberEncrypted && row.taxCode && !review.length), canSave, review };
 }
 export async function loadPayroll(db: Pick<Db, "payrollDetails">, userId: string, env: Env = process.env): Promise<PayrollSummary> {
   return summary(await db.payrollDetails.findUnique({ where: { userId }, select: SELECT }), payrollCanSave(env));

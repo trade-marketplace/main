@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bankAccountParts, normalizedBankAccount, readPayrollInput, validBankAccount, validIrdNumber, validatePayroll } from "@/lib/payroll";
+import { bankAccountParts, normalizedBankAccount, OFFICE_TAX_CODE, payrollReviewReasons, readPayrollInput, validBankAccount, validIrdNumber, validatePayroll } from "@/lib/payroll";
 
 const input = { bankAccount: "01-0902-0068389-00", irdNumber: "49-091-850", taxCode: "M", kiwiSaverRate: "3.5", currentPassword: "test-only-password" };
 describe("IRD payroll specification 2026/27 check digits", () => {
@@ -24,7 +24,14 @@ describe("NZ bank algorithms", () => {
   });
 });
 describe("shared payroll validation", () => {
-  it.each(["none", "3", "3.5", "4", "6", "8", "10"])("supports the current and approved temporary rate %s", rate => expect(validatePayroll({ ...input, kiwiSaverRate: rate })).toMatchObject({ ok: true, data: { kiwiSaverRatePct: rate === "none" ? null : Number(rate) } }));
+  it.each(["none", "3.5", "4", "6", "8", "10"])("supports the standard election %s", rate => expect(validatePayroll({ ...input, kiwiSaverRate: rate })).toMatchObject({ ok: true, data: { kiwiSaverRatePct: rate === "none" ? null : Number(rate) } }));
+  it("rejects a new3% election until a bounded approval workflow exists", () => expect(validatePayroll({ ...input, kiwiSaverRate: "3" })).toMatchObject({ ok: false, fields: { kiwiSaverRate: "Choose your KiwiSaver rate." } }));
+  it.each(["STC", "NSW", OFFICE_TAX_CODE])("hands %s to the office instead of accepting a false ordinary code", taxCode => expect(validatePayroll({ ...input, taxCode })).toMatchObject({ ok: false, fields: { taxCode: "Contact us to check your tax code before saving." } }));
+  it("flags preserved3% and every unsupported tax code for review without rewriting them", () => {
+    expect(payrollReviewReasons({ kiwiSaverRatePct: "3.0", taxCode: "STC" })).toEqual(["kiwisaver", "tax-code"]);
+    expect(payrollReviewReasons({ kiwiSaverRatePct: 3.5, taxCode: "UNKNOWN" })).toEqual(["tax-code"]);
+    expect(payrollReviewReasons({ kiwiSaverRatePct: null, taxCode: "M" })).toEqual([]);
+  });
   it("never includes submitted private values in validation failures", () => {
     const result = validatePayroll({ ...input, bankAccount: "secret-bank", irdNumber: "secret-ird", taxCode: "forged", kiwiSaverRate: "5", currentPassword: "" });
     expect(result).toMatchObject({ ok: false, fields: { bankAccount: expect.any(String), irdNumber: expect.any(String), taxCode: expect.any(String), kiwiSaverRate: expect.any(String), currentPassword: expect.any(String) } });

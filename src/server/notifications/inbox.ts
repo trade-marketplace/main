@@ -46,7 +46,7 @@ function identifier(value: unknown): string | null {
 export function inboxItem(row: Row): InboxItem {
   const payload = row.payload && typeof row.payload === "object" && !Array.isArray(row.payload) ? row.payload : {};
   const jobId = identifier(payload.jobId);
-  const [label, icon] = Object.hasOwn(COPY, row.type) ? COPY[row.type] : ["Notification", "notifications"];
+  const [label, icon] = row.type === "payout.details_missing" && payload.needsPayrollReview === true ? ["Bank & tax review", "account_balance"] : Object.hasOwn(COPY, row.type) ? COPY[row.type] : ["Notification", "notifications"];
   const title = typeof payload.jobTitle === "string" ? payload.jobTitle.trim() : "";
   let href = `/notifications#${encodeURIComponent(row.id)}`;
   if (row.type === "payout.details_missing") href = "/profile/payroll";
