@@ -26,9 +26,10 @@ describe.skipIf(!testDatabaseUrl)("worker eligibility at the real mutation bound
     }
     return profile;
   }
-  async function job(status: JobStatus = "BOOKABLE", category: Trade = "ELECTRICAL", owner?: string) {
+  async function job(status: JobStatus = "BOOKABLE", category: Trade = "ELECTRICAL", owner?: string, at?: Date) {
     return schema.db.job.create({ data: { customerId: owner ?? (await person()).id, category, status, title: "Example work", description: "Private work description", addressLine1: "1 Private Street", suburb: "Gladstone", city: "Invercargill",
-      priceCents: status === "BOOKABLE" ? 12_000 : null, lat: CENTRE.lat, lng: CENTRE.lng, approxLat: CENTRE.lat + 0.0015, approxLng: CENTRE.lng } });
+      priceCents: status === "BOOKABLE" ? 12_000 : null, lat: CENTRE.lat, lng: CENTRE.lng, approxLat: CENTRE.lat + 0.0015, approxLng: CENTRE.lng,
+      ...(at ? { createdAt: at, updatedAt: at } : {}) } });
   }
   const deps = () => ({ audit: vi.fn(async () => {}), notify: vi.fn(async () => {}) });
   const claim = (workerId: string, jobId: string) => transitionJob(schema.db, deps(), { transition: "claim", actor: { role: "TRADIE", userId: workerId }, jobId });
@@ -54,6 +55,28 @@ describe.skipIf(!testDatabaseUrl)("worker eligibility at the real mutation bound
     await expect(claim(tradie.id, ready.id)).rejects.toMatchObject({ failure: "licence-required" });
     await expect(saveEligibleEstimate(schema.db, { userId: tradie.id }, review.id, { minutes: 60 })).rejects.toMatchObject({ failure: "licence-required" });
     expect(await schema.db.estimate.count({ where: { jobId: review.id } })).toBe(0);
+  });
+
+  it("preserves job timestamps/history on estimate insert and update, while a true claim still advances them", async () => {
+    const tradie = await worker("OTHER"), old = new Date("2026-01-01T00:00:00Z");
+    const review = await job("REVIEW", "OTHER", undefined, old);
+    const before = await schema.db.job.findUniqueOrThrow({ where: { id: review.id } });
+    const historyBefore = await schema.db.jobStatusHistory.findMany({ where: { jobId: review.id } });
+    const estimate = await saveEligibleEstimate(schema.db, { userId: tradie.id }, review.id, { minutes: 60 });
+    expect(await schema.db.job.findUnique({ where: { id: review.id } })).toMatchObject({ updatedAt: before.updatedAt, editedAt: before.editedAt });
+    expect(await saveEligibleEstimate(schema.db, { userId: tradie.id }, review.id, { minutes: 120 })).toEqual(estimate);
+    expect(await schema.db.job.findUnique({ where: { id: review.id } })).toMatchObject({ updatedAt: before.updatedAt, editedAt: before.editedAt });
+    expect(await schema.db.jobStatusHistory.findMany({ where: { jobId: review.id } })).toEqual(historyBefore);
+    const ready = await job("BOOKABLE", "OTHER", undefined, old);
+    await claim(tradie.id, ready.id);
+    const assigned = await schema.db.job.findUniqueOrThrow({ where: { id: ready.id } });
+    expect(assigned.updatedAt.getTime()).toBeGreaterThan(ready.updatedAt.getTime());
+    expect(assigned.editedAt).toEqual(ready.editedAt);
+    expect(await schema.db.jobStatusHistory.count({ where: { jobId: ready.id } })).toBe(2);
+    const triggers = await schema.db.$queryRaw<{ tgname: string }[]>`SELECT t.tgname FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname=${schema.name} AND c.relname='jobs' AND NOT t.tgisinternal AND (t.tgtype & 2)=2 ORDER BY t.tgname`;
+    const names = triggers.map(row => row.tgname);
+    expect(names).toContain("jobs_worker_eligibility_lock");
+    expect(names.indexOf("jobs_worker_eligibility_lock")).toBeGreaterThan(names.indexOf("jobs_set_updated_at"));
   });
 
   it("prevents own-job estimates through both the server command and direct database writes/reassignment", async () => {

@@ -14,9 +14,11 @@ BEGIN
   EXECUTE format('SELECT user_id FROM %I.worker_trades WHERE user_id=$1 AND trade=$2 FOR SHARE', TG_TABLE_SCHEMA) USING worker, NEW.category;
   EXECUTE format('SELECT id FROM %I.licences WHERE user_id=$1 AND trade=$2 FOR SHARE', TG_TABLE_SCHEMA) USING worker, NEW.category;
   EXECUTE format('SELECT id FROM %I.settings WHERE id=1 FOR SHARE', TG_TABLE_SCHEMA);
+  -- This adapter is invoked by a lock-only updated_at write, not a job edit. Run after jobs_set_updated_at.
+  NEW.updated_at := OLD.updated_at;
   RETURN NEW;
 END $$;
-CREATE TRIGGER "jobs_lock_worker_eligibility" BEFORE UPDATE OF updated_at ON "jobs"
+CREATE TRIGGER "jobs_worker_eligibility_lock" BEFORE UPDATE OF updated_at ON "jobs"
   FOR EACH ROW EXECUTE FUNCTION "lock_worker_eligibility_rows"();
 
 -- Defence in depth for every estimate writer, including direct privileged writes and reassignment of estimates.

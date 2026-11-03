@@ -26,6 +26,8 @@ and apply this rule again inside the mutation transaction. A previous discovery/
 Migration `20261104013700_worker_eligibility` adds a narrow lock adapter: a transaction-local
 `app.eligibility_worker_id` names the rows to lock when the server updates the job's `updated_at`. Its trigger uses
 `TG_TABLE_SCHEMA`, quoted identifiers and an empty search path, so isolated test schemas behave like production.
+The adapter runs after the ordinary timestamp trigger and preserves the job's timestamp for this lock-only
+write. A subsequent real claim uses the normal timestamp behaviour after the GUC is cleared.
 It takes locks in job → profile → worker profile → matching trade/licence → settings order. Profile and worker
 profile locks are exclusive, preventing proof-row insertion phantoms and shared-lock upgrades. It does not alter
 proof timestamps or decide eligibility; TypeScript remains the single policy.
