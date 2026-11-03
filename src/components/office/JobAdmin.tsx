@@ -228,6 +228,11 @@ function MessagesCard({ job, onMessage }: { job: OfficeJobView; onMessage: () =>
           {job.messages.map((message) => (
             <li key={message.id} data-from={message.fromOffice ? "office" : "them"}>
               <p className={styles.bubble}>{message.body}</p>
+              {!!message.photos?.length && <div className={styles.messagePhotos}>{message.photos.map((photo, index) => photo.url
+                // Private signed photos are renewed when the office reloads the job.
+                // eslint-disable-next-line @next/next/no-img-element
+                ? <a key={photo.id} href={photo.url} target="_blank" rel="noreferrer"><img src={photo.url} alt={`Message photo ${index + 1}`} /></a>
+                : <span key={photo.id}>Photo unavailable</span>)}</div>}
               <p className={styles.caption}>
                 {message.from} · <time dateTime={message.at}>{message.when}</time>
               </p>

@@ -107,10 +107,10 @@ describe("Contact page", () => {
     expect(metadata.alternates).toEqual({ canonical: "/contact" });
   });
 
-  it("points a signed-in person to their app and fills in their address", async () => {
+  it("points a signed-in person to job support threads and fills in their address", async () => {
     viewer.current = { email: "sarah@email.co.nz", firstName: "Sarah", role: "CUSTOMER" };
     const { html } = await render();
     expect(html).toContain('value="sarah@email.co.nz"');
-    expect(html).toMatch(/<a[^>]*href="\/dashboard"[^>]*>the job page<\/a>/);
+    expect(html).toMatch(/<a[^>]*href="\/messages"[^>]*>the job page<\/a>/);
   });
 });
