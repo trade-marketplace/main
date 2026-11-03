@@ -88,7 +88,9 @@ export function LandingPage({ data, preview }: { data: LandingData; preview?: La
     return () => window.clearTimeout(timer);
   }, [locationOpen, locationQuery, location.label, preview?.searchPlaces]);
 
+  const categoryEnabled = (category: Category) => data.enabledCategories?.includes(category) ?? true;
   function start(category?: Category) {
+    if (category && !categoryEnabled(category)) { router.push(`/services/${category}`); return; }
     const draft = { description: description.trim().slice(0, LANDING_QUERY_MAX), category, location: { ...location, label: location.label.slice(0, LANDING_LOCATION_MAX) } };
     try { sessionStorage.setItem(LANDING_DRAFT_KEY, JSON.stringify(draft)); } catch { /* URL preserves the same details when storage is blocked. */ }
     router.push(jobStartPath(draft, data.coverage));
@@ -141,7 +143,7 @@ export function LandingPage({ data, preview }: { data: LandingData; preview?: La
       <CategoryRail label="Trades">{CATEGORIES.map((category) => <li key={category} onClick={(event) => {
         // Preserve the entered text even when a category is the starting action.
         if ((event.target as HTMLElement).closest("a") && !event.metaKey && !event.ctrlKey && !event.shiftKey && event.button === 0) { event.preventDefault(); start(category); }
-      }}><CategoryTile category={category} sub={CATEGORY_INFO[category].sub} href={jobStartPath({ description, category, location }, data.coverage)} /></li>)}</CategoryRail>
+      }}><CategoryTile category={category} sub={categoryEnabled(category) ? CATEGORY_INFO[category].sub : "Coming soon"} href={categoryEnabled(category) ? jobStartPath({ description, category, location }, data.coverage) : `/services/${category}`} /></li>)}</CategoryRail>
     </div></section>
     <section className={`${styles.wrap} ${styles.why}`} aria-labelledby="why-heading"><div>
       <h2 id="why-heading">No ringing around.<br />No guessing.</h2>

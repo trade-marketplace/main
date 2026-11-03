@@ -107,10 +107,10 @@ test.describe("signed-in office settings", () => {
       await db.query("INSERT INTO auth.users(id,email) VALUES($1,$2) ON CONFLICT(id) DO NOTHING", [person.id, person.email]);
       await db.query("INSERT INTO profiles(id,email,role,first_name,email_verified_at,updated_at) VALUES($1,$2,$3,'Settings Demo',now(),now()) ON CONFLICT(id) DO UPDATE SET role=excluded.role", [person.id, person.email, role]);
     }
-    await db.query("UPDATE settings SET shared_rate_cents=7000, revision=0 WHERE id=1");
+    await db.query("UPDATE settings SET shared_rate_cents=7000, revision=0, enabled_trades=ARRAY['ELECTRICAL','PLUMBING','GAS','CONSTRUCTION','OTHER']::trade[] WHERE id=1");
   });
   test.afterAll(async () => { await auth?.close(); await db?.end(); });
-  test("login → real settings → live server example → confirmed audited save → persisted reload → Team", async ({ page }) => {
+  test("login → real settings → audited save → persisted reload → Team → disabled homepage trade waitlist", async ({ page, browser }) => {
     await page.goto(`${app}/login?next=%2Fadmin%2Fsettings`);
     await expect(async () => {
       await page.getByRole("button", { name: /^(Show|Hide) password$/ }).click();
@@ -148,6 +148,42 @@ test.describe("signed-in office settings", () => {
     await expect(page.getByText(SECURITY_USER.email, { exact: true })).toBeVisible();
     expect((await db.query("SELECT role FROM profiles WHERE id=$1", [SECURITY_USER.id])).rows[0].role).toBe("ADMIN");
     await page.getByRole("tab", { name: "Emails", exact: true }).click(); await expect(page.getByText("Coming soon", { exact: true })).toBeVisible();
+    await expectNoA11yViolations(page);
+    await page.getByRole("tab", { name: "Trades", exact: true }).click();
+    await page.getByRole("switch", { name: "Gas fitting" }).setChecked(false);
+    await page.getByRole("tabpanel").getByRole("button", { name: "Save settings", exact: true }).click();
+    await Promise.all([
+      page.waitForResponse(response => response.request().method() === "POST" && new URL(response.url()).searchParams.get("tab") === "trades"),
+      dialog.getByRole("button", { name: "Save settings", exact: true }).click(),
+    ]);
+    await expect(dialog).not.toBeVisible();
+    const guest = await browser.newContext({ viewport: { width: 390, height: 844 }, reducedMotion: "reduce" });
+    try {
+      const home = await guest.newPage(); await home.goto(`${app}/`);
+      const tile = home.locator('article[data-category="gas"]');
+      await expect(tile).toContainText("Coming soon");
+      await tile.getByRole("link", { name: "Gas fitting", exact: true }).click();
+      await expect(home).toHaveURL(`${app}/services/gas`);
+      const waitlist = home.getByRole("form", { name: "Gas fitting waitlist", exact: true });
+      await expect(waitlist).toBeVisible();
+      const email = `settings-${Date.now()}@example.test`;
+      await waitlist.getByLabel("Email", { exact: true }).fill(email);
+      await waitlist.getByLabel("Suburb", { exact: true }).fill("Invercargill");
+      await waitlist.getByRole("button", { name: "Tell me", exact: true }).click();
+      await expect(home.getByText("You’re on the list.", { exact: true })).toBeVisible();
+      expect((await db.query("SELECT trade FROM service_waitlist_entries WHERE email=$1", [email])).rows[0].trade).toBe("GAS");
+      await expectNoA11yViolations(home);
+    } finally { await guest.close(); }
+  });
+});
+
+test.describe("disabled homepage trade preview", () => {
+  test.skip(!dev, "Needs the guarded local preview.");
+  test.use({ reducedMotion: "reduce" });
+  for (const viewport of VIEWPORTS) test(`${viewport.width}px disabled homepage tile is clear and accessible`, async ({ page }) => {
+    await page.setViewportSize(viewport); await page.goto(`${dev}/dev/components/landing?state=trade-disabled`);
+    await expect(page.locator('article[data-category="gas"]')).toContainText("Coming soon");
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await expectNoA11yViolations(page);
   });
 });
