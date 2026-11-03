@@ -14,6 +14,9 @@ try {
 const nextConfig: NextConfig = {
   // Don't let `next dev` add its own block to AGENTS.md: that file holds the founders' rules.
   agentRules: false,
+  // Next's invocation logger prints action arguments, including bank/IRD numbers and current passwords.
+  // Keep request diagnostics, but never let the framework write private form values to the terminal.
+  logging: { serverFunctions: false },
 };
 
 export default nextConfig;

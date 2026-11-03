@@ -1,0 +1,13 @@
+.trust { margin: 0 0 var(--trade-space-5); color: var(--trade-text-2); font-size: var(--trade-fs-small); }
+.summary { display: grid; gap: var(--trade-space-5); grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 0 0 var(--trade-space-6); }
+.summary div { min-width: 0; }
+.summary dt { font-size: var(--trade-fs-caption); color: var(--trade-text-2); margin-bottom: var(--trade-space-2); }
+.summary dd { margin: 0; font-weight: 700; overflow-wrap: anywhere; }
+.form, .fields { display: grid; gap: var(--trade-space-5); min-width: 0; }
+.fields { margin: 0; padding: 0; border: 0; }
+.legend { font-size: var(--trade-fs-subheading); font-weight: 700; margin-bottom: var(--trade-space-5); }
+.help { margin: calc(-1 * var(--trade-space-3)) 0 0; color: var(--trade-text-2); font-size: var(--trade-fs-small); }
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--trade-space-3); }
+.skeleton { display: grid; gap: var(--trade-space-3); margin-bottom: var(--trade-space-5); }
+.srOnly { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+@media (max-width: 389px) { .summary { grid-template-columns: 1fr; } }
