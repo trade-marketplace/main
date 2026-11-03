@@ -42,6 +42,9 @@ describe.skipIf(!testDatabaseUrl)("eligible job board real PostgreSQL reader", (
     expect(board.cards.find(card => card.id === high.id)?.earnCents).toBe(20_800);
     expect(board.cards.filter(card => [review.id, bounty.id].includes(card.id)).map(card => card.earnCents)).toEqual([null, null]);
     expect(board.counts).toMatchObject({ all: 4, ready: 2, estimate: 2, bounty: 1 });
+    const allEntry = boardOf(await loadJobBoard(schema.db, actor, { ...DEFAULT_BOARD_QUERY, sort: "earn", entry: "all" }, {}, deps()));
+    expect(allEntry.cards.map(card => card.id)).toEqual(board.cards.map(card => card.id));
+    expect(allEntry.counts).toEqual(board.counts); expect(allEntry.scope).toBe(board.scope);
     expect(JSON.stringify(board)).not.toMatch(/Private Street|Secret key|priceCents|margin|gstCents|workerGross|holidayPay|identityChecked|phoneVerified|secret@example|11111111/);
     expect(board.cards[0].point).toEqual({ lat: CENTRE.lat + .0015, lng: CENTRE.lng });
     expect(await schema.db.profile.findUnique({ where: { id: actor.userId } })).toMatchObject({ phoneVerifiedAt: null });

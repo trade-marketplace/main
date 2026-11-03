@@ -37,7 +37,7 @@ function whereWhen(query: BoardQuery, now: Date): Prisma.JobWhereInput {
 }
 function scopeFor(worker: EligibilityWorker, query: BoardQuery, enabled: readonly Trade[], savedIds: string[], now: Date): string {
   const proofs = { ...worker, workerTrades: [...worker.workerTrades].sort((a, b) => a.trade.localeCompare(b.trade)) };
-  return createHash("sha256").update(JSON.stringify([proofs, boardHref({ ...query, view: "grid" }), BOARD_TRADES.filter(trade => enabled.includes(trade)), query.saved ? [...new Set(savedIds)].sort() : [], licenceToday(now)])).digest("hex");
+  return createHash("sha256").update(JSON.stringify([proofs, boardHref({ ...query, entry: "find-work", view: "grid" }), BOARD_TRADES.filter(trade => enabled.includes(trade)), query.saved ? [...new Set(savedIds)].sort() : [], licenceToday(now)])).digest("hex");
 }
 
 /** Scan narrow server-only candidates in bounded batches. No early cap may turn an ineligible first page into empty. */

@@ -14,7 +14,7 @@ import { ErrorState, InlineError } from "@/components/feedback/ErrorState";
 import { LoadingRegion } from "@/components/feedback/LoadingRegion";
 import { OfflineBanner, useOnlineStatus } from "@/components/feedback/OfflineBanner";
 import { Skeleton } from "@/components/feedback/Skeleton";
-import { BOARD_TRADES, BOARD_WHEN, BoardUpdateRequests, boardAlertsRoute, boardCardTag, boardHref, DEFAULT_BOARD_QUERY, parseBoardQuery, parseSavedJobs, savedJobsKey,
+import { BOARD_TRADES, BOARD_WHEN, BoardUpdateRequests, boardAlertsRoute, boardCardTag, boardHref, boardJobHref, DEFAULT_BOARD_QUERY, parseBoardQuery, parseSavedJobs, savedJobsKey,
   type BoardKind, type BoardPage, type BoardQuery, type BoardResult, type BoardSource } from "@/lib/job-board";
 import { loadJobBoardAction, newBoardJobsAction } from "@/server/jobs/board-actions";
 import styles from "./board.module.css";
@@ -46,9 +46,10 @@ export function JobBoard({ initial, ownerId, source = LIVE_SOURCE, previewState,
   const savedRef = useRef(saved), queryRef = useRef(query);
   const board = result.ok ? result.board : null;
   useEffect(() => { savedRef.current = saved; queryRef.current = query; boardRef.current = board; }, [saved, query, board]);
-  const extra = new URLSearchParams(search); for (const name of ["kind", "trade", "distance", "when", "sort", "saved", "estimated", "view"]) extra.delete(name);
+  const extra = new URLSearchParams(search); for (const name of ["kind", "trade", "distance", "when", "sort", "saved", "estimated", "view", "layout"]) extra.delete(name);
   const href = (next: BoardQuery) => boardHref(next, pathname, extra.toString());
   const update = (patch: Partial<BoardQuery>) => { const next = { ...query, ...patch }; updates.invalidate(); setQuery(next); window.history.pushState(null, "", href(next)); };
+  const resetFilters = () => update({ ...DEFAULT_BOARD_QUERY, entry: query.entry, view: query.view });
 
   useEffect(() => {
     if (previewState) return;
@@ -118,7 +119,7 @@ export function JobBoard({ initial, ownerId, source = LIVE_SOURCE, previewState,
   const returnTo = boardHref(query);
   const contact = `/contact?next=${encodeURIComponent(returnTo)}`;
   const alerts = boardAlertsRoute(returnTo).href;
-  const filtered = key !== "/jobs";
+  const filtered = boardHref({ ...query, entry: "find-work", view: "grid" }) !== "/jobs";
   return <div className={styles.page} data-mode="trade">
     <OfflineBanner online={previewState === "offline" ? false : undefined} onRetry={() => load()} sticky={false} />
     <div className={styles.heading}><div><h1>Jobs near you</h1><p>{board ? `${board.total} ${board.total === 1 ? "job" : "jobs"} · ${meta?.areaName}` : "Jobs near you"}</p></div>
@@ -140,7 +141,7 @@ export function JobBoard({ initial, ownerId, source = LIVE_SOURCE, previewState,
         <fieldset><legend>When</legend>{BOARD_WHEN.map(when => <CheckboxField key={when} label={whenNames[when]} checked={query.when === null || query.when.includes(when)} onChange={event => {
           const values = new Set(query.when ?? BOARD_WHEN); if (event.target.checked) values.add(when); else values.delete(when); update({ when: [...values] });
         }} />)}</fieldset>
-        <Button variant="tertiary" onClick={() => update(DEFAULT_BOARD_QUERY)}>Reset filters</Button>
+        <Button variant="tertiary" onClick={resetFilters}>Reset filters</Button>
       </div></aside>
       <section id="board-results" className={styles.results} aria-label="Jobs">
         <Tabs label="Job kind" items={kindItems.map(item => ({ ...item, count: board?.counts[item.value] }))} value={query.kind} onChange={kind => update({ kind })} controls="board-cards" />
@@ -156,10 +157,10 @@ export function JobBoard({ initial, ownerId, source = LIVE_SOURCE, previewState,
               action={<Button href={contact}>Contact us</Button>} />
             : query.view === "map" ? <div className={styles.boundary}><h2>Map</h2><TextLink href={href({ ...query, view: "grid" })}>Back to jobs</TextLink></div>
             : !board?.cards.length ? <div className={styles.empty}><EmptyState icon="search_off" title="No jobs match that." message="Try fewer filters."
-              action={<Button onClick={() => meta && meta.distanceKm < meta.maxDistanceKm ? update({ distance: meta.maxDistanceKm }) : update(DEFAULT_BOARD_QUERY)}>{meta && meta.distanceKm < meta.maxDistanceKm ? "Widen distance" : "Reset filters"}</Button>}
+              action={<Button onClick={() => meta && meta.distanceKm < meta.maxDistanceKm ? update({ distance: meta.maxDistanceKm }) : resetFilters()}>{meta && meta.distanceKm < meta.maxDistanceKm ? "Widen distance" : "Reset filters"}</Button>}
               secondaryAction={<TextLink href={alerts}>Alerts settings</TextLink>} /><p>Need to change your work area? <TextLink href={contact} inline>Contact us</TextLink>.</p></div>
             : <><div className={styles.grid}>{board.cards.map(card => <div key={card.id} className={styles.card}>
-              <JobTile href={previewState ? `/dev/components/job-board?state=detail&from=${encodeURIComponent(returnTo)}` : `/jobs/${card.id}?from=${encodeURIComponent(returnTo)}`} title={card.title} photo={card.photoUrl}
+              <JobTile href={previewState ? `/dev/components/job-board?state=detail${query.entry === "all" ? "&view=all" : ""}&from=${encodeURIComponent(returnTo)}` : boardJobHref(card.id, returnTo)} title={card.title} photo={card.photoUrl}
                 meta={`${card.distanceKm < 1 ? "<1" : Math.round(card.distanceKm)} km · ${card.suburb}`} tag={boardCardTag(card)} saved={saved.includes(card.id)} onSavedChange={value => save(card.id, value)} shape="tall" headingLevel={2} />
               <div className={styles.cardFooter}><strong>{card.tradeLabel}</strong><span>{card.asap ? "ASAP" : card.whenLabel}</span></div>
             </div>)}</div>{more && <LoadingRegion loading label="Loading more jobs" skeleton={<BoardSkeleton count={4} />} />}

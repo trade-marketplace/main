@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { afterBoardCursor, BoardUpdateRequests, boardAvailabilityWindow, boardCardTag, boardHref, boardReturn, boardToday, boardWeek, compareBoardJobs, decodeBoardCursor, DEFAULT_BOARD_QUERY, encodeBoardCursor, matchesBoardKind, parseBoardQuery, parseSavedJobs, savedJobsKey, type BoardUpdates, type SortableBoardJob } from "@/lib/job-board";
+import { afterBoardCursor, BoardUpdateRequests, boardAlertsRoute, boardAvailabilityWindow, boardCardTag, boardHref, boardJobHref, boardQuerySchema, boardReturn, boardToday, boardWeek, compareBoardJobs, decodeBoardCursor, DEFAULT_BOARD_QUERY, encodeBoardCursor, matchesBoardKind, parseBoardQuery, parseSavedJobs, savedJobsKey, type BoardUpdates, type SortableBoardJob } from "@/lib/job-board";
+import { BOTTOM_NAV, currentLink } from "@/components/app/app-links";
 
 const first = "13800000-0000-4000-8000-000000000001", second = "13800000-0000-4000-8000-000000000002";
 const row = (id: string, overrides: Partial<SortableBoardJob> = {}): SortableBoardJob => ({ id, status: "BOOKABLE", category: "OTHER", earnCents: 10800, distanceKm: 3, createdAt: "2026-11-03T00:00:00Z", updatedAt: "2026-11-03T00:00:00Z", alreadyEstimated: false, ...overrides });
@@ -26,6 +27,41 @@ describe("job board URL and safe client rules", () => {
     expect(parseBoardQuery(new URLSearchParams("trade=none,other&when=none,flexible"))).toMatchObject({ trades: ["OTHER"], when: ["flexible"] });
     expect(parseBoardQuery(new URLSearchParams("trade=none&when=none"))).toMatchObject({ trades: [], when: [] });
     expect(parseBoardQuery(new URLSearchParams("trade=other,gas,plumbing,construction,electrical,typo&when=asap,week,flexible,typo"))).toEqual(DEFAULT_BOARD_QUERY);
+  });
+  it("retains the All jobs navigation entry through filters, cards, canonical Back and Alerts", () => {
+    const query = { ...parseBoardQuery(new URLSearchParams("view=all")), kind: "ready" as const, distance: 10, sort: "earn" as const };
+    expect(query).toMatchObject({ entry: "all", view: "grid" });
+    const back = boardHref(query), url = new URL(back, "https://board.test");
+    expect(url.searchParams.get("view")).toBe("all");
+    expect(currentLink(BOTTOM_NAV.TRADIE, url.pathname, url.searchParams.get("view"))?.label).toBe("All jobs");
+    const card = new URL(boardJobHref(first, back), "https://board.test");
+    expect(card.searchParams.get("view")).toBe("all");
+    expect(currentLink(BOTTOM_NAV.TRADIE, card.pathname, card.searchParams.get("view"))?.label).toBe("All jobs");
+    expect(boardReturn(card.searchParams.get("from"), card.searchParams.get("view"))).toBe(back);
+    expect(boardAlertsRoute(back).back).toBe(back);
+    expect(new URL(boardAlertsRoute(back).href, "https://board.test").searchParams.get("next")).toBe(back);
+    expect(boardHref({ ...DEFAULT_BOARD_QUERY, entry: query.entry, view: query.view })).toBe("/jobs?view=all");
+  });
+  it("keeps grid/map layout separate from All jobs while retaining legacy layout URLs", () => {
+    const allMap = parseBoardQuery(new URLSearchParams("view=all&layout=map&sort=earn"));
+    expect(allMap).toMatchObject({ entry: "all", view: "map", sort: "earn" });
+    expect(parseBoardQuery(new URL(boardHref(allMap), "https://board.test").searchParams)).toEqual(allMap);
+    expect(boardHref({ ...allMap, view: "grid" })).toBe("/jobs?sort=earn&view=all");
+    expect(parseBoardQuery(new URLSearchParams("view=map"))).toMatchObject({ entry: "find-work", view: "map" });
+    expect(boardHref(parseBoardQuery(new URLSearchParams("view=map")))).toBe("/jobs?view=map");
+    expect(parseBoardQuery(new URLSearchParams("view=grid"))).toEqual(DEFAULT_BOARD_QUERY);
+    expect(parseBoardQuery(new URLSearchParams("view=wrong&layout=wrong"))).toEqual(DEFAULT_BOARD_QUERY);
+    expect(parseBoardQuery(new URLSearchParams("view=all&layout=wrong"))).toMatchObject({ entry: "all", view: "grid" });
+  });
+  it("fails closed for malformed return markers and keeps the canonical marker in a detail login destination", () => {
+    expect(boardReturn(["/jobs", "/jobs"], ["all", "map"])).toBe("/jobs");
+    expect(boardReturn("https://evil.test/jobs", "all")).toBe("/jobs?view=all");
+    expect(boardReturn(undefined, "all")).toBe("/jobs?view=all");
+    expect(boardReturn("/jobs?view=all&layout=map")).toBe("/jobs?view=all&layout=map");
+    const destination = new URL(boardJobHref(first, boardReturn(undefined, "all")), "https://board.test");
+    expect(destination.searchParams.get("view")).toBe("all"); expect(destination.searchParams.get("from")).toBe("/jobs?view=all");
+    expect(boardQuerySchema.parse({ ...DEFAULT_BOARD_QUERY, entry: undefined }).entry).toBe("find-work");
+    expect(boardQuerySchema.safeParse({ ...DEFAULT_BOARD_QUERY, entry: "wrong" }).success).toBe(false);
   });
   it("sorts actual public earnings and stable IDs, with unknown pay after known pay", () => {
     const jobs = [row(second), row(first), row("13800000-0000-4000-8000-000000000003", { earnCents: null, distanceKm: 1 })];

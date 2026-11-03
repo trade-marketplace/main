@@ -8,11 +8,11 @@ export const BOARD_WHEN = ["asap", "week", "flexible"] as const;
 export type BoardKind = "all" | "ready" | "estimate" | "bounty";
 export type BoardSort = "nearest" | "newest" | "earn";
 export type BoardWhen = typeof BOARD_WHEN[number];
-export type BoardQuery = { kind: BoardKind; trades: Trade[] | null; distance: number | null; when: BoardWhen[] | null; sort: BoardSort; saved: boolean; estimated: boolean; view: "grid" | "map" };
-export const DEFAULT_BOARD_QUERY: BoardQuery = { kind: "all", trades: null, distance: null, when: null, sort: "nearest", saved: false, estimated: false, view: "grid" };
+export type BoardQuery = { kind: BoardKind; trades: Trade[] | null; distance: number | null; when: BoardWhen[] | null; sort: BoardSort; saved: boolean; estimated: boolean; entry: "find-work" | "all"; view: "grid" | "map" };
+export const DEFAULT_BOARD_QUERY: BoardQuery = { kind: "all", trades: null, distance: null, when: null, sort: "nearest", saved: false, estimated: false, entry: "find-work", view: "grid" };
 export const boardQuerySchema = z.object({ kind: z.enum(["all", "ready", "estimate", "bounty"]), trades: z.array(z.enum(BOARD_TRADES)).max(5).nullable(),
   distance: z.number().finite().positive().max(5000).nullable(), when: z.array(z.enum(BOARD_WHEN)).max(3).nullable(), sort: z.enum(["nearest", "newest", "earn"]),
-  saved: z.boolean(), estimated: z.boolean(), view: z.enum(["grid", "map"]) });
+  saved: z.boolean(), estimated: z.boolean(), entry: z.enum(["find-work", "all"]).default("find-work"), view: z.enum(["grid", "map"]) });
 
 type Search = URLSearchParams | Record<string, string | string[] | undefined>;
 const value = (input: Search, key: string) => input instanceof URLSearchParams ? input.get(key) ?? undefined : Array.isArray(input[key]) ? input[key]?.[0] : input[key];
@@ -24,16 +24,17 @@ function choices<T extends string>(raw: string | undefined, allowed: readonly T[
   return selected.length === 0 || selected.length === allowed.length ? null : [...selected];
 }
 export function parseBoardQuery(input: Search): BoardQuery {
-  const kind = value(input, "kind"), sort = value(input, "sort"), distance = Number(value(input, "distance"));
+  const kind = value(input, "kind"), sort = value(input, "sort"), distance = Number(value(input, "distance")), view = value(input, "view"), layout = value(input, "layout");
   return { kind: kind === "ready" || kind === "estimate" || kind === "bounty" ? kind : "all",
     trades: choices(value(input, "trade"), BOARD_TRADES, s => s.toUpperCase()),
     distance: Number.isFinite(distance) && distance > 0 && distance <= 5000 ? distance : null,
     when: choices(value(input, "when"), BOARD_WHEN), sort: sort === "newest" || sort === "earn" ? sort : "nearest",
-    saved: value(input, "saved") === "1", estimated: value(input, "estimated") === "1", view: value(input, "view") === "map" ? "map" : "grid" };
+    saved: value(input, "saved") === "1", estimated: value(input, "estimated") === "1", entry: view === "all" ? "all" : "find-work",
+    view: layout === "map" || layout === "grid" ? layout : view === "map" ? "map" : "grid" };
 }
 export function boardHref(query: BoardQuery, base = "/jobs", extra = ""): string {
   const params = new URLSearchParams(extra);
-  for (const key of ["kind", "trade", "distance", "when", "sort", "saved", "estimated", "view"]) params.delete(key);
+  for (const key of ["kind", "trade", "distance", "when", "sort", "saved", "estimated", "view", "layout"]) params.delete(key);
   if (query.kind !== "all") params.set("kind", query.kind);
   if (query.trades !== null) params.set("trade", query.trades.length ? BOARD_TRADES.filter(trade => query.trades!.includes(trade)).map(trade => trade.toLowerCase()).join(",") : "none");
   if (query.distance !== null) params.set("distance", String(query.distance));
@@ -41,13 +42,26 @@ export function boardHref(query: BoardQuery, base = "/jobs", extra = ""): string
   if (query.sort !== "nearest") params.set("sort", query.sort);
   if (query.saved) params.set("saved", "1");
   if (query.estimated) params.set("estimated", "1");
-  if (query.view !== "grid") params.set("view", query.view);
+  // `view=all` is the existing phone navigation marker, not a different set of eligible jobs.
+  if (query.entry === "all") { params.set("view", "all"); if (query.view === "map") params.set("layout", "map"); }
+  else if (query.view !== "grid") params.set("view", query.view);
   return `${base}${params.size ? `?${params}` : ""}`;
 }
-export function boardReturn(value: unknown): string {
-  if (typeof value !== "string" || value.length > 4096 || !value.startsWith("/jobs")) return "/jobs";
-  try { const url = new URL(value, "https://board.invalid"); return url.origin === "https://board.invalid" && url.pathname === "/jobs" ? boardHref(parseBoardQuery(url.searchParams)) : "/jobs"; }
-  catch { return "/jobs"; }
+export function boardReturn(value: unknown, entry?: unknown): string {
+  const fallback = entry === "all" ? "/jobs?view=all" : "/jobs";
+  if (typeof value !== "string" || value.length > 4096 || !value.startsWith("/jobs")) return fallback;
+  try {
+    const url = new URL(value, "https://board.invalid");
+    if (url.origin !== "https://board.invalid" || url.pathname !== "/jobs") return fallback;
+    const query = parseBoardQuery(url.searchParams);
+    return boardHref(entry === "all" ? { ...query, entry: "all" } : query);
+  } catch { return fallback; }
+}
+export function boardJobHref(id: string, back: unknown): string {
+  const canonical = boardReturn(back), params = new URLSearchParams();
+  if (new URL(canonical, "https://board.invalid").searchParams.get("view") === "all") params.set("view", "all");
+  params.set("from", canonical);
+  return `/jobs/${encodeURIComponent(id)}?${params}`;
 }
 /** Keep the canonical board destination through the Alerts page's independent login guard. */
 export function boardAlertsRoute(value: unknown): { href: string; back: string | null } {

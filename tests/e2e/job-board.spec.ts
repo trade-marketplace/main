@@ -168,6 +168,28 @@ test.describe("signed-in eligible board", () => {
     await expect(page.getByLabel("Sort by", { exact: true })).toHaveValue("earn");
     await expect(page.getByRole("heading", { name: "No jobs match that.", exact: true })).toBeVisible(); await expectNoA11yViolations(page);
   });
+  test("phone All jobs → filters → card → Back keeps its active navigation and layout", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 900 }); await login(page);
+    const allJobs = page.getByRole("link", { name: "All jobs", exact: true });
+    await Promise.all([page.waitForURL(url => url.pathname === "/jobs" && url.searchParams.get("view") === "all"), allJobs.click()]); await expect(allJobs).toHaveAttribute("aria-current", "page");
+    await page.getByRole("button", { name: "Filters", exact: true }).click();
+    await page.getByLabel("Distance", { exact: true }).selectOption("10"); await page.getByLabel("Sort by", { exact: true }).selectOption("earn");
+    await page.getByRole("tab", { name: /^Ready to claim/ }).click();
+    await expect(page).toHaveURL(/view=all/); await expect(allJobs).toHaveAttribute("aria-current", "page");
+    const back = new URL(page.url()).pathname + new URL(page.url()).search;
+    await Promise.all([page.waitForURL(url => url.pathname === `/jobs/${jobId(3)}`), page.getByRole("link", { name: "Board job 3", exact: true }).press("Enter")]);
+    await expect(page.getByRole("heading", { name: "Board job 3", level: 1, exact: true })).toBeVisible();
+    expect(new URL(page.url()).searchParams.get("view")).toBe("all"); await expect(allJobs).toHaveAttribute("aria-current", "page");
+    await page.getByRole("link", { name: "Back to jobs", exact: true }).click(); await expect(page).toHaveURL(`${app}${back}`); await expect(allJobs).toHaveAttribute("aria-current", "page");
+    await page.getByRole("tab", { name: "Map", exact: true }).click(); await expect(page.getByRole("heading", { name: "Map", exact: true })).toBeVisible();
+    expect(new URL(page.url()).searchParams.get("view")).toBe("all"); expect(new URL(page.url()).searchParams.get("layout")).toBe("map");
+    await expect(allJobs).toHaveAttribute("aria-current", "page"); await expectNoA11yViolations(page);
+    await Promise.all([page.waitForURL(url => url.pathname === "/jobs" && url.searchParams.get("view") === "all" && !url.searchParams.has("layout")), page.getByRole("link", { name: "Back to jobs", exact: true }).click()]);
+    const filters = page.getByRole("button", { name: "Filters", exact: true }); if (await filters.getAttribute("aria-expanded") !== "true") await filters.click();
+    await page.getByRole("button", { name: "Reset filters", exact: true }).click(); await expect(page).toHaveURL(`${app}/jobs?view=all`);
+    await expect(allJobs).toHaveAttribute("aria-current", "page"); await expect(page.locator("#board-cards")).not.toContainText("Filters on");
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true); await expectNoA11yViolations(page);
+  });
   test("failed browser storage never pretends to save a bookmark", async ({ page }) => {
     await page.addInitScript(() => { const write = Storage.prototype.setItem; Storage.prototype.setItem = function(key, value) { if (key.startsWith("trade.jobs.saved.")) throw Error("quota"); return write.call(this, key, value); }; });
     await login(page); await page.getByRole("button", { name: "Save Board job 1", exact: true }).click();

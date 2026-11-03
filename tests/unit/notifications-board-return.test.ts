@@ -25,6 +25,12 @@ describe("Alerts board-return authentication contract", () => {
     expect(decideRoute("/profile/notifications", null, destination.href)).toEqual({ action: "redirect", to: redirect });
     expect(loadPreferencesAction).not.toHaveBeenCalled();
   });
+  it("also preserves the All jobs marker and map layout through the independent Alerts guard", async () => {
+    const board = "/jobs?distance=10&view=all&layout=map";
+    const redirect = await redirectedTo(NotificationsPage({ searchParams: Promise.resolve({ next: board }) }));
+    const alerts = new URL(new URL(redirect, "https://same.test").searchParams.get("next")!, "https://same.test");
+    expect(alerts.searchParams.get("next")).toBe(board);
+  });
   it.each([undefined, null, ["/jobs", "/jobs"], { next: "/jobs" }, "https://evil.test/jobs", "//evil.test/jobs", "/admin"])("fails closed before authentication for %j", async value => {
     expect(boardAlertsRoute(value)).toEqual({ href: "/profile/notifications", back: null });
     const redirect = await redirectedTo(NotificationsPage({ searchParams: Promise.resolve({ next: value }) }));

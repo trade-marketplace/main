@@ -12,6 +12,8 @@ Only final-page cards fetch `workerJobView` for safe schedule/photo references. 
 
 Saved stores UUIDs only under `trade.jobs.saved.v1.<ownerId>` in this browser. It survives reload, is isolated per account and has explicit damaged/quota-denied storage feedback. It is not cross-device Saved. No read permission or database model is added. A quiet count reload preserves bookmark focus and its save animation.
 
+The phone's existing `view=all` is a navigation marker, retained through filters, cards, login and Back. Grid/map is independent: All jobs uses `view=all&layout=map` for map layout; legacy `view=map` and `view=grid` links still work. Neither entry nor layout changes eligibility/content, counts or cursor scope, and resetting filters preserves both presentation choices.
+
 The Map toggle and worker `/jobs/[id]` currently provide the explicitly scoped heading/summary and Back boundaries. Full map (#139), claim/estimate detail (#144/#145) and work-area editor (#135) remain separate work. Changing the underlying area goes to Contact us; widening the board only widens to the existing stored radius. Alerts and Contact handoffs carry a canonical board return path. Worker detail is a separate role-dispatched component, without a worker-only shared jobs layout: customer Posted (#121), guest/new-job routes and customer `/jobs/[id]/windows` (#119) can coexist.
 
 Guarded `/dev/components/job-board?state=` previews cover ready, empty, not-verified, loading, error, offline, saved (`&saved=1`), no-photo, pay-pending, new-jobs, loading-more and storage-error. Server preview fixtures pass through the actual eligibility and central worker view; only safe display data reaches the preview client. Production/dev guards are unchanged.
