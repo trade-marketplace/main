@@ -41,7 +41,7 @@ export function usePostReview({ ownerId, verified, draft, manager, state, save, 
     const intent = createdIntent.current ?? resumeIntent;
     try { if (intent) abandonPostIntent(localStorage, [JSON.stringify(intent)]); } catch { /* Navigation still cancels when storage access is blocked. */ }
     const query = new URLSearchParams(window.location.search); query.delete(POST_INTENT_PARAM);
-    window.history.replaceState(null, "", `${window.location.pathname}${query.size ? `?${query}` : ""}`);
+    window.history.replaceState(null, "", `${window.location.pathname}${query.size ? `?${query}` : ""}${window.location.hash}`);
   }
   function rememberIntent(entered: WizardDraft, selectedIds: string[]) {
     const intent = createPostIntent(entered, ownerId, selectedIds);
