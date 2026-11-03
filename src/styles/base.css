@@ -8,6 +8,10 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
    The shared styles fall back to their original ring with a keyboard, or when JavaScript is unavailable. */
 html[data-focus-input="pointer"] { --trade-focus-ring: none; }
 
+/* Browsers give form controls the system font (Arial, San Francisco…) unless told otherwise. Everything uses the
+   brand font: buttons, inputs, selects and textareas inherit it, so a plain control can never look off-brand. */
+button, input, select, textarea, optgroup { font: inherit; color: inherit; letter-spacing: inherit; }
+
 body {
   margin: 0;
   -webkit-tap-highlight-color: transparent;
