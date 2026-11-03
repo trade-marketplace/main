@@ -70,4 +70,26 @@ test.describe("trades and licences previews", () => {
     await page.getByRole("button", { name: "Cancel", exact: true }).focus(); await page.keyboard.press("Enter");
     await expect(page.getByRole("button", { name: "Add a trade", exact: true })).toBeFocused();
   });
+  test("a field correction reuses the selected file and staged upload in the mounted form", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 1000 });
+    let grants = 0, uploads = 0, saves = 0; const finals: string[] = [];
+    const storageUrl = new URL("/_test/licence-upload", devUrl).href;
+    await page.route("**/api/profile/trades/upload", async route => { grants++; await route.fulfill({ json: { ok: true, path: "owned/staged-licence", url: storageUrl, expiresAt: Date.now() + 7_200_000 } }); });
+    await page.route("**/_test/licence-upload", async route => { uploads++; await route.fulfill({ status: 200, body: "" }); });
+    await page.route("**/api/profile/trades", async route => {
+      finals.push(route.request().postData() ?? ""); saves++;
+      if (saves === 1) await route.fulfill({ status: 400, json: { ok: false, error: "invalid", fields: { expiresOn: "Enter a current expiry date." } } });
+      else await route.fulfill({ json: { ok: true, snapshot: { today: "2026-11-04", rows: [{ trade: "GAS", licence: { id: "gas", number: "PGDB 44120", status: "PENDING", expiresOn: "2028-03-31", rejectionReason: null, hasDocument: true } }] } } });
+    });
+    await page.goto(`${url()}&transport=network`); await page.getByRole("button", { name: "Add a trade", exact: true }).click();
+    await page.getByLabel("Trade", { exact: true }).selectOption("GAS"); await page.getByLabel("Gas fitting licence number").fill("PGDB 44120");
+    await page.getByLabel("Expiry date").fill("2027-03-31"); await page.getByLabel("Licence document").setInputFiles(file);
+    await page.getByRole("button", { name: "Save changes" }).click(); await expect(page.getByText("Enter a current expiry date.")).toBeVisible();
+    expect(await page.getByLabel("Licence document").evaluate(input => (input as HTMLInputElement).files?.[0]?.name)).toBe("licence.pdf");
+    await page.getByLabel("Expiry date").fill("2028-03-31"); await page.getByRole("button", { name: "Save changes" }).click();
+    await expect(page.getByRole("region", { name: "Gas fitting", exact: true }).getByText("Checking", { exact: true })).toBeVisible();
+    expect({ grants, uploads, saves }).toEqual({ grants: 1, uploads: 1, saves: 2 }); expect(finals.every(body => body.includes("owned/staged-licence"))).toBe(true);
+    await expectNoA11yViolations(page);
+  });
+
 });
