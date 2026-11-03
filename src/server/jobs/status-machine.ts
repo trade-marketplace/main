@@ -2,6 +2,7 @@ import "server-only";
 
 import type { JobStatus, Prisma, PrismaClient, Role, Trade } from "@/generated/prisma/client";
 import { queuePayoutForJob } from "@/server/payouts/queue-payout";
+import { licenceToday } from "@/lib/account/trades";
 
 // The job status machine (#93): the one place a job's status changes. Each transition says which statuses it
 // starts from, who may trigger it (customer / worker / office / system) and what must be true first. It runs in
@@ -509,7 +510,7 @@ async function loadFacts(tx: Tx, job: JobSnapshot, request: TransitionRequest): 
       const settings = await tx.settings.findUnique({ where: { id: 1 }, select: { enabledTrades: true } });
       const tradeEnabled = !settings || settings.enabledTrades.includes(job.category);
       if (request.actor.role === "SYSTEM" || job.category === "OTHER") return { tradeEnabled };
-      const today = startOfUtcDay(request.now ?? new Date());
+      const today = new Date(`${licenceToday(request.now ?? new Date())}T00:00:00Z`);
       const licences = await tx.licence.count({
         where: {
           userId: request.actor.userId,
@@ -550,8 +551,4 @@ async function loadFacts(tx: Tx, job: JobSnapshot, request: TransitionRequest): 
     default:
       return {};
   }
-}
-
-function startOfUtcDay(date: Date): Date {
-  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
 }

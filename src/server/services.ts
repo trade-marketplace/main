@@ -38,7 +38,11 @@ export async function enabledServiceCategories(db: AvailabilityStore | null = pr
   try {
     const settings = await db.settings.findUnique({ where: { id: 1 }, select: { enabledTrades: true } });
     return settings ? CATEGORIES.filter(category => settings.enabledTrades.includes(tradeValue(category))) : CATEGORIES;
-  } catch { console.error("Trade availability unavailable."); return []; }
+  } catch {
+    // Fail open: a database hiccup must never make every trade look "Coming soon". Posting still checks for real.
+    console.error("Trade availability unavailable.");
+    return CATEGORIES;
+  }
 }
 type ServiceStore = Pick<PrismaClient, "review"> & AvailabilityStore;
 export async function loadService(category: Category, db: ServiceStore | null = process.env.DATABASE_URL?.trim() ? getDb() : null): Promise<ServiceData> {

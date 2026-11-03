@@ -3,8 +3,9 @@
 .page h2 { margin: 0 0 var(--trade-space-4); font-size: var(--trade-fs-section); }
 .intro { margin: var(--trade-space-2) 0 var(--trade-space-6); color: var(--trade-text-2); }
 .card { min-width: 0; margin: 0 0 var(--trade-space-5); border: 1px solid var(--trade-line); border-radius: var(--trade-radius-card); padding: var(--trade-space-6); background: var(--trade-surface); }
-fieldset.card { padding-top: var(--trade-space-3); }
-.card legend { padding: 0 var(--trade-space-2); font-size: var(--trade-fs-section); font-weight: 800; }
+/* Titles sit inside the card like the other settings pages, not on its border (the browser's fieldset default). */
+.card legend { float: left; width: 100%; padding: 0; margin: 0 0 var(--trade-space-4); font-size: var(--trade-fs-section); font-weight: 800; }
+.card legend + * { clear: both; }
 .rateCards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--trade-space-5); }
 .fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--trade-space-4); }
 .rateCards .fields { grid-template-columns: minmax(0, 1fr); }

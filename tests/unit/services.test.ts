@@ -53,10 +53,10 @@ describe("office trade availability at public entry points", () => {
     expect(await loadService("gas", db)).toMatchObject({ live: false });
     expect(await loadService("other", db)).toMatchObject({ live: true });
   });
-  it("keeps launch defaults without a database and offers no trades if its availability read fails", async () => {
+  it("keeps launch defaults without a database, and shows every trade if its availability read fails (posting still checks)", async () => {
     expect(await enabledServiceCategories(null)).toEqual(CATEGORIES);
     const log = vi.spyOn(console, "error").mockImplementation(() => {});
-    expect(await enabledServiceCategories({ settings: { findUnique: vi.fn().mockRejectedValue(new Error("private database failure")) } } as unknown as Parameters<typeof enabledServiceCategories>[0])).toEqual([]);
+    expect(await enabledServiceCategories({ settings: { findUnique: vi.fn().mockRejectedValue(new Error("private database failure")) } } as unknown as Parameters<typeof enabledServiceCategories>[0])).toEqual(CATEGORIES);
     expect(log).toHaveBeenCalledWith("Trade availability unavailable.");
     expect(JSON.stringify(log.mock.calls)).not.toContain("private database"); log.mockRestore();
   });

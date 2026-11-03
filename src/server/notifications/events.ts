@@ -27,6 +27,7 @@ export const NOTIFICATION_EVENTS = {
   "job.reinstated": { channels: ["IN_APP"], description: "The office reinstated the job." },
   "job.status_overridden": { channels: ["IN_APP"], description: "The office changed the job status." },
   "payout.queued": { channels: ["IN_APP"], description: "A worker payout was queued." },
+  "payout.details_missing": { channels: ["IN_APP"], description: "Bank and tax details are needed before payroll can pay." },
   "payout.paid": { channels: ["IN_APP"], description: "A worker payout was paid." },
   "bounty.available": { channels: ["IN_APP"], description: "A quote bounty is available." },
   "bounty.expired": { channels: ["IN_APP"], description: "A quote bounty ran out of time." },
@@ -35,6 +36,7 @@ export const NOTIFICATION_EVENTS = {
   "crew.invited": { channels: ["IN_APP"], description: "A worker was invited to a crew." },
   "licence.verified": { channels: ["IN_APP"], description: "The office verified a licence." },
   "licence.rejected": { channels: ["IN_APP"], description: "The office rejected a licence." },
+  "licence.expiring": { channels: ["IN_APP"], description: "A checked licence expires within 30 days." },
 } as const satisfies Record<string, EventRule>;
 
 export type NotificationEvent = keyof typeof NOTIFICATION_EVENTS;

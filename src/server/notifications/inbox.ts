@@ -29,11 +29,13 @@ const COPY: Readonly<Record<string, readonly [string, string]>> = {
   "job.reinstated": ["Job reopened", "restart_alt"],
   "job.status_overridden": ["Job updated", "update"],
   "payout.queued": ["Payout queued", "payments"],
+  "payout.details_missing": ["Add bank account & IRD number.", "account_balance"],
   "payout.paid": ["Payout paid", "payments"],
   "bounty.available": ["Quote bounty available", "stars"],
   "crew.invited": ["Crew invitation", "group_add"],
   "licence.verified": ["Licence checked", "verified"],
   "licence.rejected": ["Check your licence", "badge"],
+  "licence.expiring": ["Licence expiring", "badge"],
   "message.received": ["New message", "chat_bubble"],
 };
 
@@ -48,7 +50,8 @@ export function inboxItem(row: Row): InboxItem {
   const [label, icon] = Object.hasOwn(COPY, row.type) ? COPY[row.type] : ["Notification", "notifications"];
   const title = typeof payload.jobTitle === "string" ? payload.jobTitle.trim() : "";
   let href = `/notifications#${encodeURIComponent(row.id)}`;
-  if (row.type.startsWith("payout.")) href = "/earnings";
+  if (row.type === "payout.details_missing") href = "/profile/payroll";
+  else if (row.type.startsWith("payout.")) href = "/earnings";
   else if (row.type.startsWith("licence.")) href = "/profile/trades";
   else if (jobId) {
     if (row.type === "message.received") href = `/messages/${encodeURIComponent(jobId)}`;
