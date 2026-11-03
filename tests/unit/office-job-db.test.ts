@@ -122,6 +122,21 @@ describe.skipIf(!testDatabaseUrl)("the job admin view's actions (database)", () 
       expect(notified.map((row) => row.userId).sort()).toEqual([claimed.customerId, first, second].sort());
     });
 
+    it("uses the New Zealand licence expiry day for both candidates and reassignment", async () => {
+      const now = new Date("2026-11-03T11:05:00Z");
+      const office = await person("ADMIN"); const first = await tradie("ELECTRICAL"); const expired = await tradie("ELECTRICAL"); const current = await tradie("ELECTRICAL");
+      await schema.db.licence.update({ where: { userId_trade: { userId: expired, trade: "ELECTRICAL" } }, data: { expiresOn: new Date("2026-11-03") } });
+      await schema.db.licence.update({ where: { userId_trade: { userId: current, trade: "ELECTRICAL" } }, data: { expiresOn: new Date("2026-11-04") } });
+      const claimed = await job("ASSIGNED", { category: "ELECTRICAL", workerId: first });
+      const view = await getOfficeJob(schema.db as unknown as OfficeJobDatabase, claimed.id, now);
+      expect(view?.reassignOptions.map(option => option.id)).not.toContain(expired);
+      expect(view?.reassignOptions.map(option => option.id)).toContain(current);
+      const action = (workerId: string) => performJobAction(schema.db, { userId: office }, { action: "reassign", jobId: claimed.id, seenStatus: "ASSIGNED", workerId, note: "Swap" }, now);
+      expect(await action(expired)).toMatchObject({ ok: false, field: "workerId" });
+      expect((await stored(claimed.id)).workerId).toBe(first);
+      expect(await action(current)).toEqual({ ok: true }); expect((await stored(claimed.id)).workerId).toBe(current);
+    });
+
     it("refuses a tradie without a verified licence, the same tradie, the customer, a non-tradie and a job with nobody on it", async () => {
       const office = await person("ADMIN");
       const first = await tradie("ELECTRICAL");

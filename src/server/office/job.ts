@@ -2,6 +2,7 @@
 // (status history and the audit log, merged) and the tradies who could take it over. Only the office calls this
 // (the page checks the role first). Nothing here is for customers or tradies, so it may show prices and pay.
 import "server-only";
+import { licenceToday } from "@/lib/account/trades";
 
 import type { JobStatus, Prisma, PrismaClient, Trade } from "@/generated/prisma/client";
 import { TRADE_LABELS } from "@/lib/office-jobs";
@@ -254,7 +255,7 @@ async function reassignOptions(
   job: { customerId: string; workerId: string | null; category: Trade },
   now: Date = new Date(),
 ): Promise<PersonView[]> {
-  const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const today = new Date(`${licenceToday(now)}T00:00:00Z`);
   const people = await db.profile.findMany({
     where: {
       role: "TRADIE",
