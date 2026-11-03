@@ -16,7 +16,8 @@ by this change. Missing or invalid configuration shows the unavailable state; pe
 `npm run dev` and `npm run build` bundle the official modular messaging worker locally. The worker route exposes only
 the validated public web configuration. The runtime G05 renderer's token CSS is explicitly included in output tracing.
 
-The Posted card asks once per customer in this browser using the shared bounded once store. It asks the native
+The Posted card appears while the price is pending (REVIEW/QUOTE_BOUNTY), and asks once per customer in this browser
+using the shared bounded once store. Resolved/cancelled success revisits show their current status without this ask. It asks the native
 browser only after **Yes please**. Dismissing the native prompt ends that request; retrying a granted registration
 does not ask again. Cookie-only preflight must complete before a token is bound, so a lost binding response can
 retry with the acknowledged HttpOnly device proof. Another unproved device cannot take over a known token. A proven

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { AppShellView } from "@/components/app/AppShellView";
+import appStyles from "@/components/app/app.module.css";
 import { PostedJob, CustomerJobSummary } from "@/components/jobs/PostedJob";
 import type { CustomerJobView } from "@/server/views";
 import type { PushCardState } from "@/lib/browser-push";
@@ -22,7 +23,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
   const params = await searchParams, state = typeof params.state === "string" ? params.state : "ready";
   if (state === "email") {
     const email = postConfirmationEmail({ jobId: example().id, customerId: ownerId, jobNumber: 1042, title: example().title, recipientEmail: "preview@example.test" });
-    return <main><iframe title="Posted confirmation email" srcDoc={email.html} sandbox="" style={{ border: 0, width: "100%", height: "1050px" }} /></main>;
+    return <main><h1 className={appStyles.visuallyHidden}>Posted confirmation email</h1><iframe title="Posted confirmation email" srcDoc={email.html} sandbox="" style={{ border: 0, width: "100%", height: "1050px" }} /></main>;
   }
   if (state === "detail" || state === "legacy") return frame(<CustomerJobSummary job={{ ...example(state === "detail" ? "PRICED" : "REVIEW"), anyTime: state !== "legacy", asap: state === "legacy" }} />);
   if (state === "status-gallery") return frame(<>{(["QUOTE_BOUNTY", "PRICED", "BOOKABLE", "ASSIGNED", "SUBMITTED", "COMPLETED", "CANCEL_REVIEW", "CANCELLED"] as const).map((status, index) => <PostedJob key={status} job={example(status, index + 2)} ownerId={ownerId} push={null} previewState="hidden" />)}</>);

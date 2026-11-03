@@ -1,11 +1,17 @@
 import { randomUUID } from "node:crypto";
 import { expect, test, type Page } from "@playwright/test";
+import AxeBuilder from "@axe-core/playwright";
 import pg from "pg";
 import sharp from "sharp";
 import { startPhotoStorageStub } from "./support/photo-storage-stub";
 import { SECURITY_PASSWORD, SECURITY_USER, SECURITY_TRADIE } from "./support/security-auth-stub";
 import { expectNoA11yViolations } from "./support/a11y";
 import { VIEWPORTS } from "./support/viewports";
+
+const app = process.env.POSTED_E2E_APP_URL, database = process.env.POSTED_E2E_DATABASE_URL;
+// channel is worker-scoped, so Playwright requires this at file scope. Opt-in runtime runs use full
+// Chromium's real Notification implementation; ordinary CI preview runs keep the configured default browser.
+if (app && database) test.use({ channel: "chromium" });
 
 for (const viewport of VIEWPORTS) test(`posted, permission, current-status, owned-detail and email previews fit ${viewport.width}px`, async ({ page }) => {
   test.setTimeout(180_000);
@@ -16,13 +22,26 @@ for (const viewport of VIEWPORTS) test(`posted, permission, current-status, owne
       if (state === "email") await expect(page.getByTitle("Posted confirmation email")).toBeVisible();
       else await expect(page.locator("h1").first()).toBeVisible();
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-      await expectNoA11yViolations(page);
+      if (state === "email") {
+        // The product correctly blocks scripts in its email iframe. Modern axe still collects child-frame
+        // partials despite iframes:false, and its async engine cannot run there. Audit every parent rule using
+        // legacy traversal (including the iframe element/title), then every rule on the EXACT email document.
+        const parent = await new AxeBuilder({ page }).setLegacyMode(true).options({ iframes: false }).analyze();
+        expect(parent.violations, "Email preview parent accessibility").toEqual([]);
+        const html = await page.getByTitle("Posted confirmation email").getAttribute("srcdoc"); expect(html).not.toBeNull();
+        const mail = await page.context().newPage();
+        try {
+          await mail.setViewportSize(viewport); await mail.setContent(html!, { waitUntil: "domcontentloaded" });
+          expect(await mail.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+          await expectNoA11yViolations(mail);
+          if (viewport.width === 390 || viewport.width === 1440) await mail.screenshot({ path: `/tmp/121-email-${viewport.width}.png`, fullPage: true });
+        } finally { await mail.close(); }
+      } else await expectNoA11yViolations(page);
       if ((viewport.width === 390 || viewport.width === 1440) && state === "ready") await page.screenshot({ path: `/tmp/121-posted-${viewport.width}.png`, fullPage: true });
     });
   }
 });
 
-const app = process.env.POSTED_E2E_APP_URL, database = process.env.POSTED_E2E_DATABASE_URL;
 test.describe("real owned posted success and optional browser pings", () => {
   test.skip(!app || !database, "requires the task-owned app, Auth/Storage double and disposable database");
   test.describe.configure({ mode: "serial" });
@@ -172,6 +191,8 @@ test.describe("real owned posted success and optional browser pings", () => {
   test("stale success URLs show current cancellation and legacy timing, with owner-only access", async ({ page }) => {
     const value = await job("CANCELLED"); await login(page, value.id);
     await expect(page.getByText("Cancelled", { exact: true })).toBeVisible(); await expect(page.getByText("Sorted", { exact: true })).toHaveCount(0);
+    await expect(page.getByRole("region", { name: "Get a ping when it’s ready?", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Yes please", exact: true })).toHaveCount(0);
     await db.query("UPDATE jobs SET any_time=false,asap=true WHERE id=$1", [value.id]);
     await page.getByRole("link", { name: "View my job", exact: true }).click(); await expect(page.getByText("Time to be arranged", { exact: true })).toBeVisible(); await expect(page.getByText("ASAP", { exact: true })).toBeVisible();
     await page.context().clearCookies(); await page.goto(`${app}/login?next=${encodeURIComponent(`/jobs/${value.id}?posted=1`)}`);
