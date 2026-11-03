@@ -14,7 +14,7 @@ import { type CheckoutView, loadCheckout } from "@/server/payments/payments";
 import { getStripeConfig, paymentsInTestMode } from "@/server/payments/stripe";
 import { getUploadService } from "@/server/files/service";
 
-export const metadata: Metadata = { ...privateMetadata, title: "Pay & book" };
+export const metadata: Metadata = { ...privateMetadata, title: "Pay" };
 
 export default async function PayPage({ params }: { params: Promise<{ paymentId: string }> }) {
   const { paymentId } = await params;
@@ -41,9 +41,9 @@ export default async function PayPage({ params }: { params: Promise<{ paymentId:
   return (
     <CheckoutPage summary={{ ...view, photoUrl }} testMode={paymentsInTestMode()}>
       {config.status === "ready" ? (
-        <PayForm paymentId={view.paymentId} amountCents={view.amountCents} publishableKey={config.publishableKey} />
+        <PayForm kind={view.kind} paymentId={view.paymentId} amountCents={view.amountCents} publishableKey={config.publishableKey} />
       ) : (
-        <PayFormView state="not-configured" amountCents={view.amountCents} />
+        <PayFormView kind={view.kind} state="not-configured" amountCents={view.amountCents} />
       )}
     </CheckoutPage>
   );

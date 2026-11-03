@@ -5,15 +5,16 @@
 import { Elements, ExpressCheckoutElement, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
 import { loadStripe, type Appearance, type Stripe, type StripeElementsOptions } from "@stripe/stripe-js";
 import { useEffect, useMemo, useState } from "react";
+import type { PaymentKind } from "@/generated/prisma/enums";
 
 import { payDonePath } from "@/lib/payments/results";
 import { preparePaymentAction } from "@/server/payments/actions";
 
 import { PayFormView, type PayState } from "./PayFormView";
 
-type Props = { paymentId: string; amountCents: number; publishableKey: string };
+type Props = { paymentId: string; amountCents: number; publishableKey: string; kind?: PaymentKind };
 
-export function PayForm({ paymentId, amountCents, publishableKey }: Props) {
+export function PayForm({ paymentId, amountCents, publishableKey, kind = "JOB" }: Props) {
   const stripePromise = useMemo<Promise<Stripe | null>>(() => loadStripe(publishableKey), [publishableKey]);
   const [secret, setSecret] = useState<string | null>(null);
   const [state, setState] = useState<PayState>("loading");
@@ -44,10 +45,10 @@ export function PayForm({ paymentId, amountCents, publishableKey }: Props) {
     };
   }, [paymentId]);
 
-  if (!secret) return <PayFormView state={state} amountCents={amountCents} message={message} />;
+  if (!secret) return <PayFormView kind={kind} state={state} amountCents={amountCents} message={message} />;
   return (
     <Elements stripe={stripePromise} options={{ clientSecret: secret, appearance: tokenAppearance(), fonts: tradeFonts() }}>
-      <Confirm paymentId={paymentId} amountCents={amountCents} initial={state} initialMessage={message} />
+      <Confirm kind={kind} paymentId={paymentId} amountCents={amountCents} initial={state} initialMessage={message} />
     </Elements>
   );
 }
@@ -87,7 +88,7 @@ function tradeFonts(): StripeElementsOptions["fonts"] {
   return [{ family: "Trade UI", src: `url(${window.location.origin}/fonts/roboto-flex/RobotoFlex.woff2)`, weight: "100 1000", display: "swap" }];
 }
 
-function Confirm({ paymentId, amountCents, initial, initialMessage }: { paymentId: string; amountCents: number; initial: PayState; initialMessage: string | null }) {
+function Confirm({ kind, paymentId, amountCents, initial, initialMessage }: { kind: PaymentKind; paymentId: string; amountCents: number; initial: PayState; initialMessage: string | null }) {
   const stripe = useStripe();
   const elements = useElements();
   const [state, setState] = useState<PayState>(initial);
@@ -115,6 +116,7 @@ function Confirm({ paymentId, amountCents, initial, initialMessage }: { paymentI
 
   return (
     <PayFormView
+      kind={kind}
       state={stripe && elements ? state : "loading"}
       amountCents={amountCents}
       message={message}

@@ -18,6 +18,7 @@ import styles from "./payments.module.css";
 export type PayState = "loading" | "ready" | "processing" | "failed" | "succeeded" | "not-configured";
 
 export type PayFormViewProps = {
+  kind?: "JOB" | "VARIATION" | "QUICK_LOOK";
   state: PayState;
   amountCents: number;
   /** Stripe's own message for a declined card, or ours. Shown at the top while state is "failed". */
@@ -31,7 +32,7 @@ export type PayFormViewProps = {
   onSubmit?: () => void;
 };
 
-export function PayFormView({ state, amountCents, message, children, express, expressReady = false, onSubmit }: PayFormViewProps) {
+export function PayFormView({ kind = "JOB", state, amountCents, message, children, express, expressReady = false, onSubmit }: PayFormViewProps) {
   const locked = state === "processing" || state === "succeeded";
   // The Pay button lives in the order summary (C10). It submits this form through the form attribute. Without a
   // summary on the page (or before the browser takes over) it stays under the fields.
@@ -52,7 +53,7 @@ export function PayFormView({ state, amountCents, message, children, express, ex
   const action = (
     <>
       <Button type="submit" form={PAY_FORM_ID} width="full" icon="lock" loading={state === "processing"} disabled={state === "loading" || state === "succeeded" ? "Hang on a moment" : undefined}>
-        Pay {money(amountCents)}
+        {kind === "VARIATION" ? "Approve & pay" : "Pay"} {money(amountCents)}
       </Button>
       <p className={styles.reassure}>You’ll get a receipt by email. Something wrong later? We sort it.</p>
     </>
@@ -69,7 +70,7 @@ export function PayFormView({ state, amountCents, message, children, express, ex
       )}
       {state === "succeeded" && (
         <Banner tone="good" title="Paid." live>
-          Taking you to your booking.
+          {kind === "VARIATION" ? "Checking extra work approval." : "Taking you to your booking."}
         </Banner>
       )}
       <fieldset className={styles.fields} disabled={locked}>

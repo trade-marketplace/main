@@ -191,6 +191,7 @@ export type CheckoutView = {
   title: string;
   jobNumber: number;
   suburb: string;
+  variationDescription: string | null;
 };
 
 export async function loadCheckout(db: PrismaClient, customerId: string, paymentId: string): Promise<CheckoutView | null> {
@@ -198,7 +199,7 @@ export async function loadCheckout(db: PrismaClient, customerId: string, payment
     where: { id: paymentId, job: { customerId } },
     include: {
       job: { select: { id: true, title: true, jobNumber: true, suburb: true, pricing: { select: { gstCents: true } } } },
-      variation: { select: { gstCents: true } },
+      variation: { select: { gstCents: true, description: true } },
     },
   });
   if (!payment) return null;
@@ -213,6 +214,7 @@ export async function loadCheckout(db: PrismaClient, customerId: string, payment
     title: payment.job.title,
     jobNumber: payment.job.jobNumber,
     suburb: payment.job.suburb,
+    variationDescription: payment.kind === "VARIATION" ? payment.variation?.description ?? null : null,
   };
 }
 

@@ -11,6 +11,7 @@ import { loadVariation } from "@/server/variations/view";
 import { variationPhotoCleanup } from "@/server/scheduler/variation-photo-cleanup";
 import { priceJob } from "@/server/pricing/price-job";
 import { priceWork } from "@/server/pricing/calculate";
+import { loadPaymentCompletion } from "@/server/payments/completion";
 import { queuePayoutForJob } from "@/server/payouts/queue-payout";
 import { preparePayment, startPayment, type PaymentIntentsApi } from "@/server/payments/payments";
 import { handleStripeEvent } from "@/server/payments/webhook-events";
@@ -121,6 +122,8 @@ describe.skipIf(!testDatabaseUrl)("extra work request → frozen price → verif
     expect(results[0]).toEqual(results[1]); const payment = await checkout(f, api);
     expect(await db().variation.findUnique({ where: { id: f.id } })).toMatchObject({ status: "PRICED", decidedAt: null });
     const intent = rows.get(payment.providerPaymentId!)!; const event = success(intent);
+    intent.status = "succeeded";
+    expect(await loadPaymentCompletion(db(), f.customer.userId, payment.id, () => api)).toMatchObject({ outcome: "variation-checking" });
     const secret = "whsec_disposable_variation_test", stripe = new Stripe("sk_test_fixture");
     const payload = JSON.stringify(event); const signature = Stripe.webhooks.generateTestHeaderString({ payload, secret });
     const deps = { secret: () => secret, verify: (body: string, sig: string, key: string) => stripe.webhooks.constructEvent(body, sig, key), handle: (evt: Stripe.Event) => handleStripeEvent(db(), evt) };
@@ -130,6 +133,8 @@ describe.skipIf(!testDatabaseUrl)("extra work request → frozen price → verif
     expect((await handleWebhookPost(request(signature), deps)).status).toBe(200);
     expect(await handleStripeEvent(db(), event)).toBe("duplicate");
     expect(await db().variation.findUnique({ where: { id: f.id } })).toMatchObject({ status: "APPROVED", decidedAt: expect.any(Date) });
+    expect(await loadPaymentCompletion(db(), f.customer.userId, payment.id)).toMatchObject({ outcome: "variation-approved" });
+    expect(await loadPaymentCompletion(db(), f.worker.userId, payment.id)).toBeNull();
     expect(await db().notification.count({ where: { type: "variation.approved", userId: f.worker.userId, payload: { path: ["variationId"], equals: f.id } } })).toBe(1);
     expect(await db().auditLog.count({ where: { action: "variation.approved", recordId: f.id, actorId: null } })).toBe(1);
     expect(await db().job.findUnique({ where: { id: f.job.id } })).toMatchObject({ status: "ASSIGNED" });
@@ -174,6 +179,7 @@ describe.skipIf(!testDatabaseUrl)("extra work request → frozen price → verif
     expect(await db().payment.findUnique({ where: { id: payment.id } })).toMatchObject({ status: "PAID" });
     expect(await db().variation.findUnique({ where: { id: f.id } })).toMatchObject({ status: "PRICED" });
     expect(await db().notification.count({ where: { type: "payment.review_required", userId: f.office.userId, payload: { path: ["paymentId"], equals: payment.id } } })).toBe(1);
+    expect(await loadPaymentCompletion(db(), f.customer.userId, payment.id)).toMatchObject({ outcome: "variation-review" });
   });
 
   it("serializes concurrent approve/decline and request/submit with no double decisions", async () => {

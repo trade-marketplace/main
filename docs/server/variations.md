@@ -41,5 +41,10 @@ Raw staging grants bind owner, job and request, require the existing upload rate
 at ten per worker. Originals cannot be read or attached from the browser. Both finalized and abandoned grants
 remain tracked until their two-hour signed token expires plus five minutes, so a late token reuse is cleaned again.
 
-Schema, pricing, payments and authorization need William's review. The only new visible wording is the existing
-inbox's office-only label “Payment needs review”; Matt should review it. There are no changed screen layouts.
+The existing checkout uses “Extra work” and “Approve & pay” for variation payments. Its completion route reads
+the owned payment kind and the actual approved variation revision/amount. Stripe success before webhook
+settlement shows a bounded approval check; a recorded payment without approval shows office review, never a
+booking or a go-ahead. Only a verified paid approval tells the customer their tradie was notified to proceed.
+
+Schema, pricing, payments and authorization need William's review. Matt should review the exact extra-work
+completion/checking copy listed in the PR and the guarded `/dev/components/pay?state=variation*` previews.
