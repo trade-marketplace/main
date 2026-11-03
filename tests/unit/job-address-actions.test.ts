@@ -19,6 +19,13 @@ describe("public guest address contract", () => {
     expect(await checkJobDraftLocationAction({ locationSource: "SEARCH", suburb: "Dunedin Central", point: { lat: -45.874, lng: 170.503 } })).toEqual({ status: "outside", suburb: "Dunedin Central" });
     expect(await checkJobDraftLocationAction({ locationSource: "TYPED", suburb: "Gladstone" })).toEqual({ status: "inside" });
   });
+  it("uses a landing place only as search context and still checks each actual result's coverage", async () => {
+    const outside = { lat: -45.874, lng: 170.503 };
+    const suggest = vi.fn().mockResolvedValue([{ id: "outside", label: "1 Princes Street", line1: "1 Princes Street", suburb: "Dunedin Central", city: "Dunedin", point: outside }]);
+    const result = await searchJobAddresses("1 Princes", { provider: { suggest }, coverage: INVERCARGILL_COVERAGE }, { label: "Invercargill", point: INVERCARGILL_COVERAGE.centre });
+    expect(suggest).toHaveBeenCalledWith("1 Princes, Invercargill", expect.objectContaining({ near: INVERCARGILL_COVERAGE.centre }));
+    expect(result).toMatchObject({ mode: "search", suggestions: [{ point: outside, coverage: { status: "outside" } }] });
+  });
   it("does not accept incomplete/fabricated coordinates and fails honestly when coverage cannot load", async () => {
     expect(await checkJobDraftLocationAction({ locationSource: "SEARCH", suburb: "Gladstone" })).toEqual({ status: "invalid" });
     expect(await checkJobDraftLocationAction({ locationSource: "SEARCH", suburb: "Gladstone", point: { lat: 999, lng: 0 } })).toEqual({ status: "invalid" });

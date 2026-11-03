@@ -47,4 +47,9 @@ describe("job actions before sign-in", () => {
     expect(await saveDraftPhotosAction("customer-a", randomUUID(), [], undefined as unknown as string[])).toEqual({ status: "unconfirmed" });
     expect(getDb).toHaveBeenCalledTimes(reads);
   });
+  it("rejects an invalid category-origin argument before accessing the database", async () => {
+    vi.mocked(getViewer).mockResolvedValueOnce({ userId: "customer-a", email: "a@example.test", firstName: "A", role: "CUSTOMER", emailVerified: true });
+    expect(await saveDraftAction({}, "customer-a", { absent: true }, "false")).toEqual({ status: "invalid", fields: { category: "Type of job" } });
+    expect(getDb).not.toHaveBeenCalled();
+  });
 });

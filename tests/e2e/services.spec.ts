@@ -30,10 +30,9 @@ test.describe("public service pages", () => {
       await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", new RegExp(`/services/${category}$`));
       await page.getByRole("form", { name: formName }).getByRole("textbox").fill("My job & more");
       await page.getByRole("form", { name: formName }).getByRole("textbox").press("Enter");
-      await expect(page).toHaveURL(/\/jobs\/new\?/);
+      await expect(page).toHaveURL(/\/jobs\/new$/);
       const next = new URL(page.url());
-      expect(next.pathname).toBe("/jobs/new"); expect(next.searchParams.get("type")).toBe(category);
-      expect(next.searchParams.get("description")).toBe("My job & more");
+      expect(next.pathname).toBe("/jobs/new"); expect(next.search).toBe("");
       await expect(page.getByRole("textbox")).toHaveValue("My job & more");
       await expect(page.locator('input[name="job-type"]:checked')).toHaveValue(category.toUpperCase());
     });
@@ -51,9 +50,9 @@ test.describe("public service pages", () => {
       await page.goto("/services/other");
       await page.getByRole("form", { name: formName }).getByRole("textbox").fill("An unusual job");
       await page.getByRole("link", { name: job, exact: true }).press("Enter");
-      await expect(page).toHaveURL(/\/jobs\/new\?/);
+      await expect(page).toHaveURL(/\/jobs\/new$/);
       const next = new URL(page.url());
-      expect(next.searchParams.get("type")).toBe("other"); expect(next.searchParams.get("description")).toBe(expected);
+      expect(next.search).toBe(""); await expect(page.getByRole("radio", { name: "Other (anything)", exact: true })).toBeChecked();
       await expect(page.getByRole("textbox")).toHaveValue(expected);
       expect(await page.evaluate(() => JSON.parse(sessionStorage.getItem("tm-post-job-start")!))).toMatchObject({ category: "other", description: expected });
     }
@@ -72,8 +71,7 @@ test.describe("public service pages", () => {
     await location.press("Enter"); await expect(page.getByRole("dialog", { name: "Location", exact: true })).toBeVisible();
     await page.keyboard.press("Escape"); await expect(location).toBeFocused();
     await page.getByRole("button", { name: "Get a price", exact: true }).click();
-    await expect(page).toHaveURL(/\/jobs\/new\?/);
-    expect(new URL(page.url()).searchParams.get("description")).toBe("Safe & local");
+    await expect(page).toHaveURL(/\/jobs\/new$/);
     await expect(page.getByRole("textbox")).toHaveValue("Safe & local");
   });
 });

@@ -48,6 +48,7 @@ export async function searchAddresses(
     coverage: Coverage;
     timeoutMs?: number;
     limit?: number;
+    near?: Coverage["centre"];
     onError?: (error: unknown) => void;
   },
 ): Promise<AddressSearchResult> {
@@ -70,7 +71,7 @@ export async function searchAddresses(
     // The race means a provider that ignores the abort signal still can't hold the page up.
     const suggestions = await Promise.race([
       deps.provider.suggest(cleaned, {
-        near: deps.coverage.centre,
+        near: deps.near ?? deps.coverage.centre,
         limit: deps.limit ?? DEFAULT_LIMIT,
         signal: controller.signal,
       }),

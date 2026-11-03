@@ -4,11 +4,13 @@ import { searchJobAddresses } from "./address-search";
 import { jobDraftSchema } from "@/lib/job-draft";
 import { loadCoverage } from "@/server/geo/coverage-settings";
 import { resolveJobLocation } from "@/server/geo/job-location";
+import { locationHintSchema } from "@/lib/post-job-wizard";
 
 /** Guests and customers use the same bounded search; no account is required to prepare a draft. */
-export async function searchJobAddressesAction(query: string) {
+export async function searchJobAddressesAction(query: string, hint?: unknown) {
   if (!(await consumeForClient("placeSearch")).allowed) return { mode: "manual" as const, reason: "unavailable" as const };
-  try { return await searchJobAddresses(query); }
+  const parsedHint = locationHintSchema.safeParse(hint);
+  try { return await searchJobAddresses(query, undefined, parsedHint.success ? parsedHint.data : undefined); }
   catch { return { mode: "manual" as const, reason: "unavailable" as const }; }
 }
 

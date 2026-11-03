@@ -16,9 +16,10 @@ import { saveJobWindowsAction } from "@/server/jobs/window-actions";
 import { ScheduleFields } from "./ScheduleFields";
 import styles from "./job-windows.module.css";
 
-type Props = { initial: JobWindowsSnapshot; initialNow: string; save?: (id: string, input: JobSchedule, revision: string) => Promise<SaveJobWindowsResult | AuthFailure>; preview?: string };
-export function JobWindows(props: Props) { return <ToastProvider><WindowForm {...props} /></ToastProvider>; }
-function WindowForm({ initial, initialNow, save = saveJobWindowsAction, preview }: Props) {
+type Props = { initial: JobWindowsSnapshot; initialNow: string; save?: (id: string, input: JobSchedule, revision: string) => Promise<SaveJobWindowsResult | AuthFailure>; preview?: string; embedded?: boolean };
+export function JobWindows(props: Props) { return <div className={styles.canvas} data-mode="customer"><ToastProvider><WindowForm {...props} /></ToastProvider></div>; }
+function WindowForm({ initial, initialNow, save = saveJobWindowsAction, preview, embedded }: Props) {
+  const Heading = embedded ? "h3" : "h1";
   const router = useRouter(); const toast = useToast(); const session = useOptionalSessionExpired(); const online = useOnlineStatus();
   const [snapshot, setSnapshot] = useState(initial); const [value, setValue] = useState(initial.schedule);
   const [now, setNow] = useState(() => new Date(initialNow));
@@ -51,7 +52,7 @@ function WindowForm({ initial, initialNow, save = saveJobWindowsAction, preview 
   return <section className={styles.page} data-mode="customer">
     <Button href="/notifications" variant="tertiary" width="auto" icon="arrow_back">Back</Button>
     <div className={styles.card}>
-      <p className={styles.eyebrow}>Job #{snapshot.jobNumber}</p><h1 className={styles.title}>When do you need it?</h1><p className={styles.job}>{snapshot.title}</p>
+      <p className={styles.eyebrow}>TM-{snapshot.jobNumber}</p><Heading className={styles.title}>When do you need it?</Heading><p className={styles.job}>{snapshot.title}</p>
       <OfflineBanner online={preview === "offline" ? false : undefined} sticky={false} />
       {changed && <Banner tone="info" title="Job updated" />}
       {error && <Banner tone="alert" title="Couldn’t save." live />}
@@ -62,5 +63,5 @@ function WindowForm({ initial, initialNow, save = saveJobWindowsAction, preview 
     </div>
   </section>;
 }
-export function JobWindowsLoading() { return <section className={styles.page}><div className={styles.card} role="status" aria-label="Loading time windows"><Skeleton height={38} width="65%" /><Skeleton height={48} /><Skeleton height={340} /></div></section>; }
-export function JobWindowsLoadError() { const router = useRouter(); return <section className={styles.page}><Button href="/notifications" variant="tertiary" icon="arrow_back" width="auto">Back</Button><div className={styles.card}><h1 className={styles.title}>When do you need it?</h1><Banner tone="alert" title="Couldn’t load the job." action={<Button variant="tertiary" onClick={() => router.refresh()}>Try again</Button>} /></div></section>; }
+export function JobWindowsLoading({ embedded }: { embedded?: boolean } = {}) { const Heading = embedded ? "h3" : "h1"; return <div className={styles.canvas} data-mode="customer"><section className={styles.page}><Heading className={styles.srOnly}>When do you need it?</Heading><div className={styles.card} role="status" aria-label="Loading time windows"><Skeleton height={38} width="65%" /><Skeleton height={48} /><Skeleton height={340} /></div></section></div>; }
+export function JobWindowsLoadError({ embedded }: { embedded?: boolean } = {}) { const router = useRouter(); const Heading = embedded ? "h3" : "h1"; return <div className={styles.canvas} data-mode="customer"><section className={styles.page}><Button href="/notifications" variant="tertiary" icon="arrow_back" width="auto">Back</Button><div className={styles.card}><Heading className={styles.title}>When do you need it?</Heading><Banner tone="alert" title="Couldn’t load the job." action={<Button variant="tertiary" onClick={() => router.refresh()}>Try again</Button>} /></div></section></div>; }

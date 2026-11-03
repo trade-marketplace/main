@@ -9,7 +9,7 @@ import { logInAgainAction } from "@/server/auth/actions";
 import { getViewer } from "@/server/auth/viewer";
 import { getDb } from "@/server/db";
 import { saveDraftAction } from "@/server/jobs/actions";
-import { loadDraft } from "@/server/jobs/drafts";
+import { loadWizardDraft } from "@/server/jobs/drafts";
 
 export const metadata: Metadata = { ...privateMetadata, title: "Post a job" };
 export default async function NewJob({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
@@ -17,8 +17,8 @@ export default async function NewJob({ searchParams }: { searchParams: Promise<R
   if (viewer && viewer.role !== "CUSTOMER") redirect(homeForRole(viewer.role));
   const params = await searchParams;
   let draft = null; let loadFailed = false;
-  if (viewer) { try { draft = await loadDraft(getDb(), viewer); } catch { loadFailed = true; } }
+  if (viewer) { try { draft = await loadWizardDraft(getDb(), viewer); } catch { loadFailed = true; } }
   return <SessionExpiredProvider logIn={logInAgainAction} email={viewer?.email} role={viewer?.role}>
-    <PostJobWizard key={viewer?.userId ?? "guest"} ownerId={viewer?.userId} initialDraft={draft ?? landingWizardDraft(params)} hasServerDraft={Boolean(draft)} loadFailed={loadFailed} save={saveDraftAction} initialNow={new Date().toISOString()} />
+    <PostJobWizard key={viewer?.userId ?? "guest"} ownerId={viewer?.userId} initialDraft={draft?.draft ?? landingWizardDraft(params)} initialManualCategory={draft?.manualCategory} hasServerDraft={Boolean(draft)} loadFailed={loadFailed} save={saveDraftAction} initialNow={new Date().toISOString()} />
   </SessionExpiredProvider>;
 }

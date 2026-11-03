@@ -1,0 +1,3 @@
+.gallery { background: color-mix(in srgb, var(--trade-forest) 3.8%, var(--trade-surface)); color: var(--trade-text); }
+.gallery > h1 { margin: 0; padding: var(--trade-space-6); font-family: var(--trade-font-heading); font-size: var(--trade-fs-heading); }
+.state { margin: 0; padding: var(--trade-space-4) var(--trade-space-6); border-block: 1px solid var(--trade-line); font-size: var(--trade-fs-body); overflow-wrap: anywhere; }

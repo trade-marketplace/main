@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { currentSchedule, postingDateRange, postingDays, selectedTimeWindows, timeWindowsExpired, timeWindowsInRange } from "@/lib/job-time-windows";
-import { canonicalDraft, decodeWizardDraft, editWhere, encodeWizardDraft, initialWizardDraft, whereErrors, whereInputs } from "@/lib/post-job-wizard";
+import { canClearStaleDescribe, canonicalDraft, decodeWizardDraft, editWhere, encodeWizardDraft, inheritUneditedWhere, initialWizardDraft, localEnvelopeMatchesInput, recoverServerWizard, serverRepresentsWhere, whereErrors, whereInputs } from "@/lib/post-job-wizard";
 import { jobScheduleSchema } from "@/lib/job-draft";
 
 const now = new Date("2026-11-03T10:59:59Z");
@@ -63,5 +63,46 @@ describe("Where draft restoration", () => {
   it("bounds editable strings and retains a new server draft's later-step fields", () => {
     expect(whereInputs(editWhere(initial(), { addressLine1: "x".repeat(500) })).addressLine1).toHaveLength(200);
     expect(initial().completedPhotos).toBe(true);
+  });
+});
+
+describe("owned server recovery after failed device writes", () => {
+  const key = "9b58063b-12c2-4b46-9c45-38353f41173e";
+  const server = { postKey: key, description: "Lights keep flickering", category: "ELECTRICAL" as const, photoPaths: [], locationSource: "TYPED" as const, addressLine1: "1 Example St", suburb: "Gladstone", city: "Invercargill", postcode: "9810", anyTime: true, asap: false, timeWindows: [] };
+  const old = () => editWhere(initialWizardDraft(server, true, false), { postcode: "98" });
+  it("selects the confirmed corrected postcode rather than a stale partial cache", () => {
+    const restored = recoverServerWizard(old(), server, false, true, now)!;
+    expect(whereInputs(restored).postcode).toBe("9810"); expect(restored.completedWhere).toBe(true);
+    expect(localEnvelopeMatchesInput(restored, old())).toBe(false);
+    // The owned savedWhere URL context remains true after Review → Back → Where.
+    expect(whereInputs(recoverServerWizard(old(), server, false, true, now)!).postcode).toBe("9810");
+  });
+  it("uses an intentionally cleared optional postcode after confirmed Where, including Back and refresh", () => {
+    const cleared = { ...server, postcode: undefined };
+    expect(whereInputs(recoverServerWizard(old(), cleared, false, true, now)!).postcode).toBe("");
+    expect(recoverServerWizard(old(), cleared, false, true, now)?.completedWhere).toBe(true);
+  });
+  it("preserves genuinely unfinished raw text after Describe or Photos Next without claiming server durability", () => {
+    const withoutPartial = { ...server, postcode: undefined };
+    const restored = recoverServerWizard(old(), withoutPartial, false, false, now)!;
+    expect(whereInputs(restored).postcode).toBe("98"); expect(restored.completedWhere).toBe(false);
+    expect(serverRepresentsWhere(restored)).toBe(false); expect(whereErrors(restored, now)).toEqual({ postcode: "Address" });
+    expect(canClearStaleDescribe(initialWizardDraft(server), old())).toBe(false);
+    expect(canClearStaleDescribe(old(), initialWizardDraft({ postKey: key }))).toBe(false);
+  });
+  it("inherits unvisited server address and schedule fields, but preserves a device's edited raw Where", () => {
+    const unvisited = initialWizardDraft({ postKey: key, description: server.description, category: server.category });
+    expect(inheritUneditedWhere(unvisited, server, true)?.data).toMatchObject({ addressLine1: server.addressLine1, postcode: server.postcode, locationSource: server.locationSource, anyTime: true, timeWindows: [] });
+    expect(inheritUneditedWhere(old(), server, true)).toEqual(old());
+    expect(inheritUneditedWhere(unvisited, { ...server, postKey: "another-key" }, true)).toBe(unvisited);
+    expect(inheritUneditedWhere(unvisited, server, false)).toBe(unvisited);
+  });
+  it("does not equate incomplete raw input or stale address/schedule state with a durable server snapshot", () => {
+    const current = editWhere(initialWizardDraft(server, true), { postcode: "9810" });
+    expect(serverRepresentsWhere(current)).toBe(true); expect(serverRepresentsWhere(old())).toBe(false);
+    expect(localEnvelopeMatchesInput(current, current)).toBe(true);
+    expect(localEnvelopeMatchesInput(current, old())).toBe(false);
+    expect(localEnvelopeMatchesInput(current, { ...current, data: { ...current.data, asap: true } })).toBe(false);
+    expect(localEnvelopeMatchesInput(current, { ...current, data: { ...current.data, point: { lat: -46.4, lng: 168.3 } } })).toBe(false);
   });
 });

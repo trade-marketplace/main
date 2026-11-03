@@ -103,6 +103,39 @@ describe("draft photo lifecycle", () => {
     await manager.start(["path-a", "path-b"]); await done(manager);
     expect(manager.paths()).toEqual(["path-a", "path-b"]); expect(manager.getSnapshot().photos[0].src).toBe("https://private.test/path-a"); expect(upload).not.toHaveBeenCalled();
   });
+  it.each(["empty", "blocked", "cached-file"])("keeps acknowledged server photos usable when cache writes fail (read: %s)", async mode => {
+    const upload = vi.fn(); const saveServer = vi.fn(async () => {});
+    const { manager } = await fixture({ read: async () => { if (mode === "blocked") throw new Error("Storage blocked"); return mode === "cached-file" ? [{ id: "cached", name: "cached.jpg", file: file("cached.jpg"), path: "path-a", prepared: true }] : null; }, write: async () => { throw new Error("Quota exceeded"); }, preview: async path => `https://private.test/${path}`, upload, saveServer }, "owner", ["path-a", "path-b"]);
+    await done(manager); await expect(manager.flush()).resolves.toBeUndefined();
+    expect(manager.getSnapshot()).toMatchObject({ storageError: false, photos: [expect.objectContaining({ path: "path-a", status: "done" }), expect.objectContaining({ path: "path-b", status: "done" })] });
+    await expect(manager.prepareExit()).resolves.toBeUndefined(); expect(manager.paths()).toEqual(["path-a", "path-b"]); expect(upload).not.toHaveBeenCalled();
+    manager.move(manager.getSnapshot().photos[1].id, 0); await manager.flush(); expect(saveServer).toHaveBeenLastCalledWith(["path-b", "path-a"], ["path-a", "path-b"]);
+  });
+  it("still preserves raw local files strictly when remote thumbnails need no cache", async () => {
+    const upload = vi.fn(async () => "new-path"); const source = file("unsaved.jpg");
+    const { manager } = await fixture({ write: async () => { throw new Error("Storage blocked"); }, preview: async path => `https://private.test/${path}`, upload, saveServer: async () => {} }, "owner", ["path-a"]);
+    await done(manager); manager.add([source]); await done(manager);
+    expect(manager.getSnapshot()).toMatchObject({ storageError: true }); expect(manager.getSnapshot().photos[1]).toMatchObject({ file: source, status: "failed" });
+    await expect(manager.prepareExit()).rejects.toThrow("Storage blocked"); expect(upload).not.toHaveBeenCalled();
+    manager.remove(manager.getSnapshot().photos[1].id); await manager.flush();
+    expect(manager.getSnapshot().photos[0].status).toBe("done"); expect(manager.getSnapshot().storageError).toBe(false);
+  });
+  it("does not lose an offline remote-only reorder/removal when its local cache cannot save", async () => {
+    let online = true;
+    const { manager } = await fixture({ write: async () => { throw new Error("Storage blocked"); }, preview: async path => `https://private.test/${path}`, online: () => online, saveServer: async () => {} }, "owner", ["path-a", "path-b"]);
+    await done(manager); online = false; manager.move(manager.getSnapshot().photos[1].id, 0);
+    await expect(manager.prepareExit()).rejects.toThrow("Storage blocked");
+    manager.remove(manager.getSnapshot().photos[0].id); manager.remove(manager.getSnapshot().photos[0].id);
+    await expect(manager.prepareExit()).rejects.toThrow("Storage blocked");
+  });
+  it("a mixed restore keeps the acknowledged preview done while unsaved raw bytes stay blocked", async () => {
+    const source = file("raw.jpg"); const upload = vi.fn();
+    const { manager } = await fixture({ read: async () => [{ id: "saved", name: "cached.jpg", path: "path-a", file: file("cached.jpg"), prepared: true }, { id: "raw", name: "raw.jpg", file: source, prepared: true }],
+      write: async () => { throw new Error("Storage blocked"); }, preview: async path => `https://private.test/${path}`, upload, saveServer: async () => {} }, "owner", ["path-a"]);
+    await done(manager); expect(manager.getSnapshot().photos[0].status).toBe("done"); expect(manager.getSnapshot().photos[1]).toMatchObject({ file: source, status: "failed" });
+    await expect(manager.prepareExit()).rejects.toThrow("Storage blocked"); manager.remove("raw"); await manager.flush();
+    expect(manager.getSnapshot().photos[0].status).toBe("done"); await expect(manager.prepareExit()).resolves.toBeUndefined(); expect(upload).not.toHaveBeenCalled();
+  });
   it("uses server additions/order/removals while preserving genuinely unuploaded same-draft files", async () => {
     const pending = file("unsynced.jpg"); const upload = vi.fn<NonNullable<PhotoManagerDeps["upload"]>>().mockResolvedValue("new-upload"); const saved = vi.fn<NonNullable<PhotoManagerDeps["saveServer"]>>().mockResolvedValue(undefined);
     const { manager } = await fixture({ read: async () => [

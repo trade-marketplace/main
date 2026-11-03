@@ -75,10 +75,22 @@ export class DraftPhotoManager {
   }
   private storedPhotos(): StoredDraftPhoto[] { return this.state.photos.map(photo => ({ id: photo.id, name: photo.name, file: photo.file, path: photo.path, prepared: photo.prepared, pendingAttach: photo.pendingAttach, needsRetry: photo.needsRetry })); }
 
+  private acknowledged(photo: StoredDraftPhoto) {
+    return Boolean(photo.path && !photo.pendingAttach && !photo.needsRetry && this.expectedServerPaths.includes(photo.path));
+  }
+  private requiresLocal(photos: readonly StoredDraftPhoto[] = this.state.photos) {
+    if (photos.some(photo => photo.file && !this.acknowledged(photo))) return true;
+    // Acknowledged photos already have server bytes. Offline order/removal still needs local durability.
+    const paths = photos.flatMap(photo => photo.path ? [photo.path] : []);
+    return Boolean(this.scope.ownerId && (!this.deps.online() || !this.deps.saveServer) && JSON.stringify(paths) !== JSON.stringify(this.expectedServerPaths));
+  }
+
   private persist() {
     const revision = ++this.revision; const snapshot = this.storedPhotos();
     this.pendingWrites++; this.emit({ saving: true });
-    const write = this.localWrites.catch(() => {}).then(() => this.deps.write(this.scope, snapshot));
+    const write = this.localWrites.catch(() => {}).then(() => this.deps.write(this.scope, snapshot)).catch(error => {
+      if (this.requiresLocal()) throw error;
+    });
     this.localWrites = write;
     void write.then(() => {
       this.pendingWrites--; if (revision === this.revision) this.localError = false;
@@ -133,7 +145,8 @@ export class DraftPhotoManager {
       const conflict = records.length > MAX_PHOTOS;
       const photos = records.map(record => ({ ...record, prepared: record.prepared === true, generation: ++this.generation,
         src: record.file ? this.objectUrl(record.file) : "", status: record.needsRetry || conflict && !record.path ? "failed" as const : "uploading" as const, progress: 0 }));
-      this.emit({ photos, restoring: false, storageError: this.localError && photos.length > 0,
+      this.localError &&= this.requiresLocal(photos);
+      this.emit({ photos, restoring: false, storageError: this.localError,
         problems: conflict ? checkPhotos(pending.flatMap(photo => photo.file ? [photo.file] : []), { existing: MAX_PHOTOS }).problems : [] });
       for (const photo of photos) if (photo.status === "uploading") void this.process(photo.id, photo.generation);
       if (!photos.length && local !== null) void this.saveOrder();
@@ -190,7 +203,10 @@ export class DraftPhotoManager {
       if (initial.path && this.deps.preview) {
         if (!this.deps.online() && file) { this.update(id, generation, { status: "done", progress: 1 }); return; }
         const src = await this.deps.preview(initial.path);
-        if (this.update(id, generation, { src, status: "done", progress: 1 })) { await this.persist(); await this.saveOrder(); }
+        if (this.update(id, generation, { src, status: "done", progress: 1 })) {
+          await this.persist().catch(error => { if (!this.acknowledged(this.current(id, generation) ?? initial)) throw error; });
+          await this.saveOrder();
+        }
         return;
       }
       if (!file) throw new Error(failedMessage);
@@ -256,7 +272,7 @@ export class DraftPhotoManager {
   async flush() {
     for (;;) {
       const local = this.localWrites; const server = this.serverWrites;
-      await local.catch(error => { if (this.state.photos.length) throw error; });
+      await local.catch(error => { if (this.requiresLocal()) throw error; });
       if (this.deps.online()) await server;
       else { this.serverError = false; this.emit({ storageError: this.localError }); }
       if (local === this.localWrites && server === this.serverWrites) break;
@@ -270,7 +286,7 @@ export class DraftPhotoManager {
   }
   async prepareExit() {
     for (const [id, abort] of this.uploads) { abort.abort(); const photo = this.state.photos.find(item => item.id === id); if (photo) this.update(id, photo.generation, { status: "failed" }); }
-    await this.persist().catch(error => { if (this.state.photos.length) throw error; });
+    await this.persist().catch(error => { if (this.requiresLocal()) throw error; });
     await this.saveOrder(); await this.flush();
   }
   dispose() {

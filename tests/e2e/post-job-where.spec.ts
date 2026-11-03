@@ -50,6 +50,16 @@ test("Any time fills all offered parts; partial postcode is retained and correct
   await page.context().setOffline(false); await page.goto("/jobs/new?step=where");
   await expect(page.locator('input[name="time-windows"]:checked')).toHaveCount(21); await expect(page.getByRole("textbox", { name: "Postcode (optional)", exact: true })).toHaveValue("9810");
 });
+test("the restored landing place is an address search hint, never a completed address or coverage grant", async ({ page }) => {
+  await page.goto("/jobs/new?description=Lights+and+wiring+need+checking&location=Bluff&lat=-46.599&lng=168.345");
+  await page.getByRole("button", { name: "Next", exact: true }).click(); await expect(page.getByRole("heading", { name: "Add some photos", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+  const field = page.getByRole("combobox", { name: "Address", exact: true }); await expect(field).toHaveValue(""); await expect(field).toHaveAttribute("placeholder", "Bluff");
+  await page.reload(); await expect(field).toHaveValue(""); await expect(field).toHaveAttribute("placeholder", "Bluff");
+  const saved = await page.evaluate(key => JSON.parse(localStorage.getItem(key)!), DRAFT_STORAGE_KEY);
+  expect(saved.locationHint).toEqual({ label: "Bluff", point: { lat: -46.599, lng: 168.345 } }); expect(saved.data).not.toHaveProperty("point"); expect(saved.data).not.toHaveProperty("addressLine1");
+  await page.getByRole("button", { name: "Next", exact: true }).click(); await expect(field).toBeFocused(); await expectNoA11yViolations(page);
+});
 test("keyboard autocomplete chooses the suggested canonical address; outside selection opens A07 without a private address", async ({ page }) => {
   test.skip(!dev, "guarded preview requires the task-owned dev app");
   await page.goto(`${dev}/dev/components/post-job-where?state=results`);
@@ -66,17 +76,22 @@ test("Auckland midnight rolls offered dates while keeping a stale selection visi
   const nextDay = new Date(`${oldDate.split("/")[0]}T12:00:00Z`);
   await page.clock.setSystemTime(nextDay); await page.clock.fastForward(61_000);
   await expect(page.locator(`input[name="time-windows"][value="${oldDate}"]`)).toHaveCount(0);
-  await expect(page.getByText("When do you need it?", { exact: true })).toBeVisible();
+  await expect(page.getByRole("group", { name: "When are you free?", exact: true }).getByText("When do you need it?")).toBeVisible();
   const saved = await page.evaluate(key => JSON.parse(localStorage.getItem(key)!).data.timeWindows, DRAFT_STORAGE_KEY); expect(saved[0].date).toBe(oldDate.split("/")[0]);
   await expectNoA11yViolations(page);
 });
-const states = ["empty", "loading", "results", "manual", "invalid", "outside", "offline", "expired", "review", "saving", "update", "update-error"];
+const states = ["empty", "loading", "results", "manual", "invalid", "outside", "offline", "expired", "review", "saving", "save-error", "update", "update-error", "update-loading", "update-load-error", "update-changed", "update-offline", "update-claimed", "update-saving"];
 for (const viewport of VIEWPORTS) test(`Where states at ${viewport.name}: layout and axe`, async ({ page }) => {
   test.skip(!dev, "guarded preview requires the task-owned dev app"); test.setTimeout(180_000); await page.setViewportSize(viewport);
   for (const state of states) {
     await page.goto(`${dev}/dev/components/post-job-where?state=${state}`);
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText(state.startsWith("update") ? "When do you need it?" : state === "review" ? "All good?" : "Where and when?");
+    if (state === "update-loading") await expect(page.getByRole("status", { name: "Loading time windows", exact: true })).toBeVisible();
+    else await expect(page.getByRole("heading", { level: 1 })).toHaveText(state.startsWith("update") ? "When do you need it?" : state === "review" ? "All good?" : "Where and when?");
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await expectNoA11yViolations(page);
   }
+  await page.goto(`${dev}/dev/components/post-job-where?state=editor-states`);
+  await expect(page.getByRole("main")).toHaveCount(1); await expect(page.getByRole("heading", { level: 2 })).toHaveCount(8);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await expectNoA11yViolations(page);
 });

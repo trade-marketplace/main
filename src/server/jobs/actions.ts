@@ -14,12 +14,13 @@ import { validatePhotoPaths } from "./photo-upload";
 const photoVersionSchema = z.union([z.object({ absent: z.literal(true) }).strict(), z.object({ postKey: POST_KEY_SCHEMA, paths: jobDraftSchema.shape.photoPaths.unwrap() }).strict()]);
 type PhotoVersion = z.infer<typeof photoVersionSchema>;
 
-export const saveDraftAction = withRole(["CUSTOMER"], async (viewer, input: unknown, expectedOwnerId?: string, photoVersion?: PhotoVersion) => {
+export const saveDraftAction = withRole(["CUSTOMER"], async (viewer, input: unknown, expectedOwnerId?: string, photoVersion?: PhotoVersion, manualCategory?: unknown) => {
   // A focused wizard may survive a login in another tab. Never attach its old account's draft to the new one.
   if (expectedOwnerId !== undefined && viewer.userId !== expectedOwnerId) return { status: "forbidden" } as const;
+  if (manualCategory !== undefined && typeof manualCategory !== "boolean") return { status: "invalid", fields: { category: "Type of job" } } as const;
   const version = photoVersionSchema.safeParse(photoVersion);
   if (!version.success) return { status: "unconfirmed" } as const;
-  return saveDraft(getDb(), viewer, input, { fullSnapshot: true, ...("absent" in version.data ? { expectedDraftAbsent: true } : { expectedPostKey: version.data.postKey, expectedPhotoPaths: version.data.paths }), validatePhotos: (tx, key, paths) => validatePhotoPaths(tx, viewer, key, paths, createSupabaseFileStore) });
+  return saveDraft(getDb(), viewer, input, { fullSnapshot: true, manualCategory, ...("absent" in version.data ? { expectedDraftAbsent: true } : { expectedPostKey: version.data.postKey, expectedPhotoPaths: version.data.paths }), validatePhotos: (tx, key, paths) => validatePhotoPaths(tx, viewer, key, paths, createSupabaseFileStore) });
 });
 
 export const saveDraftPhotosAction = withRole(["CUSTOMER"], async (viewer, ownerId: string, postKey: string, photoPaths: string[], expectedPhotoPaths: string[]) => {

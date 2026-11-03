@@ -28,6 +28,7 @@
 .summaryTrust p { text-wrap: pretty; }
 .summaryWhere { margin: 0; color: var(--trade-text-2); font-size: var(--trade-fs-caption); line-height: var(--trade-lh-small); text-wrap: pretty; overflow-wrap: anywhere; }
 .manualAddress { display: grid; gap: var(--trade-space-4); }
+.whereForm [id="job-address-status"] { text-wrap: pretty; }
 .schedule { display: grid; gap: var(--trade-space-4); }
 .expiredWindows { display: flex; flex-wrap: wrap; gap: var(--trade-space-2); list-style: none; padding: 0; margin: 0; color: var(--trade-danger); font-size: var(--trade-fs-caption); }
 .expiredWindows li { padding: var(--trade-space-1) var(--trade-space-2); border: 1px solid var(--trade-danger); border-radius: var(--trade-radius-field); }
