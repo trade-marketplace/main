@@ -4,6 +4,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { type PaymentIntentsApi, loadCheckout, preparePayment, startPayment } from "@/server/payments/payments";
 
+const startVariationPayment = vi.hoisted(() => vi.fn(async () => ({ ok: true, paymentId: "variation-payment", href: "/pay/variation-payment" })));
+vi.mock("@/server/payments/variation-payment", () => ({ startVariationPayment, prepareVariationPayment: vi.fn() }));
+
 vi.mock("@/server/audit/audit", () => ({ SYSTEM_ACTOR: { system: true }, createAudit: () => vi.fn() }));
 
 // Taking a payment (#151): who may pay, what is charged, and that retries never make a second PaymentIntent.
@@ -95,20 +98,13 @@ describe("startPayment", () => {
     expect(payments[1]).toMatchObject({ amountCents: 37200 });
   });
 
-  it("takes extra work (VARIATION) payments from the variation's price, on a booked job", async () => {
-    const { db, payments } = setup({ job: { id: "job-1", status: "ASSIGNED", priceCents: 37200 }, variation: { status: "PRICED", priceCents: 5000 } });
-    expect(await startPayment(db, null, ME, { jobId: "job-1", variationId: "var-1" })).toMatchObject({ ok: true });
-    expect(payments[0]).toMatchObject({ kind: "VARIATION", variationId: "var-1", amountCents: 5000 });
+  it("delegates extra-work payments with the displayed revision to its serialized path", async () => {
+    const { db } = setup();
+    const input = { jobId: "job-1", variationId: "var-1", variationRevision: 2 };
+    expect(await startPayment(db, null, ME, input)).toMatchObject({ ok: true, paymentId: "variation-payment" });
+    expect(startVariationPayment).toHaveBeenCalledWith(db, null, ME, input);
   });
 
-  it("refuses extra work that is unpriced, declined, or on a job that isn't booked", async () => {
-    const declined = setup({ job: { id: "job-1", status: "ASSIGNED", priceCents: 1 }, variation: { status: "DECLINED", priceCents: 5000 } });
-    expect(await startPayment(declined.db, null, ME, { jobId: "job-1", variationId: "v" })).toMatchObject({ error: "not-payable" });
-    const early = setup({ job: { id: "job-1", status: "PRICED", priceCents: 1 }, variation: { status: "PRICED", priceCents: 5000 } });
-    expect(await startPayment(early.db, null, ME, { jobId: "job-1", variationId: "v" })).toMatchObject({ error: "not-payable" });
-    const missing = setup({ job: { id: "job-1", status: "ASSIGNED", priceCents: 1 }, variation: null });
-    expect(await startPayment(missing.db, null, ME, { jobId: "job-1", variationId: "v" })).toMatchObject({ error: "not-found" });
-  });
 });
 
 describe("preparePayment", () => {

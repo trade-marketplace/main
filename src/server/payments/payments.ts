@@ -14,6 +14,7 @@ import {
   payPath,
 } from "@/lib/payments/results";
 import { createAudit } from "@/server/audit/audit";
+import { startVariationPayment, prepareVariationPayment } from "./variation-payment";
 
 // Taking a payment (#151): the customer's payment row, and the Stripe PaymentIntent behind it.
 //
@@ -37,10 +38,8 @@ export const PAYMENT_CURRENCY = "nzd";
 
 /** Job statuses a customer can pay the job's price in. */
 const PAYABLE_JOB_STATUSES = ["PRICED"] as const;
-/** Job statuses an extra-work payment can be made in (the job is booked and underway). */
-const VARIATION_JOB_STATUSES = ["BOOKABLE", "ASSIGNED", "SUBMITTED"] as const;
 
-export type StartPaymentInput = { jobId: string; variationId?: string | null };
+export type StartPaymentInput = { jobId: string; variationId?: string | null; variationRevision?: number };
 
 function isUniqueViolation(error: unknown): boolean {
   return typeof error === "object" && error !== null && (error as { code?: unknown }).code === "P2002";
@@ -57,34 +56,18 @@ export async function startPayment(
   customerId: string,
   input: StartPaymentInput,
 ): Promise<StartPaymentResult> {
+  if (input.variationId) return startVariationPayment(db, intents, customerId, input);
   const job = await db.job.findFirst({
     where: { id: input.jobId, customerId },
     select: { id: true, status: true, priceCents: true },
   });
   if (!job) return paymentFailure("not-found");
 
-  const kind: PaymentKind = input.variationId ? "VARIATION" : "JOB";
-  let amountCents: number;
-  if (kind === "JOB") {
-    if (!(PAYABLE_JOB_STATUSES as readonly string[]).includes(job.status)) return paymentFailure("not-payable");
-    if (!job.priceCents || job.priceCents <= 0) return paymentFailure("not-payable");
-    amountCents = job.priceCents;
-  } else {
-    const variation = await db.variation.findFirst({
-      where: { id: input.variationId as string, jobId: job.id },
-      select: { status: true, priceCents: true },
-    });
-    if (!variation) return paymentFailure("not-found");
-    if (!(variation.status === "PRICED" || variation.status === "APPROVED")) return paymentFailure("not-payable");
-    if (!(VARIATION_JOB_STATUSES as readonly string[]).includes(job.status)) return paymentFailure("not-payable");
-    if (!variation.priceCents || variation.priceCents <= 0) return paymentFailure("not-payable");
-    amountCents = variation.priceCents;
-  }
-
-  const liveWhere =
-    kind === "JOB"
-      ? { jobId: job.id, kind, status: { not: "FAILED" as const } }
-      : { variationId: input.variationId as string, status: { not: "FAILED" as const } };
+  const kind = "JOB" as const;
+  if (!(PAYABLE_JOB_STATUSES as readonly string[]).includes(job.status)) return paymentFailure("not-payable");
+  if (!job.priceCents || job.priceCents <= 0) return paymentFailure("not-payable");
+  const amountCents = job.priceCents;
+  const liveWhere = { jobId: job.id, kind, status: { not: "FAILED" as const } };
 
   for (let attempt = 0; attempt < 2; attempt++) {
     const existing = await db.payment.findFirst({ where: liveWhere, orderBy: { createdAt: "desc" } });
@@ -100,7 +83,7 @@ export async function startPayment(
           data: {
             jobId: job.id,
             kind,
-            variationId: kind === "VARIATION" ? (input.variationId as string) : null,
+            variationId: null,
             amountCents,
             idempotencyKey: `payment-${randomUUID()}`,
           },
@@ -158,6 +141,7 @@ export async function preparePayment(
     include: { job: { select: { id: true, jobNumber: true, status: true } } },
   });
   if (!payment) return paymentFailure("not-found");
+  if (payment.kind === "VARIATION") return prepareVariationPayment(db, intents, customerId, paymentId);
   if (payment.status === "PAID" || payment.status === "REFUNDED" || payment.status === "PARTIALLY_REFUNDED") {
     return { ok: true, paid: true };
   }
@@ -180,7 +164,7 @@ export async function preparePayment(
       currency: PAYMENT_CURRENCY,
       // Cards, Apple Pay and Google Pay, as switched on in the Stripe dashboard.
       automatic_payment_methods: { enabled: true },
-      description: `Trade Marketplace TM-${payment.job.jobNumber}${payment.kind === "VARIATION" ? " extra work" : ""}`,
+      description: `Trade Marketplace TM-${payment.job.jobNumber}`,
       // Ids only: no names, addresses or job details go to Stripe.
       metadata: { paymentId: payment.id, jobId: payment.job.id, kind: payment.kind },
     },

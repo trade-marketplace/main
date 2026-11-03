@@ -15,6 +15,7 @@ export const NOTIFICATION_EVENTS = {
   "job.on_my_way": { channels: ["IN_APP"], description: "The worker is on the way." },
   "job.running_late": { channels: ["IN_APP"], description: "The worker is running late." },
   "job.reschedule_requested": { channels: ["IN_APP"], description: "A different time was requested." },
+  "payment.review_required": { channels: ["IN_APP"], description: "A received payment needs office review." },
   "variation.requested": { channels: ["IN_APP"], description: "Extra work needs a price." },
   "variation.priced": { channels: ["IN_APP"], description: "The extra-work price is ready." },
   "variation.approved": { channels: ["IN_APP"], description: "The customer approved extra work." },

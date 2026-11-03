@@ -14,10 +14,10 @@ import { PaymentsNotConfiguredError, getStripe } from "./stripe";
  */
 export const startPaymentAction = withRole(
   ["CUSTOMER"],
-  async (viewer, jobId: string, variationId?: string | null): Promise<StartPaymentResult> => {
+  async (viewer, jobId: string, variationId?: string | null, variationRevision?: number): Promise<StartPaymentResult> => {
     if (typeof jobId !== "string" || !jobId) return paymentFailure("not-found");
     try {
-      return await startPayment(getDb(), safeIntents(), viewer.userId, { jobId, variationId: variationId || null });
+      return await startPayment(getDb(), safeIntents(), viewer.userId, { jobId, variationId: variationId || null, variationRevision });
     } catch (error) {
       console.error("Payments: couldn't start a payment.", error);
       return paymentFailure("unavailable");

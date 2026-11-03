@@ -8,6 +8,8 @@ import { type WebhookDeps, handleWebhookPost } from "@/server/payments/webhook";
 
 const audit = vi.hoisted(() => vi.fn());
 const applyTransition = vi.hoisted(() => vi.fn());
+const settleVariationPayment = vi.hoisted(() => vi.fn(async () => "paid" as const));
+vi.mock("@/server/payments/variation-payment", () => ({ settleVariationPayment }));
 vi.mock("@/server/audit/audit", () => ({ SYSTEM_ACTOR: { system: true }, createAudit: () => audit }));
 vi.mock("@/server/jobs/status-machine", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/server/jobs/status-machine")>()),
@@ -97,10 +99,10 @@ describe("payment_intent.succeeded", () => {
     expect(row.status).toBe("PAID");
   });
 
-  it("does not move the job for extra-work payments", async () => {
-    const { db, row } = fakeDb({ kind: "VARIATION" });
+  it("hands extra-work settlement to its guarded transaction without moving the job", async () => {
+    const { db } = fakeDb({ kind: "VARIATION" });
     expect(await handleStripeEvent(db, event("payment_intent.succeeded", intent()))).toBe("paid");
-    expect(row.status).toBe("PAID");
+    expect(settleVariationPayment).toHaveBeenCalledWith(db, expect.objectContaining({ kind: "VARIATION" }), expect.anything(), expect.anything());
     expect(applyTransition).not.toHaveBeenCalled();
   });
 
