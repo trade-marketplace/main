@@ -174,12 +174,18 @@ describe("preparePayment", () => {
 });
 
 describe("loadCheckout", () => {
+  it("fails closed if a reader accidentally returns a foreign customer's job", async () => {
+    const db = { payment: { findFirst: vi.fn(async () => ({ job: { customerId: "someone-else" } })) } } as unknown as PrismaClient;
+    expect(await loadCheckout(db, ME, "guessed-payment")).toBeNull();
+    expect(db.payment.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: { id: "guessed-payment", job: { customerId: ME } } }));
+  });
+
   it("shows the total and GST only", async () => {
     const db = {
       payment: {
         findFirst: vi.fn(async () => ({
           id: "pay-1", kind: "JOB", status: "PENDING", amountCents: 37200,
-          job: { id: "job-1", title: "Sub wiring", jobNumber: 1005, suburb: "Windsor", pricing: { gstCents: 4852 } },
+          job: { id: "job-1", customerId: ME, workerId: null, category: "ELECTRICAL", status: "PRICED", city: "Invercargill", asap: false, createdAt: new Date("2026-11-01"), updatedAt: new Date("2026-11-01"), priceCents: 37200, title: "Sub wiring", jobNumber: 1005, suburb: "Windsor", pricing: { gstCents: 4852 } },
           variation: null,
         })),
       },

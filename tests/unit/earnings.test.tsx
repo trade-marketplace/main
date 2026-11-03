@@ -272,6 +272,7 @@ function fakeDb(rows: { payouts?: unknown[]; jobs?: unknown[]; details?: unknown
 
 const dbPayout = (overrides: Record<string, unknown> = {}) => ({
   id: "p1",
+  workerId: "tradie-1",
   minutes: 120,
   rateCents: 7000,
   grossCents: 14000,
@@ -285,6 +286,7 @@ const dbPayout = (overrides: Record<string, unknown> = {}) => ({
 });
 const dbJob = (overrides: Record<string, unknown> = {}) => ({
   id: "j1",
+  workerId: "tradie-1",
   jobNumber: 1006,
   title: "Kitchen reno",
   status: "ASSIGNED",
@@ -294,6 +296,15 @@ const dbJob = (overrides: Record<string, unknown> = {}) => ({
 });
 
 describe("reading one tradie's earnings", () => {
+  it("drops foreign payouts and reassigned waiting jobs if a reader accidentally returns them", async () => {
+    const { db } = fakeDb({ payouts: [dbPayout({ workerId: "another-worker" })], jobs: [dbJob({ workerId: "replacement-worker" })] });
+    const { view } = await loadEarnings(db, "tradie-1", NOW);
+    expect(view.isEmpty).toBe(true);
+    expect(view.waiting.items).toEqual([]);
+    const statementDb = { payout: { findMany: vi.fn(async () => [dbPayout({ workerId: "another-worker", status: "PAID", paidAt: NOW })]) } };
+    expect((await loadStatement(statementDb as never, "tradie-1", "Jack Wilson", NOW)).rows).toEqual([]);
+  });
+
   it("only reads that tradie's rows, and never the customer's price", async () => {
     const { db, payoutFindMany, jobFindMany, detailsFind } = fakeDb();
     await loadEarnings(db, "tradie-1", NOW);

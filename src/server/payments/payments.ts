@@ -14,6 +14,7 @@ import {
   payPath,
 } from "@/lib/payments/results";
 import { createAudit } from "@/server/audit/audit";
+import { customerJobListView, JOB_SUMMARY_SELECT } from "@/server/views/jobs";
 
 // Taking a payment (#151): the customer's payment row, and the Stripe PaymentIntent behind it.
 //
@@ -213,22 +214,24 @@ export async function loadCheckout(db: PrismaClient, customerId: string, payment
   const payment = await db.payment.findFirst({
     where: { id: paymentId, job: { customerId } },
     include: {
-      job: { select: { id: true, title: true, jobNumber: true, suburb: true, pricing: { select: { gstCents: true } } } },
+      job: { select: { ...JOB_SUMMARY_SELECT, pricing: { select: { gstCents: true } } } },
       variation: { select: { gstCents: true } },
     },
   });
   if (!payment) return null;
-  const gstCents = payment.kind === "VARIATION" ? (payment.variation?.gstCents ?? null) : (payment.job.pricing?.gstCents ?? null);
+  const job = customerJobListView({ userId: customerId, role: "CUSTOMER" }, payment.job);
+  if (!job) return null;
+  const gstCents = payment.kind === "VARIATION" ? (payment.variation?.gstCents ?? null) : job.gstCents;
   return {
     paymentId: payment.id,
-    jobId: payment.job.id,
+    jobId: job.id,
     kind: payment.kind,
     status: payment.status,
     amountCents: payment.amountCents,
     gstCents,
-    title: payment.job.title,
-    jobNumber: payment.job.jobNumber,
-    suburb: payment.job.suburb,
+    title: job.title,
+    jobNumber: job.jobNumber,
+    suburb: job.suburb,
   };
 }
 

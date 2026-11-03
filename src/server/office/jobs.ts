@@ -2,6 +2,7 @@
 // and the same filters again for Export CSV. Only the office calls these (the page and the export route check the
 // role first). Office users see every job and its price; nothing here is for customers or tradies.
 import "server-only";
+import { notFound } from "next/navigation";
 
 import type { JobStatus, Prisma, PrismaClient, Trade } from "@/generated/prisma/client";
 import { statusPill } from "@/lib/job-status";
@@ -16,6 +17,7 @@ import {
   TRADE_LABELS,
 } from "@/lib/office-jobs";
 import { getDb } from "@/server/db";
+import { JOB_SUMMARY_SELECT, officeJobListView, type JobViewer } from "@/server/views";
 
 /** One row of the table, ready to show: the server formats names and times so the browser never re-computes them. */
 export type OfficeJobRow = {
@@ -52,20 +54,12 @@ export type OfficeJobsDatabase = {
 };
 
 const SELECT = {
-  id: true,
-  jobNumber: true,
-  title: true,
-  category: true,
-  status: true,
-  priceCents: true,
-  suburb: true,
-  city: true,
-  updatedAt: true,
-  customer: { select: { firstName: true, lastName: true } },
-  worker: { select: { firstName: true, lastName: true } },
+  ...JOB_SUMMARY_SELECT,
+  customer: { select: { id: true, firstName: true, lastName: true } },
+  worker: { select: { id: true, firstName: true, lastName: true } },
 } satisfies Prisma.JobSelect;
 
-type SelectedJob = Prisma.JobGetPayload<{ select: typeof SELECT }>;
+type SelectedJob = NonNullable<ReturnType<typeof officeJobListView>>;
 
 /** "Sarah T": the first name and last initial, as the mockup's table shows people. */
 export function shortName(person: { firstName: string; lastName: string | null } | null): string | null {
@@ -142,8 +136,8 @@ function toRow(job: SelectedJob, now: Date): OfficeJobRow {
     priceCents: job.priceCents,
     suburb: job.suburb,
     city: job.city,
-    updated: updatedLabel(job.updatedAt, now),
-    updatedAt: job.updatedAt.toISOString(),
+    updated: updatedLabel(new Date(job.updatedAt), now),
+    updatedAt: job.updatedAt,
   };
 }
 
@@ -177,25 +171,31 @@ async function findJobs(db: OfficeJobsDatabase, where: Prisma.JobWhereInput, sor
 
 /** A page of jobs for the list's state. A page past the end shows the last page. */
 export async function listOfficeJobs(
+  viewer: JobViewer,
   query: OfficeJobsQuery,
-  { db = getDb(), now = new Date() }: { db?: OfficeJobsDatabase; now?: Date } = {},
+  options: { db?: OfficeJobsDatabase; now?: Date } = {},
 ): Promise<OfficeJobsPage> {
+  if (!viewer.userId || viewer.role !== "ADMIN") notFound();
+  const { db = getDb(), now = new Date() } = options;
   const where = officeJobsWhere(query, now);
   const [total, regions] = await Promise.all([db.job.count({ where }), regionsOf(db)]);
   const lastPage = Math.max(1, Math.ceil(total / OFFICE_JOBS_PAGE_SIZE));
   const page = Math.min(query.page, lastPage);
   const jobs = await findJobs(db, where, query.sort, (page - 1) * OFFICE_JOBS_PAGE_SIZE, OFFICE_JOBS_PAGE_SIZE);
-  return { rows: jobs.map((job) => toRow(job, now)), total, page, regions };
+  return { rows: jobs.flatMap(job => { const visible = officeJobListView(viewer, job); return visible ? [toRow(visible, now)] : []; }), total, page, regions };
 }
 
 /** Every job matching the list's state (no paging), for Export CSV. At most OFFICE_JOBS_EXPORT_LIMIT rows. */
 export async function exportOfficeJobs(
+  viewer: JobViewer,
   query: OfficeJobsQuery,
-  { db = getDb(), now = new Date() }: { db?: OfficeJobsDatabase; now?: Date } = {},
+  options: { db?: OfficeJobsDatabase; now?: Date } = {},
 ): Promise<{ rows: OfficeJobRow[]; truncated: boolean }> {
+  if (!viewer.userId || viewer.role !== "ADMIN") notFound();
+  const { db = getDb(), now = new Date() } = options;
   const jobs = await findJobs(db, officeJobsWhere(query, now), query.sort, 0, OFFICE_JOBS_EXPORT_LIMIT + 1);
   const truncated = jobs.length > OFFICE_JOBS_EXPORT_LIMIT;
-  return { rows: jobs.slice(0, OFFICE_JOBS_EXPORT_LIMIT).map((job) => toRow(job, now)), truncated };
+  return { rows: jobs.slice(0, OFFICE_JOBS_EXPORT_LIMIT).flatMap(job => { const visible = officeJobListView(viewer, job); return visible ? [toRow(visible, now)] : []; }), truncated };
 }
 
 const CSV_COLUMNS: [header: string, value: (row: OfficeJobRow) => string][] = [
