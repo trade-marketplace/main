@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useOptionalSessionExpired } from "@/components/auth/SessionExpired";
 import { Button } from "@/components/Button";
 import { Tabs } from "@/components/data/Tabs";
 import { TextField } from "@/components/forms/TextFields";
@@ -25,6 +26,7 @@ const LIVE_SERVICES: SettingsServices = { save: saveOfficeSettingsAction, previe
 const tabItems = SETTINGS_TABS.map(value => ({ value, label: value[0].toUpperCase() + value.slice(1) }));
 const fieldsOf = (tab: SettingsTab) => tab === "rates" ? RATE_FIELDS : COVERAGE_FIELDS;
 const initialForm = (record: SettingsRecord) => Object.fromEntries([...RATE_FIELDS, ...COVERAGE_FIELDS].map(field => [field.key, displayNumber(field, record.values[field.key])]));
+const teamError = (error?: string) => error === "forbidden" || error === "session-expired" ? "Office access is required." : error;
 const money = (cents: number) => new Intl.NumberFormat("en-NZ", { style: "currency", currency: "NZD" }).format(cents / 100);
 export type OfficeSettingsProps = { data: SettingsPageData | null; mapToken?: string | null; initialTab?: SettingsTab; state?: string; services?: SettingsServices };
 
@@ -34,7 +36,7 @@ export function OfficeSettings({ data, mapToken = null, initialTab = "rates", st
 }
 
 function SettingsEditor({ data, mapToken, initialTab, state, services }: OfficeSettingsProps & { data: SettingsPageData; services: SettingsServices }) {
-  const router = useRouter(), toast = useToast();
+  const router = useRouter(), toast = useToast(), sessionExpired = useOptionalSessionExpired();
   const online = useOnlineStatus() && state !== "offline";
   const [tab, setTab] = useState<SettingsTab>(initialTab ?? "rates");
   const [record, setRecord] = useState(data.record);
@@ -48,6 +50,7 @@ function SettingsEditor({ data, mapToken, initialTab, state, services }: OfficeS
   const [examples, setExamples] = useState<PriceExamples | null>(data.examples);
   const [coverage, setCoverage] = useState<CoverageCount | null>(null);
   const [previewError, setPreviewError] = useState(false);
+  const [previewRevision, setPreviewRevision] = useState(0);
   const [confirm, setConfirm] = useState<{ changes: SettingsChange[]; input?: SettingsInput; team?: { operation: "add" | "remove"; email: string } } | null>(null);
   const settingsTab = tab === "rates" || tab === "coverage" || tab === "trades" ? tab : "rates";
   const input: SettingsInput = { tab: settingsTab, version: record.version, values: tab === "trades" ? {} : Object.fromEntries(fieldsOf(tab).map(field => [field.key, form[field.key]])), ...(tab === "trades" ? { enabledTrades: enabled } : {}) };
@@ -58,16 +61,16 @@ function SettingsEditor({ data, mapToken, initialTab, state, services }: OfficeS
   const area = useMemo(() => ({ name: "Coverage", centre: { lat: parsedCoverage.ok ? parsedCoverage.values.coverageCentreLat! : record.values.coverageCentreLat, lng: parsedCoverage.ok ? parsedCoverage.values.coverageCentreLng! : record.values.coverageCentreLng }, radiusKm: parsedCoverage.ok ? parsedCoverage.values.coverageRadiusKm! : record.values.coverageRadiusKm }), [parsedCoverage, record]);
 
   useEffect(() => {
-    if (!online || (tab !== "rates" && tab !== "coverage")) return;
+    if (!online || busy || confirm || (tab !== "rates" && tab !== "coverage")) return;
     const request = JSON.parse(inputKey) as SettingsInput;
     if (!parseSettingsInput(request).ok) return;
     let active = true;
     const timer = window.setTimeout(() => {
-      if (tab === "rates") void services.preview(request).then(result => { if (active) { setExamples(result.ok ? result.examples ?? null : null); setPreviewError(!result.ok); } }).catch(() => { if (active) setPreviewError(true); });
-      else void services.coverage(request).then(result => { if (active) { setCoverage(result.ok ? result.count ?? null : null); setPreviewError(!result.ok); } }).catch(() => { if (active) setPreviewError(true); });
+      if (tab === "rates") void services.preview(request).then(result => { if (active && !sessionExpired?.check(result, { resend: () => setPreviewRevision(value => value + 1) })) { setExamples(result.ok ? result.examples ?? null : null); setPreviewError(!result.ok); } }).catch(() => { if (active) setPreviewError(true); });
+      else void services.coverage(request).then(result => { if (active && !sessionExpired?.check(result, { resend: () => setPreviewRevision(value => value + 1) })) { setCoverage(result.ok ? result.count ?? null : null); setPreviewError(!result.ok); } }).catch(() => { if (active) setPreviewError(true); });
     }, 400);
     return () => { active = false; window.clearTimeout(timer); };
-  }, [inputKey, services, tab, online]);
+  }, [inputKey, services, tab, online, sessionExpired, previewRevision, busy, confirm]);
 
   function changeField(key: string, value: string) {
     setForm(old => ({ ...old, [key]: value })); setErrors({}); setError(null); setPreviewError(false);
@@ -85,24 +88,27 @@ function SettingsEditor({ data, mapToken, initialTab, state, services }: OfficeS
     try {
       if (confirm.team) {
         const result = await services.team(confirm.team);
-        if (!result.ok) { setError(result.error ?? "Couldn’t save that. Nothing was changed. Try again."); return; }
+        if (sessionExpired?.check(result, { resend: confirmSave })) return;
+        if (!result.ok) { setError(teamError(result.error) ?? "Couldn’t save that. Nothing was changed. Try again."); return; }
         if (result.leaveOffice) { router.replace("/"); return; }
         if (result.team) setTeam(result.team);
         setEmail("");
       } else if (confirm.input) {
         const result = await services.save(confirm.input);
-        if (!result.ok || !result.record) { setErrors(result.fields ?? {}); setError(result.error === "changed" ? "Settings changed while you were editing. Reload before saving." : "Couldn’t save that. Nothing was changed. Try again."); return; }
+        if (sessionExpired?.check(result, { resend: confirmSave })) return;
+        if (!result.ok || !result.record) { setErrors(result.fields ?? {}); setError(result.error === "forbidden" ? "Office access is required." : result.error === "changed" ? "Settings changed while you were editing. Reload before saving." : "Couldn’t save that. Nothing was changed. Try again."); return; }
         setRecord(result.record);
       }
       setConfirm(null); toast.show({ message: "Saved" });
     } catch { setError("Couldn’t save that. Nothing was changed. Try again."); }
     finally { setBusy(false); }
   }
-  async function addTeam(event: React.FormEvent) {
-    event.preventDefault(); if (!online) return; setError(null); setBusy(true);
+  async function addTeam(event?: React.FormEvent) {
+    event?.preventDefault(); if (!online) return; setError(null); setBusy(true);
     try {
       const result = await services.team({ operation: "preview-add", email });
-      if (!result.ok) { setError(result.error ?? "Check the email address."); return; }
+      if (sessionExpired?.check(result, { resend: () => addTeam() })) return;
+      if (!result.ok) { setError(teamError(result.error) ?? "Check the email address."); return; }
       if (result.before === "ADMIN") { setError("This person is already an office user."); return; }
       setConfirm({ changes: [{ field: result.email ?? email, before: result.before ?? "CUSTOMER", after: "ADMIN" }], team: { operation: "add", email: result.email ?? email } });
     } catch { setError("Couldn’t save that. Nothing was changed. Try again."); }

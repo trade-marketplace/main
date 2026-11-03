@@ -174,6 +174,19 @@ test.describe("signed-in office settings", () => {
       expect((await db.query("SELECT trade FROM service_waitlist_entries WHERE email=$1", [email])).rows[0].trade).toBe("GAS");
       await expectNoA11yViolations(home);
     } finally { await guest.close(); }
+    await page.getByRole("tab", { name: "Rates", exact: true }).click();
+    await card.getByLabel("Tradie hourly rate").fill("80");
+    await page.getByRole("tabpanel").getByRole("button", { name: "Save settings", exact: true }).click();
+    await page.context().clearCookies();
+    await dialog.getByRole("button", { name: "Save settings", exact: true }).click();
+    const expired = page.getByRole("dialog", { name: "You’ve been logged out", exact: true });
+    await expect(expired).toBeVisible();
+    await expired.getByRole("button", { name: "Log in again", exact: true }).click();
+    await expired.getByLabel("Password", { exact: true }).fill(SECURITY_PASSWORD);
+    await expired.getByRole("button", { name: "Log in", exact: true }).click();
+    await expect(expired).not.toBeVisible(); await expect(dialog).not.toBeVisible();
+    await expect(card.getByLabel("Tradie hourly rate")).toHaveValue("80");
+    expect((await db.query("SELECT shared_rate_cents FROM settings WHERE id=1")).rows[0].shared_rate_cents).toBe(8000);
   });
 });
 
