@@ -59,3 +59,7 @@ The Unclaimed KPI detail uses the oldest still-qualifying job's actual suburb, a
 Its job is rechecked against the same unclaimed predicate and passed through the central office list projection;
 only the suburb reaches that detail line. The existing status-entry clock still controls ordering and urgency.
 An empty queue shows the neutral dash; a changed/missing oldest row fails visibly for retry rather than inventing a detail.
+
+Below the shared 600px breakpoint, non-empty KPI details use the phone mockup's “Needs you” (price,
+extra work, cancellations and unclaimed) or “Waiting” (sign-off). Empty and unavailable/loading counts keep
+“—”; desktop retains the actual age, release detail or oldest suburb. Hidden variants are not accessible names.

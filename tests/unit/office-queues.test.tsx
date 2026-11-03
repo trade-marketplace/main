@@ -142,6 +142,14 @@ describe("office queue states", () => {
     ]);
     const query = parseQueueQuery({}), html = renderToStaticMarkup(<OfficeQueues query={query} data={previewQueues("price", query)} />);
     expect(html).toContain("Extra work to price"); expect(html).toContain("Cancel requests"); expect(html).toContain("Waiting sign-off");
+    expect(html).toContain(">Needs you<"); expect(html).toContain(">Waiting<");
+    expect(html).toContain("Richmond"); expect(html).toContain("oldest 26h");
+    for (const noWork of [previewQueues("all-clear", query), null]) {
+      const empty = renderToStaticMarkup(<OfficeQueues query={query} data={noWork} loading={!noWork} />);
+      // Scope to the five KPI buttons; the table's "Waiting" column is unrelated to a card status.
+      const cards = empty.split('aria-label="Queue totals"')[1].split("</button>").slice(0, QUEUES.length).join("</button>");
+      expect(cards).not.toMatch(/>Needs you<|>Waiting</);
+    }
   });
   it("shows real empty/error/loading/offline states without inventing successful zero counts", () => {
     const query = parseQueueQuery({});

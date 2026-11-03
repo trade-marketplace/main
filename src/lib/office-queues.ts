@@ -2,11 +2,11 @@ import type { JobStatus } from "@/generated/prisma/enums";
 import type { OfficeCounts } from "@/components/office/office-links";
 
 export const QUEUES = [
-  { key: "price", label: "To price" },
-  { key: "extra", label: "Extra work", phoneCardLabel: "Extra work to price" },
-  { key: "cancel", label: "Cancellations", phoneCardLabel: "Cancel requests" },
-  { key: "signoff", label: "Sign-off", phoneCardLabel: "Waiting sign-off" },
-  { key: "unclaimed", label: "Unclaimed", cardLabel: "Unclaimed > 48h" },
+  { key: "price", label: "To price", phoneDetail: "Needs you" },
+  { key: "extra", label: "Extra work", phoneCardLabel: "Extra work to price", phoneDetail: "Needs you" },
+  { key: "cancel", label: "Cancellations", phoneCardLabel: "Cancel requests", phoneDetail: "Needs you" },
+  { key: "signoff", label: "Sign-off", phoneCardLabel: "Waiting sign-off", phoneDetail: "Waiting" },
+  { key: "unclaimed", label: "Unclaimed", cardLabel: "Unclaimed > 48h", phoneDetail: "Needs you" },
 ] as const;
 export type QueueKey = typeof QUEUES[number]["key"];
 export const QUEUE_PAGE_SIZE = 25;
