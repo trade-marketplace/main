@@ -3,6 +3,7 @@ import "server-only";
 import type { Prisma } from "@/generated/prisma/client";
 
 import { calculatePayout } from "./calculate";
+import { createNotify } from "@/server/notifications/notify";
 
 // Queues a worker's payout when a job is completed (#164). Called by the status machine inside the same
 // transaction as the move to COMPLETED, so the job and its payout appear together or not at all.
@@ -89,10 +90,7 @@ export async function queuePayoutForJob(tx: Prisma.TransactionClient, jobId: str
     select: { id: true },
   });
 
-  // NEEDS FOUNDER DECISION: "Bank/tax details required" (issue #164) doesn't say what happens when a worker
-  // hasn't added them by the time the job completes. Safest default: still queue the payout (the worker is owed
-  // the money and the customer's sign-off must not be blocked), and report what's missing so the payroll export
-  // can hold the payout until they're added.
+  // D15: keep owed money QUEUED while details are missing; completing the job must not lose those earnings.
   const details = await tx.payrollDetails.findUnique({
     where: { userId: workerId },
     select: {
@@ -101,10 +99,14 @@ export async function queuePayoutForJob(tx: Prisma.TransactionClient, jobId: str
       taxCode: true,
     },
   });
+  const payrollDetails = checkPayrollDetails(details);
+  if (!payrollDetails.complete) await createNotify(tx)("payout.details_missing", [workerId], {
+    eventId: `payout.details_missing:${payout.id}`, payload: { payoutId: payout.id },
+  });
   return {
     queued: true,
     payoutId: payout.id,
     totalCents: amounts.totalCents,
-    payrollDetails: checkPayrollDetails(details),
+    payrollDetails,
   };
 }

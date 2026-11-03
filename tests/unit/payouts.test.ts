@@ -210,6 +210,7 @@ describe("queuePayoutForJob (mocked transaction)", () => {
     } | null;
   }) {
     const created: unknown[] = [];
+    const nudges: unknown[] = [];
     const tx = {
       job: {
         findUnique: async () => ("job" in overrides ? overrides.job : { workerId: "w1" }),
@@ -226,8 +227,9 @@ describe("queuePayoutForJob (mocked transaction)", () => {
       },
       variation: { findMany: async () => overrides.variations ?? [] },
       payrollDetails: { findUnique: async () => overrides.details ?? null },
+      notification: { upsert: async ({ create }: { create: Record<string, unknown> }) => { nudges.push(create); return { ...create, channelsSent: [] }; } },
     };
-    return { tx: tx as unknown as Prisma.TransactionClient, created };
+    return { tx: tx as unknown as Prisma.TransactionClient, created, nudges };
   }
 
   it("queues a QUEUED payout from the frozen pricing plus approved extra work", async () => {
@@ -251,13 +253,15 @@ describe("queuePayoutForJob (mocked transaction)", () => {
     ]);
   });
 
-  it("flags missing bank/tax details but still queues (needs founder decision)", async () => {
-    const { tx } = fakeTx({});
+  it("keeps missing details waiting in the queue and nudges the worker once", async () => {
+    const { tx, nudges } = fakeTx({});
     const result = await queuePayoutForJob(tx, "j1");
     expect(result).toMatchObject({
       queued: true,
       payrollDetails: { complete: false, missing: ["ird", "bank", "taxCode"] },
     });
+    expect(nudges).toHaveLength(1);
+    expect(nudges[0]).toMatchObject({ userId: "w1", type: "payout.details_missing", payload: { payoutId: "p1" } });
     const complete = fakeTx({
       details: {
         irdNumberEncrypted: "a",
@@ -361,6 +365,11 @@ describe.skipIf(!testDatabaseUrl)("payout on completion (database)", () => {
       grossCents: 3800,
       holidayPayCents: 304,
     });
+    const notices = await schema.db.notification.findMany({ where: { userId: workerId, type: "payout.details_missing" } });
+    expect(notices).toHaveLength(1);
+    expect(notices[0].payload).toEqual({ payoutId: payouts[0].id });
+    await schema.db.$transaction(tx => queuePayoutForJob(tx, id));
+    expect(await schema.db.notification.count({ where: { userId: workerId, type: "payout.details_missing" } })).toBe(1);
   });
 
   it("uses the rates frozen at pricing, not today's settings, and adds approved extra work only", async () => {

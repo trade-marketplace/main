@@ -23,6 +23,7 @@ describe("inbox presentation boundary", () => {
     ["message.received", "/messages/TM-1005", "chat_bubble"],
     ["job.paid", "/receipts/TM-1005", "receipt_long"],
     ["payout.paid", "/earnings", "payments"],
+    ["payout.details_missing", "/profile/payroll", "account_balance"],
     ["licence.verified", "/profile/trades", "verified"],
   ])("%s links to the relevant destination", (type, href, icon) => {
     expect(inboxItem(row({ type }))).toMatchObject({ href, icon });
@@ -43,7 +44,9 @@ describe("inbox presentation boundary", () => {
   it("has short labels for every existing event, and a safe fallback for unknown or malformed payloads", () => {
     for (const type of Object.keys(NOTIFICATION_EVENTS)) {
       const item = inboxItem(row({ type, payload: {} }));
-      expect(item.line.split(/\s+/).length).toBeLessThanOrEqual(4);
+      // D15 reuses the full existing Earnings banner wording; do not shorten approved screen copy.
+      if (type === "payout.details_missing") expect(item.line).toBe("Add bank account & IRD number.");
+      else expect(item.line.split(/\s+/).length).toBeLessThanOrEqual(4);
       expect(item.icon).toMatch(/^[a-z_]+$/);
     }
     expect(inboxItem(row({ type: "unknown.future.event", payload: ["bad"] })).line).toBe("Notification");

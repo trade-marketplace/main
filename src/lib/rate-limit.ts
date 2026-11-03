@@ -23,6 +23,7 @@ export const RATE_LIMITS = {
   postJob: { limit: 10, windowSeconds: 60 * 60 },
   upload: { limit: 60, windowSeconds: 60 * 60 },
   message: { limit: 60, windowSeconds: 10 * 60 },
+  payrollSave: { limit: 10, windowSeconds: 60 * 60 },
 } as const satisfies Record<string, RateLimitPolicy>;
 
 export type RateLimitName = keyof typeof RATE_LIMITS;

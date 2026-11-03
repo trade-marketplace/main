@@ -236,8 +236,8 @@ model PayrollDetails {
   bankAccountLast4     String?  @map("bank_account_last4")
   // IRD tax code, e.g. "M", "SB", "ND".
   taxCode              String?  @map("tax_code")
-  // KiwiSaver employee contribution in whole percent; empty when not enrolled.
-  kiwiSaverRatePct     Int?     @map("kiwisaver_rate_pct")
+  // KiwiSaver employee contribution percent, including the 3.5% rate from April 2026; empty when not enrolled.
+  kiwiSaverRatePct     Decimal? @map("kiwisaver_rate_pct") @db.Decimal(3, 1)
   createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt            DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
