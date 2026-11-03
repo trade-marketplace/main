@@ -6,6 +6,36 @@ import { VIEWPORTS } from "./support/viewports";
 const dev = process.env.E2E_DEV_BASE_URL;
 test.use({ reducedMotion: "reduce" });
 
+test("homepage free text keeps the type inferred as the description changes; explicit type stays manual", async ({ page }) => {
+  await page.goto("/"); const form = page.getByRole("form", { name: "What needs doing?", exact: true });
+  await form.getByRole("textbox", { name: "What needs doing?", exact: true }).fill("Fix the fence");
+  await form.getByRole("button", { name: "Get a price", exact: true }).click();
+  await expect(page.getByRole("radio", { name: "Construction", exact: true })).toBeChecked();
+  await expect(page.getByText(/We guessed Construction/)).toBeVisible();
+  await page.getByRole("textbox", { name: "Describe the job", exact: true }).fill("Repair a leaking tap");
+  await expect(page.getByRole("radio", { name: "Plumbing", exact: true })).toBeChecked();
+  await expect(page.getByText(/We guessed Plumbing/)).toBeVisible();
+  await page.evaluate(() => localStorage.clear()); await page.goto("/jobs/new?description=Fix+the+fence&type=construction");
+  await page.getByRole("textbox", { name: "Describe the job", exact: true }).fill("Repair a leaking tap");
+  await expect(page.getByRole("radio", { name: "Construction", exact: true })).toBeChecked();
+});
+
+test("blocked storage allows in-memory Next/Back with truthful warning, then safely refuses guest exit until persisted", async ({ page }) => {
+  await page.addInitScript(key => {
+    const original = Storage.prototype.setItem;
+    Storage.prototype.setItem = function(name, value) { if (name === key && !Reflect.get(window, "allowDraftStorage")) throw new DOMException("Storage blocked", "QuotaExceededError"); original.call(this, name, value); };
+  }, DRAFT_STORAGE_KEY);
+  await page.goto("/jobs/new"); await page.getByRole("textbox", { name: "Describe the job", exact: true }).fill("Repair a leaking tap downstairs.");
+  await page.getByRole("button", { name: "Next", exact: true }).click(); await expect(page.getByRole("heading", { name: "Photos", exact: true })).toBeVisible();
+  await expect(page.getByText("Couldn’t save.", { exact: true })).toBeVisible(); await expect(page.getByText("Draft saved", { exact: true })).toHaveCount(0);
+  await page.getByRole("link", { name: "Back", exact: true }).click(); await expect(page.getByRole("textbox", { name: "Describe the job", exact: true })).toHaveValue("Repair a leaking tap downstairs.");
+  await page.getByRole("button", { name: "Save & exit", exact: true }).click(); await expect(page.getByRole("heading", { name: "What needs doing?", exact: true })).toBeVisible();
+  await expect(page.getByText("Couldn’t save.", { exact: true })).toBeVisible();
+  await page.evaluate(() => Reflect.set(window, "allowDraftStorage", true)); await page.getByRole("button", { name: "Save & exit", exact: true }).click(); await expect(page).toHaveURL("/");
+  await page.goto("/jobs/new"); await expect(page.getByRole("textbox", { name: "Describe the job", exact: true })).toHaveValue("Repair a leaking tap downstairs.");
+  await expectNoA11yViolations(page);
+});
+
 test("guest: shared validation → editable guess → Photos → Back → refresh → Save & exit → restore", async ({ page }) => {
   test.setTimeout(90_000);
   await page.goto("/jobs/new");

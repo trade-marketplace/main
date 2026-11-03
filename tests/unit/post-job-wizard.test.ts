@@ -3,6 +3,13 @@ import { jobDraftSchema } from "@/lib/job-draft";
 import { canonicalDraft, decodeWizardDraft, describeErrors, editDescription, encodeWizardDraft, guessJobType, initialWizardDraft, landingWizardDraft, reconcileWizardPhotos } from "@/lib/post-job-wizard";
 
 describe("Describe step", () => {
+  it("keeps homepage free-text inference editable but preserves an explicit landing type", () => {
+    const inferred = initialWizardDraft(landingWizardDraft({ description: "Fix the fence" }));
+    expect(inferred).toMatchObject({ manualCategory: false, data: { category: "CONSTRUCTION" } });
+    expect(editDescription(inferred, "Repair a leaking tap").data.category).toBe("PLUMBING");
+    const explicit = initialWizardDraft(landingWizardDraft({ description: "Fix the fence", type: "construction" }));
+    expect(explicit.manualCategory).toBe(true); expect(editDescription(explicit, "Repair a leaking tap").data.category).toBe("CONSTRUCTION");
+  });
   it.each([
     ["Lights keep flickering", "ELECTRICAL"], ["A leaking tap", "PLUMBING"], ["Install gas hob", "GAS"],
     ["Build a deck", "CONSTRUCTION"], ["Moving a sofa", "OTHER"], ["Not sure what needs fixing", "OTHER"],

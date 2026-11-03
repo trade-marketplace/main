@@ -119,8 +119,8 @@ function PostJobWizardForm({ ownerId = null, initialDraft = {}, hasServerDraft =
     setEdited(withKey); setError(false);
     try {
       if (!previewState) localStorage.setItem(DRAFT_STORAGE_KEY, encodeWizardDraft(withKey, ownerId));
-      setSaved(true); return withKey;
-    } catch { setSaved(false); setError(true); return null; }
+      setSaved(true); return { draft: withKey, persisted: true };
+    } catch { setSaved(false); setError(true); return { draft: withKey, persisted: false }; }
   }
 
   async function advance(exit = false) {
@@ -157,9 +157,11 @@ function PostJobWizardForm({ ownerId = null, initialDraft = {}, hasServerDraft =
         if (!exit && step === 1 && photos.manager.getSnapshot().photos.some(photo => photo.status !== "done")) return;
       }
       const kept = keep({ ...effectiveDraft, data: { ...effectiveDraft.data, postKey: commandKey, ...(photos.active ? { photoPaths: photos.manager.paths() } : {}) } });
-      if (!kept || offline && !exit) return;
+      let durable = kept.persisted;
+      if (offline && !exit) return;
       if (ownerId && !offline) {
-        const result = await save(canonicalDraft(kept), ownerId, photoVersion);
+        const canonical = canonicalDraft(kept.draft);
+        const result = await save(canonical, ownerId, photoVersion);
         if (session?.check(result, { resend: () => advance(exit) })) return;
         if ("status" in result && result.status === "photos-changed") { photos.manager.reconcile(result.photoPaths, true); await photos.manager.flush(); setError(true); return; }
         if ("status" in result && result.status === "draft-changed") { setError(true); router.refresh(); return; }
@@ -167,9 +169,12 @@ function PostJobWizardForm({ ownerId = null, initialDraft = {}, hasServerDraft =
           if ("status" in result && result.status === "invalid") setFields(result.fields);
           setError(true); return;
         }
-        await photos.manager.confirmSaved(kept.data.photoPaths ?? []);
+        await photos.manager.confirmSaved(kept.draft.data.photoPaths ?? []);
+        durable ||= typeof canonical.description === "string" && canonical.description === kept.draft.description.trim();
       } else if (previewState === "save-error") { setError(true); return; }
-      if (!exit && !keep({ ...kept, completedDescribe: true, completedPhotos: step === 1 ? true : kept.completedPhotos })) return;
+      if (exit && !durable) { setError(true); return; }
+      if (!exit) keep({ ...kept.draft, completedDescribe: true, completedPhotos: step === 1 ? true : kept.draft.completedPhotos });
+      if (durable) { setSaved(true); setError(false); }
       router.push(exit ? "/" : nextHref);
     } catch { setError(true); }
     finally { pending.current = false; setBusy(false); }
