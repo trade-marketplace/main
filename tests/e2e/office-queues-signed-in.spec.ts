@@ -53,7 +53,7 @@ test.describe("office queues against signed-in routes and PostgreSQL", () => {
     await page.context().clearCookies();
     await page.context().addCookies(await sessionCookies(person, secret, app!, "http://127.0.0.1:54167"));
   }
-  test("real counts, urgent order, pricing-dialog handoff and Back, each existing action destination", async ({ page }) => {
+  test("real counts, urgent order, pricing-workspace handoff and Back, each existing action destination", async ({ page }) => {
     test.setTimeout(120_000); await signIn(page); await page.goto(`${app}/admin`);
     await expect(page.getByRole("heading", { name: "Today", exact: true })).toBeVisible();
     await expect(page.getByRole("tab", { name: "To price (2)", exact: true })).toBeVisible();
@@ -63,8 +63,8 @@ test.describe("office queues against signed-in routes and PostgreSQL", () => {
     await expect(price.locator("tbody tr").first()).toContainText("Queue fixture 0");
     await expect(price.locator("tbody tr").first()).toContainText("26h");
     await price.getByRole("link", { name: "Price it", exact: true }).click();
-    await expect(page.getByRole("alertdialog", { name: "Edit price", exact: true })).toBeVisible();
-    await expect(page).toHaveURL(`${app}/admin/jobs/${jobs[0]}?dialog=price`);
+    await expect(page.getByRole("heading", { name: "Set the price", exact: true })).toBeVisible();
+    await expect(page).toHaveURL(`${app}/admin/jobs/${jobs[0]}/price`);
     await page.goBack(); await expect(price).toBeVisible();
     for (const [tab, heading] of [["Extra work (2)", "Extra work"], ["Cancellations (1)", "Cancellations"], ["Sign-off (1)", "Sign-off"], ["Unclaimed (1)", "Unclaimed"]]) {
       await page.getByRole("tab", { name: tab, exact: true }).click();

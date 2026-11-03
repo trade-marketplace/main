@@ -39,7 +39,7 @@ describe.skipIf(!testDatabaseUrl)("office queues with real PostgreSQL", () => {
     const data = await readOfficeQueues(schema.db, old.office, parseQueueQuery({}), NOW);
     expect(data.kpis.price.count).toBe(3);
     expect(data.rows.map(row => row.jobId)).toEqual([old.job.id, quoted.job.id, recent.job.id]);
-    expect(data.rows[0]).toMatchObject({ waiting: "26h", overdue: true, action: "Price it", href: `/admin/jobs/${old.job.id}?dialog=price` });
+    expect(data.rows[0]).toMatchObject({ waiting: "26h", overdue: true, action: "Price it", href: `/admin/jobs/${old.job.id}/price` });
     expect(data.rows.at(-1)).toMatchObject({ waiting: "3h", overdue: false });
     expect(JSON.stringify(data)).not.toMatch(/Private Fixture|@example.test|211234567|marginCents|accessNotes/);
     await clearJobs();

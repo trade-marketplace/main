@@ -98,7 +98,7 @@ function rowView(viewer: JobViewer, job: SelectedJob, id: string, since: Date, t
   const hours = tab === "unclaimed" ? UNCLAIMED_AFTER_HOURS : tab === "signoff" ? releaseHours : PRICE_SLOW_AFTER_HOURS;
   const action = tab === "price" && estimateCount > 0 && ["REVIEW", "QUOTE_BOUNTY"].includes(job.status) ? "Price it" : "Open";
   return { ...base, id, since: since.toISOString(), waiting: waitingLabel(since, now), overdue: now.getTime() - since.getTime() >= hours * HOUR,
-    context, action, href: `/admin/jobs/${job.id}${action === "Price it" ? "?dialog=price" : ""}` };
+    context, action, href: `/admin/jobs/${job.id}${action === "Price it" ? "/price" : ""}` };
 }
 
 export async function readOfficeQueues(db: QueueDatabase, viewer: JobViewer, query: QueueQuery, now = new Date(), stats?: Awaited<ReturnType<typeof readOfficeQueueStats>>): Promise<QueueData> {
