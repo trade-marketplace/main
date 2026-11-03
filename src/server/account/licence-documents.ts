@@ -5,6 +5,7 @@ import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { createUploadService, type UploadDb } from "@/server/files/service";
 import { DOCUMENT_BUCKET, type FileStore } from "@/server/files/storage";
 import type { FileViewer } from "@/server/files/access";
+import type { LicenceIntentWriter } from "./licence-intent-db";
 import { MESSAGES, UploadError } from "@/server/files/errors";
 
 /** Serializes final uploads/attachments with cleanup, including the same document reused by another trade. */
@@ -15,11 +16,11 @@ export function isLicenceDocument(path: string, userId: string): boolean {
   return new RegExp(`^licences/${userId}/[0-9a-f]{32}\\.(pdf|webp)$`).test(path);
 }
 
-/** Called while saveTrade holds the owner's document lock. The independent client call commits the cleanup
+/** Called while saveTrade holds the owner's document lock. The independent writer pool commits the cleanup
  * intent BEFORE Storage put, so an audit/attachment rollback cannot strand a new final file. Cleanup waits for
  * that same lock, then keeps a committed reference or removes the unreferenced file. The generic upload service
  * still owns byte validation, PDF checking, image conversion and the final file type. This scoped wrapper assigns the stored object its unique owner-bound path. */
-export function createLicenceDocumentUploader(db: PrismaClient, store: FileStore) {
+export function createLicenceDocumentUploader(db: PrismaClient, store: FileStore, intents: LicenceIntentWriter) {
   return async (viewer: FileViewer, bytes: Uint8Array): Promise<{ path: string }> => {
     let actualPath: string | null = null;
     await createUploadService({ db: db as unknown as UploadDb, store: {
@@ -30,7 +31,7 @@ export function createLicenceDocumentUploader(db: PrismaClient, store: FileStore
         // therefore never delete a newly uploaded document. Legacy/shared keys remain reference-protected.
         const extension = path.endsWith(".pdf") ? "pdf" : "webp";
         actualPath = `licences/${viewer.userId}/${randomBytes(16).toString("hex")}.${extension}`;
-        await db.licenceDocumentCleanup.upsert({ where: { path: actualPath }, create: { path: actualPath, userId: viewer.userId }, update: {} });
+        await intents.licenceDocumentCleanup.upsert({ where: { path: actualPath }, create: { path: actualPath, userId: viewer.userId }, update: {} });
         await store.put(bucket, actualPath, input, contentType);
       },
     } }).addDocument(viewer, "licences", bytes);

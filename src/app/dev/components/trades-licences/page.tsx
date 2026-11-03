@@ -16,6 +16,6 @@ export default async function Preview({ searchParams }: { searchParams: Promise<
     { trade: "OTHER", licence: null },
   ] };
   return <AppShellView viewer={{ role: "TRADIE", firstName: "Jack", lastName: "Wilson", email: "jack@example.test", counts: { messages: 0, notifications: 0 } }} testMode preview={{ at: "/profile/trades", base: "/dev/components/trades-licences" }}>
-    <AccountSettings role="TRADIE" active="/profile/trades">{state === "loading" ? <TradesLoading /> : <TradesDemo snapshot={snapshot} state={state} />}</AccountSettings>
+    <AccountSettings role="TRADIE" active="/profile/trades">{state === "loading" ? <TradesLoading /> : <TradesDemo snapshot={snapshot} state={state} network={params.transport === "network"} />}</AccountSettings>
   </AppShellView>;
 }

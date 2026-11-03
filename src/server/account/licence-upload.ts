@@ -44,7 +44,7 @@ export const STAGE_CLEANUP_GRACE_MS = 5 * 60 * 1000;
 export const MAX_PENDING_LICENCE_UPLOADS = 10;
 
 /** A per-worker lock bounds concurrent pending grants even when requests arrive together. */
-export async function beginLicenceStage(db: PrismaClient, userId: string, staging: LicenceStaging, now = new Date()): Promise<{ path: string; url: string } | null> {
+export async function beginLicenceStage(db: PrismaClient, userId: string, staging: LicenceStaging, now = new Date()): Promise<{ path: string; url: string; expiresAt: number } | null> {
   const record = await db.$transaction(async tx => {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`licence-upload:${userId}`}, 0))`;
     const pending = await tx.licenceUploadStage.count({ where: { userId, finalizedAt: null, expiresAt: { gt: now } } });
@@ -55,7 +55,7 @@ export async function beginLicenceStage(db: PrismaClient, userId: string, stagin
   });
   if (!record) return null;
   // Keep the record even if signing fails: a remote response might have been lost after granting the token.
-  return { path: record.path, url: await staging.sign(record.path) };
+  return { path: record.path, url: await staging.sign(record.path), expiresAt: record.expiresAt.getTime() };
 }
 
 /** A staged upload can be consumed only once, by its owner, before expiry. Never trust a browser-supplied path. */
@@ -63,4 +63,10 @@ export async function claimLicenceStage(db: PrismaClient, userId: string, path: 
   if (!ownsStage(path, userId, now)) return false;
   const claimed = await db.licenceUploadStage.updateMany({ where: { path, userId, finalizedAt: null, expiresAt: { gt: now } }, data: { finalizedAt: now } });
   return claimed.count === 1;
+}
+
+/** Read-only ownership check for a field-validation retry. It never consumes the upload's one-time grant. */
+export async function hasUnusedLicenceStage(db: PrismaClient, userId: string, path: string, now = new Date()): Promise<boolean> {
+  if (!ownsStage(path, userId, now)) return false;
+  return Boolean(await db.licenceUploadStage.findFirst({ where: { path, userId, finalizedAt: null, expiresAt: { gt: now } }, select: { id: true } }));
 }
