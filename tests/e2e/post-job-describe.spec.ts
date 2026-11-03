@@ -6,6 +6,32 @@ import { VIEWPORTS } from "./support/viewports";
 const dev = process.env.E2E_DEV_BASE_URL;
 test.use({ reducedMotion: "reduce" });
 
+for (const source of ["/", "/services/electrical"]) test(`blocked draft storage: ${source} handoff keeps its refresh fallback until saved`, async ({ page }) => {
+  await page.addInitScript(key => {
+    Object.defineProperty(window, "sessionStorage", { configurable: true, get() { throw new Error("Storage blocked"); } });
+    const original = Storage.prototype.setItem;
+    Storage.prototype.setItem = function(name, value) { if (name === key && !Reflect.get(window, "allowDraftStorage")) throw new DOMException("Storage blocked", "QuotaExceededError"); original.call(this, name, value); };
+  }, DRAFT_STORAGE_KEY);
+  await page.goto(source); const form = page.getByRole("form", { name: "What needs doing?", exact: true });
+  await form.getByRole("textbox").fill("Check the lights and wiring upstairs."); await form.getByRole("button", { name: "Get a price", exact: true }).click();
+  await expect(page.getByRole("textbox", { name: "Describe the job", exact: true })).toHaveValue("Check the lights and wiring upstairs.");
+  await expect(page).toHaveURL(/description=Check/); await expect(page.getByText("Draft saved", { exact: true })).toHaveCount(0);
+  if (source !== "/") await expect(page).toHaveURL(/type=electrical/i);
+  await page.reload(); await expect(page.getByRole("textbox", { name: "Describe the job", exact: true })).toHaveValue("Check the lights and wiring upstairs.");
+  await expect(page.getByRole("radio", { name: "Electrical", exact: true })).toBeChecked();
+  await page.getByRole("button", { name: "Next", exact: true }).click(); await expect(page.getByRole("heading", { name: "Photos", exact: true })).toBeVisible();
+  await expect(page).toHaveURL(/description=Check/);
+  await page.getByRole("link", { name: "Back", exact: true }).click(); await expect(page.getByRole("textbox", { name: "Describe the job", exact: true })).toHaveValue("Check the lights and wiring upstairs.");
+  await page.reload(); await expect(page.getByRole("textbox", { name: "Describe the job", exact: true })).toHaveValue("Check the lights and wiring upstairs.");
+  await page.evaluate(() => Reflect.set(window, "allowDraftStorage", true));
+  await page.getByRole("textbox", { name: "Describe the job", exact: true }).fill("Check the upstairs lights and wiring safely.");
+  await expect(page).toHaveURL(/\/jobs\/new$/); await page.getByRole("button", { name: "Next", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Photos", exact: true })).toBeVisible(); await page.reload();
+  await expect(page.getByRole("heading", { name: "Photos", exact: true })).toBeVisible();
+  await expect(page.getByRole("complementary", { name: "Your job" })).toContainText("Check the upstairs lights and wiring safely.");
+  await expectNoA11yViolations(page);
+});
+
 for (const source of ["/", "/services/electrical"]) test(`blocked session storage: ${source} location survives wizard navigation, refresh and exit`, async ({ page }) => {
   test.setTimeout(90_000);
   await page.addInitScript(() => { Object.defineProperty(window, "sessionStorage", { configurable: true, get() { throw new Error("Storage blocked"); } }); });

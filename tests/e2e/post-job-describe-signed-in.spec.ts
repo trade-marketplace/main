@@ -82,6 +82,19 @@ test.describe("customer Describe draft through the real server action", () => {
     await page.getByRole("button", { name: "Save & exit", exact: true }).click(); await expect(page).toHaveURL(`${app}/`);
     await page.goto(`${app}/jobs/new`); await expect(page.getByRole("textbox", { name: "Describe the job", exact: true })).toHaveValue("Check the upstairs lights and wiring.");
   });
+  test("incomplete server data stays on Describe; complete owned data can resume after Save & exit", async ({ page }) => {
+    const data = { postKey: crypto.randomUUID(), description: "Check the lights and wiring upstairs." };
+    await db.query("INSERT INTO job_drafts(profile_id,data,updated_at) VALUES($1,$2,now()) ON CONFLICT(profile_id) DO UPDATE SET data=EXCLUDED.data", [SECURITY_USER.id, data]);
+    await page.goto(`${app}/login?next=%2Fjobs%2Fnew%3Fstep%3Dphotos`); await page.getByLabel("Email", { exact: true }).fill(SECURITY_USER.email); await page.getByLabel("Password", { exact: true }).fill(SECURITY_PASSWORD); await page.getByRole("button", { name: "Log in", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "What needs doing?", exact: true })).toBeVisible();
+    await expect(page.getByRole("textbox", { name: "Describe the job", exact: true })).toHaveValue(data.description);
+    await expect(page.getByRole("heading", { name: "Photos", exact: true })).toHaveCount(0);
+    // Save & exit validates and saves the fields; Next is navigation, not an authorization boundary.
+    await page.getByRole("button", { name: "Save & exit", exact: true }).click(); await expect(page).toHaveURL(`${app}/`);
+    await page.evaluate(() => localStorage.clear()); await page.goto(`${app}/jobs/new?step=photos`);
+    await expect(page.getByRole("heading", { name: "Photos", exact: true })).toBeVisible();
+    await expect(page.getByRole("complementary", { name: "Your job" })).toContainText(data.description);
+  });
   test("an explicit handoff updates a signed-in server draft once, retaining its key and later fields", async ({ page }) => {
     const key = crypto.randomUUID(); const data = { postKey: key, description: "Fix the fence beside the garage.", category: "CONSTRUCTION", photoPaths: [`drafts/${SECURITY_USER.id}/${key}/${"a".repeat(32)}.webp`], addressLine1: "1 Example Street", suburb: "Gladstone", city: "Invercargill" };
     await db.query("INSERT INTO job_drafts(profile_id,data,updated_at) VALUES($1,$2,now()) ON CONFLICT(profile_id) DO UPDATE SET data=EXCLUDED.data", [SECURITY_USER.id, data]);

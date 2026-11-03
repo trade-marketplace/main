@@ -91,6 +91,12 @@ describe("owner-bound local draft", () => {
     expect(decodeWizardDraft(encodeWizardDraft({ ...draft, completedDescribe: true }, null), null)?.completedDescribe).toBe(true);
     expect(canonicalDraft({ ...draft, completedDescribe: true })).toEqual({ description: "Move a sofa upstairs", category: "OTHER" });
   });
+  it("resumes a validated server Describe while incomplete server fields still require Next", () => {
+    expect(initialWizardDraft({ description: "Move a sofa upstairs", category: "OTHER" }, true).completedDescribe).toBe(true);
+    expect(initialWizardDraft({ description: "Move a sofa upstairs" }, true).completedDescribe).toBe(false);
+    expect(initialWizardDraft({ category: "OTHER" }, true).completedDescribe).toBe(false);
+    expect(initialWizardDraft({ description: "Move a sofa upstairs", category: "OTHER" }).completedDescribe).toBe(false);
+  });
   it("never restores another account's draft or an account draft to a guest", () => {
     const raw = encodeWizardDraft(initialWizardDraft({ description: "A private description", category: "OTHER" }), "customer-a");
     expect(decodeWizardDraft(raw, "customer-b")).toBeNull();

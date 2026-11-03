@@ -32,6 +32,11 @@ type Props = {
 };
 const HANDOFF_PARAMS = ["description", "type"] as const;
 const LOCATION_PARAMS = ["location", "lat", "lng"] as const;
+function withoutLandingFallback(href: string) {
+  const url = new URL(href, window.location.origin);
+  for (const name of [...HANDOFF_PARAMS, ...LOCATION_PARAMS]) url.searchParams.delete(name);
+  return `${url.pathname}${url.search}`;
+}
 function subscribeDraft(onChange: () => void) {
   window.addEventListener("storage", onChange);
   return () => window.removeEventListener("storage", onChange);
@@ -98,7 +103,6 @@ export function PostJobWizard({ ownerId = null, initialDraft = {}, hasServerDraf
   const describeValid = !Object.keys(describeErrors(draft)).length;
   const step = (params.get("step") === "photos" || (!params.has("step") && previewState === "photos")) && draft.completedDescribe && describeValid ? 1 : 0;
   const query = new URLSearchParams(params.toString()); query.delete("step");
-  for (const name of HANDOFF_PARAMS) query.delete(name);
   if (previewState === "photos") query.set("step", "describe");
   const backHref = `${path}${query.size ? `?${query}` : ""}`;
   const nextQuery = new URLSearchParams(query); nextQuery.set("step", "photos");
@@ -115,6 +119,10 @@ export function PostJobWizard({ ownerId = null, initialDraft = {}, hasServerDraf
     setEdited(withKey); setError(false);
     try {
       if (!previewState) localStorage.setItem(DRAFT_STORAGE_KEY, encodeWizardDraft(withKey, ownerId));
+      if (!previewState) {
+        const clean = withoutLandingFallback(window.location.href);
+        if (clean !== `${window.location.pathname}${window.location.search}`) window.history.replaceState(null, "", clean);
+      }
       setSaved(true); return { draft: withKey, persisted: true };
     } catch { setSaved(false); setError(true); return { draft: withKey, persisted: false }; }
   }, [ownerId, previewState]);
@@ -134,7 +142,8 @@ export function PostJobWizard({ ownerId = null, initialDraft = {}, hasServerDraf
     const persisted = keep(next).persisted;
     if (describe) setConsumedHandoff(key);
     const clean = new URLSearchParams(incomingQuery);
-    if (describe) for (const name of [...HANDOFF_PARAMS, "step"]) clean.delete(name);
+    if (describe) clean.delete("step");
+    if (persisted) for (const name of HANDOFF_PARAMS) clean.delete(name);
     if (hint && persisted) for (const name of LOCATION_PARAMS) clean.delete(name);
     // Next copies its router state itself; forwarding __NA would bypass its search-param update.
     if (clean.toString() !== incomingQuery) window.history.replaceState(null, "", `${path}${clean.size ? `?${clean}` : ""}`);
@@ -173,11 +182,11 @@ export function PostJobWizard({ ownerId = null, initialDraft = {}, hasServerDraf
       } catch { setError(true); return; }
       finally { pending.current = false; setBusy(false); }
     } else if (previewState === "save-error") { setError(true); return; }
-    // Only a successful Next completes Describe. Merely typing valid fields into a Photos URL never does.
+    // Local edits require Next; complete, validated owned server drafts can resume without a local marker.
     if (exit && !durable) { setError(true); return; }
     if (!exit) keep({ ...kept.draft, completedDescribe: true });
     if (durable) { setSaved(true); setError(false); }
-    router.push(exit ? "/" : nextHref);
+    router.push(exit ? "/" : durable ? withoutLandingFallback(nextHref) : nextHref);
   }
 
   function submit(event: FormEvent) { event.preventDefault(); void advance(); }
