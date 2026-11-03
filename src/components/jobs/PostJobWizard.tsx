@@ -31,7 +31,7 @@ import { DraftPhotos } from "./DraftPhotos";
 import { DraftWhere } from "./DraftWhere";
 import { useDraftPhotos } from "./useDraftPhotos";
 import { DraftReview } from "./DraftReview";
-import { PostingDraft, type PostingReady } from "./PostingDraft";
+import { PostingDraft, PostingEntryError, type PostingReady } from "./PostingDraft";
 import { usePostReview } from "./usePostReview";
 
 import styles from "./post-job.module.css";
@@ -110,7 +110,7 @@ export function PostJobWizard(props: Props) {
   return <ToastProvider>{props.initialPosted ? <WizardFrame step={3}><h1 className={styles.title}>Posted.</h1><p className={styles.hint}>TM-{props.initialPosted.jobNumber}</p><Button href="/" width="full-on-phone">Home</Button></WizardFrame>
     : props.previewState ? <PostJobWizardForm {...props} />
     : <PostingDraft {...{ ownerId, verified, initialDraft, initialManualCategory, hasServerDraft }}
-      fallback={(error, retry) => <WizardFrame step={3}><h1 className={styles.title}>All good?</h1>{error ? <Banner tone="alert" title="Couldn’t load your draft." action={<Button variant="tertiary" onClick={retry}>Try again</Button>} /> : <div role="status" aria-label="Loading draft"><Skeleton height={100} /><Skeleton height={100} /></div>}</WizardFrame>}>
+      fallback={(error, retry, leave, conflict) => <WizardFrame step={3}><h1 className={styles.title}>All good?</h1>{error ? <PostingEntryError {...{ retry, leave, conflict }} /> : <div role="status" aria-label="Loading draft"><Skeleton height={100} /><Skeleton height={100} /></div>}</WizardFrame>}>
       {source => <PostJobWizardForm {...props} {...source} />}
     </PostingDraft>}</ToastProvider>;
 }

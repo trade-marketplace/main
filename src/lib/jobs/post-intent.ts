@@ -55,3 +55,9 @@ export function clearPostIntent(storage: Pick<Storage, "getItem" | "removeItem">
     storage.removeItem(POST_INTENT_STORAGE_KEY); return storage.getItem(POST_INTENT_STORAGE_KEY) === null;
   } catch { return false; }
 }
+
+/** Cancel only the exact entry we tried to resume; another tab's newer intent must survive. */
+export function abandonPostIntent(storage: Pick<Storage, "getItem" | "removeItem">, entered: readonly string[]): void {
+  try { const raw = storage.getItem(POST_INTENT_STORAGE_KEY); if (raw !== null && entered.includes(raw)) storage.removeItem(POST_INTENT_STORAGE_KEY); }
+  catch { /* Clean URL navigation is still safe when browser storage is blocked. Originals are retained. */ }
+}
