@@ -1,7 +1,7 @@
 import "server-only";
 
 import type { PrismaClient } from "@/generated/prisma/client";
-import { draftFieldErrors, POST_KEY_SCHEMA, postJobSchema, type DraftFieldErrors } from "@/lib/job-draft";
+import { draftFieldErrors, jobDraftSchema, POST_KEY_SCHEMA, postJobSchema, type DraftFieldErrors } from "@/lib/job-draft";
 import { haversineKm } from "@/lib/geo/distance";
 import { postingDateRange } from "@/lib/job-time-windows";
 export { postingDateRange } from "@/lib/job-time-windows";
@@ -28,6 +28,8 @@ export type PostJobDeps = {
   rateLimit?: (userId: string) => Promise<RateLimitDecision>;
   notifyWorkers?: (job: Posted) => Promise<void>;
   now?: () => Date;
+  /** The wizard confirms its current photo snapshot; existing #116 service callers retain their contract. */
+  expectedDraft?: { postKey: string; paths: readonly string[] };
 };
 
 /** Full posting command. All durable changes commit together; postKey retries never duplicate a job. */
@@ -51,10 +53,18 @@ export async function postJob(db: PrismaClient, viewer: Viewer | null, input: un
       ? { status: "posted", jobId: previous.id, jobNumber: previous.jobNumber }
       : { status: "forbidden" };
 
+    if (deps.expectedDraft) {
+      const current = await tx.jobDraft.findUnique({ where: { profileId: viewer.userId } });
+      const saved = jobDraftSchema.safeParse(current?.data);
+      if (!saved.success || saved.data.postKey !== postKey || deps.expectedDraft.postKey !== postKey
+        || JSON.stringify(saved.data.photoPaths ?? []) !== JSON.stringify(deps.expectedDraft.paths)) return { status: "photos-pending" };
+    }
+
     const parsed = postJobSchema.safeParse(input);
     if (!parsed.success) return { status: "invalid", fields: draftFieldErrors(parsed.error) };
     const data = parsed.data;
     if (data.postKey && data.postKey.toLowerCase() !== postKey) return { status: "invalid", fields: { postKey: "Post it" } };
+    if (deps.expectedDraft && JSON.stringify(data.photoPaths) !== JSON.stringify(deps.expectedDraft.paths)) return { status: "photos-pending" };
     const { today, last } = postingDateRange(now);
     if (data.timeWindows.some((w) => w.date < today || w.date > last)) {
       return { status: "invalid", fields: { timeWindows: "When do you need it?" } };
@@ -90,7 +100,7 @@ export async function postJob(db: PrismaClient, viewer: Viewer | null, input: un
     });
     await tx.jobPhoto.createMany({ data: data.photoPaths.map((path, position) => ({ jobId: job.id, path, position, uploadedById: viewer.userId })) });
     if (data.timeWindows.length) await tx.jobTimeWindow.createMany({ data: data.timeWindows.map((window) => ({ jobId: job.id, date: new Date(`${window.date}T00:00:00Z`), timeOfDay: window.timeOfDay })) });
-    await tx.jobDraft.deleteMany({ where: { profileId: viewer.userId } });
+    await tx.jobDraft.deleteMany({ where: { profileId: viewer.userId, data: { path: ["postKey"], equals: postKey } } });
     await createAudit(tx)(viewer, "job.posted", { type: "jobs", id: job.id }, null, { status: "REVIEW", category: job.category, photosNeedCheck: job.photosNeedCheck });
     return { status: "posted", jobId: job.id, jobNumber: job.jobNumber };
   }, { timeout: 20_000 });
