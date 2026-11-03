@@ -27,7 +27,11 @@ test.describe("office pricing preview states", () => {
       expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth), state).toBe(0);
       await expectNoA11yViolations(page);
       if (state === "no-estimates") await expect(page.getByRole("heading", { name: "No estimates yet", exact: true })).toBeVisible();
-      if (state === "long") await expect(page.getByRole("textbox", { name: "Hours", exact: true })).toHaveAttribute("aria-invalid", "true");
+      if (state === "long") {
+        const hours = page.getByRole("textbox", { name: "Hours", exact: true });
+        await expect(hours).toHaveAttribute("aria-invalid", "true");
+        await expect(hours).toHaveAccessibleDescription(/Enter the hours as a number above zero\./);
+      }
     }
   });
   test("phone/desktop wording, photo viewer keyboard dismissal, confirm cancellation/privacy and future-visit handoff", async ({ page }) => {

@@ -83,6 +83,13 @@ describe("the office pricing read and authorization boundary", () => {
 });
 describe("pricing workspace states", () => {
   const submit = async () => ({ ok: true as const }), preview = async () => ({ ok: false as const, error: "unavailable" as const });
+  it("renders server-validated example field errors before hydration or a delayed preview request", () => {
+    const { data, fieldErrors } = pricingExample("long", true);
+    expect(fieldErrors).toEqual({ hours: "Enter the hours as a number above zero." });
+    const html = renderToStaticMarkup(<OfficePricing data={data} initialErrors={fieldErrors} preview={preview} publish={submit} requestPhotos={submit} />);
+    expect(html).toContain('aria-invalid="true"');
+    expect(html).toContain("Enter the hours as a number above zero.");
+  });
   it("renders real empty, failure, loading, frozen and future-visit states using the kit", () => {
     for (const state of ["ready", "no-estimates", "frozen"] as const) {
       const { data } = pricingExample(state), html = renderToStaticMarkup(<OfficePricing data={data} preview={preview} publish={submit} requestPhotos={submit} />);

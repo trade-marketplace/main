@@ -15,9 +15,9 @@ import styles from "./pricing.module.css";
 
 type Preview = (input: unknown) => Promise<PreviewResult>;
 type Submit = (input: unknown) => Promise<PublishResult>;
-export type OfficePricingProps = { data: PricingWorkspace | null; preview: Preview; publish: Submit; requestPhotos: Submit; loading?: boolean; offline?: boolean; initialDialog?: "confirm" | "photos" | "visit"; initialError?: string; initialSent?: boolean };
+export type OfficePricingProps = { data: PricingWorkspace | null; preview: Preview; publish: Submit; requestPhotos: Submit; loading?: boolean; offline?: boolean; initialDialog?: "confirm" | "photos" | "visit"; initialError?: string; initialSent?: boolean; initialErrors?: Partial<Record<keyof PriceFields, string>> };
 const message = (result: PricingFailure) => result.message ?? PRICING_MESSAGES[result.error];
-export function OfficePricing({ data, preview, publish, requestPhotos, loading = false, offline = false, initialDialog, initialError, initialSent = false }: OfficePricingProps) {
+export function OfficePricing({ data, preview, publish, requestPhotos, loading = false, offline = false, initialDialog, initialError, initialSent = false, initialErrors }: OfficePricingProps) {
   const router = useRouter(), sessionExpired = useOptionalSessionExpired(), browserOnline = useOnlineStatus(), online = browserOnline && !offline;
   const [fields, setFields] = useState<PriceFields>(() => data?.fields ?? { hours: "", materials: "0.00" });
   const [price, setPrice] = useState<PricingPreview | null>(() => data?.preview ?? null), [calculating, setCalculating] = useState(false);
@@ -29,6 +29,7 @@ export function OfficePricing({ data, preview, publish, requestPhotos, loading =
   useEffect(() => {
     let cancelled = false;
     if (!data?.canPrice || !online || sent || !fields.hours.trim()) return;
+    if (initialErrors && currentKey === inputKey(data.fields)) return;
     if (price?.inputKey === currentKey && price.token === data.preview?.token) return;
     const timer = setTimeout(async () => {
       setCalculating(true); setErrors({});
@@ -73,6 +74,7 @@ export function OfficePricing({ data, preview, publish, requestPhotos, loading =
     } catch { setFailure(PRICING_MESSAGES.unavailable); }
     finally { setBusy(false); }
   };
+  const displayedErrors = initialErrors && data && currentKey === inputKey(data.fields) ? initialErrors : errors;
   const displayedFields = data?.canPrice ? fields : data?.fields ?? fields;
   const displayPrice = data?.canPrice ? price?.inputKey === currentKey ? price : null : data?.preview;
   const columns: Column<PricingEstimate>[] = [
@@ -105,8 +107,8 @@ export function OfficePricing({ data, preview, publish, requestPhotos, loading =
           </section>
         </div>
         <section className={`${styles.card} ${styles.builder}`} aria-labelledby="price-title"><h2 id="price-title">Set the price</h2>
-          <TextField label="Hours" value={displayedFields.hours} inputMode="decimal" maxLength={12} error={errors.hours} disabled={!data.canPrice || busy} onChange={event => setFields(current => ({ ...current, hours: event.target.value }))} />
-          <MoneyField label="Materials" value={displayedFields.materials} maxLength={16} hint="At cost, ex GST" error={errors.materials} disabled={!data.canPrice || busy} onChange={event => setFields(current => ({ ...current, materials: event.target.value }))} />
+          <TextField label="Hours" value={displayedFields.hours} inputMode="decimal" maxLength={12} error={displayedErrors.hours} disabled={!data.canPrice || busy} onChange={event => setFields(current => ({ ...current, hours: event.target.value }))} />
+          <MoneyField label="Materials" value={displayedFields.materials} maxLength={16} hint="At cost, ex GST" error={displayedErrors.materials} disabled={!data.canPrice || busy} onChange={event => setFields(current => ({ ...current, materials: event.target.value }))} />
           <div role="region" aria-label="Price breakdown" aria-live="polite" aria-busy={calculating} className={styles.breakdown}>{calculating ? <Skeleton height="10rem" /> : displayPrice ? <Breakdown price={displayPrice} /> : <p>{data.canPrice ? "Enter hours and materials to see the price." : "No price has been saved."}</p>}</div>
           {data.canPrice && <><Button disabled={!online ? "You’re offline" : !priceReady ? "Check the hours and materials" : false} onClick={() => open("confirm")}>Send price to customer</Button><Button variant="secondary" disabled={!online ? "You’re offline" : false} onClick={() => open("visit")}>Needs a site visit</Button></>}
           <p className={styles.muted}><span className={styles.desktopWords}>Calculated on the server from Settings.</span><span className={styles.phoneWords}>Uses the rates in Settings. Calculated on the server.</span> Priced jobs keep their rates.</p>
