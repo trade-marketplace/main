@@ -1,7 +1,7 @@
 // The "no hex colours outside the tokens file" rule (#72, AGENTS.md §5).
 // It's a test rather than an ESLint/stylelint rule because one check then covers CSS, CSS modules, TS and TSX
 // (inline styles, SVG fills, template strings) with no new dependencies, and it runs in `npm test` and CI.
-import { readdirSync, readFileSync } from "node:fs";
+import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -20,7 +20,8 @@ function appFiles(): string[] {
   return readdirSync(SRC, { recursive: true, encoding: "utf8" })
     .map((f) => path.posix.join("src", f.split(path.sep).join("/")))
     .filter((f) => !SKIP_DIRS.some((d) => f === d || f.startsWith(`${d}/`)))
-    .filter((f) => f !== TOKENS_FILE && (f.endsWith(".css") || SCRIPT.test(f)));
+    .filter((f) => f !== TOKENS_FILE && (f.endsWith(".css") || SCRIPT.test(f)))
+    .filter((f) => statSync(path.join(root, f)).isFile());
 }
 
 describe("no hard-coded hex colours in app code", () => {
@@ -28,6 +29,8 @@ describe("no hard-coded hex colours in app code", () => {
     const files = appFiles();
     expect(files).toContain("src/app/layout.tsx");
     expect(files).toContain("src/styles/base.css");
+    expect(files).toContain("src/app/firebase-messaging-sw.js/route.ts");
+    expect(files).not.toContain("src/app/firebase-messaging-sw.js");
     expect(files).not.toContain(TOKENS_FILE);
   });
 

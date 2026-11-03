@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
+import { AppShellView } from "@/components/app/AppShellView";
 import { PostedJob, CustomerJobSummary } from "@/components/jobs/PostedJob";
 import type { CustomerJobView } from "@/server/views";
 import type { PushCardState } from "@/lib/browser-push";
@@ -14,13 +16,15 @@ function example(status: CustomerJobView["status"] = "REVIEW", index = 1): Custo
     anyTime: true, timeWindows: [], bookedDate: null, bookedTime: null, photos: [], photosNeedCheck: false, worker: null };
 }
 const cards: PushCardState[] = ["loading", "ready", "requesting", "enabled", "denied", "unsupported", "unavailable", "error"];
+function frame(children: ReactNode) { return <AppShellView viewer={{ role: "CUSTOMER", firstName: "Sarah", lastName: "Thompson", email: "customer@demo.test", emailVerified: true, counts: { messages: 0, notifications: 0 } }} testMode preview={{ at: `/jobs/${example().id}`, base: "/dev/components/posted" }}>{children}</AppShellView>; }
 export default async function Page({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  guardDevPage(); const params = await searchParams, state = typeof params.state === "string" ? params.state : "ready";
+  guardDevPage();
+  const params = await searchParams, state = typeof params.state === "string" ? params.state : "ready";
   if (state === "email") {
     const email = postConfirmationEmail({ jobId: example().id, customerId: ownerId, jobNumber: 1042, title: example().title, recipientEmail: "preview@example.test" });
-    return <iframe title="Posted confirmation email" srcDoc={email.html} sandbox="" style={{ border: 0, width: "100%", height: "1050px" }} />;
+    return <main><iframe title="Posted confirmation email" srcDoc={email.html} sandbox="" style={{ border: 0, width: "100%", height: "1050px" }} /></main>;
   }
-  if (state === "detail" || state === "legacy") return <CustomerJobSummary job={{ ...example(state === "detail" ? "PRICED" : "REVIEW"), anyTime: state !== "legacy", asap: state === "legacy" }} />;
-  if (state === "status-gallery") return <>{(["QUOTE_BOUNTY", "PRICED", "BOOKABLE", "ASSIGNED", "SUBMITTED", "COMPLETED", "CANCEL_REVIEW", "CANCELLED"] as const).map((status, index) => <PostedJob key={status} job={example(status, index + 2)} ownerId={ownerId} push={null} previewState="unavailable" />)}</>;
-  return <PostedJob job={example()} ownerId={ownerId} push={null} previewState={cards.includes(state as PushCardState) ? state as PushCardState : "ready"} />;
+  if (state === "detail" || state === "legacy") return frame(<CustomerJobSummary job={{ ...example(state === "detail" ? "PRICED" : "REVIEW"), anyTime: state !== "legacy", asap: state === "legacy" }} />);
+  if (state === "status-gallery") return frame(<>{(["QUOTE_BOUNTY", "PRICED", "BOOKABLE", "ASSIGNED", "SUBMITTED", "COMPLETED", "CANCEL_REVIEW", "CANCELLED"] as const).map((status, index) => <PostedJob key={status} job={example(status, index + 2)} ownerId={ownerId} push={null} previewState="hidden" />)}</>);
+  return frame(<PostedJob job={example()} ownerId={ownerId} push={null} previewState={cards.includes(state as PushCardState) ? state as PushCardState : "ready"} />);
 }

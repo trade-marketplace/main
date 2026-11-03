@@ -9,18 +9,19 @@ import type { CustomerJobView } from "@/server/views";
 import { PushOptIn } from "./PushOptIn";
 import styles from "./posted-job.module.css";
 
-export function PostedJob({ job, ownerId, push, previewState }: { job: CustomerJobView; ownerId: string; push: FirebaseWebConfig | null; previewState?: PushCardState }) {
+export function PostedJob({ job, ownerId, push, previewState }: { job: CustomerJobView; ownerId: string; push: FirebaseWebConfig | null; previewState?: PushCardState | "hidden" }) {
   const titleId = `posted-${job.id}`;
+  const statusId = `posted-status-${job.id}`;
   const tracker = jobTracker(job.status, "customer", { tradieName: job.worker?.firstName });
   const lead = job.status === "REVIEW" ? "We’re on it. We’ll let you know when your price is ready." : tracker?.steps[tracker.current]?.note ?? tracker?.steps[tracker.current]?.label;
-  return <section className={styles.page} data-mode="customer" aria-labelledby={titleId}>
+  return <section className={styles.page} data-mode="customer" aria-labelledby={job.status === "REVIEW" ? titleId : `${titleId} ${statusId}`}>
     <div className={styles.card}>
       <div className={styles.celebration}><BoltFlash eventId={`posted:${job.id}`} mark="check" size={110} /></div>
       <h1 id={titleId} className={styles.title}>Posted.</h1>
       {lead && <p className={styles.lead}>{lead}</p>}
-      {job.status !== "REVIEW" && <StatusPill status={job.status} audience="customer" />}
+      {job.status !== "REVIEW" && <span id={statusId}><StatusPill status={job.status} audience="customer" /></span>}
       {tracker && <div className={styles.tracker}><Tracker {...tracker} /></div>}
-      <PushOptIn ownerId={ownerId} config={push} previewState={previewState} />
+      {previewState !== "hidden" && <PushOptIn ownerId={ownerId} config={push} previewState={previewState} />}
       <Button href={`/jobs/${job.id}`} width="full" variant="hero">View my job</Button>
     </div>
   </section>;
