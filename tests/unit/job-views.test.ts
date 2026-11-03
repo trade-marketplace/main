@@ -1,7 +1,9 @@
+import { renderToStaticMarkup } from "react-dom/server";
+import JobViewsPreview from "@/app/dev/components/job-views/page";
 import { describe, expect, it, vi } from "vitest";
 
 import type { JobStatus, PrismaClient } from "@/generated/prisma/client";
-import { exampleJob, VIEWERS } from "@/app/dev/components/job-views/preview-data";
+import { exampleJob, jobViewExample, VIEWERS } from "@/app/dev/components/job-views/preview-data";
 import { approximatePin } from "@/server/geo/approximate";
 import { jobPinFor } from "@/server/geo/job-location";
 import { customerJobView, customerJobsView, workerJobView, workerJobsView, officeJobView, officeJobsView, publicJobView, loadJobView, jobViewWhere, jobThreadContextView } from "@/server/views/jobs";
@@ -48,6 +50,18 @@ describe("job projections for every status", () => {
 });
 
 describe("revocation and explicit allowlists", () => {
+  it("models the reassigned preview as a private assignment to someone else and renders the existing 404 view", async () => {
+    const job = jobViewExample("worker-reassigned");
+    expect(job.status).toBe("ASSIGNED");
+    expect(job.workerId).not.toBe(VIEWERS.worker.userId);
+    expect(job.worker?.id).toBe(job.workerId);
+    expect(workerJobView(VIEWERS.worker, job)).toBeNull();
+    expect(workerJobView({ ...VIEWERS.worker, userId: job.workerId! }, job)?.assignedToYou).toBe(true);
+    const html = renderToStaticMarkup(await JobViewsPreview({ searchParams: Promise.resolve({ state: "worker-reassigned" }) }));
+    expect(html).toContain("Wrong address.");
+    for (const value of [job.title, job.addressLine1, job.customer.phone!, job.customer.email!, "View serialized data"]) expect(html).not.toContain(value);
+    expect(workerJobView(VIEWERS.worker, jobViewExample("worker-unclaimed"))).toMatchObject({ assignedToYou: false, address: null });
+  });
   it("redacts phone/email canaries in worker title/description before claim and after cancellation, preserving authorized originals", () => {
     const title = "Call +64 21 123 4567", description = "Contact private95@example.test or 021-765-4321";
     const assigned = exampleJob({ title, description });
