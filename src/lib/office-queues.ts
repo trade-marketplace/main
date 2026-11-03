@@ -3,9 +3,9 @@ import type { OfficeCounts } from "@/components/office/office-links";
 
 export const QUEUES = [
   { key: "price", label: "To price" },
-  { key: "extra", label: "Extra work" },
-  { key: "cancel", label: "Cancellations" },
-  { key: "signoff", label: "Sign-off" },
+  { key: "extra", label: "Extra work", phoneCardLabel: "Extra work to price" },
+  { key: "cancel", label: "Cancellations", phoneCardLabel: "Cancel requests" },
+  { key: "signoff", label: "Sign-off", phoneCardLabel: "Waiting sign-off" },
   { key: "unclaimed", label: "Unclaimed", cardLabel: "Unclaimed > 48h" },
 ] as const;
 export type QueueKey = typeof QUEUES[number]["key"];

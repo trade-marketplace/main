@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { OfficeQueues } from "@/components/office/OfficeQueues";
 import { previewQueues } from "@/app/dev/components/office-queues/preview-data";
-import { canFocusQueueSearch, parseQueueQuery, queueHref, waitingLabel } from "@/lib/office-queues";
+import { canFocusQueueSearch, QUEUES, parseQueueQuery, queueHref, waitingLabel } from "@/lib/office-queues";
 import { queueJobWhere, queueSearchWhere, readOfficeQueues, readOfficeQueueStats } from "@/server/office/queues";
 import { officeQueueJobView } from "@/server/views/office-queues";
 
@@ -119,6 +119,13 @@ describe("office queue access and predicates", () => {
   });
 });
 describe("office queue states", () => {
+  it("preserves the designated phone KPI wording separately from desktop and tab labels", () => {
+    expect(QUEUES.filter(queue => "phoneCardLabel" in queue).map(queue => ({ label: queue.label, phone: "phoneCardLabel" in queue ? queue.phoneCardLabel : undefined }))).toEqual([
+      { label: "Extra work", phone: "Extra work to price" }, { label: "Cancellations", phone: "Cancel requests" }, { label: "Sign-off", phone: "Waiting sign-off" },
+    ]);
+    const query = parseQueueQuery({}), html = renderToStaticMarkup(<OfficeQueues query={query} data={previewQueues("price", query)} />);
+    expect(html).toContain("Extra work to price"); expect(html).toContain("Cancel requests"); expect(html).toContain("Waiting sign-off");
+  });
   it("shows real empty/error/loading/offline states without inventing successful zero counts", () => {
     const query = parseQueueQuery({});
     expect(renderToStaticMarkup(<OfficeQueues query={query} data={previewQueues("all-clear", query)} />)).toContain("All clear");

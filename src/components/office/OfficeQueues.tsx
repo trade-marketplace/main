@@ -74,7 +74,7 @@ export function OfficeQueues({ query, data, loading = false, offline = false, ba
     </header>
     <div className={styles.kpis} role="group" aria-label="Queue totals" aria-busy={busy}>
       {QUEUES.map(queue => { const kpi = data?.kpis[queue.key]; return <button key={queue.key} type="button" className={`tm-lift ${styles.kpi}`} data-overdue={kpi?.overdue || undefined} aria-pressed={!query.q && query.tab === queue.key} aria-disabled={!online || undefined} onClick={() => selectQueue(queue.key)}>
-        <span className={styles.label}>{"cardLabel" in queue ? queue.cardLabel : queue.label}</span>
+        <span className={styles.label}>{"phoneCardLabel" in queue ? <><span className={styles.desktopLabel}>{queue.label}</span><span className={styles.phoneLabel}>{queue.phoneCardLabel}</span></> : "cardLabel" in queue ? queue.cardLabel : queue.label}</span>
         {kpi ? <CountUp value={kpi.count} runKey={kpi.count} className={styles.number} /> : <Skeleton width="3rem" height="2rem" />}
         <span className={styles.detail}>{kpi?.detail ?? "—"}</span>
       </button>; })}

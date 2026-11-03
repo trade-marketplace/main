@@ -49,6 +49,8 @@ Production deployments return 404 there. All examples are fictitious. The bot ca
 checks also cover 320/768/1024, keyboard menus/tabs/search, rapid search→queue switches, actual signed-in row actions
 and Back, true status ages, settings-driven sign-off and current-request reasons against disposable PostgreSQL.
 
-Screen wording follows the mockup and existing kit. Additional layout labels for Matt's review: “Waiting on customer”,
+Screen wording follows both mockups and the existing kit. Below the shared 600px phone breakpoint, KPI cards
+use screens.html#off-queues’ “Extra work to price”, “Cancel requests” and “Waiting sign-off”; desktop cards and
+the prescribed tabs keep “Extra work”, “Cancellations” and “Sign-off”. Hidden label variants leave the accessibility tree. Additional layout labels for Matt's review: “Waiting on customer”,
 “Problems”, “Problem”, “Reason”, “Auto-release”, “Search jobs and people”, “Search results”, “Queue totals”, “Other work”,
 “Queue jobs”; singular header “1 thing needs you”. Empty/error/offline/retry wording reuses existing components.

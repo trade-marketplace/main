@@ -21,3 +21,6 @@
 .problems h2 { margin: 0; font-size: var(--trade-fs-subheading); }
 @media (max-width: 900px) { .kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 540px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } .search { width: 100%; } .kpi { padding: var(--trade-space-3); } }
+
+.phoneLabel { display: none; }
+@media (max-width: 599.98px) { .desktopLabel { display: none; } .phoneLabel { display: inline; } }

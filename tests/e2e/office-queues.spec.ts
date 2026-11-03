@@ -25,6 +25,22 @@ test.describe("office queue preview states", () => {
       if (state === "search-empty") await expect(page.getByRole("heading", { name: "No jobs match that.", exact: true })).toBeVisible();
     }
   });
+  test("phone and desktop KPI copy match their own mockups and accessible names", async ({ page }) => {
+    for (const { width } of VIEWPORTS) {
+      await page.setViewportSize({ width, height: 900 }); await page.goto(href());
+      const totals = page.getByRole("group", { name: "Queue totals" });
+      for (const [phone, desktop] of [["Extra work to price", "Extra work"], ["Cancel requests", "Cancellations"], ["Waiting sign-off", "Sign-off"]]) {
+        const visible = width < 600 ? phone : desktop, hidden = width < 600 ? desktop : phone;
+        await expect(totals.getByRole("button", { name: new RegExp(`^${visible} [0-9]`) })).toBeVisible();
+        await expect(totals.getByRole("button", { name: new RegExp(`^${hidden} [0-9]`) })).toHaveCount(0);
+        await expect(totals.getByText(visible, { exact: true })).toBeVisible();
+        await expect(totals.getByText(hidden, { exact: true })).toBeHidden();
+      }
+      await expect(page.getByRole("tab", { name: "Extra work (2)", exact: true })).toBeVisible();
+      expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
+      await expectNoA11yViolations(page);
+    }
+  });
   test("KPI and keyboard tabs keep counts and URL aligned; Back restores state; / ignores form fields and menus", async ({ page }) => {
     await page.goto(href());
     const totals = page.getByRole("group", { name: "Queue totals" });
