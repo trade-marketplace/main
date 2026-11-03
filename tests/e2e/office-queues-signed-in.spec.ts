@@ -99,7 +99,7 @@ test.describe("office queues against signed-in routes and PostgreSQL", () => {
   });
   test("390px actual route fits and passes axe, offline input stays and network actions disable", async ({ page, context }) => {
     await signIn(page); await page.setViewportSize({ width: 390, height: 844 }); await page.goto(`${app}/admin`);
-    await expect(page.getByRole("group", { name: "Queue totals", exact: true }).getByRole("button", { name: "Unclaimed > 48h 1 Richmond", exact: true })).toBeVisible();
+    await expect(page.getByRole("group", { name: "Queue totals", exact: true }).getByRole("button", { name: "Unclaimed > 48h 1 Needs you", exact: true })).toBeVisible();
     await expectNoA11yViolations(page);
     expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
     const search = page.getByRole("searchbox", { name: "Search jobs and people", exact: true });

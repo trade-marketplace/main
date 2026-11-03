@@ -36,9 +36,32 @@ test.describe("office queue preview states", () => {
         await expect(totals.getByText(visible, { exact: true })).toBeVisible();
         await expect(totals.getByText(hidden, { exact: true })).toBeHidden();
       }
+      for (const [phone, desktop, count, detail, status] of [
+        ["To price", "To price", 4, "oldest 26h", "Needs you"],
+        ["Extra work to price", "Extra work", 2, "oldest 3h", "Needs you"],
+        ["Cancel requests", "Cancellations", 1, "new", "Needs you"],
+        ["Waiting sign-off", "Sign-off", 3, "2 auto-release today", "Waiting"],
+        ["Unclaimed > 48h", "Unclaimed > 48h", 1, "Richmond", "Needs you"],
+      ] as const) {
+        await expect(totals.getByRole("button", { name: `${width < 600 ? phone : desktop} ${count} ${width < 600 ? status : detail}`, exact: true })).toBeVisible();
+      }
+      if (width < 600) await expect(totals.getByText("Richmond", { exact: true })).toBeHidden();
+      else await expect(totals.getByText("Richmond", { exact: true })).toBeVisible();
       await expect(page.getByRole("tab", { name: "Extra work (2)", exact: true })).toBeVisible();
       expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
       await expectNoA11yViolations(page);
+      await page.goto(href("all-clear"));
+      await expect(page.getByRole("group", { name: "Queue totals" }).getByText("Needs you", { exact: true })).toHaveCount(0);
+      await expect(page.getByRole("group", { name: "Queue totals" }).getByText("Waiting", { exact: true })).toHaveCount(0);
+      await expect(page.getByRole("group", { name: "Queue totals" }).getByRole("button", { name: "Unclaimed > 48h 0 —", exact: true })).toBeVisible();
+      await expectNoA11yViolations(page);
+    }
+    await page.setViewportSize({ width: 390, height: 844 });
+    for (const state of ["loading", "error"]) {
+      await page.goto(href(state));
+      const totals = page.getByRole("group", { name: "Queue totals" });
+      await expect(totals.getByText("Needs you", { exact: true })).toHaveCount(0);
+      await expect(totals.getByText("Waiting", { exact: true })).toHaveCount(0);
     }
   });
   test("KPI and keyboard tabs keep counts and URL aligned; Back restores state; / ignores form fields and menus", async ({ page }) => {

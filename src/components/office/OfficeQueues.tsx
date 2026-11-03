@@ -76,7 +76,7 @@ export function OfficeQueues({ query, data, loading = false, offline = false, ba
       {QUEUES.map(queue => { const kpi = data?.kpis[queue.key]; return <button key={queue.key} type="button" className={`tm-lift ${styles.kpi}`} data-overdue={kpi?.overdue || undefined} aria-pressed={!query.q && query.tab === queue.key} aria-disabled={!online || undefined} onClick={() => selectQueue(queue.key)}>
         <span className={styles.label}>{"phoneCardLabel" in queue ? <><span className={styles.desktopLabel}>{queue.label}</span><span className={styles.phoneLabel}>{queue.phoneCardLabel}</span></> : "cardLabel" in queue ? queue.cardLabel : queue.label}</span>
         {kpi ? <CountUp value={kpi.count} runKey={kpi.count} className={styles.number} /> : <Skeleton width="3rem" height="2rem" />}
-        <span className={styles.detail}>{kpi?.detail ?? "—"}</span>
+        <span className={styles.detail}><span className={styles.desktopLabel}>{kpi?.detail ?? "—"}</span><span className={styles.phoneLabel}>{kpi && kpi.count > 0 ? queue.phoneDetail : "—"}</span></span>
       </button>; })}
     </div>
     {data && <nav className={styles.related} aria-label="Other work"><Link href="/admin/jobs?status=customer">Waiting on customer ({data.waitingCustomer})</Link>{data.problemCount > 0 && !query.q && <Link href="#queue-problems">Problems ({data.problemCount})</Link>}</nav>}
