@@ -186,7 +186,9 @@ test.describe("signed-in office settings", () => {
     await dialog.getByRole("button", { name: "Save settings", exact: true }).click();
     const expired = page.getByRole("dialog", { name: "You’ve been logged out", exact: true });
     await expect(expired).toBeVisible();
+    await expectNoA11yViolations(page);
     await expired.getByRole("button", { name: "Log in again", exact: true }).click();
+    await expectNoA11yViolations(page);
     await expired.getByLabel("Password", { exact: true }).fill(SECURITY_PASSWORD);
     await Promise.all([
       page.waitForResponse(response => response.request().method() === "POST" && Boolean(response.request().postData()?.includes('"sharedRateCents":"80"'))),
