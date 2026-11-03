@@ -97,7 +97,7 @@ export function PostJobWizard({ ownerId = null, initialDraft = {}, initialManual
   const appliedHandoff = useRef<string | null>(null); const [consumedHandoff, setConsumedHandoff] = useState<string | null>(null);
   const memory = recover && edited?.data.postKey !== initialDraft.postKey ? undefined : edited;
   const baseDraft = memory ?? restored ?? initialWizardDraft(initialDraft, hasServerDraft || previewState === "photos", initialManualCategory);
-  const recoveryPending = Boolean(recover && !memory && local && !localEnvelopeMatchesInput(baseDraft, local));
+  const recoveryPending = Boolean(recover && !memory && local && (!localEnvelopeMatchesInput(baseDraft, local) || local.completedDescribe !== baseDraft.completedDescribe));
   const describedDraft = handoffKey && handoffKey !== consumedHandoff ? applyLandingHandoff(baseDraft, handoff) : baseDraft;
   const draft = queryHint ? { ...describedDraft, locationHint: queryHint } : describedDraft;
   const [saved, setSaved] = useState<boolean>();
@@ -174,7 +174,7 @@ export function PostJobWizard({ ownerId = null, initialDraft = {}, initialManual
         return;
       }
     }
-    const kept = keep(draft); let durable = kept.persisted; let savedToServer = false;
+    const kept = keep(draft); let durable = kept.persisted; let envelopePersisted = kept.persisted; let savedToServer = false;
     if (offline && !exit) return;
     if (ownerId && !offline) {
       pending.current = true; setBusy(true);
@@ -189,17 +189,22 @@ export function PostJobWizard({ ownerId = null, initialDraft = {}, initialManual
         savedToServer = true;
         // Unfinished text that the shared schema omits still needs local persistence before leaving.
         durable ||= typeof canonical.description === "string" && canonical.description === kept.draft.description.trim() && localEnvelopeMatchesInput(kept.draft, decodeWizardDraft(snapshot(), ownerId));
-        if (!exit && !durable && canClearStaleDescribe(kept.draft, decodeWizardDraft(snapshot(), ownerId))) {
-          try { localStorage.removeItem(DRAFT_STORAGE_KEY); durable = localStorage.getItem(DRAFT_STORAGE_KEY) === null; } catch { /* Keep memory and use the key-bound server fallback below. */ }
-        }
       } catch { setError(true); return; }
       finally { pending.current = false; setBusy(false); }
     } else if (previewState === "save-error") { setError(true); return; }
     // Local edits require Next; complete, validated owned server drafts can resume without a local marker.
     if (exit && !durable) { setError(true); return; }
-    if (!exit) keep({ ...kept.draft, completedDescribe: true });
+    if (!exit) {
+      const completed = keep({ ...kept.draft, completedDescribe: true });
+      envelopePersisted ||= completed.persisted;
+      durable = completed.persisted;
+      if (savedToServer && !durable && canClearStaleDescribe(completed.draft, decodeWizardDraft(snapshot(), ownerId))) {
+        try { localStorage.removeItem(DRAFT_STORAGE_KEY); durable = localStorage.getItem(DRAFT_STORAGE_KEY) === null; } catch { /* Keep memory and use the key-bound server fallback below. */ }
+      }
+    }
     if (durable) { setSaved(true); setError(false); }
-    const destination = new URL(durable ? withoutLandingFallback(nextHref) : nextHref, window.location.origin);
+    const destination = new URL(envelopePersisted || durable ? withoutLandingFallback(nextHref) : nextHref, window.location.origin);
+    if (!exit && savedToServer) for (const name of HANDOFF_PARAMS) destination.searchParams.delete(name);
     if (!exit && savedToServer && !durable) destination.searchParams.set(SERVER_DRAFT_PARAM, kept.draft.data.postKey!);
     router.push(exit ? "/" : `${destination.pathname}${destination.search}`);
   }
