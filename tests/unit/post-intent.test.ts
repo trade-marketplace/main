@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { DRAFT_STORAGE_KEY } from "@/lib/job-draft";
 import { initialWizardDraft, encodeWizardDraft } from "@/lib/post-job-wizard";
-import { bindPostIntent, clearPostIntent, clearPostedLocalDraft, createPostIntent, decodePostIntent, matchesPostIntent, POST_INTENT_STORAGE_KEY, writePostIntent } from "@/lib/jobs/post-intent";
+import { abandonPostIntent, bindPostIntent, clearPostIntent, clearPostedLocalDraft, createPostIntent, decodePostIntent, matchesPostIntent, POST_INTENT_STORAGE_KEY, writePostIntent } from "@/lib/jobs/post-intent";
 
 const owner = "11111111-1111-4111-8111-111111111113";
 const other = "11111111-1111-4111-8111-111111111114";
@@ -12,6 +12,17 @@ function memory() {
   return { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => { values.set(key, value); }, removeItem: (key: string) => { values.delete(key); } };
 }
 describe("explicit owner-bound posting intent", () => {
+  it("abandons only the exact attempted intent, retaining newer-tab intent and all guest draft content", () => {
+    const storage = memory(); const raw = JSON.stringify(createPostIntent(draft, null, ["original"]));
+    storage.setItem(POST_INTENT_STORAGE_KEY, raw); storage.setItem(DRAFT_STORAGE_KEY, encodeWizardDraft(draft, null));
+    const original = storage.getItem(DRAFT_STORAGE_KEY);
+    const newer = JSON.stringify(createPostIntent({ ...draft, description: "Repair the other tap upstairs." }, null, ["newer"]));
+    storage.setItem(POST_INTENT_STORAGE_KEY, newer); abandonPostIntent(storage, [raw]);
+    expect(storage.getItem(POST_INTENT_STORAGE_KEY)).toBe(newer);
+    storage.setItem(POST_INTENT_STORAGE_KEY, raw); abandonPostIntent(storage, [raw]);
+    expect(storage.getItem(POST_INTENT_STORAGE_KEY)).toBeNull(); expect(storage.getItem(DRAFT_STORAGE_KEY)).toBe(original);
+    expect(() => abandonPostIntent({ getItem() { throw new Error("blocked"); }, removeItem() { throw new Error("blocked"); } }, [raw])).not.toThrow();
+  });
   it("never automatically posts content edited after the original Post-it gesture", () => {
     const complete = { ...draft, data: { ...draft.data, photoPaths: [], addressLine1: "1 Example Street", suburb: "Gladstone", city: "Invercargill", locationSource: "TYPED" as const, anyTime: true } };
     const intent = createPostIntent(complete, null, ["one"]); const now = new Date("2026-11-04T00:00:00Z");

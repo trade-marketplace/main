@@ -100,3 +100,4 @@
   .photoForm [data-empty="true"] [data-photo-add] { aspect-ratio: auto; min-height: 160px; }
 }
 @media (max-width: 359px) { .navActions .saved { display: none; } .card { padding: var(--trade-space-4); } .schedule input[name="time-windows"] + span { padding-inline: var(--trade-space-1); font-size: var(--trade-fs-caption); } }
+.entryRecovery { display: grid; gap: var(--trade-space-4); }
