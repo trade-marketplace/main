@@ -3,7 +3,7 @@ import type { Trade } from "@/generated/prisma/client";
 import type { JobTimeWindowView, WorkerJobListView } from "@/server/views/jobs";
 import { roundKm } from "@/lib/geo/distance";
 
-export const BOARD_PAGE_SIZE = 12;
+export const BOARD_PAGE_SIZE = 20;
 export const BOARD_TRADES = ["ELECTRICAL", "PLUMBING", "GAS", "CONSTRUCTION", "OTHER"] as const;
 export const BOARD_WHEN = ["asap", "week", "flexible"] as const;
 export type BoardKind = "all" | "ready" | "estimate" | "bounty";

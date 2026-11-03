@@ -77,9 +77,9 @@ describe.skipIf(!testDatabaseUrl)("eligible job board real PostgreSQL reader", (
 
   it("paginates stable ties without duplicates even if the anchor disappears; current proof changes invalidate continuation", async () => {
     const actor = await worker(), owner = await person();
-    for (let i = 0; i < 15; i++) await job({ owner: owner.id, id: `13800000-0000-4000-8000-${String(i).padStart(12, "0")}` });
+    for (let i = 0; i < 23; i++) await job({ owner: owner.id, id: `13800000-0000-4000-8000-${String(i).padStart(12, "0")}` });
     const first = boardOf(await loadJobBoard(schema.db, actor, DEFAULT_BOARD_QUERY, {}, deps()));
-    expect(first.cards).toHaveLength(12); expect(first.nextCursor).not.toBeNull();
+    expect(first.cards).toHaveLength(20); expect(first.nextCursor).not.toBeNull();
     await schema.db.job.delete({ where: { id: first.cards.at(-1)!.id } });
     const next = boardOf(await loadJobBoard(schema.db, actor, DEFAULT_BOARD_QUERY, { cursor: first.nextCursor }, deps()));
     expect(next.cards).toHaveLength(3); expect(next.cards.some(card => first.cards.some(previous => previous.id === card.id))).toBe(false);
@@ -89,16 +89,16 @@ describe.skipIf(!testDatabaseUrl)("eligible job board real PostgreSQL reader", (
 
   it("signs photos only on final eligible cards, never candidates or update polling, and survives unavailable storage", async () => {
     const actor = await worker(), owner = await person(), signer = deps();
-    for (let i = 0; i < 14; i++) {
+    for (let i = 0; i < 22; i++) {
       const row = await job({ owner: owner.id });
       await schema.db.jobPhoto.create({ data: { jobId: row.id, path: `private/${row.id}.jpg`, position: 0 } });
     }
     const bad = await job({ category: "ELECTRICAL" }); await schema.db.jobPhoto.create({ data: { jobId: bad.id, path: "not-authorized.jpg", position: 0 } });
     const board = boardOf(await loadJobBoard(schema.db, actor, DEFAULT_BOARD_QUERY, {}, signer));
-    expect(signer.signPhoto).toHaveBeenCalledTimes(12);
+    expect(signer.signPhoto).toHaveBeenCalledTimes(20);
     expect(signer.signPhoto.mock.calls.every(call => board.cards.some(card => card.id === call[1]))).toBe(true);
     signer.signPhoto.mockClear();
-    expect(await newBoardJobs(schema.db, actor, DEFAULT_BOARD_QUERY, { since: "2026-11-01T00:00:00Z", knownIds: [], savedIds: [] }, signer)).toEqual({ ok: true, count: 14 });
+    expect(await newBoardJobs(schema.db, actor, DEFAULT_BOARD_QUERY, { since: "2026-11-01T00:00:00Z", knownIds: [], savedIds: [] }, signer)).toEqual({ ok: true, count: 22 });
     expect(signer.signPhoto).not.toHaveBeenCalled();
     const failed = boardOf(await loadJobBoard(schema.db, actor, DEFAULT_BOARD_QUERY, {}, { now: () => NOW, signPhoto: async () => { throw Error("outage"); } }));
     expect(failed.cards.every(card => card.photoUrl === null)).toBe(true);

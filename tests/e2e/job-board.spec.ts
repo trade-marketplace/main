@@ -41,7 +41,7 @@ test.describe("guarded job board states", () => {
     await page.getByRole("link", { name: "Back to jobs", exact: true }).click();
     await expect(page).not.toHaveURL(/view=map/);
     await page.getByRole("tab", { name: /^Quote bounty/ }).click();
-    await expect(page.locator('#board-cards [data-kind="bounty"]')).toHaveCount(4);
+    await expect(page.locator('#board-cards [data-kind="bounty"]')).toHaveCount(5);
     await expect(page.locator('#board-cards [data-kind="estimated"]')).toHaveCount(0);
     await page.getByRole("tab", { name: /^Needs an estimate/ }).click();
     await expect(page.locator("#board-cards article")).toHaveCount(6);
@@ -100,7 +100,7 @@ test.describe("signed-in eligible board", () => {
     }
     await db.query("INSERT INTO worker_profiles(user_id,identity_checked_at,identity_checked_by_id,base_suburb,area_lat,area_lng,area_radius_km,available,updated_at) VALUES($1,now(),$2,'Invercargill',-46.4132,168.3538,50,false,now()) ON CONFLICT(user_id) DO UPDATE SET identity_checked_at=now(),identity_checked_by_id=$2,paused_at=NULL,area_radius_km=50", [SECURITY_TRADIE.id, office]);
     await db.query("DELETE FROM jobs WHERE id::text LIKE '13800000-%'");
-    for (let i = 1; i <= 15; i++) {
+    for (let i = 1; i <= 23; i++) {
       await db.query("INSERT INTO jobs(id,customer_id,category,status,title,description,address_line1,suburb,city,lat,lng,approx_lat,approx_lng,asap,any_time) VALUES($1,$2,'OTHER','REVIEW',$3,'Call +64211111111','1 Private Street','Windsor','Invercargill',-46.4132,168.3538,-46.4117,168.3538,$4,true)", [jobId(i), SECURITY_USER.id, `Board job ${i}`, i % 2 === 0]);
       if (i % 3 === 0) {
         await db.query("INSERT INTO job_pricing(job_id,worker_rate_cents,min_minutes,holiday_pay_bps,on_cost_bps,margin_bps,gst_bps,minutes,materials_cents,worker_gross_cents,holiday_pay_cents,on_cost_cents,margin_cents,gst_cents) VALUES($1,6000,60,800,2000,2000,1500,60,0,6000,480,1000,2000,1500)", [jobId(i)]);
@@ -154,6 +154,10 @@ test.describe("signed-in eligible board", () => {
       await page.setViewportSize({ width, height: 1000 }); expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true); await expectNoA11yViolations(page);
       if (process.env.BOARD_E2E_SCREENSHOTS_DIR && [390, 1440].includes(width)) await page.screenshot({ path: join(process.env.BOARD_E2E_SCREENSHOTS_DIR, `actual-${width}.png`), fullPage: true, animations: "disabled" });
     }
+    await expect(page.locator("#board-cards article")).toHaveCount(20);
+    await page.getByRole("button", { name: "Load more jobs", exact: true }).scrollIntoViewIfNeeded();
+    await expect(page.locator("#board-cards article")).toHaveCount(23);
+    expect(new Set(await page.locator("#board-cards article h2").allTextContents()).size).toBe(23);
     await db.query("INSERT INTO jobs(id,customer_id,category,status,title,description,address_line1,suburb,city,lat,lng,approx_lat,approx_lng,any_time) VALUES($1,$2,'OTHER','REVIEW','New board job','Work','1 Private Street','Windsor','Invercargill',-46.4132,168.3538,-46.4120,168.3538,true)", [jobId(50), SECURITY_USER.id]);
     await page.evaluate(() => window.dispatchEvent(new Event("focus")));
     await page.getByRole("button", { name: "1 new job", exact: true }).click();

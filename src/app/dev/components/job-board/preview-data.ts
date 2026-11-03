@@ -12,7 +12,7 @@ export function previewBoard(state: string): BoardPage {
   worker.id = "22222222-2222-4222-8222-222222222138";
   const viewer = { userId: worker.id, role: "TRADIE" as const };
   const titles = ["Sub wiring", "Control panel", "Power point", "Switchboard", "Light switch", "Outdoor lights", "Hot water cylinder", "Move a couch + boxes"];
-  const raw: JobSummarySource[] = Array.from({ length: 20 }, (_, i) => ({ id: `13800000-0000-4000-8000-${String(i + 1).padStart(12, "0")}`, jobNumber: i + 1,
+  const raw: JobSummarySource[] = Array.from({ length: 24 }, (_, i) => ({ id: `13800000-0000-4000-8000-${String(i + 1).padStart(12, "0")}`, jobNumber: i + 1,
     title: titles[i % titles.length], category: i % 4 === 3 ? "OTHER" : "ELECTRICAL", status: i % 5 === 2 ? "QUOTE_BOUNTY" : i % 3 === 1 ? "REVIEW" : "BOOKABLE",
     customerId: "customer-example", workerId: null, suburb: ["Windsor", "Gladstone", "Rosedale"][i % 3], city: "Invercargill", asap: i % 4 === 1,
     createdAt: new Date(PREVIEW_NOW.getTime() - i * 60_000), updatedAt: PREVIEW_NOW, lat: -46.4132 + i * .001, lng: 168.3538,
