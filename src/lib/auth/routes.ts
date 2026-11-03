@@ -22,13 +22,13 @@ export function homeForRole(role: Role): string {
  * - `guest`: log-in and sign-up. Someone already signed in is sent to their home.
  * - `landing`: `/`. Signed out it's the public landing page; signed in it's the customer home, so a tradie or
  *   office user is sent to their own home (WEBAPP_SPEC A01).
- * - `roles`: signed in with one of these roles. Signed out → log in; wrong role → their home.
+ * - `roles`: signed in with one of these roles. Signed out → log in unless allowGuest; wrong role → their home.
  */
 export type RouteAccess =
   | { kind: "public" }
   | { kind: "guest" }
   | { kind: "landing" }
-  | { kind: "roles"; roles: readonly Role[] };
+  | { kind: "roles"; roles: readonly Role[]; allowGuest?: boolean };
 
 const CUSTOMER: readonly Role[] = ["CUSTOMER"];
 const TRADIE: readonly Role[] = ["TRADIE"];
@@ -47,7 +47,7 @@ const RULES: readonly Rule[] = [
   { pattern: /^\/admin(\/.*)?$/, access: { kind: "roles", roles: ADMIN } },
 
   // Customer only.
-  { pattern: /^\/jobs\/new$/, access: { kind: "roles", roles: CUSTOMER } },
+  { pattern: /^\/jobs\/new$/, access: { kind: "roles", roles: CUSTOMER, allowGuest: true } },
   { pattern: /^\/jobs\/[^/]+\/problem$/, access: { kind: "roles", roles: CUSTOMER } },
   { pattern: /^\/pay(\/.*)?$/, access: { kind: "roles", roles: CUSTOMER } },
   { pattern: /^\/receipts(\/.*)?$/, access: { kind: "roles", roles: CUSTOMER } },
@@ -104,7 +104,7 @@ export function decideRoute(pathname: string, viewer: RouteViewer, pathWithSearc
     case "landing":
       return viewer && viewer.role !== "CUSTOMER" ? { action: "redirect", to: homeForRole(viewer.role) } : ALLOW;
     case "roles":
-      if (!viewer) return { action: "redirect", to: loginPath(pathWithSearch) };
+      if (!viewer) return access.allowGuest ? ALLOW : { action: "redirect", to: loginPath(pathWithSearch) };
       return access.roles.includes(viewer.role) ? ALLOW : { action: "redirect", to: homeForRole(viewer.role) };
   }
 }

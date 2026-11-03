@@ -24,22 +24,18 @@ test.describe("public service pages", () => {
     });
   }
   for (const category of CATEGORIES) {
-    test(`${category}: public SEO metadata, live state and typed job survive login and signup handoffs`, async ({ page }) => {
+    test(`${category}: public SEO metadata, live state and typed job survive the guest wizard handoff`, async ({ page }) => {
       await page.goto(`/services/${category}`);
       await expect(page).toHaveTitle(/in Invercargill.*Trade Marketplace/);
       await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", new RegExp(`/services/${category}$`));
       await page.getByRole("form", { name: formName }).getByRole("textbox").fill("My job & more");
       await page.getByRole("form", { name: formName }).getByRole("textbox").press("Enter");
-      await expect(page).toHaveURL(/\/login\?next=/);
-      const next = new URL(new URL(page.url()).searchParams.get("next")!, "https://example.test");
+      await expect(page).toHaveURL(/\/jobs\/new\?/);
+      const next = new URL(page.url());
       expect(next.pathname).toBe("/jobs/new"); expect(next.searchParams.get("type")).toBe(category);
       expect(next.searchParams.get("description")).toBe("My job & more");
-      await page.getByRole("link", { name: "Sign up", exact: true }).click();
-      await page.getByRole("radio", { name: /I need a job done/ }).check();
-      await page.getByRole("button", { name: "Next", exact: true }).click();
-      await expect(page).toHaveURL(/\/signup\/customer\?next=/);
-      expect(new URL(page.url()).searchParams.get("next")).toBe(next.pathname + next.search);
-      await page.goBack(); await expect(page.getByRole("heading", { name: "Create account", exact: true })).toBeVisible();
+      await expect(page.getByRole("textbox")).toHaveValue("My job & more");
+      await expect(page.locator('input[name="job-type"]:checked')).toHaveValue(category.toUpperCase());
     });
   }
   test("unknown trades are 404; state query flags cannot invent availability or a successful signup", async ({ page }) => {
@@ -55,9 +51,10 @@ test.describe("public service pages", () => {
       await page.goto("/services/other");
       await page.getByRole("form", { name: formName }).getByRole("textbox").fill("An unusual job");
       await page.getByRole("link", { name: job, exact: true }).press("Enter");
-      await expect(page).toHaveURL(/\/login\?next=/);
-      const next = new URL(new URL(page.url()).searchParams.get("next")!, "https://example.test");
+      await expect(page).toHaveURL(/\/jobs\/new\?/);
+      const next = new URL(page.url());
       expect(next.searchParams.get("type")).toBe("other"); expect(next.searchParams.get("description")).toBe(expected);
+      await expect(page.getByRole("textbox")).toHaveValue(expected);
       expect(await page.evaluate(() => JSON.parse(sessionStorage.getItem("tm-post-job-start")!))).toMatchObject({ category: "other", description: expected });
     }
   });
@@ -65,17 +62,19 @@ test.describe("public service pages", () => {
     await page.addInitScript(() => { Object.defineProperty(window, "sessionStorage", { get() { throw new Error("blocked"); } }); });
     await page.goto("/services/electrical");
     await expect(page.locator("header[data-solid]")).toHaveAttribute("data-solid", /true|false/);
-    await page.keyboard.press("/");
     const input = page.getByRole("form", { name: formName }).getByRole("textbox");
-    await expect(input).toBeFocused(); await input.fill("Safe & local");
+    // Wait for the keyboard handler to hydrate rather than losing the first key to server-rendered HTML.
+    await expect.poll(async () => { await page.keyboard.press("/"); return input.evaluate((element) => document.activeElement === element); }).toBe(true);
+    await input.fill("Safe & local");
     await input.press("Tab");
     const location = page.getByRole("button", { name: /Location: Invercargill/ });
     await expect(location).toBeFocused(); expect(await location.evaluate((el) => getComputedStyle(el).outlineStyle)).toBe("solid");
     await location.press("Enter"); await expect(page.getByRole("dialog", { name: "Location", exact: true })).toBeVisible();
     await page.keyboard.press("Escape"); await expect(location).toBeFocused();
     await page.getByRole("button", { name: "Get a price", exact: true }).click();
-    await expect(page).toHaveURL(/\/login\?next=/);
-    expect(new URL(new URL(page.url()).searchParams.get("next")!, "https://example.test").searchParams.get("description")).toBe("Safe & local");
+    await expect(page).toHaveURL(/\/jobs\/new\?/);
+    expect(new URL(page.url()).searchParams.get("description")).toBe("Safe & local");
+    await expect(page.getByRole("textbox")).toHaveValue("Safe & local");
   });
 });
 
