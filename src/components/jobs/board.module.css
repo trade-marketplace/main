@@ -1,0 +1,56 @@
+.page { max-width: 1440px; min-height: calc(100dvh - var(--trade-header-h) - var(--trade-space-12)); margin: 0 auto; padding: var(--trade-space-8); color: var(--trade-forest); background: var(--trade-paper); }
+.heading { display: flex; justify-content: space-between; align-items: center; gap: var(--trade-space-4); margin-bottom: var(--trade-space-6); }
+.heading h1 { font: 900 32px/1.15 var(--trade-font-heading); font-variation-settings: var(--trade-display-axes); margin: 0 0 var(--trade-space-2); }
+.heading p { margin: 0; color: var(--trade-text-2); font-size: 14px; }
+.layout { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: var(--trade-space-6); }
+.sidebar, .results { min-width: 0; }
+.filterToggle { display: none; }
+.filters { display: grid; gap: var(--trade-space-6); padding: var(--trade-space-6); border: 1px solid var(--trade-field-stroke); border-radius: var(--trade-radius-card); background: var(--trade-surface); }
+.filters fieldset { border: 0; padding: 0; margin: 0; display: grid; gap: var(--trade-space-3); min-width: 0; }
+.filters legend { font-size: 14px; font-weight: 750; margin-bottom: var(--trade-space-3); }
+.area { margin: calc(-1 * var(--trade-space-4)) 0 0; color: var(--trade-text-2); font-size: 12px; }
+.toolbar { display: flex; align-items: center; justify-content: space-between; gap: var(--trade-space-4); padding: var(--trade-space-4) 0; font-size: 13px; color: var(--trade-text-2); }
+.toolbar > div { width: 150px; flex-shrink: 0; }
+.grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--trade-space-4); }
+.card { min-width: 0; background: var(--trade-surface); border-radius: var(--trade-radius-card); border: 1px solid var(--trade-field-stroke); }
+.card > article > div { border-radius: var(--trade-radius-card) var(--trade-radius-card) 0 0; }
+.card [data-kind="estimate"] { background: var(--trade-surface); color: var(--trade-text); }
+.cardFooter { display: grid; gap: var(--trade-space-1); padding: var(--trade-space-3); font-size: 12px; line-height: 1.4; }
+.cardFooter strong { font-weight: 650; }
+.cardFooter span { color: var(--trade-text-2); }
+.skeletonCard { display: grid; grid-template-rows: 220px 14px 12px; gap: var(--trade-space-3); padding-bottom: var(--trade-space-4); border-radius: var(--trade-radius-card); overflow: hidden; background: var(--trade-surface); }
+.skeletonCard > :not(:first-child) { margin-left: var(--trade-space-3); }
+.more, .newJobs { display: flex; justify-content: center; padding: var(--trade-space-6) 0; }
+.newJobs { padding-top: 0; }
+.end { text-align: center; color: var(--trade-text-2); font-size: 13px; margin: var(--trade-space-6) 0; }
+.empty, .boundary { background: var(--trade-surface); border: 1px solid var(--trade-field-stroke); border-radius: var(--trade-radius-card); padding: var(--trade-space-6); }
+.empty > p { margin: 0 auto var(--trade-space-4); text-align: center; font-size: 14px; line-height: 1.6; }
+.boundary { display: grid; gap: var(--trade-space-6); }
+.boundary h1, .boundary h2 { margin: 0; font-family: var(--trade-font-heading); }
+.detail { min-height: calc(100dvh - var(--trade-header-h) - var(--trade-space-12)); padding: var(--trade-space-8); background: var(--trade-paper); }
+.detail .boundary { max-width: 720px; margin-inline: auto; }
+.detail h1 { font-weight: 900; font-variation-settings: var(--trade-display-axes); }
+.detail p { line-height: 1.6; }
+@media (max-width: 1199px) { .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 900px) { .layout { grid-template-columns: 200px minmax(0, 1fr); gap: var(--trade-space-4); } .filters { padding: var(--trade-space-4); } .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 650px) {
+ .page { padding: var(--trade-space-6) var(--trade-space-4); }
+ .heading { align-items: flex-start; flex-wrap: wrap; } .heading > div:first-child { width: 100%; } .heading h1 { font-size: 26px; }
+ .layout { display: block; } .sidebar { margin-bottom: var(--trade-space-4); }
+ .filterToggle { display: block; border: 1px solid var(--trade-field-stroke); border-radius: var(--trade-radius-field); background: var(--trade-surface); color: var(--trade-text); min-height: 44px; padding: var(--trade-space-3) var(--trade-space-4); font: inherit; font-weight: 650; cursor: pointer; }
+ .filterToggle:focus-visible { outline: var(--trade-focus-ring, 2px solid var(--trade-focus)); outline-offset: 2px; }
+ .filters { margin-top: var(--trade-space-3); }
+ .filters[data-open="false"] { display: none; }
+ .filters { grid-template-columns: 1fr 1fr; gap: var(--trade-space-4); }
+ .filters fieldset:nth-of-type(2) { grid-row: span 2; }
+ .area { margin: calc(-1 * var(--trade-space-2)) 0 0; }
+ .filters > button { justify-self: start; }
+ .toolbar { align-items: flex-end; font-size: 12px; } .toolbar > div { width: 125px; }
+ .grid { gap: var(--trade-space-3); }
+ /* The kit reserves the bookmark column. Wrap the board's distance/suburb metadata within it, so
+    complete suburb names remain visible without changing type size or the shared tile layout. */
+ .card > article > div > div > span { white-space: normal; text-overflow: clip; overflow: visible; }
+ .cardFooter { padding: var(--trade-space-3) var(--trade-space-2); font-size: 12px; }
+ .empty, .boundary { padding: var(--trade-space-4); }
+ .detail { padding: var(--trade-space-4); }
+}

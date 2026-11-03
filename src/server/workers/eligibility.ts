@@ -2,7 +2,7 @@ import "server-only";
 
 import type { JobStatus, Prisma, Trade } from "@/generated/prisma/client";
 import { haversineKm, isInNewZealand, isPoint, type Point } from "@/lib/geo/distance";
-import { APPROX_MAX_METRES, APPROX_MIN_METRES } from "@/server/geo/approximate";
+import { jobApproximatePin } from "@/server/geo/job-location";
 import { hasCurrentTradeLicence, workerBasicProofFailure, WORKER_VERIFICATION_SELECT, type BasicProofFailure } from "./verification";
 
 export const WORKER_ELIGIBILITY_SELECT = {
@@ -26,11 +26,15 @@ export type EligibilityContext = { now?: Date; enabledTrades?: readonly Trade[] 
 
 /** Fixed preclaim pin; no exact fallback or new random point. Bounds match #97's persisted privacy ring. */
 export function eligibilityPin(job: EligibilityJob): Point | null {
-  const exact = typeof job.lat === "number" && typeof job.lng === "number" ? { lat: job.lat, lng: job.lng } : null;
-  const approximate = typeof job.approxLat === "number" && typeof job.approxLng === "number" ? { lat: job.approxLat, lng: job.approxLng } : null;
-  if (!exact || !approximate || !isPoint(exact) || !isPoint(approximate) || !isInNewZealand(approximate)) return null;
-  const metres = haversineKm(exact, approximate) * 1000;
-  return metres >= APPROX_MIN_METRES - 0.000001 && metres <= APPROX_MAX_METRES + 0.000001 ? approximate : null;
+  const pin = jobApproximatePin(job);
+  return pin && isInNewZealand(pin) ? pin : null;
+}
+
+export function workerWorkArea(worker: EligibilityWorker | null): { centre: Point; radiusKm: number } | null {
+  const area = worker?.workerProfile;
+  const centre = typeof area?.areaLat === "number" && typeof area.areaLng === "number" ? { lat: area.areaLat, lng: area.areaLng } : null;
+  return area?.baseSuburb?.trim() && centre && isPoint(centre) && isInNewZealand(centre) && typeof area.areaRadiusKm === "number" && Number.isFinite(area.areaRadiusKm) && area.areaRadiusKm > 0
+    ? { centre, radiusKm: area.areaRadiusKm } : null;
 }
 
 export function eligibilityFailure(worker: EligibilityWorker | null, job: EligibilityJob, intent: EligibilityIntent = "discover", context: EligibilityContext = {}): EligibilityFailure | null {
@@ -45,12 +49,11 @@ export function eligibilityFailure(worker: EligibilityWorker | null, job: Eligib
     if (!worker.workerTrades.some(row => row.trade === job.category)) return "trade-mismatch";
     if (!hasCurrentTradeLicence(worker, job.category, now)) return "licence-required";
   }
-  const area = worker.workerProfile!;
-  const centre = typeof area.areaLat === "number" && typeof area.areaLng === "number" ? { lat: area.areaLat, lng: area.areaLng } : null;
-  if (!area.baseSuburb?.trim() || !centre || !isPoint(centre) || !isInNewZealand(centre) || typeof area.areaRadiusKm !== "number" || !Number.isFinite(area.areaRadiusKm) || area.areaRadiusKm <= 0) return "work-area-required";
+  const area = workerWorkArea(worker);
+  if (!area) return "work-area-required";
   const pin = eligibilityPin(job);
   if (!pin) return "location-unavailable";
-  return haversineKm(centre, pin) <= area.areaRadiusKm ? null : "outside-work-area";
+  return haversineKm(area.centre, pin) <= area.radiusKm ? null : "outside-work-area";
 }
 
 export const canClaim = (worker: EligibilityWorker | null, job: EligibilityJob, context: EligibilityContext = {}) => eligibilityFailure(worker, job, "claim", context) === null;
