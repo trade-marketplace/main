@@ -69,7 +69,7 @@ test.describe("customer Describe draft through the real server action", () => {
     await expect(page).toHaveURL(`${app}/jobs/new`);
     await page.getByRole("textbox", { name: "Describe the job", exact: true }).fill("A leaking tap downstairs needs repair.");
     await expect(page.getByText("Draft saved", { exact: true })).toHaveCount(0);
-    await page.getByRole("button", { name: "Next", exact: true }).click(); await expect(page.getByRole("heading", { name: "Photos", exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Next", exact: true }).click(); await expect(page.getByRole("heading", { name: "Add some photos", exact: true })).toBeVisible();
     expect((await db.query("SELECT data FROM job_drafts WHERE profile_id=$1", [SECURITY_USER.id])).rows[0].data.description).toBe("A leaking tap downstairs needs repair.");
     await page.getByRole("link", { name: "Back", exact: true }).click(); await page.getByRole("textbox", { name: "Describe the job", exact: true }).fill("Li");
     await page.getByRole("button", { name: "Save & exit", exact: true }).click(); await expect(page.getByRole("textbox", { name: "Describe the job", exact: true })).toHaveValue("Li");

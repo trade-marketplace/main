@@ -26,7 +26,7 @@ test("blocked storage allows in-memory Next/Back with truthful warning, then saf
     Storage.prototype.setItem = function(name, value) { if (name === key && !Reflect.get(window, "allowDraftStorage")) throw new DOMException("Storage blocked", "QuotaExceededError"); original.call(this, name, value); };
   }, DRAFT_STORAGE_KEY);
   await page.goto("/jobs/new"); await page.getByRole("textbox", { name: "Describe the job", exact: true }).fill("Repair a leaking tap downstairs.");
-  await page.getByRole("button", { name: "Next", exact: true }).click(); await expect(page.getByRole("heading", { name: "Photos", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Next", exact: true }).click(); await expect(page.getByRole("heading", { name: "Add some photos", exact: true })).toBeVisible();
   await expect(page.getByText("Couldn’t save.", { exact: true })).toBeVisible(); await expect(page.getByText("Draft saved", { exact: true })).toHaveCount(0);
   await page.getByRole("link", { name: "Back", exact: true }).click(); await expect(page.getByRole("textbox", { name: "Describe the job", exact: true })).toHaveValue("Repair a leaking tap downstairs.");
   await page.getByRole("button", { name: "Save & exit", exact: true }).click(); await expect(page.getByRole("heading", { name: "What needs doing?", exact: true })).toBeVisible();

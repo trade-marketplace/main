@@ -263,4 +263,38 @@ test.describe("signed-in draft photos through real actions, private Storage tran
     await page.getByRole("button", { name: "Next", exact: true }).click(); await expect(page.getByRole("heading", { name: "Add some photos", exact: true })).toBeVisible();
     expect((await db.query("SELECT data FROM job_drafts WHERE profile_id=$1", [SECURITY_USER.id])).rows[0].data.postKey).toBe(first.postKey);
   });
+  for (const mode of ["blocked", "cached-file"] as const) test(`server-only photos remain usable with IndexedDB ${mode}: preview → reorder → Next → Back → exit`, async ({ page }) => {
+    const key = crypto.randomUUID(); const paths = ["a", "b"].map(letter => `drafts/${SECURITY_USER.id}/${key}/${letter.repeat(32)}.webp`);
+    const bytes = await sharp({ create: { width: 120, height: 90, channels: 3, background: "green" } }).webp().toBuffer();
+    for (const path of paths) {
+      storage.objects.set(`photos/${path}`, bytes);
+      await db.query("INSERT INTO draft_photo_cleanup(path,user_id,post_key,check_after) VALUES($1,$2,$3,now()+interval '1 day')", [path, SECURITY_USER.id, key]);
+    }
+    const data = { postKey: key, description: "Check the upstairs lights and wiring.", category: "ELECTRICAL", photoPaths: paths };
+    await db.query("INSERT INTO job_drafts(profile_id,data,updated_at) VALUES($1,$2,now()) ON CONFLICT(profile_id) DO UPDATE SET data=EXCLUDED.data", [SECURITY_USER.id, data]);
+    if (mode === "blocked") await page.addInitScript(() => { Object.defineProperty(window, "indexedDB", { configurable: true, get() { throw new DOMException("Storage blocked", "SecurityError"); } }); });
+    else {
+      await page.goto(`${app}/jobs/new`);
+      await page.evaluate(async ({ owner, key, paths, bytes }) => {
+        const files = paths.map((path, index) => ({ id: `cached-${index}`, name: `cached-${index + 1}.jpg`, path, file: new File([Uint8Array.from(atob(bytes), char => char.charCodeAt(0))], `cached-${index + 1}.jpg`, { type: "image/webp" }), prepared: true }));
+        await new Promise<void>((resolve, reject) => {
+          const request = indexedDB.open("trade.job-photos.v1", 1); request.onupgradeneeded = () => request.result.createObjectStore("drafts"); request.onerror = () => reject(request.error);
+          request.onsuccess = () => { const db = request.result; const tx = db.transaction("drafts", "readwrite"); tx.objectStore("drafts").put(files, `${owner}:${key}`); tx.oncomplete = () => { db.close(); resolve(); }; tx.onabort = () => reject(tx.error); };
+        });
+      }, { owner: SECURITY_USER.id, key, paths, bytes: bytes.toString("base64") });
+      await page.addInitScript(() => { IDBObjectStore.prototype.put = function() { throw new DOMException("Storage full", "QuotaExceededError"); }; });
+    }
+    const writes = storage.events.filter(event => event.method === "PUT").length;
+    await login(page, SECURITY_USER.email, "/jobs/new?step=photos");
+    const grid = page.getByRole("list", { name: "Photos", exact: true }); await expect(grid.getByRole("img")).toHaveCount(2);
+    await expect(page.getByRole("button", { name: "Next", exact: true })).not.toHaveAttribute("aria-disabled", "true");
+    await expect(page.getByText("Couldn’t save.", { exact: true })).toHaveCount(0);
+    await page.getByRole("button", { name: `Photo options ${mode === "blocked" ? "Photo 2" : "cached-2.jpg"}`, exact: true }).click(); await page.getByRole("menuitem", { name: "Make cover", exact: true }).click();
+    await expect.poll(async () => (await db.query("SELECT data->'photoPaths' AS paths FROM job_drafts WHERE profile_id=$1", [SECURITY_USER.id])).rows[0].paths).toEqual([...paths].reverse());
+    await page.getByRole("button", { name: "Next", exact: true }).click(); await expect(page.getByRole("heading", { name: "Where & when", exact: true })).toBeVisible();
+    await page.getByRole("link", { name: "Back", exact: true }).click(); await expect(page.getByRole("button", { name: "Next", exact: true })).not.toHaveAttribute("aria-disabled", "true");
+    await expectNoA11yViolations(page); await page.getByRole("button", { name: "Save & exit", exact: true }).click(); await expect(page).toHaveURL(`${app}/`);
+    expect((await db.query("SELECT data->'photoPaths' AS paths FROM job_drafts WHERE profile_id=$1", [SECURITY_USER.id])).rows[0].paths).toEqual([...paths].reverse());
+    expect(storage.events.filter(event => event.method === "PUT")).toHaveLength(writes);
+  });
 });
