@@ -16,11 +16,26 @@ export type WorkerVerification = Prisma.ProfileGetPayload<{ select: typeof WORKE
 
 type LicenceProof = NonNullable<WorkerVerification["workerTrades"][number]["licence"]>;
 const provedAt = (at: Date | null, now: Date) => at instanceof Date && Number.isFinite(at.getTime()) && at.getTime() <= now.getTime();
+export type WorkerBasicProof = Pick<WorkerVerification, "role" | "email" | "emailVerifiedAt" | "workerProfile">;
+export type BasicProofFailure = "worker-required" | "email-required" | "identity-required" | "worker-paused";
+
+/** Claim/discovery basics are deliberately broader than the badge: phone confirmation is badge-only. */
+export function workerBasicProofFailure(worker: WorkerBasicProof | null | undefined, now = new Date()): BasicProofFailure | null {
+  if (!worker || worker.role !== "TRADIE" || !Number.isFinite(now.getTime())) return "worker-required";
+  if (!worker.workerProfile || !worker.workerProfile.identityCheckedById || !provedAt(worker.workerProfile.identityCheckedAt, now)) return "identity-required";
+  if (worker.workerProfile.pausedAt !== null) return "worker-paused";
+  if (typeof worker.email !== "string" || !worker.email.trim() || !provedAt(worker.emailVerifiedAt, now)) return "email-required";
+  return null;
+}
 
 /** Unknown expiry or missing office-check metadata cannot prove a current restricted-trade licence. */
 function currentLicence(licence: LicenceProof | null, now: Date): boolean {
   return Boolean(licence && licence.status === "VERIFIED" && licence.checkedById && provedAt(licence.checkedAt, now)
     && licence.expiresOn instanceof Date && Number.isFinite(licence.expiresOn.getTime()) && licence.expiresOn.toISOString().slice(0, 10) >= licenceToday(now));
+}
+
+export function hasCurrentTradeLicence(worker: Pick<WorkerVerification, "workerTrades">, trade: Trade, now = new Date()): boolean {
+  return worker.workerTrades.some(row => row.trade === trade && currentLicence(row.licence, now));
 }
 
 /**
@@ -29,10 +44,7 @@ function currentLicence(licence: LicenceProof | null, now: Date): boolean {
  * badge decision, not the complete job-claim eligibility policy (#137).
  */
 export function isVerified(worker: WorkerVerification | null | undefined, trade?: Trade, now = new Date()): boolean {
-  if (!worker || worker.role !== "TRADIE" || !Number.isFinite(now.getTime())) return false;
-  const details = worker.workerProfile;
-  if (!details || details.pausedAt !== null || !details.identityCheckedById || !provedAt(details.identityCheckedAt, now)) return false;
-  if (typeof worker.email !== "string" || !worker.email.trim() || !provedAt(worker.emailVerifiedAt, now)) return false;
+  if (!worker || workerBasicProofFailure(worker, now)) return false;
   if (typeof worker.phone !== "string" || !worker.phone || worker.phone !== normaliseMobile(worker.phone) || worker.phoneVerifiedFor !== worker.phone || !provedAt(worker.phoneVerifiedAt, now)) return false;
   if (!Array.isArray(worker.workerTrades)) return false;
   const trades = trade ? worker.workerTrades.filter(row => row.trade === trade) : worker.workerTrades;

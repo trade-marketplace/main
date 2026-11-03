@@ -19,7 +19,8 @@ describe.skipIf(!testDatabaseUrl)("worker verification in Postgres", () => {
   }
   async function worker() {
     const profile = await person("TRADIE"), admin = await person("ADMIN");
-    await schema.db.workerProfile.create({ data: { userId: profile.id, verifiedAt: NOW, verifiedById: admin.id } });
+    await schema.db.workerProfile.create({ data: { userId: profile.id, verifiedAt: NOW, verifiedById: admin.id,
+      baseSuburb: "Invercargill", areaLat: -46.4132, areaLng: 168.3538, areaRadiusKm: 25 } });
     await schema.db.workerTrade.create({ data: { userId: profile.id, trade: "OTHER" } });
     return { profile, actor: { userId: admin.id } };
   }
@@ -30,7 +31,8 @@ describe.skipIf(!testDatabaseUrl)("worker verification in Postgres", () => {
     return result;
   }
   async function job() {
-    return schema.db.job.create({ data: { customerId: (await person()).id, title: "Hang a door", description: "Example job", category: "OTHER", addressLine1: "1 Example Street", suburb: "Gladstone", city: "Invercargill", status: "BOOKABLE", priceCents: 12_000 } });
+    return schema.db.job.create({ data: { customerId: (await person()).id, title: "Hang a door", description: "Example job", category: "OTHER", addressLine1: "1 Example Street", suburb: "Gladstone", city: "Invercargill", status: "BOOKABLE", priceCents: 12_000,
+      lat: -46.4132, lng: 168.3538, approxLat: -46.4117, approxLng: 168.3538 } });
   }
 
   it("does not backfill identity/phone proof from the legacy generic verified flag", async () => {
