@@ -197,6 +197,11 @@ test.describe("signed-in eligible board", () => {
     await page.getByRole("button", { name: "Filters", exact: true }).click();
     await page.getByRole("checkbox", { name: /^Saved/ }).check();
     await expect(page.locator("#board-cards article")).toHaveCount(1);
+    let failReconnect = true, reconnectAttempts = 0;
+    await page.route(url => url.origin === new URL(app!).origin && url.pathname === "/jobs", route => {
+      if (route.request().method() === "POST" && failReconnect) { reconnectAttempts++; return route.abort("failed"); }
+      return route.continue();
+    });
     let offlinePosts = 0;
     const requested = (request: import("@playwright/test").Request) => { if (request.method() === "POST" && new URL(request.url()).pathname === "/jobs") offlinePosts++; };
     await page.context().setOffline(true); page.on("request", requested);
@@ -217,6 +222,13 @@ test.describe("signed-in eligible board", () => {
       await expect(page.getByRole("heading", { name: "Can’t load your jobs", exact: true })).toBeVisible();
       await expectNoA11yViolations(page); expect(offlinePosts).toBe(0);
     } finally { page.off("request", requested); await page.context().setOffline(false); }
+    await expect.poll(() => reconnectAttempts).toBeGreaterThan(0);
+    await expect(page.getByRole("heading", { name: "Can’t load your jobs", exact: true })).toBeVisible();
+    await expect(page.locator("#board-cards article")).toHaveCount(0);
+    await expect(page.getByRole("tab", { name: "Ready to claim", exact: true })).toBeVisible();
+    await expectNoA11yViolations(page);
+    failReconnect = false;
+    await page.locator("#board-cards").getByRole("button", { name: "Try again", exact: true }).click();
     await expect(page.getByRole("link", { name: "Board job 3", exact: true })).toBeVisible();
     await expect(page.getByRole("link", { name: "Board job 1", exact: true })).toHaveCount(0);
     await expect(page.getByRole("heading", { name: "Can’t load your jobs", exact: true })).toHaveCount(0);

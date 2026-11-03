@@ -42,12 +42,13 @@ export function JobBoard({ initial, ownerId, source = LIVE_SOURCE, previewState,
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [error, setError] = useState(false), [newCount, setNewCount] = useState(previewState === "new-jobs" ? 3 : 0);
   const [loadedSelection, setLoadedSelection] = useState(() => boardSelectionKey(urlQuery, initialSaved));
+  const [offlineSinceLoad, setOfflineSinceLoad] = useState(!online);
   const generation = useRef(0), pending = useRef(false), sentinel = useRef<HTMLDivElement>(null), boardRef = useRef<BoardPage | null>(initial.ok ? initial.board : null), lastQuery = useRef(key);
   const [updates] = useState(() => new BoardUpdateRequests());
   const savedRef = useRef(saved), queryRef = useRef(query);
   const cachedBoard = result.ok ? result.board : null;
-  const offlineChanged = !online && loadedSelection !== boardSelectionKey(query, saved);
-  const board = offlineChanged ? null : cachedBoard;
+  const cacheChanged = (offlineSinceLoad || !online) && loadedSelection !== boardSelectionKey(query, saved);
+  const board = cacheChanged ? null : cachedBoard;
   useEffect(() => { savedRef.current = saved; queryRef.current = query; boardRef.current = cachedBoard; }, [saved, query, cachedBoard]);
   const extra = new URLSearchParams(search); for (const name of ["kind", "trade", "distance", "when", "sort", "saved", "estimated", "view", "layout"]) extra.delete(name);
   const href = (next: BoardQuery) => boardHref(next, pathname, extra.toString());
@@ -74,6 +75,7 @@ export function JobBoard({ initial, ownerId, source = LIVE_SOURCE, previewState,
       if (!answer.ok && answer.error === "changed" && append) { pending.current = false; void loadPage(false); return; }
       if (answer.ok) {
         setLoadedSelection(boardSelectionKey(current, currentSaved));
+        setOfflineSinceLoad(false);
         const ids = new Set(snapshot?.cards.map(card => card.id));
         setResult({ ok: true, board: append && snapshot ? { ...answer.board, cards: [...snapshot.cards, ...answer.board.cards.filter(card => !ids.has(card.id))] } : answer.board });
         if (!append && previewState !== "new-jobs") setNewCount(0);
@@ -86,7 +88,7 @@ export function JobBoard({ initial, ownerId, source = LIVE_SOURCE, previewState,
   useEffect(() => {
     generation.current++; pending.current = false; updates.invalidate();
     const quiet = lastQuery.current === key; lastQuery.current = online ? key : "";
-    if (!online) { setBusy(false); setMore(false); setNewCount(0); }
+    if (!online) { setOfflineSinceLoad(true); setBusy(false); setMore(false); setNewCount(0); }
     else if (hydrated) void load(false, quiet);
     const cancel = () => { generation.current++; pending.current = false; updates.invalidate(); };
     return cancel;
@@ -121,7 +123,7 @@ export function JobBoard({ initial, ownerId, source = LIVE_SOURCE, previewState,
     catch { setStorageError(true); }
   };
   const cachedMeta = cachedBoard?.meta ?? (initial.ok ? initial.board.meta : null);
-  const meta = offlineChanged && cachedMeta ? { ...cachedMeta, distanceKm: Math.min(query.distance ?? 25, cachedMeta.maxDistanceKm) } : cachedMeta;
+  const meta = cacheChanged && cachedMeta ? { ...cachedMeta, distanceKm: Math.min(query.distance ?? 25, cachedMeta.maxDistanceKm) } : cachedMeta;
   const returnTo = boardHref(query);
   const contact = `/contact?next=${encodeURIComponent(returnTo)}`;
   const alerts = boardAlertsRoute(returnTo).href;
@@ -154,10 +156,10 @@ export function JobBoard({ initial, ownerId, source = LIVE_SOURCE, previewState,
         <div className={styles.toolbar}><span>{meta ? `Within ${meta.distanceKm} km of ${meta.areaName}` : ""}</span><SelectField label="Sort by" value={query.sort} onChange={event => update({ sort: event.target.value as BoardQuery["sort"] })}>
           <option value="nearest">Nearest</option><option value="newest">Newest</option><option value="earn">Highest pay</option></SelectField></div>
         {storageError && <InlineError message="Couldn’t save your jobs on this browser. Check your browser storage and try again." />}
-        {error && <InlineError message="Can’t load your jobs. Check your connection and try again." onRetry={() => load()} />}
+        {error && !cacheChanged && <InlineError message="Can’t load your jobs. Check your connection and try again." onRetry={() => load()} />}
         {newCount > 0 && <div className={styles.newJobs}><Button size="sm" onClick={() => load()} disabled={!online ? "You’re offline" : busy}>{newCount} new {newCount === 1 ? "job" : "jobs"}</Button></div>}
         <div id="board-cards"><LoadingRegion loading={busy || !hydrated} label="Loading your jobs" skeleton={<BoardSkeleton />}>
-          {offlineChanged ? <ErrorState className={styles.empty} title="Can’t load your jobs" message="Check your connection and try again." onRetry={() => load()} />
+          {cacheChanged ? <ErrorState className={styles.empty} title="Can’t load your jobs" message="Check your connection and try again." onRetry={() => load()} />
             : !result.ok ? <ErrorState className={styles.empty} title={result.error === "forbidden" ? "Trade account required" : "Can’t load your jobs"} message="Check your connection and try again." onRetry={() => load()} />
             : meta?.blocked ? <EmptyState className={styles.empty} icon="verified_user" title={meta.blocked === "worker-paused" ? "Your account is paused" : meta.blocked === "work-area-required" ? "Set your work area" : "Get verified to see jobs"}
               message={meta.blocked === "email-required" ? "Confirm your email to continue." : meta.blocked === "worker-paused" ? "Contact us to get back to work." : meta.blocked === "work-area-required" ? "Contact us to set the area you work in." : "We need to check your ID before you can see jobs."}
