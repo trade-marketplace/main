@@ -347,6 +347,8 @@ model JobDraft {
   profileId String @id @map("profile_id") @db.Uuid
   profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
   data Json
+  // Wizard category origin is UI metadata, outside the shared canonical job fields. Null is legacy/unknown.
+  manualCategory Boolean? @map("manual_category")
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   @@map("job_drafts")

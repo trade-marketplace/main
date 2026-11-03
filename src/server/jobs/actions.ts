@@ -8,7 +8,12 @@ import { draftPhotoUrl } from "./draft-photos";
 import { loadDraft, saveDraft } from "./drafts";
 import { postJob } from "./post-job";
 
-export const saveDraftAction = withRole(["CUSTOMER"], async (viewer, input: unknown) => saveDraft(getDb(), viewer, input));
+export const saveDraftAction = withRole(["CUSTOMER"], async (viewer, input: unknown, expectedOwnerId?: string, manualCategory?: unknown) => {
+  // A focused wizard may survive a login in another tab. Never attach its old account's draft to the new one.
+  if (expectedOwnerId !== undefined && viewer.userId !== expectedOwnerId) return { status: "forbidden" } as const;
+  if (manualCategory !== undefined && typeof manualCategory !== "boolean") return { status: "invalid", fields: { category: "Type of job" } } as const;
+  return saveDraft(getDb(), viewer, input, { manualCategory });
+});
 
 export const loadDraftAction = withRole(["CUSTOMER"], async (viewer) => loadDraft(getDb(), viewer));
 
