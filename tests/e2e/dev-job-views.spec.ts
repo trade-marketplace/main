@@ -20,10 +20,15 @@ test.describe("job data view previews", () => {
     await page.setViewportSize(viewport);
     for (const state of states) {
       await page.goto(url(state));
-      await expect(page.getByRole("heading", { name: "Who sees what" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: state === "worker-reassigned" ? "Wrong address." : "Who sees what", exact: true })).toBeVisible();
+      if (state === "worker-reassigned") {
+        await expect(page.locator("body")).not.toContainText("Sub wiring");
+        await expect(page.locator("body")).not.toContainText("1 Example Street");
+        await expect(page.locator("pre")).toHaveCount(0);
+      }
       expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth), state).toBe(0);
       await expectNoA11yViolations(page);
-      if (state.startsWith("worker") || state === "missing-pin") {
+      if ((state.startsWith("worker") && state !== "worker-reassigned") || state === "missing-pin") {
         if (state === "worker-assigned") await expect(page.getByText("1 Example Street", { exact: true })).toBeVisible();
         else {
           await expect(page.getByText("Hidden until claimed").first()).toBeVisible();

@@ -3,6 +3,9 @@ import "server-only";
 import { approximatePin } from "@/server/geo/approximate";
 import type { JobSource } from "@/server/views/jobs";
 
+export const JOB_VIEW_PREVIEW_STATES = ["customer", "worker-unclaimed", "worker-assigned", "worker-reassigned", "worker-cancelled", "missing-pin", "office", "public", "loading", "error"] as const;
+export type JobViewPreviewState = typeof JOB_VIEW_PREVIEW_STATES[number];
+
 export const VIEWERS = {
   customer: { userId: "00000000-0000-4000-8000-000000000001", role: "CUSTOMER" },
   worker: { userId: "00000000-0000-4000-8000-000000000002", role: "TRADIE" },
@@ -36,4 +39,16 @@ export function exampleJob(overrides: Partial<JobSource> = {}): JobSource {
     ],
     ...overrides,
   };
+}
+
+/** Keep revocation distinct from a reopened/public job: its assignment belongs to somebody else. */
+export function jobViewExample(state: JobViewPreviewState): JobSource {
+  const job = exampleJob();
+  if (state === "worker-reassigned") {
+    const replacement = "00000000-0000-4000-8000-000000000004";
+    return { ...job, status: "ASSIGNED", workerId: replacement, worker: { ...job.worker!, id: replacement } };
+  }
+  if (state === "worker-unclaimed" || state === "missing-pin") return { ...job, status: "BOOKABLE", workerId: null, worker: null,
+    ...(state === "missing-pin" ? { approxLat: null, approxLng: null } : {}) };
+  return state === "worker-cancelled" ? { ...job, status: "CANCELLED" } : job;
 }
