@@ -13,8 +13,6 @@ export function officeQueueJobView(viewer: JobViewer, source: QueueJobSource) {
   if (!job) return null;
   const current = source.estimates?.filter(row => !row.madeBeforeEdit) ?? [];
   const ranged = current.filter(row => !row.needsSiteVisit);
-  const hours = (minutes: number) => (minutes / 60).toFixed(1);
-  const dollars = (cents: number) => new Intl.NumberFormat("en-NZ", { maximumFractionDigits: 2 }).format(cents / 100);
   return { jobId: job.id, number: jobNumberLabel(job.jobNumber), title: job.title, trade: TRADE_LABELS[job.category], status: job.status,
     customer: shortName(job.customer) ?? "—", tradie: shortName(job.worker), suburb: job.suburb,
     estimates: `${current.length}${current.some(row => row.needsSiteVisit) ? " · site visit asked" : ""}`,

@@ -107,7 +107,7 @@ describe("office queue access and predicates", () => {
   it("uses status entry age despite a recent job update, and fails visibly rather than all-clear for missing required history", async () => {
     const db = fake(), stats = await readOfficeQueueStats(db as never, OFFICE, NOW); stats.kpis.price.count = 1;
     const result = await readOfficeQueues(db as never, OFFICE, parseQueueQuery({}), NOW, stats);
-    expect(result.rows[0]).toMatchObject({ waiting: "26h", overdue: true, action: "Price it", href: "/admin/jobs/j1?dialog=price" });
+    expect(result.rows[0]).toMatchObject({ waiting: "26h", overdue: true, action: "Price it", href: "/admin/jobs/j1/price" });
     db.jobStatusHistory.groupBy.mockResolvedValue([]);
     await expect(readOfficeQueues(db as never, OFFICE, parseQueueQuery({}), NOW, stats)).rejects.toThrow("queue-read-changed");
   });

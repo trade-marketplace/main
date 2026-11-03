@@ -9,7 +9,7 @@ problem is never reclassified as a cancellation.
 
 | Queue | Counted work | Clock and ordering | Existing action destination |
 |---|---|---|---|
-| To price | REVIEW / QUOTE_BOUNTY jobs | Latest entry into these states; oldest first | `?dialog=price` on job admin when current estimates exist; otherwise Open |
+| To price | REVIEW / QUOTE_BOUNTY jobs | Latest entry into these states; oldest first | `/admin/jobs/[id]/price` when current estimates exist; otherwise Open |
 | Extra work | Each REQUESTED variation on a non-closed job | Variation creation; oldest first | Job admin |
 | Cancellations | CANCEL_REVIEW jobs | Latest cancellation-review entry; current request reason only | Job admin |
 | Sign-off | SUBMITTED jobs | Submitted evidence, falling back to latest status entry for an office override | Job admin |
@@ -40,9 +40,9 @@ open threads. Header work totals additionally include open problem cases. The sh
 request-local React cache. Count failures hide unknown badges; the queue page shows its error state and placeholder
 counts rather than reporting all-clear zeros. No cross-request private cache, new database table or migration.
 
-The narrow job-admin handoff accepts only `dialog=price` and only current REVIEW/QUOTE_BOUNTY jobs. It preserves the
-login return path, ignores other dialog flags and never changes server action permissions. #168 will supply the full
-pricing workspace; this issue ships no dead pricing, variation or sign-off links.
+#168 connects the To price row action to the dedicated `/admin/jobs/[id]/price` workspace. That route preserves the
+login return path, authorizes office access and presents saved jobs read-only. The older narrowly guarded
+`dialog=price` job-admin handoff remains compatible for existing callers. Other actions still open existing job admin.
 
 Guarded preview: `/dev/components/office-queues?state=price|extra|cancel|signoff|unclaimed|all-clear|loading|error|offline|search|search-empty|long`.
 Production deployments return 404 there. All examples are fictitious. The bot captures every state at 1440/390; local

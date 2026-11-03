@@ -2,7 +2,7 @@ import "server-only";
 
 import type { JobStatus, Prisma, PrismaClient } from "@/generated/prisma/client";
 
-import { type PriceBreakdown, priceWork, ratesForTrade } from "./calculate";
+import { type PriceBreakdown, type PricingRates, priceWork, ratesForTrade } from "./calculate";
 
 // Prices a job (#94): reads the rates in settings, builds the price and freezes it onto the job in one
 // transaction, so "priced jobs keep their rates" (DECISIONS.md #62) holds. `job_pricing` gets a copy of every
@@ -35,7 +35,7 @@ export type PriceJobResult =
 
 type Db = Pick<PrismaClient, "$transaction">;
 
-export async function priceJob(db: Db, input: PriceJobInput): Promise<PriceJobResult> {
+export async function priceJob(db: Db, input: PriceJobInput, options: { confirmedRates?: PricingRates } = {}): Promise<PriceJobResult> {
   return db.$transaction(async (tx) => {
     const job = await tx.job.findUnique({ where: { id: input.jobId }, select: { status: true, category: true } });
     if (!job) return { ok: false, error: "job-not-found" } as const;
@@ -43,8 +43,10 @@ export async function priceJob(db: Db, input: PriceJobInput): Promise<PriceJobRe
       return { ok: false, error: "job-not-priceable", status: job.status } as const;
     }
 
-    const settings = await tx.settings.findUniqueOrThrow({ where: { id: 1 } });
-    const rates = ratesForTrade(job.category, settings);
+    // The office publishing flow passes its freshly rechecked server snapshot so confirmation and commit
+    // use identical rates, including a REVIEW draft's already-saved rates. Existing callers keep their
+    // explicit repricing behavior. No browser/action may supply this option directly.
+    const rates = options.confirmedRates ?? ratesForTrade(job.category, await tx.settings.findUniqueOrThrow({ where: { id: 1 } }));
     const breakdown = priceWork({ minutes: input.minutes, materialsCents: input.materialsCents }, rates);
 
     // Writing the price first takes the job's row lock, and only matches while the job is still what was priced

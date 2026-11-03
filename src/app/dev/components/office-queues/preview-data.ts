@@ -7,7 +7,7 @@ const id = (value: number) => `de000000-0000-4000-8000-${value.toString(16).padS
 const row = (value: number, title: string, hours: number, changes: Partial<QueueRow> = {}): QueueRow => ({
   id: id(value), jobId: id(value), number: `TM-${1000 + value - 0xb000}`, title, trade: "Electrical", status: "REVIEW",
   customer: "Sarah T", tradie: null, suburb: "Windsor", estimates: "5", spread: "3.0–4.5 h · $60–110", context: "—",
-  waiting: `${hours}h`, since: ago(hours), overdue: hours >= 24, action: "Price it", href: `/admin/jobs/${id(value)}?dialog=price`, ...changes,
+  waiting: `${hours}h`, since: ago(hours), overdue: hours >= 24, action: "Price it", href: `/admin/jobs/${id(value)}/price`, ...changes,
 });
 const PRICING = [
   row(0xb001, "Switchboard upgrade", 26, { customer: "Tom H", suburb: "Richmond", estimates: "1 · site visit asked", spread: "—" }),

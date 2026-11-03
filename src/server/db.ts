@@ -1,8 +1,7 @@
 import "server-only";
 
-import { PrismaPg } from "@prisma/adapter-pg";
-
-import { PrismaClient } from "@/generated/prisma/client";
+import type { PrismaClient } from "@/generated/prisma/client";
+import { createDatabaseClient } from "./database-client";
 
 export class DatabaseNotConfiguredError extends Error {
   constructor() {
@@ -20,6 +19,6 @@ let client: PrismaClient | undefined;
 export function getDb(env: Record<string, string | undefined> = process.env): PrismaClient {
   const url = env.DATABASE_URL?.trim();
   if (!url) throw new DatabaseNotConfiguredError();
-  client ??= new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
+  client ??= createDatabaseClient(url);
   return client;
 }
