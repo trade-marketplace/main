@@ -307,12 +307,12 @@ describe.skipIf(!testDatabaseUrl)("drafts and posting a job (database)", () => {
     expect(await schema.db.job.count({ where: { postKey: key } })).toBe(1);
   });
 
-  it("notifies only available workers with the matching trade inside their area, without leaking address", async () => {
-    const customer = await person(); const key = randomUUID();
+  it("notifies only available identity-checked workers inside their area, without leaking address", async () => {
+    const customer = await person(); const office = await person("ADMIN"); const key = randomUUID();
     const workers = await Promise.all([person("TRADIE"), person("TRADIE"), person("TRADIE")]);
     for (let i = 0; i < workers.length; i++) {
       await schema.db.workerTrade.create({ data: { userId: workers[i].userId, trade: "OTHER" } });
-      await schema.db.workerProfile.create({ data: { userId: workers[i].userId, available: i !== 2, areaLat: i === 1 ? -36.85 : -46.4132, areaLng: 168.3538, areaRadiusKm: 10 } });
+      await schema.db.workerProfile.create({ data: { userId: workers[i].userId, available: i !== 2, baseSuburb: "Invercargill", identityCheckedAt: now, identityCheckedById: office.userId, areaLat: i === 1 ? -36.85 : -46.4132, areaLng: 168.3538, areaRadiusKm: 10 } });
     }
     const result = await postJob(schema.db, customer, input(customer, key), key, { now: () => now, photoExists: async () => true, rateLimit: async () => ({ allowed: true }) });
     expect(result.status).toBe("posted"); if (result.status !== "posted") return;
@@ -331,8 +331,8 @@ describe.skipIf(!testDatabaseUrl)("drafts and posting a job (database)", () => {
     const workers = await Promise.all([person("TRADIE"), person("TRADIE"), person("TRADIE")]);
     for (let i = 0; i < workers.length; i++) {
       await schema.db.workerTrade.create({ data: { userId: workers[i].userId, trade: "ELECTRICAL" } });
-      await schema.db.workerProfile.create({ data: { userId: workers[i].userId, available: true, areaLat: -46.4132, areaLng: 168.3538, areaRadiusKm: 25 } });
-      await schema.db.licence.create({ data: { userId: workers[i].userId, trade: "ELECTRICAL", number: `EW${i}TEST`, status: i === 1 ? "PENDING" : "VERIFIED", checkedAt: i === 1 ? null : now, checkedById: i === 1 ? null : office.userId, expiresOn: i === 2 ? new Date("2026-11-02") : null } });
+      await schema.db.workerProfile.create({ data: { userId: workers[i].userId, available: true, baseSuburb: "Invercargill", identityCheckedAt: now, identityCheckedById: office.userId, areaLat: -46.4132, areaLng: 168.3538, areaRadiusKm: 25 } });
+      await schema.db.licence.create({ data: { userId: workers[i].userId, trade: "ELECTRICAL", number: `EW${i}TEST`, status: i === 1 ? "PENDING" : "VERIFIED", checkedAt: i === 1 ? null : now, checkedById: i === 1 ? null : office.userId, expiresOn: i === 2 ? new Date("2026-11-02") : new Date("2027-11-03") } });
     }
     const key = randomUUID(); const data = { ...input(customer, key), category: "ELECTRICAL" };
     const result = await postJob(schema.db, customer, data, key, { now: () => now, photoExists: async () => true, rateLimit: async () => ({ allowed: true }) });

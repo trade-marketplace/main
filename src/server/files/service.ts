@@ -76,7 +76,10 @@ export function createUploadService({ db, store }: UploadDeps) {
      */
     async addJobPhoto(viewer: FileViewer, jobId: string, input: Uint8Array) {
       const job = await loadJob(jobId);
-      if (viewer.role !== "CUSTOMER" || job.customerId !== viewer.userId || !PHOTO_EDITABLE_STATUSES.includes(job.status)) {
+      if (viewer.role !== "CUSTOMER" || job.customerId !== viewer.userId) {
+        throw new UploadError("not-found", MESSAGES.notFound);
+      }
+      if (!PHOTO_EDITABLE_STATUSES.includes(job.status)) {
         throw new UploadError("not-allowed", MESSAGES.notAllowed);
       }
       const kind = checkUpload(input, PHOTO_KINDS, MESSAGES.photoType);

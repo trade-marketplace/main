@@ -33,6 +33,8 @@ type Props = {
   /** Signed-in people: their address is filled in and "the job page" links to where their app starts. */
   email?: string;
   jobsHref?: string;
+  /** Board handoff: a canonical local return path checked by the server page. */
+  boardReturnHref?: string;
   /** Guarded local preview only. Public query flags cannot invent a sent message. */
   initialState?: ContactState;
   initialMessage?: string;
@@ -44,7 +46,7 @@ const FIELD_ERRORS: Record<ContactField, string> = {
   message: "Enter your message.",
 };
 
-export function Contact({ submit, email: knownEmail = "", jobsHref, initialState = "empty", initialMessage = "" }: Props) {
+export function Contact({ submit, email: knownEmail = "", jobsHref, boardReturnHref, initialState = "empty", initialMessage = "" }: Props) {
   const [state, setState] = useState<ContactState>(initialState);
   const [topic, setTopic] = useState<string>(DEFAULT_CONTACT_TOPIC);
   const [email, setEmail] = useState(knownEmail || (initialState === "empty" ? "" : "sarah@email.co.nz"));
@@ -118,6 +120,7 @@ export function Contact({ submit, email: knownEmail = "", jobsHref, initialState
         </div>
       </form>
       <nav aria-labelledby="contact-help" className={styles.help}>
+        {boardReturnHref && <TextLink href={boardReturnHref}>Back to jobs</TextLink>}
         <h2 id="contact-help" className={styles.helpTitle}>Help centre</h2>
         <ul className={styles.helpList}>
           {HELP_TOPICS.map((name) => <li key={name}>

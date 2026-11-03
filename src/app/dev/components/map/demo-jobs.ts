@@ -94,7 +94,7 @@ function toMapJob(seed: Seed, index: number, now: number): DemoJob {
   const approx = approximatePin(seed.exact, seededRandom(1000 + index));
   const workerId = seed.workerId ?? null;
   const point = jobPinFor(
-    { lat: seed.exact.lat, lng: seed.exact.lng, approxLat: approx.lat, approxLng: approx.lng, workerId },
+    { lat: seed.exact.lat, lng: seed.exact.lng, approxLat: approx.lat, approxLng: approx.lng, workerId, status: workerId ? "ASSIGNED" : "BOOKABLE" },
     DEMO_VIEWER_ID,
   );
   if (!point) throw new Error(`demo job ${seed.id} has no pin`);

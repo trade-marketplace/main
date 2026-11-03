@@ -4,6 +4,7 @@ export { CategoryRail, CategoryTile, type CategoryTileProps } from "./CategoryTi
 export { EmptyCard } from "./EmptyCard";
 export { JobRow, type JobRowProps } from "./JobRow";
 export { JobTile, type JobTileProps, type JobTileTag } from "./JobTile";
+export { WorkerCard, type WorkerCardProps } from "./WorkerCard";
 export { ProfileCard, type ProfileCardProps } from "./ProfileCard";
 export { KpiCard, StatCard, StatStrip, type KpiCardProps, type StatStripProps } from "./StatCards";
 export { CATEGORIES, type Category } from "@/lib/cards";

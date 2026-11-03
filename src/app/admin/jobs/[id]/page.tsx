@@ -16,12 +16,12 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export default async function JobAdminPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  await requireRole(["ADMIN"], { next: `${OFFICE_JOB_PATH}/${encodeURIComponent(id)}` });
+  const viewer = await requireRole(["ADMIN"], { next: `${OFFICE_JOB_PATH}/${encodeURIComponent(id)}` });
   // An address that isn't a job id is a 404, not a database error.
   if (!UUID.test(id)) notFound();
   let job: OfficeJobView | null = null;
   try {
-    job = await getOfficeJob(getDb(), id);
+    job = await getOfficeJob(getDb(), viewer, id);
   } catch (error) {
     unstable_rethrow(error);
     // Shown as "Can't load this job" with Try again; the details stay in the server log.

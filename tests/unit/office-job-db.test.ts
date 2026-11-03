@@ -62,7 +62,7 @@ describe.skipIf(!testDatabaseUrl)("the job admin view's actions (database)", () 
   const stored = (id: string) => schema.db.job.findUniqueOrThrow({ where: { id } });
   const audits = (recordId: string) => schema.db.auditLog.findMany({ where: { recordId }, orderBy: { createdAt: "asc" } });
   const act = (officeId: string, input: Record<string, unknown>) => performJobAction(schema.db, { userId: officeId }, input);
-  const read = (id: string) => getOfficeJob(schema.db as unknown as OfficeJobDatabase, id);
+  const read = (id: string) => getOfficeJob(schema.db as unknown as OfficeJobDatabase, { userId: "office", role: "ADMIN" }, id);
 
   describe("cancel", () => {
     it("closes a paid, claimed job, tells both people, and logs the note on the timeline", async () => {
@@ -128,7 +128,7 @@ describe.skipIf(!testDatabaseUrl)("the job admin view's actions (database)", () 
       await schema.db.licence.update({ where: { userId_trade: { userId: expired, trade: "ELECTRICAL" } }, data: { expiresOn: new Date("2026-11-03") } });
       await schema.db.licence.update({ where: { userId_trade: { userId: current, trade: "ELECTRICAL" } }, data: { expiresOn: new Date("2026-11-04") } });
       const claimed = await job("ASSIGNED", { category: "ELECTRICAL", workerId: first });
-      const view = await getOfficeJob(schema.db as unknown as OfficeJobDatabase, claimed.id, now);
+      const view = await getOfficeJob(schema.db as unknown as OfficeJobDatabase, { userId: office, role: "ADMIN" }, claimed.id, now);
       expect(view?.reassignOptions.map(option => option.id)).not.toContain(expired);
       expect(view?.reassignOptions.map(option => option.id)).toContain(current);
       const action = (workerId: string) => performJobAction(schema.db, { userId: office }, { action: "reassign", jobId: claimed.id, seenStatus: "ASSIGNED", workerId, note: "Swap" }, now);

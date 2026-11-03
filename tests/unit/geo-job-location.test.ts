@@ -96,7 +96,7 @@ describe("addressLocation", () => {
 
 describe("distanceToJobKm and jobPinFor", () => {
   const worker = "worker-1";
-  const job = { lat: deeSt.lat, lng: deeSt.lng, approxLat: -46.4135, approxLng: 168.35, workerId: null as string | null };
+  const job = { lat: deeSt.lat, lng: deeSt.lng, approxLat: -46.4135, approxLng: 168.35, workerId: null as string | null, status: "ASSIGNED" };
   // About 12.9 km north-east of Dee St.
   const workerAt = { lat: -46.31, lng: 168.43 };
 
@@ -120,7 +120,7 @@ describe("distanceToJobKm and jobPinFor", () => {
   });
 
   it("has no distance or pin when the job has no point yet (typed while Mapbox was down)", () => {
-    const typed = { lat: null, lng: null, approxLat: null, approxLng: null, workerId: null };
+    const typed = { lat: null, lng: null, approxLat: null, approxLng: null, workerId: null, status: "BOOKABLE" };
     expect(distanceToJobKm(workerAt, typed, worker)).toBeNull();
     expect(jobPinFor(typed, worker)).toBeNull();
   });

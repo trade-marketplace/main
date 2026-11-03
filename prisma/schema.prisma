@@ -86,6 +86,9 @@ model Profile {
   lastName        String?   @map("last_name")
   // NZ mobile in E.164 (+6421…). Hidden from the other side until a job is claimed (DECISIONS.md 11).
   phone           String?
+  // Trusted confirmation is bound to this exact E.164 phone, never inferred from entering it.
+  phoneVerifiedAt DateTime? @map("phone_verified_at") @db.Timestamptz
+  phoneVerifiedFor String? @map("phone_verified_for")
   // Path in the private Supabase Storage bucket, never a public URL.
   avatarPath      String?   @map("avatar_path")
   createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
@@ -97,6 +100,8 @@ model Profile {
   licences         Licence[]          @relation("LicenceHolder")
   licencesChecked  Licence[]          @relation("LicenceChecker")
   workersVerified  WorkerProfile[]    @relation("WorkerVerifier")
+  identitiesChecked WorkerProfile[]   @relation("WorkerIdentityChecker")
+  workersPaused WorkerProfile[]       @relation("WorkerPauser")
   addresses        Address[]
   payrollDetails   PayrollDetails?
   jobsPosted       Job[]              @relation("JobCustomer")
@@ -144,6 +149,14 @@ model WorkerProfile {
   verifiedAt   DateTime? @map("verified_at") @db.Timestamptz
   verifiedById String?   @map("verified_by_id") @db.Uuid
   verifiedBy   Profile?  @relation("WorkerVerifier", fields: [verifiedById], references: [id], onDelete: SetNull)
+  // Explicit office ID check. The legacy generic verifiedAt flag is not evidence of this check.
+  identityCheckedAt DateTime? @map("identity_checked_at") @db.Timestamptz
+  identityCheckedById String? @map("identity_checked_by_id") @db.Uuid
+  identityCheckedBy Profile? @relation("WorkerIdentityChecker", fields: [identityCheckedById], references: [id], onDelete: SetNull)
+  // Office pause is separate from the worker's own available switch and remains set if its actor is deleted.
+  pausedAt DateTime? @map("paused_at") @db.Timestamptz
+  pausedById String? @map("paused_by_id") @db.Uuid
+  pausedBy Profile? @relation("WorkerPauser", fields: [pausedById], references: [id], onDelete: SetNull)
   // Verified quoters arrive in milestone 5 (#258). Invite only.
   isQuoter     Boolean   @default(false) @map("is_quoter")
   createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz

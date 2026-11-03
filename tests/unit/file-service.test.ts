@@ -174,8 +174,8 @@ describe("job photos", () => {
   });
 
   it("only the customer who owns the job, and only before it is priced, can add photos", async () => {
-    await expect(fakes().service.addJobPhoto({ userId: OTHER, role: "CUSTOMER" }, JOB, await png())).rejects.toMatchObject({ code: "not-allowed" });
-    await expect(fakes().service.addJobPhoto(tradie, JOB, await png())).rejects.toMatchObject({ code: "not-allowed" });
+    await expect(fakes().service.addJobPhoto({ userId: OTHER, role: "CUSTOMER" }, JOB, await png())).rejects.toMatchObject({ code: "not-found" });
+    await expect(fakes().service.addJobPhoto(tradie, JOB, await png())).rejects.toMatchObject({ code: "not-found" });
     const priced = fakes({ customerId: CUSTOMER, workerId: null, status: "PRICED" });
     await expect(priced.service.addJobPhoto(customer, JOB, await png())).rejects.toMatchObject({ code: "not-allowed" });
     await expect(fakes(null).service.addJobPhoto(customer, JOB, await png())).rejects.toMatchObject({ code: "not-found" });

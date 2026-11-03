@@ -88,6 +88,20 @@ describe.skipIf(!testDatabaseUrl)("shared job problem threads (database)", () =>
       expect(decided.decidedAt!.getTime()).toBeGreaterThan(createdAt.getTime());
     }
   });
+
+  it("hides contact text again after cancellation even when the stored worker id is retained", async () => {
+    const f = await fixture();
+    await schema.db.job.update({ where: { id: f.job.id }, data: { title: "Call 021 123 4567" } });
+    const result = await openProblemThread(schema.db, f.customer, { ...input(f.job.id, "Call 021 123 4567 or sarah@example.nz"), reason: "Contact sarah@example.nz" }, deps);
+    if (!result.ok) throw new Error(result.error);
+    expect(JSON.stringify(await getMessages(schema.db, f.worker, result.threadId))).toContain("sarah@example.nz");
+    await schema.db.job.update({ where: { id: f.job.id }, data: { status: "CANCELLED" } });
+    for (const actor of [f.customer, f.worker]) {
+      const view = await getMessages(schema.db, actor, result.threadId);
+      expect(JSON.stringify(view)).not.toMatch(/sarah@example.nz|021 123 4567|priceCents|marginCents/);
+      expect(view.selected?.job.worker).toBeNull();
+    }
+  });
   it("checks photo ownership and existence before saving; only authorized readers receive signed URLs", async () => {
     const f = await fixture(); const id = await opened(f); const path = `support/${f.job.id}/${f.worker.userId}/${"a".repeat(32)}.webp`;
     const data = { ...input(f.job.id, "Here is the photo."), photoPaths: [path] };
@@ -99,7 +113,7 @@ describe.skipIf(!testDatabaseUrl)("shared job problem threads (database)", () =>
     await expect(getMessages(schema.db, f.stranger, id, sign)).rejects.toMatchObject({ code: "forbidden" }); expect(sign).not.toHaveBeenCalled();
     const view = await getMessages(schema.db, f.customer, id, sign);
     expect(view.selected?.messages.at(-1)?.photos).toEqual([expect.objectContaining({ url: "https://files.example/signed" })]);
-    const officeView = await getOfficeJob(schema.db, f.job.id, new Date(), sign);
+    const officeView = await getOfficeJob(schema.db, { ...f.office, role: "ADMIN" }, f.job.id, new Date(), sign);
     expect(officeView?.messages.at(-1)?.photos).toEqual([expect.objectContaining({ url: "https://files.example/signed" })]);
   });
   it("windows long public history and signs only the photos returned in each page", async () => {

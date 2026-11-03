@@ -311,6 +311,10 @@ describe.skipIf(!testDatabaseUrl)("transitionJob (database)", () => {
 
   async function worker(licensedFor?: Trade) {
     const id = await person("TRADIE");
+    const office = await person("ADMIN");
+    await schema.db.profile.update({ where: { id }, data: { emailVerifiedAt: new Date("2026-01-01") } });
+    await schema.db.workerProfile.create({ data: { userId: id, identityCheckedAt: new Date("2026-01-01"), identityCheckedById: office,
+      baseSuburb: "Invercargill", areaLat: -46.4132, areaLng: 168.3538, areaRadiusKm: 25 } });
     if (licensedFor) {
       await schema.db.workerTrade.create({ data: { userId: id, trade: licensedFor } });
       await schema.db.licence.create({
@@ -321,6 +325,7 @@ describe.skipIf(!testDatabaseUrl)("transitionJob (database)", () => {
           status: "VERIFIED",
           checkedAt: new Date(),
           checkedById: await person("ADMIN"),
+          expiresOn: new Date("2099-12-31"),
         },
       });
     }
@@ -338,6 +343,7 @@ describe.skipIf(!testDatabaseUrl)("transitionJob (database)", () => {
         addressLine1: "1 Example St",
         suburb: "Gladstone",
         city: "Invercargill",
+        lat: -46.4132, lng: 168.3538, approxLat: -46.4117, approxLng: 168.3538,
         status,
         priceCents: ["REVIEW", "QUOTE_BOUNTY"].includes(status) ? null : 12_000,
         workerId: claimed ? await worker() : null,
@@ -783,12 +789,15 @@ describe("transitionJob without a database", () => {
       $executeRaw: async () => 0,
       job: {
         findUnique: async ({ select }: { select?: { timeWindows?: unknown } }) =>
-          select?.timeWindows ? { anyTime: false, timeWindows: [] } : ++reads === 1
+          select?.timeWindows ? { anyTime: false, timeWindows: [] } : ({ ...(++reads === 1
             ? snapshot("BOOKABLE", { id: "job-1" })
-            : snapshot("ASSIGNED", { id: "job-1", workerId: randomUUID() }),
+            : snapshot("ASSIGNED", { id: "job-1", workerId: randomUUID() })), lat: -46.4132, lng: 168.3538, approxLat: -46.4117, approxLng: 168.3538 }),
         updateMany: async () => ({ count: 0 }),
       },
       licence: { count: async () => 1 },
+      profile: { findUnique: async () => ({ id: WORKER, role: "TRADIE", email: "worker@example.test", emailVerifiedAt: new Date("2026-01-01"),
+        workerProfile: { identityCheckedAt: new Date("2026-01-01"), identityCheckedById: "office", pausedAt: null, baseSuburb: "Invercargill", areaLat: -46.4132, areaLng: 168.3538, areaRadiusKm: 25 },
+        workerTrades: [{ trade: "ELECTRICAL", licence: { status: "VERIFIED", checkedAt: new Date("2026-01-01"), checkedById: "office", expiresOn: new Date("2099-12-31") } }] }) },
       settings: { findUnique: async () => ({ enabledTrades: ["ELECTRICAL", "PLUMBING", "GAS", "CONSTRUCTION", "OTHER"] }) },
     };
     const db = { $transaction: async (work: (t: typeof tx) => unknown) => work(tx) } as unknown as PrismaClient;

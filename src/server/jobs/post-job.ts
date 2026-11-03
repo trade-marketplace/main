@@ -2,9 +2,9 @@ import "server-only";
 
 import type { PrismaClient } from "@/generated/prisma/client";
 import { draftFieldErrors, jobDraftSchema, POST_KEY_SCHEMA, postJobSchema, type DraftFieldErrors, type JobDraft } from "@/lib/job-draft";
-import { haversineKm } from "@/lib/geo/distance";
 import { currentSchedule, postingDateRange } from "@/lib/job-time-windows";
 export { postingDateRange } from "@/lib/job-time-windows";
+import { canEstimate, WORKER_ELIGIBILITY_SELECT } from "@/server/workers/eligibility";
 import { createAudit } from "@/server/audit/audit";
 import type { Viewer } from "@/server/auth/viewer";
 import { createSupabaseFileStore, PHOTO_BUCKET } from "@/server/files/storage";
@@ -122,17 +122,12 @@ export async function postJob(db: PrismaClient, viewer: Viewer | null, input: un
 export async function notifyEligibleWorkers(db: PrismaClient, posted: Posted, now: Date) {
   const job = await db.job.findUniqueOrThrow({ where: { id: posted.jobId } });
   // A typed address needs the office to locate it before a work-area match can be made.
-  if (job.status !== "REVIEW" || job.lat === null || job.lng === null) return;
+  if (job.status !== "REVIEW") return;
   const workers = await db.profile.findMany({
-    where: { role: "TRADIE", workerTrades: { some: { trade: job.category } }, workerProfile: { is: { available: true } } },
-    select: { id: true, workerProfile: true, licences: { where: { trade: job.category, status: "VERIFIED" }, select: { expiresOn: true } } },
+    where: { role: "TRADIE", workerProfile: { is: { available: true } } },
+    select: WORKER_ELIGIBILITY_SELECT,
   });
-  const today = new Date(`${postingDateRange(now).today}T00:00:00Z`);
-  const recipients = workers.filter((worker) => {
-    const area = worker.workerProfile;
-    return worker.id !== job.customerId && area && area.areaLat !== null && area.areaLng !== null && area.areaRadiusKm
-      && (job.category === "OTHER" || worker.licences.some((licence) => !licence.expiresOn || licence.expiresOn >= today))
-      && haversineKm({ lat: area.areaLat, lng: area.areaLng }, { lat: job.lat!, lng: job.lng! }) <= area.areaRadiusKm;
-  }).map((worker) => worker.id);
+  const settings = await db.settings.findUnique({ where: { id: 1 }, select: { enabledTrades: true } });
+  const recipients = workers.filter(worker => canEstimate(worker, job, { now, ...(settings ? { enabledTrades: settings.enabledTrades } : {}) })).map(worker => worker.id);
   await createNotify(db)("job.posted", recipients, { eventId: `job.posted:${job.id}`, payload: { jobId: job.id, jobNumber: job.jobNumber, asap: job.asap } });
 }
