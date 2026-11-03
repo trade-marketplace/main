@@ -1,0 +1,23 @@
+.page { display: grid; gap: var(--trade-space-5); min-width: 0; max-width: var(--trade-content-max); }
+.head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--trade-space-4); }
+.title { margin: 0; font-family: var(--trade-font-heading); font-weight: 900; font-variation-settings: var(--trade-display-axes); font-size: var(--trade-fs-price); line-height: var(--trade-lh-price); }
+.subtitle { margin: var(--trade-space-2) 0 0; font-size: var(--trade-fs-small); color: var(--trade-text-2); }
+.search { position: relative; min-width: 0; width: min(100%, 22rem); }
+.search kbd { position: absolute; right: var(--trade-space-3); top: 50%; transform: translateY(-50%); font: inherit; color: var(--trade-text-2); border: 1px solid var(--trade-field-stroke); padding-inline: var(--trade-space-1); border-radius: var(--trade-radius-field); pointer-events: none; }
+.search:has(input:not(:placeholder-shown)) kbd { display: none; }
+.kpis { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--trade-space-3); }
+.kpi { display: grid; align-content: start; gap: var(--trade-space-2); min-width: 0; padding: var(--trade-space-4); text-align: left; border: 1px solid var(--trade-line); border-radius: var(--trade-radius-card); background: var(--trade-surface); color: var(--trade-text); cursor: pointer; }
+.kpi[data-overdue] { box-shadow: inset 0 3px 0 var(--trade-danger); }
+.kpi[data-overdue] .detail, .overdue { color: var(--trade-danger); font-weight: 700; }
+.kpi[aria-pressed="true"] { border-color: var(--trade-forest); }
+.kpi[aria-disabled] { cursor: not-allowed; }
+.label { font-size: var(--trade-fs-small); }
+.number { font-size: var(--trade-fs-price); line-height: var(--trade-lh-price); font-weight: 800; }
+.detail { color: var(--trade-text-2); font-size: var(--trade-fs-caption); line-height: var(--trade-lh-caption); }
+.related { display: flex; flex-wrap: wrap; gap: var(--trade-space-4); font-size: var(--trade-fs-small); }
+.related a { color: var(--trade-link); text-underline-offset: var(--trade-space-1); }
+.tabset { min-width: 0; margin: 0; padding: 0; border: 0; }
+.problems { display: grid; gap: var(--trade-space-3); min-width: 0; scroll-margin-top: var(--trade-space-20); }
+.problems h2 { margin: 0; font-size: var(--trade-fs-subheading); }
+@media (max-width: 900px) { .kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 540px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } .search { width: 100%; } .kpi { padding: var(--trade-space-3); } }
