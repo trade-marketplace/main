@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useRef, useState, useSyncExternalStore, type FormEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useEffectEvent, useRef, useState, useSyncExternalStore, type FormEvent, type ReactNode } from "react";
 
 import { Button } from "@/components/Button";
 import { Icon } from "@/components/Icon";
@@ -18,8 +18,9 @@ import { PhotoThumbnail } from "@/components/media/PhotoPicker";
 import { DRAFT_STORAGE_KEY, type JobDraft } from "@/lib/job-draft";
 import { wentUp } from "@/lib/motion/helpers";
 import { useBump } from "@/lib/motion/hooks";
-import { canonicalDraft, decodeWizardDraft, describeErrors, editDescription, encodeWizardDraft, initialWizardDraft, reconcileWizardPhotos, JOB_TYPES, WIZARD_STEPS, type WizardDraft } from "@/lib/post-job-wizard";
+import { applyLandingHandoff, canClearStaleDescribe, canonicalDraft, decodeWizardDraft, describeErrors, editDescription, encodeWizardDraft, initialWizardDraft, landingLocationHint, landingWizardDraft, localEnvelopeMatchesInput, recoverServerDescribe, reconcileWizardPhotos, JOB_TYPES, WIZARD_STEPS, type WizardDraft } from "@/lib/post-job-wizard";
 import { loadDraftPhotosAction, type saveDraftAction } from "@/server/jobs/actions";
+import { canResumeSavedPhotos } from "@/lib/jobs/draft-photo-path";
 import { DraftPhotos } from "./DraftPhotos";
 import { useDraftPhotos } from "./useDraftPhotos";
 
@@ -28,12 +29,22 @@ import styles from "./post-job.module.css";
 type Props = {
   ownerId?: string | null;
   initialDraft?: JobDraft;
+  initialManualCategory?: boolean | null;
   hasServerDraft?: boolean;
   loadFailed?: boolean;
   save: typeof saveDraftAction;
   /** Only the guarded component preview passes this. */
   previewState?: string;
 };
+const HANDOFF_PARAMS = ["description", "type"] as const;
+const LOCATION_PARAMS = ["location", "lat", "lng"] as const;
+const SERVER_DRAFT_PARAM = "savedDraft";
+function withoutLandingFallback(href: string) {
+  const url = new URL(href, window.location.origin);
+  for (const name of [...HANDOFF_PARAMS, ...LOCATION_PARAMS]) url.searchParams.delete(name);
+  url.searchParams.delete(SERVER_DRAFT_PARAM);
+  return `${url.pathname}${url.search}`;
+}
 function subscribeDraft(onChange: () => void) {
   window.addEventListener("storage", onChange);
   return () => window.removeEventListener("storage", onChange);
@@ -78,16 +89,26 @@ export function WizardFrame({ step = 0, saved, saveExit, children, summary, back
   </div>;
 }
 
-export function PostJobWizard({ ownerId = null, initialDraft = {}, hasServerDraft = false, loadFailed = false, save, previewState }: Props) {
-  return <ToastProvider><PostJobWizardForm {...{ ownerId, initialDraft, hasServerDraft, loadFailed, save, previewState }} /></ToastProvider>;
+export function PostJobWizard({ ownerId = null, initialDraft = {}, initialManualCategory, hasServerDraft = false, loadFailed = false, save, previewState }: Props) {
+  return <ToastProvider><PostJobWizardForm {...{ ownerId, initialDraft, initialManualCategory, hasServerDraft, loadFailed, save, previewState }} /></ToastProvider>;
 }
 
-function PostJobWizardForm({ ownerId = null, initialDraft = {}, hasServerDraft = false, loadFailed = false, save, previewState }: Props) {
+function PostJobWizardForm({ ownerId = null, initialDraft = {}, initialManualCategory, hasServerDraft = false, loadFailed = false, save, previewState }: Props) {
   const router = useRouter(); const path = usePathname(); const params = useSearchParams();
   const raw = useSyncExternalStore(subscribeDraft, snapshot, () => null);
-  const restored = previewState ? null : reconcileWizardPhotos(decodeWizardDraft(raw, ownerId), initialDraft, Boolean(ownerId && hasServerDraft));
+  const recover = Boolean(ownerId && hasServerDraft && initialDraft.postKey && params.get(SERVER_DRAFT_PARAM) === initialDraft.postKey);
+  const local = previewState ? null : reconcileWizardPhotos(decodeWizardDraft(raw, ownerId), initialDraft, Boolean(ownerId && hasServerDraft));
+  const restored = recover ? recoverServerDescribe(local, initialDraft, initialManualCategory) : local;
   const [edited, setEdited] = useState<WizardDraft>();
-  const draft = reconcileWizardPhotos(edited ?? null, initialDraft, Boolean(ownerId && hasServerDraft)) ?? restored ?? initialWizardDraft(initialDraft, hasServerDraft || previewState === "photos");
+  const queryString = params.toString();
+  const handoff = previewState ? {} : landingWizardDraft(Object.fromEntries(params));
+  const queryHint = previewState ? undefined : landingLocationHint(Object.fromEntries(params));
+  const handoffKey = handoff.description || handoff.category ? JSON.stringify(handoff) : null;
+  const appliedHandoff = useRef<string | null>(null); const [consumedHandoff, setConsumedHandoff] = useState<string | null>(null);
+  const memory = reconcileWizardPhotos(edited ?? null, initialDraft, Boolean(ownerId && hasServerDraft));
+  const baseDraft = memory ?? restored ?? initialWizardDraft(initialDraft, hasServerDraft || previewState === "photos", initialManualCategory);
+  const describedDraft = handoffKey && handoffKey !== consumedHandoff ? applyLandingHandoff(baseDraft, handoff) : baseDraft;
+  const draft = queryHint ? { ...describedDraft, locationHint: queryHint } : describedDraft;
   const serverPaths = ownerId && hasServerDraft && initialDraft.postKey === draft.data.postKey ? initialDraft.photoPaths ?? [] : draft.data.photoPaths ?? [];
   const photoAuthority = Boolean(ownerId && hasServerDraft && initialDraft.postKey === draft.data.postKey);
   const photos = useDraftPhotos({ ownerId, postKey: draft.data.postKey, serverPaths, authoritative: photoAuthority, preview: Boolean(previewState) });
@@ -101,7 +122,10 @@ function PostJobWizardForm({ ownerId = null, initialDraft = {}, hasServerDraft =
   const describeValid = !Object.keys(describeErrors(draft)).length;
   const requestedStep = params.get("step") ?? (previewState === "photos" ? "photos" : "describe");
   const described = draft.completedDescribe && describeValid && Boolean(draft.data.postKey);
-  const step = described && requestedStep === "where-when" && draft.completedPhotos ? 2 : described && (requestedStep === "photos" || requestedStep === "where-when") ? 1 : 0;
+  const recoveryPaths = Array.isArray(initialDraft.photoPaths) ? photos.manager.confirmedPaths() : initialDraft.photoPaths;
+  const recoveredPhotos = recover && canResumeSavedPhotos(ownerId, draft.data.postKey, recoveryPaths, photos.state);
+  const recoveryPending = Boolean(recover && !memory && local && (!localEnvelopeMatchesInput(baseDraft, local) || local.completedDescribe !== baseDraft.completedDescribe || recoveredPhotos && !local.completedPhotos));
+  const step = described && requestedStep === "where-when" && (recover ? recoveredPhotos : draft.completedPhotos) ? 2 : described && (requestedStep === "photos" || requestedStep === "where-when") ? 1 : 0;
   const stepHref = (value: string) => { const query = new URLSearchParams(params.toString()); query.set("step", value); return `${path}?${query}`; };
   const stepHrefs = [stepHref("describe"), stepHref("photos"), stepHref("where-when")];
   const backHref = step === 2 ? stepHrefs[1] : stepHrefs[0];
@@ -114,14 +138,48 @@ function PostJobWizardForm({ ownerId = null, initialDraft = {}, hasServerDraft =
     previousStep.current = step;
   }, [step]);
 
-  function keep(next: WizardDraft) {
+  const keep = useCallback((next: WizardDraft) => {
     const withKey = { ...next, data: { ...next.data, postKey: next.data.postKey ?? crypto.randomUUID() } };
     setEdited(withKey); setError(false);
     try {
       if (!previewState) localStorage.setItem(DRAFT_STORAGE_KEY, encodeWizardDraft(withKey, ownerId));
+      if (!previewState) {
+        const clean = withoutLandingFallback(window.location.href);
+        if (clean !== `${window.location.pathname}${window.location.search}`) window.history.replaceState(null, "", clean);
+      }
       setSaved(true); return { draft: withKey, persisted: true };
     } catch { setSaved(false); setError(true); return { draft: withKey, persisted: false }; }
-  }
+  }, [ownerId, previewState]);
+
+  const consumeHandoff = useEffectEvent((key: string | null, incomingQuery: string) => {
+    const query = new URLSearchParams(incomingQuery); const hint = landingLocationHint(Object.fromEntries(query));
+    if (!key) { appliedHandoff.current = null; if (consumedHandoff !== null) setConsumedHandoff(null); }
+    const describe = Boolean(key && appliedHandoff.current !== key);
+    if (!describe && !hint) return;
+    // Read the device snapshot here too: useSyncExternalStore hydrates after its empty server snapshot.
+    const stored = decodeWizardDraft(snapshot(), ownerId);
+    let current = memory ?? (recover ? recoverServerDescribe(stored, initialDraft, initialManualCategory) : stored) ?? initialWizardDraft(initialDraft, hasServerDraft, initialManualCategory);
+    if (ownerId && hasServerDraft && current.data.postKey !== initialDraft.postKey) current = initialWizardDraft(initialDraft, true, initialManualCategory);
+    if (ownerId && hasServerDraft) current = { ...current, data: { ...current.data, photoPaths: initialDraft.photoPaths } };
+    if (hint) current = { ...current, locationHint: hint };
+    if (describe) appliedHandoff.current = key;
+    const next = describe ? applyLandingHandoff(current, landingWizardDraft(Object.fromEntries(query))) : current;
+    const persisted = keep(next).persisted;
+    if (describe) setConsumedHandoff(key);
+    const clean = new URLSearchParams(incomingQuery);
+    if (describe) clean.delete("step");
+    if (persisted) for (const name of HANDOFF_PARAMS) clean.delete(name);
+    if (persisted) clean.delete(SERVER_DRAFT_PARAM);
+    if (hint && persisted) for (const name of LOCATION_PARAMS) clean.delete(name);
+    // Next copies its router state itself; forwarding __NA would bypass its search-param update.
+    if (clean.toString() !== incomingQuery) window.history.replaceState(null, "", `${path}${clean.size ? `?${clean}` : ""}`);
+  });
+  // Settle hydration's device snapshot first; a superseded navigation must never consume an old handoff.
+  useEffect(() => {
+    let active = true;
+    queueMicrotask(() => { if (active) consumeHandoff(handoffKey, queryString); });
+    return () => { active = false; };
+  }, [handoffKey, queryString]);
 
   async function advance(exit = false) {
     if (pending.current) return;
@@ -157,11 +215,11 @@ function PostJobWizardForm({ ownerId = null, initialDraft = {}, hasServerDraft =
         if (!exit && step === 1 && photos.manager.getSnapshot().photos.some(photo => photo.status !== "done")) return;
       }
       const kept = keep({ ...effectiveDraft, data: { ...effectiveDraft.data, postKey: commandKey, ...(photos.active ? { photoPaths: photos.manager.paths() } : {}) } });
-      let durable = kept.persisted;
+      let durable = kept.persisted; let envelopePersisted = kept.persisted; let savedToServer = false;
       if (offline && !exit) return;
       if (ownerId && !offline) {
         const canonical = canonicalDraft(kept.draft);
-        const result = await save(canonical, ownerId, photoVersion);
+        const result = await save(canonical, ownerId, photoVersion, kept.draft.manualCategory);
         if (session?.check(result, { resend: () => advance(exit) })) return;
         if ("status" in result && result.status === "photos-changed") { photos.manager.reconcile(result.photoPaths, true); await photos.manager.flush(); setError(true); return; }
         if ("status" in result && result.status === "draft-changed") { setError(true); router.refresh(); return; }
@@ -170,12 +228,24 @@ function PostJobWizardForm({ ownerId = null, initialDraft = {}, hasServerDraft =
           setError(true); return;
         }
         await photos.manager.confirmSaved(kept.draft.data.photoPaths ?? []);
-        durable ||= typeof canonical.description === "string" && canonical.description === kept.draft.description.trim();
+        savedToServer = true;
+        durable ||= typeof canonical.description === "string" && canonical.description === kept.draft.description.trim() && localEnvelopeMatchesInput(kept.draft, decodeWizardDraft(snapshot(), ownerId));
       } else if (previewState === "save-error") { setError(true); return; }
       if (exit && !durable) { setError(true); return; }
-      if (!exit) keep({ ...kept.draft, completedDescribe: true, completedPhotos: step === 1 ? true : kept.draft.completedPhotos });
+      if (!exit) {
+        const completed = keep({ ...kept.draft, completedDescribe: true, completedPhotos: step === 1 ? true : kept.draft.completedPhotos });
+        envelopePersisted ||= completed.persisted;
+        durable = completed.persisted;
+        // Photos may still hold local-only raw files and completion state; use its owned server fallback.
+        if (step === 0 && savedToServer && !durable && canClearStaleDescribe(completed.draft, decodeWizardDraft(snapshot(), ownerId))) {
+          try { localStorage.removeItem(DRAFT_STORAGE_KEY); durable = localStorage.getItem(DRAFT_STORAGE_KEY) === null; } catch { /* Keep memory and use the key-bound server fallback below. */ }
+        }
+      }
       if (durable) { setSaved(true); setError(false); }
-      router.push(exit ? "/" : nextHref);
+      const destination = new URL(envelopePersisted || durable ? withoutLandingFallback(nextHref) : nextHref, window.location.origin);
+      if (!exit && savedToServer) for (const name of HANDOFF_PARAMS) destination.searchParams.delete(name);
+      if (!exit && savedToServer && !durable) destination.searchParams.set(SERVER_DRAFT_PARAM, kept.draft.data.postKey!);
+      router.push(exit ? "/" : `${destination.pathname}${destination.search}`);
     } catch { setError(true); }
     finally { pending.current = false; setBusy(false); }
   }
@@ -184,11 +254,11 @@ function PostJobWizardForm({ ownerId = null, initialDraft = {}, hasServerDraft =
   const category = draft.data.category;
   const label = JOB_TYPES.find((item) => item.value === category)?.label;
   const photosSaved = !photos.active || !photos.state.storageError && !photos.state.saving && !photos.state.restoring && photos.state.photos.every(photo => photo.status === "done");
-  return <WizardFrame step={step} saved={photosSaved && (saved ?? Boolean(restored || hasServerDraft || previewState === "restored"))} summary={effectiveDraft} photoPreviews={photos.state.photos} backHref={backHref} stepHrefs={stepHrefs} saveExit={() => void advance(true)} busy={busy}>
+  return <WizardFrame step={step} saved={photosSaved && !recoveryPending && (saved ?? Boolean(restored || hasServerDraft || previewState === "restored"))} summary={effectiveDraft} photoPreviews={photos.state.photos} backHref={backHref} stepHrefs={stepHrefs} saveExit={() => void advance(true)} busy={busy}>
     <OfflineBanner online={previewState === "offline" ? false : undefined} sticky={false} />
     {restoredNotice && <Banner tone="good" title="Draft restored" className={styles.notice} />}
     {loadFailed && <Banner tone="alert" title="Couldn’t load your draft." className={styles.notice} action={<Button variant="tertiary" onClick={() => router.refresh()}>Try again</Button>} />}
-    {error && <Banner tone="alert" title="Couldn’t save." className={styles.notice} live />}
+    {(error || recoveryPending) && <Banner tone="alert" title="Couldn’t save." className={styles.notice} live />}
     <h1 ref={headingRef} tabIndex={-1} className={styles.title}>{step === 0 ? "What needs doing?" : step === 1 ? "Add some photos" : "Where & when"}</h1>
     {step === 0 ? <form className={styles.form} onSubmit={submit} noValidate aria-label="Describe the job">
       <div>

@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import pg from "pg";
 import sharp from "sharp";
 import { expectNoA11yViolations } from "./support/a11y";
+import { VIEWPORTS } from "./support/viewports";
 import { startPhotoStorageStub } from "./support/photo-storage-stub";
 import { SECURITY_PASSWORD, SECURITY_TRADIE, SECURITY_USER } from "./support/security-auth-stub";
 
@@ -151,7 +152,7 @@ test.describe("signed-in draft photos through real actions, private Storage tran
     await page.evaluate(() => Object.assign(window, { __photoRscMarker: "same-document" }));
     const remote = await browser.newContext(); const other = await remote.newPage();
     try {
-      await login(other, SECURITY_USER.email, "/jobs/new?step=photos"); await expect(other.getByRole("button", { name: "Next", exact: true })).not.toHaveAttribute("aria-disabled", "true");
+      await login(other, SECURITY_USER.email, "/jobs/new?step=photos"); await expect(other.getByRole("button", { name: "Next", exact: true })).not.toHaveAttribute("aria-disabled", "true", { timeout: 15_000 });
       await page.context().clearCookies(); await page.getByRole("button", { name: "Remove Photo 1", exact: true }).click();
       const dialog = page.getByRole("dialog", { name: "You’ve been logged out", exact: true }); await expect(dialog).toBeVisible();
       await other.getByRole("button", { name: "Remove Photo 2", exact: true }).click();
@@ -297,4 +298,56 @@ test.describe("signed-in draft photos through real actions, private Storage tran
     expect((await db.query("SELECT data->'photoPaths' AS paths FROM job_drafts WHERE profile_id=$1", [SECURITY_USER.id])).rows[0].paths).toEqual([...paths].reverse());
     expect(storage.events.filter(event => event.method === "PUT")).toHaveLength(writes);
   });
+  test("category-origin saves preserve attached photos through cacheless inferred and explicit restoration", async ({ page }) => {
+    await db.query("DELETE FROM job_drafts WHERE profile_id=$1", [SECURITY_USER.id]); await login(page, SECURITY_USER.email);
+    const field = page.getByRole("textbox", { name: "Describe the job", exact: true });
+    await field.fill("Repair a leaking tap downstairs."); await page.getByRole("button", { name: "Next", exact: true }).click();
+    const bytes = await sharp({ create: { width: 100, height: 80, channels: 3, background: "blue" } }).jpeg().toBuffer();
+    await page.locator('input[type="file"]').last().setInputFiles({ name: "origin-retained.jpg", mimeType: "image/jpeg", buffer: bytes });
+    await expect(page.getByRole("button", { name: "Next", exact: true })).not.toHaveAttribute("aria-disabled", "true");
+    const current = (await db.query("SELECT data,manual_category FROM job_drafts WHERE profile_id=$1", [SECURITY_USER.id])).rows[0]; expect(current.manual_category).toBe(false); expect(current.data.photoPaths).toHaveLength(1);
+    await page.evaluate(() => localStorage.clear()); await page.goto(`${app}/jobs/new`); await expect(page.getByText(/We guessed Plumbing/)).toBeVisible();
+    await field.fill("Check the lights and wiring upstairs."); await expect(page.getByRole("radio", { name: "Electrical", exact: true })).toBeChecked();
+    await page.getByRole("button", { name: "Next", exact: true }).click(); await expect(page.getByRole("heading", { name: "Add some photos", exact: true })).toBeVisible();
+    expect((await db.query("SELECT data->'photoPaths' AS paths FROM job_drafts WHERE profile_id=$1", [SECURITY_USER.id])).rows[0].paths).toEqual(current.data.photoPaths);
+    await page.getByRole("link", { name: "Back", exact: true }).click(); await field.fill("Repair a leaking tap downstairs.");
+    await page.getByRole("radio", { name: "Electrical", exact: true }).check(); await page.getByRole("radio", { name: "Plumbing", exact: true }).check();
+    await page.getByRole("button", { name: "Save & exit", exact: true }).click(); await expect(page).toHaveURL(`${app}/`);
+    await page.evaluate(() => localStorage.clear()); await page.goto(`${app}/jobs/new`); await field.fill("Check the lights and wiring upstairs.");
+    await expect(page.getByRole("radio", { name: "Plumbing", exact: true })).toBeChecked();
+    const final = (await db.query("SELECT data,manual_category FROM job_drafts WHERE profile_id=$1", [SECURITY_USER.id])).rows[0];
+    expect(final.manual_category).toBe(true); expect(final.data.photoPaths).toEqual(current.data.photoPaths);
+  });
+  for (const completedOnly of [false, true]) test(`Photos Next recovers a failed completion write without bypassing pending raw files (${completedOnly})`, async ({ page }) => {
+    const key = crypto.randomUUID(); const data = { postKey: key, description: "Check the upstairs lights and wiring.", category: "ELECTRICAL", photoPaths: [] };
+    await db.query("INSERT INTO job_drafts(profile_id,data,manual_category,updated_at) VALUES($1,$2,false,now()) ON CONFLICT(profile_id) DO UPDATE SET data=EXCLUDED.data,manual_category=false", [SECURITY_USER.id, data]);
+    await page.addInitScript(({ owner, data, completedOnly }) => {
+      const set = Storage.prototype.setItem; const remove = Storage.prototype.removeItem;
+      if (!sessionStorage.getItem("photosRecoverySeeded")) { set.call(localStorage, "trade.job-draft.v1", JSON.stringify({ version: 1, ownerId: owner, data, description: data.description, manualCategory: false, completedDescribe: true, completedPhotos: false })); set.call(sessionStorage, "photosRecoverySeeded", "1"); }
+      Storage.prototype.setItem = function(key, value) { if (key === "trade.job-draft.v1" && (!completedOnly || JSON.parse(value).completedPhotos)) throw new DOMException("Storage full", "QuotaExceededError"); set.call(this, key, value); };
+      Storage.prototype.removeItem = function(key) { if (key === "trade.job-draft.v1") { Reflect.set(window, "photosRecoveryRemoves", Number(Reflect.get(window, "photosRecoveryRemoves") ?? 0) + 1); throw new DOMException("Storage blocked", "SecurityError"); } remove.call(this, key); };
+    }, { owner: SECURITY_USER.id, data, completedOnly });
+    await login(page, SECURITY_USER.email, "/jobs/new?step=photos"); await expect(page.getByRole("button", { name: "Next", exact: true })).not.toHaveAttribute("aria-disabled", "true");
+    await page.getByRole("button", { name: "Next", exact: true }).click(); await expect(page.getByRole("heading", { name: "Where & when", exact: true })).toBeVisible();
+    expect(new URL(page.url()).searchParams.get("savedDraft")).toBe(key); expect(await page.evaluate(() => Reflect.get(window, "photosRecoveryRemoves") ?? 0)).toBe(0);
+    await page.reload(); await expect(page.getByRole("heading", { name: "Where & when", exact: true })).toBeVisible(); await expect(page.getByText("Couldn’t save.", { exact: true })).toBeVisible(); await expect(page.getByText("Draft saved", { exact: true })).toHaveCount(0);
+    await page.getByRole("link", { name: "Back", exact: true }).click(); await expect(page.getByRole("heading", { name: "Add some photos", exact: true })).toBeVisible();
+    const bytes = await sharp({ create: { width: 100, height: 80, channels: 3, background: "red" } }).jpeg().toBuffer();
+    await page.evaluate(async ({ owner, key, bytes }) => {
+      const file = new File([Uint8Array.from(atob(bytes), char => char.charCodeAt(0))], "pending-marker.jpg", { type: "image/jpeg" });
+      await new Promise<void>((resolve, reject) => { const request = indexedDB.open("trade.job-photos.v1", 1); request.onupgradeneeded = () => request.result.createObjectStore("drafts"); request.onerror = () => reject(request.error); request.onsuccess = () => { const db = request.result; const tx = db.transaction("drafts", "readwrite"); tx.objectStore("drafts").put([{ id: "pending-marker", name: file.name, file, prepared: true, needsRetry: true }], `${owner}:${key}`); tx.oncomplete = () => { db.close(); resolve(); }; tx.onabort = () => reject(tx.error); }; });
+    }, { owner: SECURITY_USER.id, key, bytes: bytes.toString("base64") });
+    await page.goto(`${app}/jobs/new?step=where-when&savedDraft=${key}`); await expect(page.getByRole("heading", { name: "Add some photos", exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Remove pending-marker.jpg", exact: true })).toBeVisible(); await expect(page.getByRole("button", { name: "Next", exact: true })).toHaveAttribute("aria-disabled", "true");
+    expect((await db.query("SELECT data->'photoPaths' AS paths FROM job_drafts WHERE profile_id=$1", [SECURITY_USER.id])).rows[0].paths).toEqual([]); await expectNoA11yViolations(page);
+    if (!completedOnly) for (const viewport of VIEWPORTS) {
+      await page.setViewportSize(viewport); expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0); await expectNoA11yViolations(page);
+      if (viewport.width === 390 || viewport.width === 1440) await page.screenshot({ path: `/tmp/118-parent-recovery-${viewport.width}.png`, fullPage: true });
+    }
+    // The recovery URL already requests Where; it resumes only once Retry is acknowledged.
+    await page.getByRole("button", { name: "Retry pending-marker.jpg", exact: true }).click(); await expect(page.getByRole("heading", { name: "Where & when", exact: true })).toBeVisible();
+    await page.reload(); await expect(page.getByRole("heading", { name: "Where & when", exact: true })).toBeVisible();
+    expect((await db.query("SELECT data->'photoPaths' AS paths FROM job_drafts WHERE profile_id=$1", [SECURITY_USER.id])).rows[0].paths).toHaveLength(1);
+  });
+
 });

@@ -6,6 +6,7 @@ import type { Viewer } from "@/server/auth/viewer";
 
 type Db = Pick<PrismaClient, "$transaction">;
 type DraftOptions = {
+  manualCategory?: boolean;
   expectedDraftAbsent?: boolean;
   expectedPostKey?: string;
   expectedPhotoPaths?: readonly string[];
@@ -33,17 +34,26 @@ export async function saveDraft(db: Db, viewer: Viewer | null, input: unknown, o
       const next = jobDraftSchema.parse(data);
       if (!await options.validatePhotos(tx, next.postKey, next.photoPaths ?? [])) return { status: "invalid", fields: { photoPaths: "Add some photos" } } as const;
     }
-    await tx.jobDraft.upsert({ where: { profileId: viewer.userId }, create: { profileId: viewer.userId, data }, update: { data } });
+    const changed = old?.postKey !== data.postKey || old?.description !== data.description || old?.category !== data.category;
+    const manualCategory = options.manualCategory !== undefined
+      ? parsed.data.description && parsed.data.category ? options.manualCategory : null
+      : changed ? null : previous?.manualCategory ?? null;
+    await tx.jobDraft.upsert({ where: { profileId: viewer.userId }, create: { profileId: viewer.userId, data, manualCategory }, update: { data, manualCategory } });
     return { status: "saved" } as const;
   }, { timeout: 30_000 });
 }
 
-export async function loadDraft(db: Db, viewer: Viewer | null) {
+export async function loadWizardDraft(db: Db, viewer: Viewer | null) {
   if (!viewer) return null;
   return db.$transaction(async (tx) => {
     const profile = await tx.profile.findUnique({ where: { id: viewer.userId }, select: { role: true } });
     if (profile?.role !== "CUSTOMER") return null;
     const row = await tx.jobDraft.findUnique({ where: { profileId: viewer.userId } });
-    return row ? jobDraftSchema.parse(row.data) : null;
+    return row ? { draft: jobDraftSchema.parse(row.data), manualCategory: row.manualCategory } : null;
   });
+}
+
+/** The shared #116 service keeps its canonical return shape. */
+export async function loadDraft(db: Db, viewer: Viewer | null) {
+  return (await loadWizardDraft(db, viewer))?.draft ?? null;
 }
