@@ -4,6 +4,7 @@ import { OfficeQueues } from "@/components/office/OfficeQueues";
 import { previewQueues } from "@/app/dev/components/office-queues/preview-data";
 import { canFocusQueueSearch, QUEUES, parseQueueQuery, queueHref, waitingLabel } from "@/lib/office-queues";
 import { queueJobWhere, queueSearchWhere, readOfficeQueues, readOfficeQueueStats } from "@/server/office/queues";
+import { JOB_SUMMARY_SELECT } from "@/server/views/jobs";
 import { officeQueueJobView } from "@/server/views/office-queues";
 
 vi.mock("next/navigation", async original => ({ ...(await original<typeof import("next/navigation")>()), useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }) }));
@@ -20,7 +21,7 @@ function fake() {
     job: { groupBy: vi.fn(async () => [
       { status: "REVIEW", _count: { _all: 2 } }, { status: "QUOTE_BOUNTY", _count: { _all: 1 } }, { status: "PRICED", _count: { _all: 4 } },
       { status: "SUBMITTED", _count: { _all: 3 } }, { status: "CANCEL_REVIEW", _count: { _all: 1 } }, { status: "CANCELLED", _count: { _all: 9 } },
-    ]), count: vi.fn(async () => 1), findMany: vi.fn(async () => [job()]) },
+    ]), count: vi.fn(async () => 1), findFirst: vi.fn(async () => job("j1", { status: "BOOKABLE", suburb: "Richmond" }) as ReturnType<typeof job> | null), findMany: vi.fn(async () => [job()]) },
     jobStatusHistory: { groupBy: vi.fn(async () => [{ jobId: "j1", _max: { createdAt: ago(26) } }]) },
     variation: { aggregate: vi.fn(async () => ({ _count: { _all: 2 }, _min: { createdAt: ago(3) } })), findMany: vi.fn(async () => []) },
     completionEvidence: { aggregate: vi.fn(async () => ({ _min: { submittedAt: ago(49) as Date | null } })), findMany: vi.fn(async () => [{ submittedAt: ago(48) }]) },
@@ -77,6 +78,22 @@ describe("office queue access and predicates", () => {
     const db = fake(); await readOfficeQueueStats(db as never, OFFICE, NOW);
     expect(db.job.count).toHaveBeenCalledWith({ where });
     expect(db.workerProfile.count).toHaveBeenCalledWith({ where: { verifiedAt: null, user: { role: "TRADIE" } } });
+  });
+  it("shows only the oldest qualifying unclaimed job's projected suburb, and uses the neutral detail when empty", async () => {
+    const db = fake();
+    db.jobStatusHistory.groupBy.mockResolvedValueOnce([{ jobId: "price", _max: { createdAt: ago(26) } }])
+      .mockResolvedValueOnce([{ jobId: "cancel", _max: { createdAt: ago(3) } }])
+      .mockResolvedValueOnce([{ jobId: "oldest", _max: { createdAt: ago(55) } }]);
+    db.job.findFirst.mockResolvedValue(job("oldest", { status: "BOOKABLE", suburb: "Richmond", addressLine1: "private street canary", customer: { id: "private customer", firstName: "Sarah", email: "private@example.test", phone: "+64211234567" } }));
+    const result = await readOfficeQueueStats(db as never, OFFICE, NOW);
+    expect(result.kpis.unclaimed).toMatchObject({ count: 1, oldestAt: ago(55).toISOString(), overdue: true, detail: "Richmond" });
+    expect(db.job.findFirst).toHaveBeenCalledWith({ where: { AND: [queueJobWhere("unclaimed", NOW), { id: "oldest" }] }, select: JOB_SUMMARY_SELECT });
+    expect(JSON.stringify(result)).not.toMatch(/private street|private customer|private@example|211234567|addressLine|customerId|workerId/);
+    db.job.findFirst.mockClear(); db.job.count.mockResolvedValue(0);
+    expect((await readOfficeQueueStats(db as never, OFFICE, NOW)).kpis.unclaimed).toMatchObject({ count: 0, detail: "—", overdue: false });
+    expect(db.job.findFirst).not.toHaveBeenCalled();
+    db.job.count.mockResolvedValue(1); db.job.findFirst.mockResolvedValue(null);
+    await expect(readOfficeQueueStats(db as never, OFFICE, NOW)).rejects.toThrow("queue-read-changed");
   });
   it("counts tasks rather than joined jobs, leaves cancelled jobs out, and keeps distinct worker/support badges", async () => {
     const db = fake(), result = await readOfficeQueueStats(db as never, OFFICE, NOW);

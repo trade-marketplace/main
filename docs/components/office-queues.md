@@ -54,3 +54,8 @@ use screens.html#off-queues’ “Extra work to price”, “Cancel requests” 
 the prescribed tabs keep “Extra work”, “Cancellations” and “Sign-off”. Hidden label variants leave the accessibility tree. Additional layout labels for Matt's review: “Waiting on customer”,
 “Problems”, “Problem”, “Reason”, “Auto-release”, “Search jobs and people”, “Search results”, “Queue totals”, “Other work”,
 “Queue jobs”; singular header “1 thing needs you”. Empty/error/offline/retry wording reuses existing components.
+
+The Unclaimed KPI detail uses the oldest still-qualifying job's actual suburb, as in `pages.html#w-o-queues`.
+Its job is rechecked against the same unclaimed predicate and passed through the central office list projection;
+only the suburb reaches that detail line. The existing status-entry clock still controls ordering and urgency.
+An empty queue shows the neutral dash; a changed/missing oldest row fails visibly for retry rather than inventing a detail.

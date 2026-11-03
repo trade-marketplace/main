@@ -7,7 +7,7 @@ import { normaliseMobile } from "@/lib/auth/signup";
 import { jobNumberFromSearch, STATUS_GROUPS } from "@/lib/office-jobs";
 import { QUEUE_PAGE_SIZE, waitingLabel, type QueueData, type QueueKey, type QueueKpi, type QueueQuery, type QueueRow } from "@/lib/office-queues";
 import { getDb } from "@/server/db";
-import { JOB_SUMMARY_SELECT } from "@/server/views/jobs";
+import { JOB_SUMMARY_SELECT, officeJobListView } from "@/server/views/jobs";
 import type { JobViewer } from "@/server/views/access";
 import { officeQueueJobView } from "@/server/views/office-queues";
 import { PRICE_SLOW_AFTER_HOURS, UNCLAIMED_AFTER_HOURS } from "@/server/scheduler/rules";
@@ -69,6 +69,11 @@ export async function readOfficeQueueStats(db: QueueDatabase, viewer: JobViewer,
     db.workerProfile.count({ where: PENDING_WORKERS }), db.supportThread.count({ where: { status: "OPEN" } }),
     db.problemReport.count({ where: { status: "OPEN" } }),
   ]);
+  const oldestUnclaimed = unclaimedCount > 0 && unclaimedAge[0] ? await db.job.findFirst({
+    where: { AND: [unclaimed, { id: unclaimedAge[0].jobId }] }, select: JOB_SUMMARY_SELECT,
+  }) : null;
+  const unclaimedView = oldestUnclaimed ? officeJobListView(viewer, oldestUnclaimed) : null;
+  if (unclaimedCount > 0 && !unclaimedView) throw new Error("queue-read-changed");
   const count = (...statuses: JobStatus[]) => groups.filter(row => statuses.includes(row.status)).reduce((sum, row) => sum + row._count._all, 0);
   const nzDate = (date: Date) => new Intl.DateTimeFormat("en-CA", { timeZone: "Pacific/Auckland", year: "numeric", month: "2-digit", day: "2-digit" }).format(date);
   // Query a broad UTC range, then compare NZ calendar days: this stays correct across daylight-saving changes.
@@ -81,7 +86,7 @@ export async function readOfficeQueueStats(db: QueueDatabase, viewer: JobViewer,
     extra: kpi(extra._count._all, extra._min.createdAt, now, PRICE_SLOW_AFTER_HOURS),
     cancel: kpi(count("CANCEL_REVIEW"), cancelAge[0]?._max.createdAt ?? null, now, PRICE_SLOW_AFTER_HOURS),
     signoff: kpi(count("SUBMITTED"), signoffOldest, now, settings.autoReleaseHours, `${releaseToday} auto-release today`),
-    unclaimed: kpi(unclaimedCount, unclaimedAge[0]?._max.createdAt ?? null, now, UNCLAIMED_AFTER_HOURS),
+    unclaimed: kpi(unclaimedCount, unclaimedAge[0]?._max.createdAt ?? null, now, UNCLAIMED_AFTER_HOURS, unclaimedView?.suburb ?? "—"),
   } satisfies Record<QueueKey, QueueKpi>;
   const queueTasks = Object.values(kpis).reduce((sum, item) => sum + item.count, 0);
   return { kpis, things: queueTasks + problemCount, counts: { queues: queueTasks, tradies, support }, waitingCustomer: count("PRICED"), problemCount, autoReleaseHours: settings.autoReleaseHours,
