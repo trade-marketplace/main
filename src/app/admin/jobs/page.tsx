@@ -15,10 +15,10 @@ type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 export default async function AllJobsPage({ searchParams }: { searchParams: SearchParams }) {
   const query = parseOfficeJobsQuery(await searchParams);
-  await requireRole(["ADMIN"], { next: `${OFFICE_JOBS_PATH}${officeJobsSearch(query)}` });
+  const viewer = await requireRole(["ADMIN"], { next: `${OFFICE_JOBS_PATH}${officeJobsSearch(query)}` });
   let data: OfficeJobsPage | null = null;
   try {
-    data = await listOfficeJobs(query);
+    data = await listOfficeJobs(viewer, query);
   } catch (error) {
     unstable_rethrow(error);
     // Shown as "Can't load jobs" with Try again; the details stay in the server log.
