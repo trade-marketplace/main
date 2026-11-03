@@ -74,6 +74,44 @@ describe.skipIf(!testDatabaseUrl)("private draft photo lifecycle (Postgres)", ()
     expect((await loadDraft(schema.db, viewer))?.photoPaths).toEqual([first.path, second.path]);
     expect(await saveOrder(viewer, randomUUID(), [], storage.files)).toEqual({ status: "forbidden" });
   });
+  it("atomically rejects a stale full save after a newer device update lands between its read and write", async () => {
+    const { viewer, key } = await setup(); const storage = stores(); const a = await upload(viewer, key, storage); const b = await upload(viewer, key, storage);
+    await saveOrder(viewer, key, [a.path], storage.files);
+    const fresh = (await loadDraft(schema.db, viewer))!;
+    let release!: () => void; const gate = new Promise<void>(resolve => { release = resolve; });
+    const stale = (async () => { await gate; return saveDraft(schema.db, viewer, { ...fresh, description: "A stale local edit", photoPaths: [a.path] }, {
+      expectedPostKey: key, expectedPhotoPaths: fresh.photoPaths, validatePhotos: (tx, postKey, list) => validatePhotoPaths(tx, viewer, postKey, list, () => storage.files),
+    }); })();
+    await saveOrder(viewer, key, [b.path, a.path], storage.files); release();
+    expect(await stale).toEqual({ status: "photos-changed", photoPaths: [b.path, a.path] });
+    expect(await loadDraft(schema.db, viewer)).toMatchObject({ description: "Move the garden bench", photoPaths: [b.path, a.path] });
+    // Removal also wins over an acknowledged but stale reference: CAS refuses to resurrect it.
+    await saveOrder(viewer, key, [b.path], storage.files);
+    expect(await saveDraft(schema.db, viewer, { photoPaths: [b.path, a.path] }, { expectedPostKey: key, expectedPhotoPaths: [b.path, a.path] })).toEqual({ status: "photos-changed", photoPaths: [b.path] });
+    expect((await loadDraft(schema.db, viewer))?.photoPaths).toEqual([b.path]);
+  });
+  it("allows only one concurrent photo-order writer with the same expected list", async () => {
+    const { viewer, key } = await setup(); const storage = stores(); const a = await upload(viewer, key, storage); const b = await upload(viewer, key, storage);
+    const results = await Promise.all([[a.path, b.path], [b.path, a.path]].map(photoPaths => saveDraft(schema.db, viewer, { photoPaths }, {
+      expectedPostKey: key, expectedPhotoPaths: [], validatePhotos: (tx, postKey, list) => validatePhotoPaths(tx, viewer, postKey, list, () => storage.files),
+    })));
+    expect(results.filter(result => result.status === "saved")).toHaveLength(1);
+    const conflict = results.find(result => result.status === "photos-changed"); expect(conflict?.status).toBe("photos-changed");
+    if (conflict?.status === "photos-changed") expect((await loadDraft(schema.db, viewer))?.photoPaths).toEqual(conflict.photoPaths);
+    expect(await saveDraft(schema.db, viewer, { photoPaths: [] }, { expectedPostKey: randomUUID(), expectedPhotoPaths: [] })).toEqual({ status: "forbidden" });
+  });
+  it("guards expected first creation against a newer remote draft and tracks a successful creation's version", async () => {
+    const viewer = await person(); const staleKey = randomUUID(); expect(await loadDraft(schema.db, viewer)).toBeNull();
+    const remoteKey = randomUUID(); await saveDraft(schema.db, viewer, { postKey: remoteKey, category: "OTHER", description: "The remote device's draft" });
+    const storage = stores(); const photo = await upload(viewer, remoteKey, storage); await saveOrder(viewer, remoteKey, [photo.path], storage.files);
+    expect(await saveDraft(schema.db, viewer, { postKey: staleKey, description: "The stale first creation", photoPaths: [] }, { expectedDraftAbsent: true })).toEqual({ status: "draft-changed" });
+    expect(await loadDraft(schema.db, viewer)).toMatchObject({ postKey: remoteKey, description: "The remote device's draft", photoPaths: [photo.path] });
+    const fresh = await person(); const key = randomUUID();
+    expect(await saveDraft(schema.db, fresh, { postKey: key, description: "The first creation", photoPaths: [] }, { expectedDraftAbsent: true })).toEqual({ status: "saved" });
+    expect(await saveDraft(schema.db, fresh, { description: "The next saved edit" }, { expectedPostKey: key, expectedPhotoPaths: [] })).toEqual({ status: "saved" });
+    expect(await saveDraft(schema.db, fresh, { postKey: randomUUID() }, { expectedDraftAbsent: true })).toEqual({ status: "draft-changed" });
+    expect((await loadDraft(schema.db, fresh))?.postKey).toBe(key);
+  });
   it("keeps raw tracking through signed-token expiry and removes late recreated uploads with retry", async () => {
     const { viewer, key } = await setup(); const storage = stores(); const photo = await upload(viewer, key, storage);
     storage.raw.set(photo.grant.path, new Uint8Array([1, 2, 3]));

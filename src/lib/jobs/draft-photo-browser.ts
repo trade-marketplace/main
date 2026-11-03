@@ -1,7 +1,7 @@
-import { MAX_PHOTO_BYTES } from "@/lib/media";
+import { MAX_PHOTO_BYTES, MAX_PHOTOS } from "@/lib/media";
 
 export const BROWSER_PHOTO_MAX_EDGE = 2000;
-export type StoredDraftPhoto = { id: string; name: string; file?: File; path?: string; prepared?: boolean };
+export type StoredDraftPhoto = { id: string; name: string; file?: File; path?: string; prepared?: boolean; pendingAttach?: boolean; needsRetry?: boolean };
 export type PhotoDraftScope = { ownerId: string | null; postKey: string };
 export const photoDraftKey = ({ ownerId, postKey }: PhotoDraftScope) => `${ownerId ?? "guest"}:${postKey}`;
 
@@ -25,8 +25,9 @@ export async function loadPhotoDraft(scope: PhotoDraftScope): Promise<StoredDraf
       request.onsuccess = () => {
         const value = request.result;
         if (!Array.isArray(value)) return resolve(null);
-        resolve(value.slice(0, 6).filter((photo): photo is StoredDraftPhoto => Boolean(photo && typeof photo.id === "string" && typeof photo.name === "string" && photo.name.length <= 255 && (!photo.file || photo.file instanceof Blob) && (!photo.path || typeof photo.path === "string" && photo.path.length <= 250)))
-          .map(photo => { const file = photo.file as Blob | undefined; return { ...photo, file: file && !(file instanceof File) ? new File([file], photo.name, { type: file.type }) : file }; }));
+        // Recovery may retain six server photos plus six unsynced local files; accepted uploads still cap at six.
+        resolve(value.slice(0, scope.ownerId ? MAX_PHOTOS * 2 : MAX_PHOTOS).filter((photo): photo is StoredDraftPhoto => Boolean(photo && typeof photo.id === "string" && typeof photo.name === "string" && photo.name.length <= 255 && (!photo.file || photo.file instanceof Blob) && (!photo.path || typeof photo.path === "string" && photo.path.length <= 250)))
+          .map(photo => { const file = photo.file as Blob | undefined; return { ...photo, pendingAttach: photo.pendingAttach === true, needsRetry: photo.needsRetry === true, file: file && !(file instanceof File) ? new File([file], photo.name, { type: file.type }) : file }; }));
       };
       request.onerror = () => reject(request.error);
       transaction.onabort = () => reject(transaction.error);
@@ -40,7 +41,7 @@ export async function savePhotoDraft(scope: PhotoDraftScope, photos: readonly St
   try {
     await new Promise<void>((resolve, reject) => {
       const transaction = db.transaction("drafts", "readwrite");
-      transaction.objectStore("drafts").put(photos.map(photo => ({ id: photo.id, name: photo.name, prepared: photo.prepared === true, ...(photo.file ? { file: photo.file } : {}), ...(photo.path ? { path: photo.path } : {}) })), photoDraftKey(scope));
+      transaction.objectStore("drafts").put(photos.map(photo => ({ id: photo.id, name: photo.name, prepared: photo.prepared === true, ...(photo.pendingAttach ? { pendingAttach: true } : {}), ...(photo.needsRetry ? { needsRetry: true } : {}), ...(photo.file ? { file: photo.file } : {}), ...(photo.path ? { path: photo.path } : {}) })), photoDraftKey(scope));
       transaction.oncomplete = () => resolve();
       transaction.onabort = transaction.onerror = () => reject(transaction.error);
     });

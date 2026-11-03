@@ -90,6 +90,13 @@ export function decodeWizardDraft(raw: string | null, ownerId: string | null): W
   } catch { return null; }
 }
 
+/** Local text may be unfinished; authenticated uploaded-photo references/order come from the current draft. */
+export function reconcileWizardPhotos(local: WizardDraft | null, server: JobDraft, authoritative: boolean): WizardDraft | null {
+  if (!local || !authoritative) return local;
+  if (!server.postKey || local.data.postKey !== server.postKey) return null;
+  return { ...local, data: { ...local.data, photoPaths: server.photoPaths ?? [] } };
+}
+
 /** Landing-page values are hints. Later steps still validate the complete draft on the server. */
 export function landingWizardDraft(params: Record<string, string | string[] | undefined>): JobDraft {
   const description = typeof params.description === "string" ? params.description.slice(0, 120) : "";

@@ -6,7 +6,7 @@ import { DraftPhotoManager } from "@/lib/jobs/draft-photo-manager";
 import { DraftPhotoUploadError, uploadDraftPhotoFile } from "@/lib/jobs/draft-photo-upload";
 import { draftPhotoUrlAction, saveDraftPhotosAction } from "@/server/jobs/actions";
 
-export function useDraftPhotos({ ownerId, postKey, serverPaths, preview }: { ownerId: string | null; postKey?: string; serverPaths: readonly string[]; preview?: boolean }) {
+export function useDraftPhotos({ ownerId, postKey, serverPaths, preview, authoritative }: { ownerId: string | null; postKey?: string; serverPaths: readonly string[]; preview?: boolean; authoritative?: boolean }) {
   const session = useOptionalSessionExpired(); const serverPathsRef = useRef(serverPaths);
   useEffect(() => { serverPathsRef.current = serverPaths; });
   const manager = useMemo(() => {
@@ -32,9 +32,10 @@ export function useDraftPhotos({ ownerId, postKey, serverPaths, preview }: { own
           if (check(result) || !("url" in result)) throw new Error("We couldn't save that file. Try again.");
           return result.url;
         },
-        async saveServer(paths: string[]) {
-          const result = await saveDraftPhotosAction(ownerId, postKey, paths);
-          if (check(result) || !("status" in result) || result.status !== "saved") throw new Error("We couldn't save that file. Try again.");
+        async saveServer(paths: string[], expectedPaths: string[]) {
+          const result = await saveDraftPhotosAction(ownerId, postKey, paths, expectedPaths);
+          if (check(result) || !("status" in result) || result.status !== "saved" && result.status !== "photos-changed") throw new Error("We couldn't save that file. Try again.");
+          return result;
         },
       } : {}),
     });
@@ -45,6 +46,10 @@ export function useDraftPhotos({ ownerId, postKey, serverPaths, preview }: { own
     void manager.start(serverPathsRef.current);
     return () => manager.dispose();
   }, [manager, postKey]);
+  const serverOrder = JSON.stringify(serverPaths);
+  useEffect(() => {
+    if (authoritative && postKey && !preview) manager.reconcile(JSON.parse(serverOrder) as string[]);
+  }, [manager, postKey, authoritative, preview, serverOrder]);
   const state = useSyncExternalStore(manager.subscribe, manager.getSnapshot, manager.getSnapshot);
   return { manager, state, active: Boolean(postKey) };
 }

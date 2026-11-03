@@ -44,6 +44,9 @@ export type PhotoPickerProps = {
   cover?: boolean;
   addLabel?: string;
   accept?: string;
+  /** A restore conflict can show saved photos plus failed local files without calling the excess accepted. */
+  acceptedCount?: number;
+  retryDisabled?: boolean;
 };
 
 export function PhotoThumbnail({ photo, index }: { photo: Pick<PickedPhoto, "src" | "name">; index: number }) {
@@ -93,6 +96,8 @@ export function PhotoPicker({
   cover = false,
   addLabel = "Add photo",
   accept = PHOTO_ACCEPT,
+  acceptedCount,
+  retryDisabled = false,
 }: PhotoPickerProps) {
   const input = useRef<HTMLInputElement>(null);
   const countId = useId();
@@ -117,7 +122,7 @@ export function PhotoPicker({
             {photo.status === "failed" && (
               <span className={styles.failed}>
                 <span>Failed ·</span>
-                <button type="button" className={styles.retry} onClick={() => onRetry(photo.id)}>
+                <button type="button" className={styles.retry} disabled={retryDisabled} aria-describedby={retryDisabled && problems.length ? problemsId : undefined} onClick={() => onRetry(photo.id)}>
                   Retry<span className={styles.visuallyHidden}> {photo.name}</span>
                 </button>
               </span>
@@ -144,7 +149,7 @@ export function PhotoPicker({
         )}
       </ul>
       <p id={countId} className={styles.count}>
-        {photoCountLine(photos.length, max)}
+        {photoCountLine(acceptedCount ?? photos.length, max)}
       </p>
       {problems.length > 0 && (
         <div role="alert"><ul id={problemsId} className={styles.problems}>
