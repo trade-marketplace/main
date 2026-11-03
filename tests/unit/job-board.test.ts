@@ -85,7 +85,8 @@ describe("job board URL and safe client rules", () => {
     expect(decodeBoardCursor("bad-token")).toBeNull();
   });
   it("keeps estimate discovery and quote-bounty filtering separate from claimable work", () => {
-    expect(matchesBoardKind({ status: "QUOTE_BOUNTY" }, "estimate")).toBe(true);
+    expect(matchesBoardKind({ status: "REVIEW" }, "estimate")).toBe(true);
+    expect(matchesBoardKind({ status: "QUOTE_BOUNTY" }, "estimate")).toBe(false);
     expect(matchesBoardKind({ status: "QUOTE_BOUNTY" }, "bounty")).toBe(true);
     expect(matchesBoardKind({ status: "REVIEW" }, "bounty")).toBe(false);
     expect(matchesBoardKind({ status: "BOOKABLE" }, "ready")).toBe(true);
@@ -94,6 +95,11 @@ describe("job board URL and safe client rules", () => {
     expect(boardCardTag({ status: "REVIEW", earnCents: null, alreadyEstimated: true })).toEqual({ kind: "estimated" });
     expect(boardCardTag({ status: "BOOKABLE", earnCents: 10800, alreadyEstimated: true })).toEqual({ kind: "earn", text: "Earn $108" });
     expect(boardCardTag({ status: "BOOKABLE", earnCents: null, alreadyEstimated: true })).toEqual({ kind: "earn", text: "Pay pending" });
+  });
+  it("keeps the gold bounty state after a worker estimated the earlier REVIEW job", () => {
+    expect(boardCardTag({ status: "REVIEW", earnCents: null, alreadyEstimated: true })).toEqual({ kind: "estimated" });
+    expect(boardCardTag({ status: "QUOTE_BOUNTY", earnCents: null, alreadyEstimated: true })).toEqual({ kind: "bounty", text: "Quote bounty" });
+    expect(boardCardTag({ status: "QUOTE_BOUNTY", earnCents: null, alreadyEstimated: false })).toEqual({ kind: "bounty", text: "Quote bounty" });
   });
   it.each(["same-query refresh", "Saved set changed"])("discards a deferred old poll after %s without restoring its old pill", async () => {
     const requests = new BoardUpdateRequests(); let finish!: (value: BoardUpdates) => void;

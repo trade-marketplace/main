@@ -38,6 +38,14 @@ test.describe("guarded job board states", () => {
     await page.getByRole("link", { name: "Back to jobs", exact: true }).press("Enter");
     await expect(page).not.toHaveURL(/view=map/); await expect(page).toHaveURL(/kind=estimate/);
     await page.goBack(); await expect(page.getByRole("heading", { name: "Map", exact: true })).toBeVisible();
+    await page.getByRole("link", { name: "Back to jobs", exact: true }).click();
+    await expect(page).not.toHaveURL(/view=map/);
+    await page.getByRole("tab", { name: /^Quote bounty/ }).click();
+    await expect(page.locator('#board-cards [data-kind="bounty"]')).toHaveCount(4);
+    await expect(page.locator('#board-cards [data-kind="estimated"]')).toHaveCount(0);
+    await page.getByRole("tab", { name: /^Needs an estimate/ }).click();
+    await expect(page.locator("#board-cards article")).toHaveCount(6);
+    await expect(page.locator('#board-cards [data-kind="bounty"]')).toHaveCount(0);
     await expectNoA11yViolations(page);
   });
   test("board boundaries at five widths keep real destinations and Back", async ({ page }) => {
@@ -233,6 +241,38 @@ test.describe("signed-in eligible board", () => {
     await expect(page.getByRole("link", { name: "Board job 1", exact: true })).toHaveCount(0);
     await expect(page.getByRole("heading", { name: "Can’t load your jobs", exact: true })).toHaveCount(0);
     await expect(page.getByRole("tab", { name: /^Ready to claim/ })).toHaveAttribute("aria-selected", "true");
+    await expectNoA11yViolations(page);
+  });
+  test("online changed-selection failure hides old cards until Retry while a same-selection failure keeps its cache", async ({ page }) => {
+    await login(page);
+    let failLoads = true, failures = 0;
+    await page.route(url => url.origin === new URL(app!).origin && url.pathname === "/jobs", route => {
+      if (route.request().method() === "POST" && failLoads) { failures++; return route.abort("failed"); }
+      return route.continue();
+    });
+    await page.getByRole("tab", { name: /^Ready to claim/ }).click();
+    await expect.poll(() => failures).toBeGreaterThan(0);
+    await expect(page.getByRole("heading", { name: "Can’t load your jobs", exact: true })).toBeVisible();
+    await expect(page.locator("#board-cards article")).toHaveCount(0);
+    await expect(page.getByRole("tab", { name: "Ready to claim", exact: true })).toBeVisible();
+    await expectNoA11yViolations(page);
+    failLoads = false;
+    await page.locator("#board-cards").getByRole("button", { name: "Try again", exact: true }).click();
+    await expect(page.getByRole("link", { name: "Board job 3", exact: true })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Board job 1", exact: true })).toHaveCount(0);
+    const readyCount = await page.locator("#board-cards article").count();
+    failLoads = true; const previousFailures = failures;
+    await page.context().setOffline(true);
+    await expect(page.getByRole("link", { name: "Board job 3", exact: true })).toBeVisible();
+    await page.context().setOffline(false);
+    await expect.poll(() => failures).toBeGreaterThan(previousFailures);
+    await expect(page.getByText("Can’t load your jobs. Check your connection and try again.", { exact: true }).first()).toBeVisible();
+    await expect(page.locator("#board-cards article")).toHaveCount(readyCount);
+    await expect(page.getByRole("heading", { name: "Can’t load your jobs", exact: true })).toHaveCount(0);
+    failLoads = false;
+    await page.getByRole("button", { name: "Try again", exact: true }).click();
+    await expect(page.getByText("Can’t load your jobs. Check your connection and try again.", { exact: true })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Board job 3", exact: true })).toBeVisible();
     await expectNoA11yViolations(page);
   });
   test("failed browser storage never pretends to save a bookmark", async ({ page }) => {

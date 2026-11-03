@@ -23,11 +23,11 @@ export function previewBoard(state: string): BoardPage {
     const safe = workerJobListView(viewer, job);
     return safe && safe.point ? [{ ...safe, distanceKm: haversineKm({ lat: -46.4132, lng: 168.3538 }, safe.point),
       photoUrl: state === "no-photo" || job.jobNumber === 3 ? null : `/images/examples/${["wires", "board", "outlet", "furniture", "switch", "house", "tanks", "furniture"][(job.jobNumber - 1) % 8]}.jpg`,
-      tradeLabel: tradeLabel(safe.category), whenLabel: job.asap ? "ASAP" : "Flexible", alreadyEstimated: job.jobNumber === 2 }] : [];
+      tradeLabel: tradeLabel(safe.category), whenLabel: job.asap ? "ASAP" : "Flexible", alreadyEstimated: job.jobNumber === 2 || job.jobNumber === 3 }] : [];
   });
   return { meta: { ownerId: worker.id, areaName: "Invercargill", maxDistanceKm: 50, distanceKm: 25,
     blocked: state === "not-verified" ? "identity-required" : null,
     trades: BOARD_TRADES.map(trade => ({ trade, label: tradeLabel(trade), allowed: trade === "ELECTRICAL" || trade === "OTHER", reason: trade === "ELECTRICAL" || trade === "OTHER" ? null : "not verified" })) },
-    cards, counts: { all: cards.length, ready: cards.filter(card => card.status === "BOOKABLE").length, estimate: cards.filter(card => card.status !== "BOOKABLE").length, bounty: cards.filter(card => card.status === "QUOTE_BOUNTY").length, saved: 3, estimated: 1 },
+    cards, counts: { all: cards.length, ready: cards.filter(card => card.status === "BOOKABLE").length, estimate: cards.filter(card => card.status === "REVIEW").length, bounty: cards.filter(card => card.status === "QUOTE_BOUNTY").length, saved: 3, estimated: cards.filter(card => card.alreadyEstimated).length },
     total: cards.length, nextCursor: null, before: PREVIEW_NOW.toISOString(), scope: JSON.stringify(DEFAULT_BOARD_QUERY) };
 }

@@ -41,7 +41,7 @@ describe.skipIf(!testDatabaseUrl)("eligible job board real PostgreSQL reader", (
     expect(board.cards.slice(0, 2).map(card => card.id)).toEqual([high.id, cheap.id]);
     expect(board.cards.find(card => card.id === high.id)?.earnCents).toBe(20_800);
     expect(board.cards.filter(card => [review.id, bounty.id].includes(card.id)).map(card => card.earnCents)).toEqual([null, null]);
-    expect(board.counts).toMatchObject({ all: 4, ready: 2, estimate: 2, bounty: 1 });
+    expect(board.counts).toMatchObject({ all: 4, ready: 2, estimate: 1, bounty: 1 });
     const allEntry = boardOf(await loadJobBoard(schema.db, actor, { ...DEFAULT_BOARD_QUERY, sort: "earn", entry: "all" }, {}, deps()));
     expect(allEntry.cards.map(card => card.id)).toEqual(board.cards.map(card => card.id));
     expect(allEntry.counts).toEqual(board.counts); expect(allEntry.scope).toBe(board.scope);
@@ -110,6 +110,12 @@ describe.skipIf(!testDatabaseUrl)("eligible job board real PostgreSQL reader", (
     const selected = boardOf(await loadJobBoard(schema.db, actor, { ...DEFAULT_BOARD_QUERY, saved: true, estimated: true, when: ["asap"], kind: "estimate" }, { savedIds: [a.id, b.id] }, deps()));
     expect(selected.cards.map(card => card.id)).toEqual([a.id]); expect(selected.cards[0].alreadyEstimated).toBe(true);
     const none = boardOf(await loadJobBoard(schema.db, actor, { ...DEFAULT_BOARD_QUERY, when: [] }, {}, deps())); expect(none.total).toBe(0);
+    const estimate = boardOf(await loadJobBoard(schema.db, actor, { ...DEFAULT_BOARD_QUERY, kind: "estimate" }, {}, deps()));
+    const bounty = boardOf(await loadJobBoard(schema.db, actor, { ...DEFAULT_BOARD_QUERY, kind: "bounty" }, {}, deps()));
+    expect(estimate.cards.map(card => card.id)).toEqual([a.id]); expect(bounty.cards.map(card => card.id)).toEqual([b.id]);
+    expect(estimate.counts).toMatchObject({ all: 3, ready: 1, estimate: 1, bounty: 1 }); expect(bounty.counts).toEqual(estimate.counts);
+    expect(await newBoardJobs(schema.db, actor, { ...DEFAULT_BOARD_QUERY, kind: "estimate" }, { since: "2026-11-01T00:00:00Z", knownIds: [], savedIds: [] }, deps())).toEqual({ ok: true, count: 1 });
+    expect(await newBoardJobs(schema.db, actor, { ...DEFAULT_BOARD_QUERY, kind: "bounty" }, { since: "2026-11-01T00:00:00Z", knownIds: [], savedIds: [] }, deps())).toEqual({ ok: true, count: 1 });
     expect(await newBoardJobs(schema.db, actor, DEFAULT_BOARD_QUERY, { since: "2026-11-01T00:00:00Z", knownIds: [a.id, b.id], savedIds: [] }, deps())).toEqual({ ok: true, count: 1 });
     expect(boardOf(await loadJobBoard(schema.db, actor, { ...DEFAULT_BOARD_QUERY, saved: true }, { savedIds: [c.id] }, deps())).cards[0].id).toBe(c.id);
   });

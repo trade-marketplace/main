@@ -42,12 +42,12 @@ export function JobBoard({ initial, ownerId, source = LIVE_SOURCE, previewState,
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [error, setError] = useState(false), [newCount, setNewCount] = useState(previewState === "new-jobs" ? 3 : 0);
   const [loadedSelection, setLoadedSelection] = useState(() => boardSelectionKey(urlQuery, initialSaved));
-  const [offlineSinceLoad, setOfflineSinceLoad] = useState(!online);
+  const [cacheInvalidated, setCacheInvalidated] = useState(!online);
   const generation = useRef(0), pending = useRef(false), sentinel = useRef<HTMLDivElement>(null), boardRef = useRef<BoardPage | null>(initial.ok ? initial.board : null), lastQuery = useRef(key);
   const [updates] = useState(() => new BoardUpdateRequests());
   const savedRef = useRef(saved), queryRef = useRef(query);
   const cachedBoard = result.ok ? result.board : null;
-  const cacheChanged = (offlineSinceLoad || !online) && loadedSelection !== boardSelectionKey(query, saved);
+  const cacheChanged = (cacheInvalidated || !online) && loadedSelection !== boardSelectionKey(query, saved);
   const board = cacheChanged ? null : cachedBoard;
   useEffect(() => { savedRef.current = saved; queryRef.current = query; boardRef.current = cachedBoard; }, [saved, query, cachedBoard]);
   const extra = new URLSearchParams(search); for (const name of ["kind", "trade", "distance", "when", "sort", "saved", "estimated", "view", "layout"]) extra.delete(name);
@@ -75,12 +75,12 @@ export function JobBoard({ initial, ownerId, source = LIVE_SOURCE, previewState,
       if (!answer.ok && answer.error === "changed" && append) { pending.current = false; void loadPage(false); return; }
       if (answer.ok) {
         setLoadedSelection(boardSelectionKey(current, currentSaved));
-        setOfflineSinceLoad(false);
+        setCacheInvalidated(false);
         const ids = new Set(snapshot?.cards.map(card => card.id));
         setResult({ ok: true, board: append && snapshot ? { ...answer.board, cards: [...snapshot.cards, ...answer.board.cards.filter(card => !ids.has(card.id))] } : answer.board });
         if (!append && previewState !== "new-jobs") setNewCount(0);
-      } else if (snapshot) setError(true); else setResult(answer);
-    } catch { if (round === generation.current) setError(true); }
+      } else { setCacheInvalidated(true); if (snapshot) setError(true); else setResult(answer); }
+    } catch { if (round === generation.current) { setCacheInvalidated(true); setError(true); } }
     finally { if (round === generation.current) { pending.current = false; setBusy(false); setMore(false); } }
   }, [online, previewState, session, source, updates]);
 
@@ -88,7 +88,7 @@ export function JobBoard({ initial, ownerId, source = LIVE_SOURCE, previewState,
   useEffect(() => {
     generation.current++; pending.current = false; updates.invalidate();
     const quiet = lastQuery.current === key; lastQuery.current = online ? key : "";
-    if (!online) { setOfflineSinceLoad(true); setBusy(false); setMore(false); setNewCount(0); }
+    if (!online) { setCacheInvalidated(true); setBusy(false); setMore(false); setNewCount(0); }
     else if (hydrated) void load(false, quiet);
     const cancel = () => { generation.current++; pending.current = false; updates.invalidate(); };
     return cancel;

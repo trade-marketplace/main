@@ -86,7 +86,8 @@ export type BoardSource = { load(query: BoardQuery, request?: BoardRequest): Pro
 export type SortableBoardJob = Pick<BoardCard, "id" | "status" | "category" | "earnCents" | "distanceKm" | "createdAt" | "updatedAt" | "alreadyEstimated">;
 export function boardCardTag(card: Pick<BoardCard, "status" | "earnCents" | "alreadyEstimated">): { kind: "earn"; text: string } | { kind: "bounty"; text: string } | { kind: "estimate" } | { kind: "estimated" } {
   if (card.status === "BOOKABLE") return { kind: "earn", text: card.earnCents === null ? "Pay pending" : `Earn ${new Intl.NumberFormat("en-NZ", { style: "currency", currency: "NZD", maximumFractionDigits: card.earnCents % 100 ? 2 : 0 }).format(card.earnCents / 100)}` };
-  return card.alreadyEstimated ? { kind: "estimated" } : card.status === "QUOTE_BOUNTY" ? { kind: "bounty", text: "Quote bounty" } : { kind: "estimate" };
+  if (card.status === "QUOTE_BOUNTY") return { kind: "bounty", text: "Quote bounty" };
+  return card.alreadyEstimated ? { kind: "estimated" } : { kind: "estimate" };
 }
 
 /** A response started before a refresh/filter/bookmark change cannot repopulate its obsolete pill. */
@@ -99,7 +100,7 @@ export class BoardUpdateRequests {
   }
 }
 export function matchesBoardKind(job: Pick<SortableBoardJob, "status">, kind: BoardKind): boolean {
-  return kind === "all" || (kind === "ready" ? job.status === "BOOKABLE" : kind === "bounty" ? job.status === "QUOTE_BOUNTY" : job.status === "REVIEW" || job.status === "QUOTE_BOUNTY");
+  return kind === "all" || (kind === "ready" ? job.status === "BOOKABLE" : kind === "bounty" ? job.status === "QUOTE_BOUNTY" : job.status === "REVIEW");
 }
 export function boardSortValue(job: SortableBoardJob, sort: BoardSort): number {
   return sort === "nearest" ? job.distanceKm : sort === "newest" ? Date.parse(job.createdAt) : job.earnCents ?? -1;

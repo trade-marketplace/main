@@ -81,7 +81,7 @@ function countsAndRows(candidates: Candidate[], query: BoardQuery, savedIds: str
   for (const job of selected) {
     counts.all++;
     if (job.status === "BOOKABLE") counts.ready++;
-    else counts.estimate++;
+    if (job.status === "REVIEW") counts.estimate++;
     if (job.status === "QUOTE_BOUNTY") counts.bounty++;
   }
   return { counts, rows: selected.filter(job => matchesBoardKind(job, query.kind)).sort((a, b) => compareBoardJobs(a, b, query.sort)) };
