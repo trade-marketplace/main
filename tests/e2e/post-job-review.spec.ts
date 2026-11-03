@@ -140,6 +140,46 @@ test.describe("review and verified posting through real services", () => {
     expect((await db.query("SELECT count(*)::int AS count FROM jobs WHERE post_key=$1", [data.postKey])).rows[0].count).toBe(1);
     expect(await page.evaluate(key => localStorage.getItem(key), DRAFT_STORAGE_KEY)).toBeNull();
   });
+  for (const expireAt of ["inspect", "photos", "save"]) test(`an expired Review ${expireAt} action preserves photos and resumes once through the shared login dialog`, async ({ page }) => {
+    const data = await guest(page);
+    await db.query("INSERT INTO job_drafts(profile_id,data,manual_category,updated_at) VALUES($1,$2,true,now()) ON CONFLICT(profile_id) DO UPDATE SET data=EXCLUDED.data,manual_category=true", [SECURITY_USER.id, data]);
+    await login(page, SECURITY_USER.email, "/jobs/new?step=photos"); await expect(page.getByRole("heading", { name: "Add some photos", exact: true })).toBeVisible();
+    const bytes = await sharp({ create: { width: 80, height: 60, channels: 3, background: "blue" } }).jpeg().toBuffer();
+    await page.locator('input[type="file"]').last().setInputFiles({ name: "kept-after-login.jpg", mimeType: "image/jpeg", buffer: bytes });
+    await expect(page.getByRole("button", { name: "Next", exact: true })).not.toHaveAttribute("aria-disabled", "true");
+    await page.getByRole("button", { name: "Next", exact: true }).click(); await expect(page.getByRole("heading", { name: "Where and when?", exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Next", exact: true }).click(); await expect(page.getByRole("heading", { name: "All good?", exact: true })).toBeVisible();
+    if (expireAt === "inspect") await page.context().clearCookies();
+    else {
+      let expired = false;
+      await page.route("**/jobs/new**", async route => {
+        let args; try { args = JSON.parse(route.request().postData() ?? "null"); } catch { /* Regular navigation. */ }
+        const matches = Array.isArray(args) && (expireAt === "photos" ? args.length === 2 && args[0] === SECURITY_USER.id && args[1] === data.postKey : args.length === 5 && args[1] === SECURITY_USER.id && args[4] === "review");
+        if (!expired && matches) { expired = true; await page.context().clearCookies(); await route.continue({ headers: { ...route.request().headers(), cookie: "" } }); }
+        else await route.continue();
+      });
+    }
+    await page.getByRole("button", { name: "Post it", exact: true }).click();
+    const dialog = page.getByRole("dialog", { name: "You’ve been logged out", exact: true }); await expect(dialog).toBeVisible();
+    await expect(page.getByText("Couldn’t post.", { exact: true })).toHaveCount(0);
+    expect(await page.evaluate(key => JSON.parse(localStorage.getItem(key)!).data.postKey, DRAFT_STORAGE_KEY)).toBe(data.postKey);
+    await dialog.getByRole("button", { name: "Log in again", exact: true }).click(); await dialog.getByLabel("Password", { exact: true }).fill(SECURITY_PASSWORD); await dialog.getByRole("button", { name: "Log in", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "Posted.", exact: true })).toBeVisible();
+    const posted = (await db.query("SELECT id,description FROM jobs WHERE post_key=$1", [data.postKey])).rows; expect(posted).toHaveLength(1); expect(posted[0].description).toBe(data.description);
+    expect((await db.query("SELECT count(*)::int AS count FROM job_photos WHERE job_id=$1", [posted[0].id])).rows[0].count).toBe(1);
+  });
+  test("a newly unverified current account returns to verification with its same explicit draft intent", async ({ page }) => {
+    const data = await guest(page);
+    await db.query("INSERT INTO job_drafts(profile_id,data,manual_category,updated_at) VALUES($1,$2,true,now()) ON CONFLICT(profile_id) DO UPDATE SET data=EXCLUDED.data,manual_category=true", [SECURITY_USER.id, data]);
+    await login(page, SECURITY_USER.email, "/jobs/new?step=review"); await expect(page.getByRole("heading", { name: "All good?", exact: true })).toBeVisible();
+    await db.query("UPDATE profiles SET email_verified_at=NULL WHERE id=$1", [SECURITY_USER.id]);
+    try {
+      await page.getByRole("button", { name: "Post it", exact: true }).click(); await expect(page).toHaveURL(/\/verify\?/);
+      expect(new URL(new URL(page.url()).searchParams.get("next")!, app).searchParams.get("postIntent")).toBe(data.postKey);
+      expect(await page.evaluate(() => JSON.parse(localStorage.getItem("trade.job-post-intent.v1")!).postKey)).toBe(data.postKey);
+      expect((await db.query("SELECT count(*)::int AS count FROM jobs WHERE post_key=$1", [data.postKey])).rows[0].count).toBe(0);
+    } finally { await db.query("UPDATE profiles SET email_verified_at=now() WHERE id=$1", [SECURITY_USER.id]); }
+  });
   test("review, all recovery states and account sheet fit five widths with keyboard-accessible controls", async ({ page }) => {
     test.setTimeout(240_000);
     const states = ["ready", "no-photos", "loading", "uploading", "photo-error", "posting", "error", "offline", "signup", "signup-pending", "signup-error", "signup-offline", "posted"];
