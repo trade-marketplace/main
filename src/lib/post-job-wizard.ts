@@ -7,7 +7,7 @@ export const JOB_TYPES = [
   { value: "OTHER", label: "Other (anything)" },
 ] as const;
 export type JobType = (typeof JOB_TYPES)[number]["value"];
-export type WizardDraft = { data: JobDraft; description: string; manualCategory: boolean };
+export type WizardDraft = { data: JobDraft; description: string; manualCategory: boolean; completedDescribe: boolean };
 export const describeJobSchema = jobDraftSchema.pick({ description: true, category: true }).required();
 
 /** A small editable hint, never a restriction on the category a customer chooses. */
@@ -19,13 +19,14 @@ export function guessJobType(description: string): JobType | undefined {
   if (/\b(build(?:er|ing)?|carpenter|deck|fence|construction|renovation|wall|roof)\b/i.test(description)) return "CONSTRUCTION";
 }
 
-export function initialWizardDraft(data: JobDraft = {}): WizardDraft {
-  return { data: { ...data, category: data.category ?? guessJobType(data.description ?? "") }, description: data.description ?? "", manualCategory: Boolean(data.category) };
+export function initialWizardDraft(data: JobDraft = {}, completedDescribe = false): WizardDraft {
+  return { data: { ...data, category: data.category ?? guessJobType(data.description ?? "") }, description: data.description ?? "", manualCategory: Boolean(data.category),
+    completedDescribe: completedDescribe && describeJobSchema.safeParse({ description: data.description, category: data.category }).success };
 }
 
 export function editDescription(draft: WizardDraft, description: string): WizardDraft {
   const category = draft.manualCategory ? draft.data.category : guessJobType(description);
-  return { ...draft, description, data: { ...draft.data, category } };
+  return { ...draft, description, data: { ...draft.data, category }, completedDescribe: false };
 }
 
 /** The canonical draft always uses #116's schema. A separate bounded string keeps unfinished typing too. */
@@ -41,7 +42,7 @@ export function describeErrors(draft: WizardDraft) {
 }
 
 export function encodeWizardDraft(draft: WizardDraft, ownerId: string | null): string {
-  return JSON.stringify({ version: 1, ownerId, data: canonicalDraft(draft), description: draft.description.slice(0, 1000), manualCategory: draft.manualCategory });
+  return JSON.stringify({ version: 1, ownerId, data: canonicalDraft(draft), description: draft.description.slice(0, 1000), manualCategory: draft.manualCategory, completedDescribe: draft.completedDescribe });
 }
 
 export function decodeWizardDraft(raw: string | null, ownerId: string | null): WizardDraft | null {
@@ -49,7 +50,7 @@ export function decodeWizardDraft(raw: string | null, ownerId: string | null): W
     const stored = JSON.parse(raw ?? "null");
     if (!stored || stored.version !== 1 || stored.ownerId !== ownerId || typeof stored.description !== "string" || stored.description.length > 1000) return null;
     const data = jobDraftSchema.safeParse(stored.data);
-    return data.success ? { data: data.data, description: stored.description, manualCategory: stored.manualCategory === true } : null;
+    return data.success ? { data: data.data, description: stored.description, manualCategory: stored.manualCategory === true, completedDescribe: stored.completedDescribe === true } : null;
   } catch { return null; }
 }
 

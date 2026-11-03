@@ -73,10 +73,11 @@ test("200% text: keyboard reaches every category and starts the selected job", a
     await expect(rail.getByRole("article").nth(index)).toHaveCSS("outline-style", "solid");
   }
   await page.keyboard.press("Enter");
-  await expect(page).toHaveURL(/\/login\?next=/);
-  const next = new URL(new URL(page.url()).searchParams.get("next")!, "https://example.test");
+  await expect(page).toHaveURL(/\/jobs\/new\?/);
+  const next = new URL(page.url());
   expect(next.pathname).toBe("/jobs/new");
   expect(next.searchParams.get("type")).toBe("other");
+  await expect(page.getByRole("radio", { name: "Other (anything)", exact: true })).toBeChecked();
 });
 
 test("200% text: shared kit disabled reasons and long sublabels fit in every mode", async ({ page }) => {

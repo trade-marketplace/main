@@ -78,7 +78,7 @@ export function PostJobWizard({ ownerId = null, initialDraft = {}, hasServerDraf
   const raw = useSyncExternalStore(subscribeDraft, snapshot, () => null);
   const restored = previewState ? null : decodeWizardDraft(raw, ownerId);
   const [edited, setEdited] = useState<WizardDraft>();
-  const draft = edited ?? restored ?? initialWizardDraft(initialDraft);
+  const draft = edited ?? restored ?? initialWizardDraft(initialDraft, hasServerDraft || previewState === "photos");
   const [saved, setSaved] = useState<boolean>();
   const [error, setError] = useState(previewState === "save-error");
   const [fields, setFields] = useState<Record<string, string>>(previewState === "invalid" ? { description: "Describe the job", category: "Type of job" } : {});
@@ -87,7 +87,7 @@ export function PostJobWizard({ ownerId = null, initialDraft = {}, hasServerDraf
   const session = useOptionalSessionExpired(); const online = useOnlineStatus();
   const offline = !online || previewState === "offline";
   const describeValid = !Object.keys(describeErrors(draft)).length;
-  const step = (params.get("step") === "photos" || (!params.has("step") && previewState === "photos")) && describeValid ? 1 : 0;
+  const step = (params.get("step") === "photos" || (!params.has("step") && previewState === "photos")) && draft.completedDescribe && describeValid ? 1 : 0;
   const query = new URLSearchParams(params.toString()); query.delete("step");
   if (previewState === "photos") query.set("step", "describe");
   const backHref = `${path}${query.size ? `?${query}` : ""}`;
@@ -121,8 +121,8 @@ export function PostJobWizard({ ownerId = null, initialDraft = {}, hasServerDraf
     }
     const kept = keep(draft);
     if (!kept) return;
-    if (offline) return;
-    if (ownerId) {
+    if (offline && !exit) return;
+    if (ownerId && !offline) {
       pending.current = true; setBusy(true);
       try {
         const result = await save(canonicalDraft(kept), ownerId);
@@ -134,6 +134,8 @@ export function PostJobWizard({ ownerId = null, initialDraft = {}, hasServerDraf
       } catch { setError(true); return; }
       finally { pending.current = false; setBusy(false); }
     } else if (previewState === "save-error") { setError(true); return; }
+    // Only a successful Next completes Describe. Merely typing valid fields into a Photos URL never does.
+    if (!exit && !keep({ ...kept, completedDescribe: true })) return;
     router.push(exit ? "/" : nextHref);
   }
 
@@ -154,12 +156,12 @@ export function PostJobWizard({ ownerId = null, initialDraft = {}, hasServerDraf
       </div>
       <div>
         <ChipGroup label="Type of job" id="job-type" name="job-type" options={JOB_TYPES} value={category ?? ""} error={fields.category} required disabled={busy}
-          onChange={(value) => { keep({ ...draft, data: { ...draft.data, category: value as JobDraft["category"] }, manualCategory: true }); setFields({}); }} />
+          onChange={(value) => { keep({ ...draft, data: { ...draft.data, category: value as JobDraft["category"] }, manualCategory: true, completedDescribe: false }); setFields({}); }} />
         <p className={styles.hint}>
           {!draft.manualCategory && label ? <>We guessed {label} from your description. Change it if we’re wrong. </> : null}
           Moving, cleaning, gardening, assembly or anything else? Pick Other.
         </p>
-        <Button variant="tertiary" size="sm" className={styles.notSure} disabled={busy} onClick={() => { keep({ ...draft, data: { ...draft.data, category: "OTHER" }, manualCategory: true }); setFields({}); }}>Not sure</Button>
+        <Button variant="tertiary" size="sm" className={styles.notSure} disabled={busy} onClick={() => { keep({ ...draft, data: { ...draft.data, category: "OTHER" }, manualCategory: true, completedDescribe: false }); setFields({}); }}>Not sure</Button>
       </div>
       <div className={styles.actions}><Button type="submit" loading={busy || previewState === "saving"} disabled={offline} width="full-on-phone">Next</Button></div>
     </form> : <div className={styles.actions}><Button href={backHref} variant="secondary" width="auto">Back</Button></div>}

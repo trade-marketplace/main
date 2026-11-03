@@ -29,11 +29,25 @@ test("guest: shared validation → editable guess → Photos → Back → refres
   await page.reload();
   await expect(page.getByText("Draft restored", { exact: true })).toBeVisible();
   const key = await page.evaluate((storageKey) => JSON.parse(localStorage.getItem(storageKey)!).data.postKey, DRAFT_STORAGE_KEY);
+  await page.evaluate(() => { Object.defineProperty(navigator, "onLine", { configurable: true, get: () => false }); window.dispatchEvent(new Event("offline")); });
   await page.getByRole("button", { name: "Save & exit", exact: true }).click();
   await expect(page).toHaveURL(/\/$/);
   await page.goto("/jobs/new");
   await expect(page.getByRole("textbox", { name: "Describe the job", exact: true })).toHaveValue("Lights and wiring in the lounge need checking.");
   expect(await page.evaluate((storageKey) => JSON.parse(localStorage.getItem(storageKey)!).data.postKey, DRAFT_STORAGE_KEY)).toBe(key);
+});
+
+test("a Photos deep link waits for Next and then restores the completed step on refresh", async ({ page }) => {
+  await page.goto("/jobs/new?step=photos&description=Lights+keep+flickering&type=electrical");
+  await expect(page.getByRole("heading", { name: "What needs doing?", exact: true })).toBeVisible();
+  await page.getByRole("textbox", { name: "Describe the job", exact: true }).fill("Lights and wiring in the lounge need checking.");
+  await expect(page.getByRole("heading", { name: "Photos", exact: true })).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "What needs doing?", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Photos", exact: true })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Photos", exact: true })).toBeVisible();
 });
 
 test("unfinished guest text survives refresh; Not sure selects Other and its prompt", async ({ page }) => {

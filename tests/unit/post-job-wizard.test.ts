@@ -17,6 +17,14 @@ describe("Describe step", () => {
     expect(editDescription({ ...guessed, manualCategory: true }, "Fix the leaking tap").data.category).toBe("ELECTRICAL");
     expect(editDescription(guessed, "Something else").data.category).toBeUndefined();
   });
+  it("editing a completed description requires Next again, even when the new text is valid", () => {
+    const draft = initialWizardDraft({ description: "Move a sofa upstairs", category: "OTHER" }, true);
+    expect(editDescription(draft, "Assemble a garden bench").completedDescribe).toBe(false);
+  });
+  it("only resumes Photos from a complete saved Describe, not a guess on a partial server draft", () => {
+    expect(initialWizardDraft({ description: "Lights keep flickering" }, true).completedDescribe).toBe(false);
+    expect(initialWizardDraft({ description: "Lights keep flickering", category: "ELECTRICAL", photoPaths: [] }, true).completedDescribe).toBe(true);
+  });
   it("uses the shared schema and field prompts on Next", () => {
     expect(describeErrors(initialWizardDraft())).toEqual({ description: "Describe the job", category: "Type of job" });
     expect(describeErrors(initialWizardDraft({ description: "Too short", category: "OTHER" }))).toEqual({ description: "Describe the job" });
@@ -35,6 +43,12 @@ describe("owner-bound local draft", () => {
     expect(decodeWizardDraft(raw, "customer-a")?.description).toBe("Li");
     expect(canonicalDraft(draft)).toEqual({ category: "ELECTRICAL" });
     expect(jobDraftSchema.safeParse(canonicalDraft(draft)).success).toBe(true);
+  });
+  it("restores completion independently of field validity and keeps it out of the shared server payload", () => {
+    const draft = initialWizardDraft({ description: "Move a sofa upstairs", category: "OTHER" });
+    expect(decodeWizardDraft(encodeWizardDraft(draft, null), null)?.completedDescribe).toBe(false);
+    expect(decodeWizardDraft(encodeWizardDraft({ ...draft, completedDescribe: true }, null), null)?.completedDescribe).toBe(true);
+    expect(canonicalDraft({ ...draft, completedDescribe: true })).toEqual({ description: "Move a sofa upstairs", category: "OTHER" });
   });
   it("never restores another account's draft or an account draft to a guest", () => {
     const raw = encodeWizardDraft(initialWizardDraft({ description: "A private description", category: "OTHER" }), "customer-a");
