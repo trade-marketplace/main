@@ -1,15 +1,15 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { DraftPhotoManager, type PhotoManagerDeps } from "@/lib/jobs/draft-photo-manager";
-import { photoDraftKey, prepareDraftPhoto, resizedDimensions } from "@/lib/jobs/draft-photo-browser";
+import { photoDraftKey, prepareDraftPhoto, resizedDimensions, type StoredDraftPhoto } from "@/lib/jobs/draft-photo-browser";
 
 const instances: DraftPhotoManager[] = [];
 afterEach(() => { instances.forEach(manager => manager.dispose()); instances.length = 0; vi.useRealTimers(); });
 const file = (name = "photo.jpg") => new File([new Uint8Array([255, 216, 255, 1])], name, { type: "image/jpeg" });
 function deferred<T>() { let resolve!: (value: T) => void; let reject!: (reason?: unknown) => void; const promise = new Promise<T>((yes, no) => { resolve = yes; reject = no; }); return { promise, resolve, reject }; }
-async function fixture(overrides: Partial<PhotoManagerDeps> = {}, ownerId: string | null = null) {
+async function fixture(overrides: Partial<PhotoManagerDeps> = {}, ownerId: string | null = null, serverPaths: string[] = []) {
   const deps: PhotoManagerDeps = { read: vi.fn(async () => null), write: vi.fn(async () => {}), prepare: vi.fn(async input => input), online: () => true,
     createUrl: vi.fn(input => `blob:${input.name}:${Math.random()}`), revokeUrl: vi.fn(), ...overrides };
-  const manager = new DraftPhotoManager({ ownerId, postKey: "draft-one" }, deps); instances.push(manager); await manager.start([]); return { manager, deps };
+  const manager = new DraftPhotoManager({ ownerId, postKey: "draft-one" }, deps); instances.push(manager); await manager.start(serverPaths); return { manager, deps };
 }
 const done = (manager: DraftPhotoManager) => vi.waitFor(() => { expect(manager.getSnapshot().photos.every(photo => photo.status !== "uploading")).toBe(true); expect(manager.getSnapshot().saving).toBe(false); });
 
@@ -102,6 +102,70 @@ describe("draft photo lifecycle", () => {
     const { manager } = await fixture({ upload, preview, saveServer: vi.fn(async () => {}) }, "owner");
     await manager.start(["path-a", "path-b"]); await done(manager);
     expect(manager.paths()).toEqual(["path-a", "path-b"]); expect(manager.getSnapshot().photos[0].src).toBe("https://private.test/path-a"); expect(upload).not.toHaveBeenCalled();
+  });
+  it("uses server additions/order/removals while preserving genuinely unuploaded same-draft files", async () => {
+    const pending = file("unsynced.jpg"); const upload = vi.fn<NonNullable<PhotoManagerDeps["upload"]>>().mockResolvedValue("new-upload"); const saved = vi.fn<NonNullable<PhotoManagerDeps["saveServer"]>>().mockResolvedValue(undefined);
+    const { manager } = await fixture({ read: async () => [
+      { id: "removed", name: "removed.jpg", path: "removed-path", file: file("removed.jpg"), prepared: true },
+      { id: "retained", name: "retained.jpg", path: "retained-path", file: file("retained.jpg"), prepared: true },
+      { id: "unsynced", name: pending.name, file: pending, prepared: true },
+    ], upload, preview: async path => `https://private.test/${path}`, saveServer: saved }, "owner", ["new-server-path", "retained-path"]);
+    await done(manager); await manager.flush();
+    expect(manager.paths()).toEqual(["new-server-path", "retained-path", "new-upload"]);
+    expect(manager.getSnapshot().photos.map(photo => photo.name)).toEqual(["Photo 1", "retained.jpg", "unsynced.jpg"]);
+    expect(upload).toHaveBeenCalledTimes(1); expect(upload.mock.calls[0][0]).toBe(pending);
+    expect(saved).toHaveBeenLastCalledWith(["new-server-path", "retained-path", "new-upload"], expect.any(Array));
+  });
+  it("retains six saved plus six unsynced files across exit/restore, blocking uploads until conflict removal", async () => {
+    const paths = Array.from({ length: 6 }, (_, index) => `server-${index}`);
+    const pending = Array.from({ length: 6 }, (_, index) => file(`pending-${index}.jpg`));
+    let stored: readonly StoredDraftPhoto[] = pending.map((file, index) => ({ id: `pending-${index}`, name: file.name, file, prepared: true }));
+    const upload = vi.fn(async (file: File) => `uploaded-${file.name}`);
+    const deps: Partial<PhotoManagerDeps> = { read: async () => [...stored], write: async (_scope, photos) => { stored = [...photos]; }, upload,
+      preview: async path => `https://private.test/${path}`, saveServer: vi.fn(async () => {}) };
+    const first = await fixture(deps, "owner", paths); await done(first.manager); await first.manager.prepareExit();
+    expect(first.manager.paths()).toEqual(paths); expect(stored).toHaveLength(12); expect(stored.flatMap(photo => photo.file ? [photo.file] : [])).toEqual(pending);
+    expect(upload).not.toHaveBeenCalled(); first.manager.dispose();
+    const restored = await fixture(deps, "owner", paths); await done(restored.manager);
+    expect(restored.manager.getSnapshot().photos).toHaveLength(12); expect(restored.manager.getSnapshot().problems).toEqual(["You can add up to 6 photos, so 6 weren’t added."]);
+    restored.manager.retry("pending-0"); expect(upload).not.toHaveBeenCalled();
+    for (const photo of restored.manager.getSnapshot().photos.filter(photo => photo.path)) restored.manager.remove(photo.id);
+    for (const photo of restored.manager.getSnapshot().photos) restored.manager.retry(photo.id);
+    await done(restored.manager); await restored.manager.flush(); expect(upload).toHaveBeenCalledTimes(6);
+    expect(restored.manager.paths()).toEqual(pending.map(file => `uploaded-${file.name}`));
+  });
+  it("reconciles fresh same-key server props and a save CAS conflict without losing an active file or its order", async () => {
+    const upload = deferred<string>(); const firstSave = deferred<void>(); const saving = deferred<void>(); let hold = true;
+    let server = ["a"];
+    const { manager } = await fixture({ upload: async () => upload.promise, preview: async path => `https://private.test/${path}`,
+      saveServer: async (paths, expected) => {
+        if (hold) { hold = false; saving.resolve(); await firstSave.promise; }
+        if (JSON.stringify(expected) !== JSON.stringify(server)) return { status: "photos-changed", photoPaths: [...server] };
+        server = [...paths]; return { status: "saved" };
+      } }, "owner", server);
+    await done(manager); manager.add([file("active.jpg")]); await vi.waitFor(() => expect(manager.getSnapshot().photos[1].prepared).toBe(true));
+    const active = manager.getSnapshot().photos[1]; server = ["b", "a"]; manager.reconcile(server); await saving.promise;
+    server = ["c", "b"]; firstSave.resolve();
+    await vi.waitFor(() => expect(manager.paths()).toEqual(["c", "b"]));
+    expect(manager.getSnapshot().photos.find(photo => photo.id === active.id)?.file).toBe(active.file);
+    manager.move(active.id, 0); upload.resolve("uploaded-active"); await done(manager); await manager.flush();
+    expect(server).toEqual(["uploaded-active", "c", "b"]); expect(manager.paths()).toEqual(server);
+  });
+  it("an ambiguously acknowledged path removed remotely never auto-reattaches, while its bytes remain retryable", async () => {
+    let stored: readonly StoredDraftPhoto[] = []; let fail = true; let count = 0;
+    const upload = vi.fn(async () => `upload-${++count}`);
+    const overrides: Partial<PhotoManagerDeps> = { read: async () => [...stored], write: async (_scope, photos) => { stored = [...photos]; }, upload,
+      preview: async path => `https://private.test/${path}`, saveServer: async () => { if (fail) throw new Error("Response lost after commit"); } };
+    const { manager } = await fixture(overrides, "owner"); manager.add([file("uncertain.jpg")]); await done(manager);
+    expect(manager.getSnapshot().photos[0]).toMatchObject({ path: "upload-1", pendingAttach: true, status: "failed" });
+    fail = false; manager.reconcile(["remote-current"]); await done(manager); await manager.flush();
+    expect(manager.paths()).toEqual(["remote-current"]); expect(upload).toHaveBeenCalledTimes(1);
+    expect(manager.getSnapshot().photos[1]).toMatchObject({ name: "uncertain.jpg", path: undefined, needsRetry: true, status: "failed" });
+    await manager.prepareExit(); manager.dispose();
+    const restored = await fixture(overrides, "owner", ["remote-current"]); await done(restored.manager);
+    expect(restored.manager.paths()).toEqual(["remote-current"]); expect(upload).toHaveBeenCalledTimes(1);
+    restored.manager.retry(restored.manager.getSnapshot().photos[1].id); await done(restored.manager); await restored.manager.flush();
+    expect(restored.manager.paths()).toEqual(["remote-current", "upload-2"]);
   });
   it("disposal aborts owner A work and revokes its thumbnails without populating owner B", async () => {
     const upload = deferred<string>(); const { manager: a, deps } = await fixture({ upload: async () => upload.promise }, "a"); a.add([file()]);

@@ -105,6 +105,7 @@
 }
 .retry::after { content: ""; position: absolute; inset: -14px -8px; }
 .retry:hover { text-decoration: underline; }
+.retry:disabled { color: var(--trade-text-3); cursor: not-allowed; text-decoration: none; }
 .remove {
   position: absolute;
   top: 0;

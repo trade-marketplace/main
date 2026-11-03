@@ -7,6 +7,7 @@ import { Banner } from "@/components/overlays/Banner";
 import { useToast } from "@/components/overlays/Toast";
 import type { PhotoSnapshot } from "@/lib/jobs/draft-photo-manager";
 import type { JobType } from "@/lib/post-job-wizard";
+import { MAX_PHOTOS } from "@/lib/media";
 import styles from "./post-job.module.css";
 
 export type DraftPhotosControls = {
@@ -17,7 +18,8 @@ export function DraftPhotos({ state, controls, category, offline, busy, onNext, 
 }) {
   const toast = useToast();
   const uploading = state.photos.filter(photo => photo.status === "uploading").length;
-  const blocked = offline || state.restoring || state.saving || state.photos.some(photo => photo.status !== "done") || state.storageError && state.photos.length > 0;
+  const conflict = state.photos.length > MAX_PHOTOS;
+  const blocked = conflict || offline || state.restoring || state.saving || state.photos.some(photo => photo.status !== "done") || state.storageError && state.photos.length > 0;
   return <div className={styles.photoForm} onDragOver={event => { if (Array.from(event.dataTransfer.types).includes("Files")) event.preventDefault(); }} onDrop={event => {
     if (!event.defaultPrevented && event.dataTransfer.files.length) { event.preventDefault(); if (!state.restoring) controls.add([...event.dataTransfer.files]); }
   }}>
@@ -27,6 +29,7 @@ export function DraftPhotos({ state, controls, category, offline, busy, onNext, 
     </div>
     {state.restoring ? <div className={styles.photoSkeleton} role="status" aria-label="Loading photos"><Skeleton height={100} /><Skeleton height={100} /><Skeleton height={100} /></div> :
       <PhotoPicker photos={state.photos} onAdd={files => controls.add(files)} onRetry={id => controls.retry(id)} problems={state.problems} onReorder={(id, position) => controls.move(id, position)} cover accept="image/*" addLabel="Add photos"
+        acceptedCount={conflict ? state.photos.filter(photo => photo.path && !photo.pendingAttach).length : undefined} retryDisabled={conflict}
         onRemove={id => { if (controls.remove(id)) toast.show({ message: "Photo removed.", icon: "delete", action: { label: "Undo", onAction: () => controls.undo() } }); }} />}
     {state.storageError && <Banner tone="alert" title="Couldn’t save." action={<Button variant="tertiary" onClick={() => void controls.retryPersistence().catch(() => {})}>Try again</Button>} live />}
     {!state.restoring && !state.photos.length && <p className={styles.hint}>Photos get you a price faster</p>}

@@ -18,8 +18,8 @@ import { PhotoThumbnail } from "@/components/media/PhotoPicker";
 import { DRAFT_STORAGE_KEY, type JobDraft } from "@/lib/job-draft";
 import { wentUp } from "@/lib/motion/helpers";
 import { useBump } from "@/lib/motion/hooks";
-import { canonicalDraft, decodeWizardDraft, describeErrors, editDescription, encodeWizardDraft, initialWizardDraft, JOB_TYPES, WIZARD_STEPS, type WizardDraft } from "@/lib/post-job-wizard";
-import type { saveDraftAction } from "@/server/jobs/actions";
+import { canonicalDraft, decodeWizardDraft, describeErrors, editDescription, encodeWizardDraft, initialWizardDraft, reconcileWizardPhotos, JOB_TYPES, WIZARD_STEPS, type WizardDraft } from "@/lib/post-job-wizard";
+import { loadDraftPhotosAction, type saveDraftAction } from "@/server/jobs/actions";
 import { DraftPhotos } from "./DraftPhotos";
 import { useDraftPhotos } from "./useDraftPhotos";
 
@@ -85,10 +85,12 @@ export function PostJobWizard({ ownerId = null, initialDraft = {}, hasServerDraf
 function PostJobWizardForm({ ownerId = null, initialDraft = {}, hasServerDraft = false, loadFailed = false, save, previewState }: Props) {
   const router = useRouter(); const path = usePathname(); const params = useSearchParams();
   const raw = useSyncExternalStore(subscribeDraft, snapshot, () => null);
-  const restored = previewState ? null : decodeWizardDraft(raw, ownerId);
+  const restored = previewState ? null : reconcileWizardPhotos(decodeWizardDraft(raw, ownerId), initialDraft, Boolean(ownerId && hasServerDraft));
   const [edited, setEdited] = useState<WizardDraft>();
-  const draft = edited ?? restored ?? initialWizardDraft(initialDraft, hasServerDraft || previewState === "photos");
-  const photos = useDraftPhotos({ ownerId, postKey: draft.data.postKey, serverPaths: draft.data.photoPaths ?? [], preview: Boolean(previewState) });
+  const draft = reconcileWizardPhotos(edited ?? null, initialDraft, Boolean(ownerId && hasServerDraft)) ?? restored ?? initialWizardDraft(initialDraft, hasServerDraft || previewState === "photos");
+  const serverPaths = ownerId && hasServerDraft && initialDraft.postKey === draft.data.postKey ? initialDraft.photoPaths ?? [] : draft.data.photoPaths ?? [];
+  const photoAuthority = Boolean(ownerId && hasServerDraft && initialDraft.postKey === draft.data.postKey);
+  const photos = useDraftPhotos({ ownerId, postKey: draft.data.postKey, serverPaths, authoritative: photoAuthority, preview: Boolean(previewState) });
   const [saved, setSaved] = useState<boolean>();
   const [error, setError] = useState(previewState === "save-error");
   const [fields, setFields] = useState<Record<string, string>>(previewState === "invalid" ? { description: "Describe the job", category: "Type of job" } : {});
@@ -133,6 +135,8 @@ function PostJobWizardForm({ ownerId = null, initialDraft = {}, hasServerDraft =
     }
     pending.current = true; setBusy(true);
     try {
+      const commandKey = draft.data.postKey ?? crypto.randomUUID();
+      let photoVersion: { absent: true } | { postKey: string; paths: string[] } | undefined;
       if (photos.active) {
         await photos.manager.waitForRestore();
         if (exit) await photos.manager.prepareExit();
@@ -142,15 +146,28 @@ function PostJobWizardForm({ ownerId = null, initialDraft = {}, hasServerDraft =
           await photos.manager.flush();
         }
       }
-      const kept = keep({ ...effectiveDraft, data: { ...effectiveDraft.data, ...(photos.active ? { photoPaths: photos.manager.paths() } : {}) } });
+      if (ownerId && !offline) {
+        const current = await loadDraftPhotosAction(ownerId, commandKey);
+        if (session?.check(current, { resend: () => advance(exit) })) return;
+        if (!("status" in current) || current.status !== "loaded" && current.status !== "empty") { setError(true); router.refresh(); return; }
+        if (current.status === "empty") { if (photos.active) await photos.manager.confirmAbsent(); photoVersion = { absent: true }; }
+        else photos.manager.reconcile(current.photoPaths);
+        await photos.manager.flush();
+        if (current.status === "loaded") photoVersion = { postKey: commandKey, paths: photos.manager.confirmedPaths() };
+        if (!exit && step === 1 && photos.manager.getSnapshot().photos.some(photo => photo.status !== "done")) return;
+      }
+      const kept = keep({ ...effectiveDraft, data: { ...effectiveDraft.data, postKey: commandKey, ...(photos.active ? { photoPaths: photos.manager.paths() } : {}) } });
       if (!kept || offline && !exit) return;
       if (ownerId && !offline) {
-        const result = await save(canonicalDraft(kept), ownerId);
+        const result = await save(canonicalDraft(kept), ownerId, photoVersion);
         if (session?.check(result, { resend: () => advance(exit) })) return;
+        if ("status" in result && result.status === "photos-changed") { photos.manager.reconcile(result.photoPaths, true); await photos.manager.flush(); setError(true); return; }
+        if ("status" in result && result.status === "draft-changed") { setError(true); router.refresh(); return; }
         if (!("status" in result) || result.status !== "saved") {
           if ("status" in result && result.status === "invalid") setFields(result.fields);
           setError(true); return;
         }
+        await photos.manager.confirmSaved(kept.data.photoPaths ?? []);
       } else if (previewState === "save-error") { setError(true); return; }
       if (!exit && !keep({ ...kept, completedDescribe: true, completedPhotos: step === 1 ? true : kept.completedPhotos })) return;
       router.push(exit ? "/" : nextHref);

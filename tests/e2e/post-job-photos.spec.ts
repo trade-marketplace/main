@@ -73,11 +73,12 @@ test.describe("guarded photo states", () => {
   test.skip(!dev, "requires the guarded development/screenshot server");
   for (const viewport of VIEWPORTS) test(`${viewport.width}px: photo states fit and pass axe`, async ({ page }) => {
     test.setTimeout(180_000); await page.setViewportSize(viewport);
-    for (const state of ["empty", "picking", "uploading", "failed", "full", "drag-over", "offline", "invalid", "removed", "heic", "loading", "save-error", "where-when"]) {
+    for (const state of ["empty", "picking", "uploading", "failed", "full", "drag-over", "offline", "invalid", "removed", "heic", "loading", "save-error", "where-when", "conflict"]) {
       await page.goto(new URL(`/dev/components/post-job-photos?state=${state}`, dev).href);
       await expect(page.getByRole("heading", { level: 1 })).toHaveText(state === "where-when" ? "Where & when" : "Add some photos");
       for (const tile of await page.locator('[data-reorder="true"]').all()) { const box = await tile.boundingBox(); expect(Math.abs(box!.width - box!.height), `${state}: square thumbnail`).toBeLessThan(1); }
       expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth), state).toBe(0); await expectNoA11yViolations(page);
+      if (state === "conflict") { await expect(page.getByRole("button", { name: "Next", exact: true })).toHaveAttribute("aria-disabled", "true"); await expect(page.getByText(/^6 of 6 ·/)).toBeVisible(); await expect(page.getByText(/^12 of 6/)).toHaveCount(0); }
     }
   });
 });

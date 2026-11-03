@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { jobDraftSchema } from "@/lib/job-draft";
-import { canonicalDraft, decodeWizardDraft, describeErrors, editDescription, encodeWizardDraft, guessJobType, initialWizardDraft, landingWizardDraft } from "@/lib/post-job-wizard";
+import { canonicalDraft, decodeWizardDraft, describeErrors, editDescription, encodeWizardDraft, guessJobType, initialWizardDraft, landingWizardDraft, reconcileWizardPhotos } from "@/lib/post-job-wizard";
 
 describe("Describe step", () => {
   it.each([
@@ -67,5 +67,18 @@ describe("owner-bound local draft", () => {
     expect(landingWizardDraft({ description: "Lights flicker", type: "electrical" })).toEqual({ description: "Lights flicker", category: "ELECTRICAL" });
     expect(landingWizardDraft({ description: "x".repeat(500), type: "FAKE" }).description).toHaveLength(120);
     expect(landingWizardDraft({ type: ["electrical"] })).toEqual({});
+  });
+  it("keeps unfinished local text but restores the authoritative same-draft server photo order", () => {
+    const key = "9b58063b-12c2-4b46-9c45-38353f41173e";
+    const local = editDescription(initialWizardDraft({ postKey: key, category: "OTHER", photoPaths: ["old"] }), "Mo");
+    const restored = reconcileWizardPhotos(local, { postKey: key, photoPaths: ["new", "retained"] }, true)!;
+    expect(restored.description).toBe("Mo"); expect(restored.data.photoPaths).toEqual(["new", "retained"]);
+    expect(local.data.photoPaths).toEqual(["old"]);
+    expect(reconcileWizardPhotos(local, { postKey: key, photoPaths: [] }, true)?.data.photoPaths).toEqual([]);
+  });
+  it("never restores another postKey's local snapshot over the current server draft, while guests remain local", () => {
+    const local = initialWizardDraft({ postKey: "9b58063b-12c2-4b46-9c45-38353f41173e", photoPaths: ["old"] });
+    expect(reconcileWizardPhotos(local, { postKey: "b902d0d5-d6ab-4f34-a6d5-a0fe9ac252c9" }, true)).toBeNull();
+    expect(reconcileWizardPhotos(local, {}, false)).toBe(local);
   });
 });
