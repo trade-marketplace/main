@@ -123,6 +123,7 @@ model Profile {
   problemsResolved ProblemReport[]    @relation("ProblemResolver")
   supportThreads   SupportThread[]
   supportMessages  SupportMessage[]
+  supportReads     SupportThreadRead[]
 
   @@map("profiles")
 }
@@ -1009,6 +1010,8 @@ model SupportThread {
   userId          String              @map("user_id") @db.Uuid
   user            Profile             @relation(fields: [userId], references: [id], onDelete: Cascade)
   subject         String
+  // Shared job problem/support conversations (#181). Legacy one-person office threads stay private.
+  jobParticipants Boolean             @default(false) @map("job_participants")
   jobId           String?             @map("job_id") @db.Uuid
   job             Job?                @relation(fields: [jobId], references: [id], onDelete: SetNull)
   // At most one thread per problem report.
@@ -1023,6 +1026,7 @@ model SupportThread {
   updatedAt       DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   messages SupportMessage[]
+  reads    SupportThreadRead[]
 
   @@index([userId, lastMessageAt])
   // Office inbox: open threads, latest first.
@@ -1042,10 +1046,45 @@ model SupportMessage {
   fromOffice Boolean       @default(false) @map("from_office")
   internal   Boolean       @default(false)
   body       String
+  requestKey String?       @unique @map("request_key") @db.Uuid
   createdAt  DateTime      @default(now()) @map("created_at") @db.Timestamptz
+
+  photos SupportMessagePhoto[]
 
   @@index([threadId, createdAt])
   @@map("support_messages")
+}
+
+model SupportMessagePhoto {
+  id        String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  messageId String         @map("message_id") @db.Uuid
+  message   SupportMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  path      String
+  position  Int            @default(0)
+
+  @@unique([messageId, path])
+  @@map("support_message_photos")
+}
+
+model SupportThreadRead {
+  threadId String        @map("thread_id") @db.Uuid
+  thread   SupportThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  userId   String        @map("user_id") @db.Uuid
+  user     Profile       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  readAt   DateTime      @default(now()) @map("read_at") @db.Timestamptz
+
+  @@id([threadId, userId])
+  @@map("support_thread_reads")
+}
+
+// Durable private-object cleanup intents deliberately outlive jobs/accounts and message transactions.
+model SupportPhotoCleanup {
+  path      String   @id
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  deleting  Boolean  @default(false)
+
+  @@index([createdAt, path])
+  @@map("support_photo_cleanup")
 }
 
 // Who did what to which record, when (F05 timeline, F08 decisions, settings changes). Append-only: rows can't be

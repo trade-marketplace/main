@@ -10,6 +10,7 @@ import { schedulerDeps } from "./deps";
 import { licenceDocumentCleanup } from "./licence-document-cleanup";
 import { licenceUploadCleanup } from "./licence-upload-cleanup";
 import { licenceExpiryReminder } from "./licence-reminders";
+import { supportPhotoCleanup } from "@/server/messages/photo-cleanup";
 
 // The time-based rules (#99). Each one is a small function that finds the jobs that are due, oldest first, and does
 // its one thing to each, in that job's own transaction. They are safe to run twice, at once, or a day late:
@@ -248,4 +249,4 @@ export const reviewReminder: SchedulerRule = {
 };
 
 /** In the order they run. Money-relevant (sign-off) first. */
-export const SCHEDULER_RULES: readonly SchedulerRule[] = [autoSignOff, bountyExpiry, priceSlowBanner, unclaimedAlert, reviewReminder, licenceExpiryReminder, licenceUploadCleanup(), licenceDocumentCleanup(), variationPhotoCleanup(), variationStageCleanup()];
+export const SCHEDULER_RULES: readonly SchedulerRule[] = [autoSignOff, bountyExpiry, priceSlowBanner, unclaimedAlert, reviewReminder, licenceExpiryReminder, licenceUploadCleanup(), licenceDocumentCleanup(), supportPhotoCleanup(), variationPhotoCleanup(), variationStageCleanup()];

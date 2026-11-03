@@ -101,6 +101,8 @@ export const AUDIT_ACTIONS = {
   "review.shown": { record: "reviews" },
   "problem_report.resolved": { record: "problem_reports" },
   "support_thread.closed": { record: "support_threads" },
+  "support_thread.opened": { record: "support_threads" },
+  "support_thread.message_sent": { record: "support_threads" },
 } as const satisfies Record<string, ActionRule>;
 
 export type AuditAction = keyof typeof AUDIT_ACTIONS;

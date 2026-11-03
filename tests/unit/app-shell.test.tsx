@@ -34,9 +34,10 @@ vi.mock("next/navigation", async (importOriginal) => ({
 }));
 // No test talks to a database: the shell's one query gets a fake row.
 const findUnique = vi.fn();
+const findThreads = vi.fn(async () => []);
 vi.mock("@/server/db", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/server/db")>()),
-  getDb: () => ({ profile: { findUnique } }),
+  getDb: () => ({ profile: { findUnique }, supportThread: { findMany: findThreads } }),
 }));
 
 const root = new URL("../../", import.meta.url);
@@ -237,6 +238,11 @@ describe("loadShellViewer", () => {
       counts: { notifications: 0, messages: 0 },
     });
     expect(log).toHaveBeenCalledOnce();
+  });
+
+  it("shows the unread shared problem-thread count supplied by the server", async () => {
+    extras.mockResolvedValueOnce({ lastName: "Thompson", unreadNotifications: 2, unreadMessages: 3 });
+    expect(await loadShellViewer(viewerRow(), { findExtras: extras })).toMatchObject({ counts: { notifications: 2, messages: 3 } });
   });
 
   it("doesn't log on every page when there's simply no database yet", async () => {
