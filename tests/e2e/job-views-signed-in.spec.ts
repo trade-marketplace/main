@@ -82,8 +82,12 @@ test.describe("job views at real signed-in page/API boundaries", () => {
     expect(await cancelled!.text()).not.toMatch(/privacy95@example.test|021 123 4567|1 Private Fixture Street|priceCents|marginCents/);
     await db.query("UPDATE jobs SET worker_id=$2 WHERE id=$1", [job, PEOPLE.otherWorker.id]);
     const reassigned = await page.reload();
-    await expect(page.getByRole("heading", { name: "Wrong address.", exact: true })).toBeVisible();
     expect(await reassigned!.text()).not.toContain("Private fixture message");
+    // A streamed refresh can send its404 sentinel after headers. Also check a new document's visible denial.
+    const fresh = await page.context().newPage();
+    await fresh.goto(`${app}/messages/${thread}`);
+    await expect(fresh.getByRole("heading", { name: "Wrong address.", exact: true })).toBeVisible();
+    await fresh.close();
     await signIn(page, PEOPLE.otherWorker); await page.goto(`${app}/messages/${thread}`);
     await expect(page.getByRole("log")).toContainText("Private fixture message");
   });
