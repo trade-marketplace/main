@@ -339,6 +339,36 @@ model JobDraft {
   @@map("job_drafts")
 }
 
+// Signed raw uploads remain tracked through token expiry, including after account removal.
+model DraftPhotoStage {
+  path        String    @id
+  userId      String    @map("user_id") @db.Uuid
+  postKey     String    @map("post_key") @db.Uuid
+  size        Int
+  expiresAt   DateTime  @map("expires_at") @db.Timestamptz
+  claimedAt   DateTime? @map("claimed_at") @db.Timestamptz
+  finalizedAt DateTime? @map("finalized_at") @db.Timestamptz
+  finalPath   String    @unique @map("final_path")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([userId, expiresAt])
+  @@index([expiresAt])
+  @@map("draft_photo_stages")
+}
+
+// No cascading FK: the intent commits before Storage put and survives failed saves or account deletion.
+model DraftPhotoCleanup {
+  path       String   @id
+  userId     String   @map("user_id") @db.Uuid
+  postKey    String   @map("post_key") @db.Uuid
+  deleting   Boolean  @default(false)
+  checkAfter DateTime @map("check_after") @db.Timestamptz
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([checkAfter])
+  @@map("draft_photo_cleanup")
+}
+
 model Job {
   id                 String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   // Shown as TM-1001 (also the order number for supplier accounts). Starts at 1001.

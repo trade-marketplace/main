@@ -29,7 +29,7 @@ test.describe("customer Describe draft through the real server action", () => {
     await page.goto(`${app}/jobs/new?step=photos`);
     await page.getByRole("textbox", { name: "Describe the job", exact: true }).fill("A leaking tap in the downstairs bathroom.");
     await expect(page.getByRole("heading", { name: "What needs doing?", exact: true })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Photos", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Add some photos", exact: true })).toHaveCount(0);
     await page.context().clearCookies();
     await page.getByRole("button", { name: "Next", exact: true }).click();
     const dialog = page.getByRole("dialog");
@@ -37,12 +37,12 @@ test.describe("customer Describe draft through the real server action", () => {
     await dialog.getByRole("button", { name: "Log in again", exact: true }).click();
     await dialog.getByLabel("Password", { exact: true }).fill(SECURITY_PASSWORD);
     await dialog.getByRole("button", { name: "Log in", exact: true }).click();
-    await expect(page.getByRole("heading", { name: "Photos", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Add some photos", exact: true })).toBeVisible();
     const row = (await db.query("SELECT data FROM job_drafts WHERE profile_id=$1", [SECURITY_USER.id])).rows[0];
     expect(row.data).toMatchObject({ description: "A leaking tap in the downstairs bathroom.", category: "PLUMBING" });
     await page.evaluate(() => localStorage.clear());
     await page.goto(`${app}/jobs/new?step=photos`);
-    await expect(page.getByRole("heading", { name: "Photos", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Add some photos", exact: true })).toBeVisible();
     await page.getByRole("link", { name: "Back", exact: true }).click();
     await expect(page.getByText("Draft restored", { exact: true })).toBeVisible();
     await expect(page.getByRole("textbox", { name: "Describe the job", exact: true })).toHaveValue(row.data.description);
