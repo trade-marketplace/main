@@ -73,7 +73,8 @@
   color: var(--trade-on-signature);
 }
 .doneTitle { margin: 0; font-family: var(--trade-font-heading); font-weight: 900; font-variation-settings: var(--trade-display-axes); font-size: var(--trade-fs-display); line-height: 1.05; }
-.done[data-outcome^="variation-"] .doneTitle { font-size: var(--trade-fs-price); line-height: var(--trade-lh-price); }
+.done[data-outcome^="variation-"] .doneTitle { font-size: var(--trade-fs-price); line-height: var(--trade-lh-price); text-wrap: balance; }
+.done[data-outcome^="variation-"] .doneText { text-wrap: pretty; }
 .done[data-outcome^="variation-"] > * { min-width: 0; max-width: 100%; }
 .tick[data-outcome="variation-checking"], .tick[data-outcome="variation-review"] { background: var(--trade-waiting-bg); color: var(--trade-forest); }
 .doneText { margin: 0; color: var(--trade-text-2); font-size: var(--trade-fs-lead); }
