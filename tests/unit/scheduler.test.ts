@@ -127,6 +127,7 @@ describe("the runner", () => {
       "unclaimed-alert",
       "review-reminder",
       "licence-expiry-reminder", "licence-upload-cleanup", "licence-document-cleanup",
+      "support-photo-cleanup",
     ]);
   });
 });

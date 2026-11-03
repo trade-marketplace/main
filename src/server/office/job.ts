@@ -6,6 +6,7 @@ import { licenceToday } from "@/lib/account/trades";
 
 import type { JobStatus, Prisma, PrismaClient, Trade } from "@/generated/prisma/client";
 import { TRADE_LABELS } from "@/lib/office-jobs";
+import { createSupabaseFileStore, PHOTO_BUCKET, SIGNED_URL_SECONDS } from "@/server/files/storage";
 import {
   fullName,
   jobNumber,
@@ -88,7 +89,7 @@ const REFUNDABLE_STATUSES = ["PAID", "PARTIALLY_REFUNDED"] as const;
 const PAYMENT_LABELS = { JOB: "Job", VARIATION: "Extra work", QUICK_LOOK: "Quick look" } as const;
 
 /** Reads one job for the office. Null when there is no such job (or the id isn't a uuid). */
-export async function getOfficeJob(db: OfficeJobDatabase, id: string, now: Date = new Date()): Promise<OfficeJobView | null> {
+export async function getOfficeJob(db: OfficeJobDatabase, id: string, now: Date = new Date(), signPhoto = (path: string) => createSupabaseFileStore().signedUrl(PHOTO_BUCKET, path, SIGNED_URL_SECONDS)): Promise<OfficeJobView | null> {
   const job = await db.job.findUnique({ where: { id }, select: SELECT });
   if (!job) return null;
 
@@ -112,7 +113,7 @@ export async function getOfficeJob(db: OfficeJobDatabase, id: string, now: Date 
     db.estimate.findMany({ where: { jobId: job.id }, select: { updatedAt: true }, orderBy: { updatedAt: "desc" } }),
     db.supportMessage.findMany({
       where: { thread: { jobId: job.id }, internal: false },
-      select: { id: true, body: true, fromOffice: true, createdAt: true, author: { select: { firstName: true, lastName: true } } },
+      select: { id: true, body: true, fromOffice: true, createdAt: true, author: { select: { firstName: true, lastName: true } }, photos: { select: { id: true, path: true }, orderBy: { position: "asc" } } },
       orderBy: { createdAt: "desc" },
       take: MESSAGE_LIMIT,
     }),
@@ -200,15 +201,19 @@ export async function getOfficeJob(db: OfficeJobDatabase, id: string, now: Date 
     when: entry.when,
   }));
 
-  const messages: MessageView[] = supportMessages
-    .map((message) => ({
+  const messages: MessageView[] = (await Promise.all(supportMessages
+    .map(async (message) => ({
       id: message.id,
       from: message.fromOffice ? "Office" : message.author ? fullName(message.author) : "Someone who has left",
       fromOffice: message.fromOffice,
       body: message.body,
+      photos: await Promise.all((message.photos ?? []).map(async photo => {
+        try { return { id: photo.id, url: await signPhoto(photo.path) }; }
+        catch { return { id: photo.id, url: null }; }
+      })),
       at: message.createdAt.toISOString(),
       when: whenLabel(message.createdAt, now),
-    }))
+    }))))
     .reverse();
 
   const paid = job.payments.filter((payment) => (PAID_STATUSES as readonly string[]).includes(payment.status));
