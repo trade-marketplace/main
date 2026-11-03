@@ -6,6 +6,7 @@ import { licenceToday } from "@/lib/account/trades";
 
 import type { JobStatus, Prisma, PrismaClient, Trade } from "@/generated/prisma/client";
 import { TRADE_LABELS } from "@/lib/office-jobs";
+import { JOB_SUMMARY_SELECT, officeJobListView, type JobViewer } from "@/server/views";
 import { createSupabaseFileStore, PHOTO_BUCKET, SIGNED_URL_SECONDS } from "@/server/files/storage";
 import {
   fullName,
@@ -37,15 +38,7 @@ const MESSAGE_LIMIT = 20;
 const REASSIGN_LIMIT = 100;
 
 const SELECT = {
-  id: true,
-  jobNumber: true,
-  title: true,
-  category: true,
-  status: true,
-  suburb: true,
-  priceCents: true,
-  customerId: true,
-  workerId: true,
+  ...JOB_SUMMARY_SELECT,
   customer: { select: { id: true, firstName: true, lastName: true } },
   worker: { select: { id: true, firstName: true, lastName: true } },
   pricing: { select: { minutes: true, materialsCents: true, workerGrossCents: true } },
@@ -89,9 +82,12 @@ const REFUNDABLE_STATUSES = ["PAID", "PARTIALLY_REFUNDED"] as const;
 const PAYMENT_LABELS = { JOB: "Job", VARIATION: "Extra work", QUICK_LOOK: "Quick look" } as const;
 
 /** Reads one job for the office. Null when there is no such job (or the id isn't a uuid). */
-export async function getOfficeJob(db: OfficeJobDatabase, id: string, now: Date = new Date(), signPhoto = (path: string) => createSupabaseFileStore().signedUrl(PHOTO_BUCKET, path, SIGNED_URL_SECONDS)): Promise<OfficeJobView | null> {
+export async function getOfficeJob(db: OfficeJobDatabase, viewer: JobViewer, id: string, now: Date = new Date(), signPhoto = (path: string) => createSupabaseFileStore().signedUrl(PHOTO_BUCKET, path, SIGNED_URL_SECONDS)): Promise<OfficeJobView | null> {
+  if (!viewer.userId || viewer.role !== "ADMIN") return null;
   const job = await db.job.findUnique({ where: { id }, select: SELECT });
   if (!job) return null;
+  const visible = officeJobListView(viewer, job);
+  if (!visible?.customer) return null;
 
   const paymentIds = job.payments.map((payment) => payment.id);
   const variationIds = job.variations.map((variation) => variation.id);
@@ -235,15 +231,15 @@ export async function getOfficeJob(db: OfficeJobDatabase, id: string, now: Date 
     }));
 
   return {
-    id: job.id,
-    number: jobNumber(job.jobNumber),
-    title: job.title,
-    status: job.status,
-    trade: TRADE_LABELS[job.category],
-    suburb: job.suburb,
-    customer: { id: job.customer.id, name: fullName(job.customer) },
-    tradie: job.worker ? { id: job.worker.id, name: fullName(job.worker) } : null,
-    priceCents: job.priceCents,
+    id: visible.id,
+    number: jobNumber(visible.jobNumber),
+    title: visible.title,
+    status: visible.status,
+    trade: TRADE_LABELS[visible.category],
+    suburb: visible.suburb,
+    customer: { id: visible.customer.id, name: fullName(visible.customer) },
+    tradie: visible.worker ? { id: visible.worker.id, name: fullName(visible.worker) } : null,
+    priceCents: visible.priceCents,
     pricing: job.pricing ? { minutes: job.pricing.minutes, materialsCents: job.pricing.materialsCents } : null,
     money,
     payments,

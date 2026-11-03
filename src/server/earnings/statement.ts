@@ -8,6 +8,7 @@ import "server-only";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { dayMonth, formatCents, formatHours, nzDay, payoutTotal, type PayoutRecord, taxYearOf } from "@/lib/earnings";
 import { jobNumberLabel } from "@/lib/office-jobs";
+import { workerPayoutView } from "@/server/views/earnings";
 
 export type StatementDatabase = Pick<PrismaClient, "payout">;
 
@@ -29,6 +30,7 @@ export async function loadStatement(db: StatementDatabase, workerId: string, nam
     orderBy: [{ paidAt: "asc" }, { createdAt: "asc" }],
     select: {
       id: true,
+      workerId: true,
       minutes: true,
       rateCents: true,
       grossCents: true,
@@ -40,19 +42,13 @@ export async function loadStatement(db: StatementDatabase, workerId: string, nam
     },
   });
   const rows = payouts
-    .map((payout) => ({
-      id: payout.id,
-      jobNumber: jobNumberLabel(payout.job.jobNumber),
-      title: payout.job.title,
-      minutes: payout.minutes,
-      rateCents: payout.rateCents,
-      grossCents: payout.grossCents,
-      holidayPayCents: payout.holidayPayCents,
-      status: payout.status,
-      createdAt: payout.createdAt.toISOString(),
-      paidAt: payout.paidAt?.toISOString() ?? null,
-      paidDay: nzDay(payout.paidAt as Date),
-    }))
+    .flatMap(payout => {
+      const visible = workerPayoutView({ userId: workerId, role: "TRADIE" }, payout);
+      return visible?.paidAt ? [{ id: visible.id, jobNumber: jobNumberLabel(visible.job.jobNumber), title: visible.job.title,
+        minutes: visible.minutes, rateCents: visible.rateCents, grossCents: visible.grossCents,
+        holidayPayCents: visible.holidayPayCents, status: visible.status, createdAt: visible.createdAt,
+        paidAt: visible.paidAt, paidDay: nzDay(new Date(visible.paidAt)) }] : [];
+    })
     .filter((row) => row.paidDay >= taxYear.start && row.paidDay <= taxYear.end);
   return { name, taxYear, rows };
 }

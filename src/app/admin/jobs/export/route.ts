@@ -7,10 +7,10 @@ import { exportOfficeJobs, officeJobsCsv } from "@/server/office/jobs";
 
 export const dynamic = "force-dynamic";
 
-export const GET = withRoleRoute(["ADMIN"], async (_viewer, request) => {
+export const GET = withRoleRoute(["ADMIN"], async (viewer, request) => {
   const query = parseOfficeJobsQuery(new URL(request.url).searchParams);
   try {
-    const { rows, truncated } = await exportOfficeJobs(query);
+    const { rows, truncated } = await exportOfficeJobs(viewer, query);
     const day = new Date().toISOString().slice(0, 10);
     return new Response(officeJobsCsv(rows), {
       headers: {
