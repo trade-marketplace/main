@@ -26,6 +26,7 @@ import { canResumeSavedPhotos } from "@/lib/jobs/draft-photo-path";
 import { currentSchedule, postingDateRange } from "@/lib/job-time-windows";
 import { waitlistSharePath } from "@/lib/waitlist";
 import { signupLink } from "@/lib/auth/signup";
+import { POST_INTENT_PARAM } from "@/lib/jobs/post-intent";
 import { checkJobDraftLocationAction } from "@/server/jobs/address-actions";
 import { DraftPhotos } from "./DraftPhotos";
 import { DraftWhere } from "./DraftWhere";
@@ -66,11 +67,12 @@ function subscribeDraft(onChange: () => void) {
 }
 function snapshot() { try { return localStorage.getItem(DRAFT_STORAGE_KEY); } catch { return null; } }
 
-export function WizardFrame({ step = 0, saved, saveExit, children, summary, backHref, busy, stepHrefs, photoPreviews }: {
+export function WizardFrame({ step = 0, saved, saveExit, children, summary, backHref, busy, stepHrefs, photoPreviews, onNavigate }: {
   step?: number; saved?: boolean; saveExit?: () => void; children: ReactNode; summary?: WizardDraft; backHref?: string; busy?: boolean; stepHrefs?: readonly string[]; photoPreviews?: readonly { src: string; name: string }[];
+  onNavigate?: () => void;
 }) {
   const run = useBump(step, wentUp);
-  return <div className={styles.page} data-mode="customer">
+  return <div className={styles.page} data-mode="customer" onClickCapture={event => { if (event.target instanceof Element && event.target.closest("a[href]")) onNavigate?.(); }}>
     <header className={styles.nav}>
       {busy ? <span className={styles.logo}><Wordmark /></span> : <Link href="/" className={styles.logo}><Wordmark /></Link>}
       <div className={styles.navActions}>
@@ -156,7 +158,7 @@ function PostJobWizardForm({ ownerId = null, initialDraft = {}, initialManualCat
   const requestedWhere = ["where", "where-when", "review"].includes(requestedStep);
   const photosComplete = recover ? recoveredPhotos : draft.completedPhotos;
   const step = described && requestedStep === "review" && photosComplete && (recover || draft.completedWhere) && whereValid ? 3 : described && requestedWhere && photosComplete ? 2 : described && (requestedStep === "photos" || requestedWhere) ? 1 : 0;
-  const stepHref = (value: string) => { const query = new URLSearchParams(params.toString()); query.set("step", value); return `${path}?${query}`; };
+  const stepHref = (value: string) => { const query = new URLSearchParams(params.toString()); query.delete(POST_INTENT_PARAM); query.set("step", value); return `${path}?${query}`; };
   const stepHrefs = [stepHref("describe"), stepHref("photos"), stepHref("where"), stepHref("review")];
   const backHref = stepHrefs[Math.max(0, step - 1)];
   const nextHref = stepHrefs[Math.min(3, step + 1)];
@@ -217,6 +219,7 @@ function PostJobWizardForm({ ownerId = null, initialDraft = {}, initialManualCat
 
   async function advance(exit = false) {
     if (pending.current) return;
+    posting.cancel();
     if (!exit) {
       const invalid = { ...describeErrors(draft), ...(step === 2 ? whereErrors(draft, now) : {}) }; setFields(invalid);
       if (Object.keys(invalid).length) {
@@ -307,7 +310,7 @@ function PostJobWizardForm({ ownerId = null, initialDraft = {}, initialManualCat
   const category = draft.data.category;
   const label = JOB_TYPES.find((item) => item.value === category)?.label;
   const photosSaved = !photos.active || !photos.state.storageError && !photos.state.saving && !photos.state.restoring && photos.state.photos.every(photo => photo.status === "done");
-  return <><WizardFrame step={step} saved={photosSaved && !recoveryPending && !posting.busy && (saved ?? Boolean(restored || hasServerDraft || previewState === "restored"))} summary={effectiveDraft} photoPreviews={photos.state.photos} backHref={backHref} stepHrefs={stepHrefs} saveExit={posting.busy ? undefined : () => void advance(true)} busy={busy}>
+  return <><WizardFrame step={step} saved={photosSaved && !recoveryPending && !posting.busy && (saved ?? Boolean(restored || hasServerDraft || previewState === "restored"))} summary={effectiveDraft} photoPreviews={photos.state.photos} backHref={backHref} stepHrefs={stepHrefs} saveExit={posting.busy ? undefined : () => void advance(true)} busy={busy} onNavigate={posting.cancel}>
     <OfflineBanner online={previewState === "offline" ? false : undefined} sticky={false} />
     {restoredNotice && <Banner tone="good" title="Draft restored" className={styles.notice} />}
     {loadFailed && <Banner tone="alert" title="Couldn’t load your draft." className={styles.notice} action={<Button variant="tertiary" onClick={() => router.refresh()}>Try again</Button>} />}
@@ -331,7 +334,7 @@ function PostJobWizardForm({ ownerId = null, initialDraft = {}, initialManualCat
       </div>
       <div className={styles.actions}><Button type="submit" loading={busy || previewState === "saving"} disabled={offline} width="full-on-phone">Next</Button></div>
     </form> : step === 1 ? <DraftPhotos state={photos.state} controls={photos.manager} category={category} offline={offline} busy={busy} onNext={() => void advance()} backHref={backHref} /> : step === 2 ? <DraftWhere draft={draft} now={now} fields={fields} busy={busy} offline={offline} backHref={backHref} onNext={() => void advance()}
-      onChange={next => { keep(next); setFields({}); }} onOutside={(next, suggestion) => { keep(next); router.push(waitlistSharePath(suggestion.suburb)); }} /> : <DraftReview draft={effectiveDraft} photos={photos.state} editHrefs={stepHrefs} backHref={backHref} busy={busy} offline={offline} error={posting.error || previewState === "post-error"} onPost={posting.post} onEdit={posting.cancel} />}
+      onChange={next => { keep(next); setFields({}); }} onOutside={(next, suggestion) => { posting.cancel(); keep(next); router.push(waitlistSharePath(suggestion.suburb)); }} /> : <DraftReview draft={effectiveDraft} photos={photos.state} editHrefs={stepHrefs} backHref={backHref} busy={busy} offline={offline} error={posting.error || previewState === "post-error"} onPost={posting.post} onEdit={posting.cancel} />}
   </WizardFrame><Dialog open={posting.signup || previewState === "signup"} onClose={posting.cancel} title="Create account" size="md" footer={<Link href={signupLink("/login", posting.returnPath)}>Log in instead</Link>}>
     <CustomerSignup embedded next={posting.returnPath} />
   </Dialog></>;

@@ -23,6 +23,12 @@ test.describe("review and verified posting through real services", () => {
     }
   });
   test.afterAll(async () => { await storage?.close(); await db?.end(); });
+  test.beforeEach(async ({ page }) => {
+    // Each local browser fixture represents a separate connection; real signup throttles stay enabled.
+    const parts = randomUUID().split("-");
+    const address = `2001:db8:${parts[0].slice(0, 4)}:${parts[1]}:${parts[2]}::1`;
+    await page.route(`${app}/**`, route => route.continue({ headers: { ...route.request().headers(), "x-real-ip": address } }));
+  });
   async function login(page: Page, email: string, next: string) {
     await page.goto(`${app}/login?next=${encodeURIComponent(next)}`); await page.getByLabel("Email", { exact: true }).fill(email); await page.getByLabel("Password", { exact: true }).fill(SECURITY_PASSWORD); await page.getByRole("button", { name: "Log in", exact: true }).click();
   }
@@ -181,8 +187,47 @@ test.describe("review and verified posting through real services", () => {
       await expect(page.getByRole("button", { name: "Next", exact: true })).not.toHaveAttribute("aria-disabled", "true", { timeout: 30_000 });
       await page.getByRole("button", { name: "Next", exact: true }).click(); await expect(page.getByRole("heading", { name: "Where and when?", exact: true })).toBeVisible();
       await page.getByRole("button", { name: "Next", exact: true }).click(); await expect(page.getByRole("heading", { name: "All good?", exact: true })).toBeVisible();
-      await expect(page.getByText("Couldn’t post.", { exact: true })).toBeVisible(); expect((await db.query("SELECT count(*)::int AS count FROM jobs WHERE post_key=$1", [data.postKey])).rows[0].count).toBe(0);
+      await expect(page.getByText("Couldn’t post.", { exact: true })).toHaveCount(0); expect((await db.query("SELECT count(*)::int AS count FROM jobs WHERE post_key=$1", [data.postKey])).rows[0].count).toBe(0);
       await page.getByRole("button", { name: "Post it", exact: true }).click(); await expect(page.getByRole("heading", { name: "Posted.", exact: true })).toBeVisible();
+    } finally { release?.(); storage.holdUploads(); }
+  });
+  for (const navigation of ["edit-describe", "edit-photos", "edit-where", "back", "back-blocked", "rail-describe", "rail-photos", "rail-where", "save-exit"]) test(`unchanged verified handoff cancels automatic posting through ${navigation}`, async ({ page }) => {
+    test.setTimeout(90_000); const data = await guest(page, true); await page.getByRole("button", { name: "Post it", exact: true }).click();
+    let release!: () => void; storage.holdUploads(new Promise<void>(resolve => { release = resolve; }));
+    try {
+      await register(page, `cancel-${navigation}-${randomUUID()}@example.test`);
+      await expect(page.getByRole("heading", { name: "All good?", exact: true })).toBeVisible(); await expect(page.getByText("Uploading…", { exact: true })).toBeVisible();
+      for (const link of await page.getByRole("navigation", { name: "Post a job", exact: true }).getByRole("link").all()) expect(new URL((await link.getAttribute("href"))!, app).searchParams.has("postIntent")).toBe(false);
+      for (const link of await page.getByRole("link", { name: /^(Edit|Back)$/ }).all()) expect(new URL((await link.getAttribute("href"))!, app).searchParams.has("postIntent")).toBe(false);
+      if (navigation === "back-blocked") await page.evaluate(() => { const remove = Storage.prototype.removeItem; Storage.prototype.removeItem = function(key) { if (key === "trade.job-post-intent.v1") throw new DOMException("Blocked", "SecurityError"); return remove.call(this, key); }; });
+      if (navigation.startsWith("edit-")) {
+        const section = navigation === "edit-describe" ? "What needs doing" : navigation === "edit-photos" ? "Photos" : "Where and when";
+        await page.getByRole("region", { name: section, exact: true }).getByRole("link", { name: "Edit", exact: true }).press("Enter");
+      } else if (navigation.startsWith("rail-")) {
+        const label = navigation === "rail-describe" ? /^What needs doing/ : navigation === "rail-photos" ? /^Photos/ : /^Where & when/;
+        await page.getByRole("navigation", { name: "Post a job", exact: true }).getByRole("link", { name: label }).click();
+      } else if (navigation.startsWith("back")) await page.getByRole("link", { name: "Back", exact: true }).click();
+      else await page.getByRole("button", { name: "Save & exit", exact: true }).click();
+      await expect.poll(() => new URL(page.url()).searchParams.has("postIntent")).toBe(false);
+      if (navigation === "save-exit") await expect(page).toHaveURL(`${app}/`);
+      else await expect(page.getByRole("heading", { name: navigation.endsWith("describe") ? "What needs doing?" : navigation.endsWith("photos") ? "Add some photos" : "Where and when?", exact: true })).toBeVisible();
+      release(); storage.holdUploads();
+      if (navigation === "save-exit") { await page.goto(`${app}/jobs/new`); await expect(page.getByRole("textbox", { name: "Describe the job", exact: true })).toHaveValue(data.description); }
+      for (let step = 0; step < 3; step++) {
+        if (await page.getByRole("heading", { name: "All good?", exact: true }).count()) break;
+        const heading = await page.locator("h1").innerText();
+        await expect(page.getByRole("button", { name: "Next", exact: true })).not.toHaveAttribute("aria-disabled", "true", { timeout: 30_000 });
+        await page.getByRole("button", { name: "Next", exact: true }).click();
+        await expect(page.getByRole("heading", { name: heading === "What needs doing?" ? "Add some photos" : heading === "Add some photos" ? "Where and when?" : "All good?", exact: true })).toBeVisible();
+      }
+      await expect(page.getByRole("heading", { name: "All good?", exact: true })).toBeVisible();
+      await expect(page.getByRole("button", { name: "Post it", exact: true })).toBeEnabled();
+      expect((await db.query("SELECT count(*)::int AS count FROM jobs WHERE post_key=$1", [data.postKey])).rows[0].count).toBe(0);
+      await page.reload(); await expect(page.getByRole("heading", { name: "All good?", exact: true })).toBeVisible();
+      await expect(page.getByRole("button", { name: "Post it", exact: true })).toBeEnabled();
+      expect((await db.query("SELECT count(*)::int AS count FROM jobs WHERE post_key=$1", [data.postKey])).rows[0].count).toBe(0);
+      await page.getByRole("button", { name: "Post it", exact: true }).click(); await expect(page.getByRole("heading", { name: "Posted.", exact: true })).toBeVisible();
+      expect((await db.query("SELECT count(*)::int AS count FROM jobs WHERE post_key=$1", [data.postKey])).rows[0].count).toBe(1);
     } finally { release?.(); storage.holdUploads(); }
   });
   test("Edit keeps every section and keyboard dialog dismissal returns focus; URL alone never posts", async ({ page }) => {
@@ -192,6 +237,13 @@ test.describe("review and verified posting through real services", () => {
     await expect(page.getByRole("dialog")).toHaveCount(0); await expect(page.getByRole("button", { name: "Post it", exact: true })).toBeFocused();
     await page.evaluate(() => localStorage.removeItem("trade.job-post-intent.v1")); await page.goto(`${app}/jobs/new?step=review&postIntent=${data.postKey}`);
     await expect(page.getByRole("heading", { name: "All good?", exact: true })).toBeVisible(); expect((await db.query("SELECT count(*)::int AS count FROM jobs WHERE post_key=$1", [data.postKey])).rows[0].count).toBe(0);
+  });
+  test("browser Back out of the wizard keeps the actual Home destination", async ({ page }) => {
+    await login(page, SECURITY_USER.email, "/"); await expect(page).toHaveURL(`${app}/`);
+    await page.locator('form[aria-label="What needs doing?"]:visible').first().getByRole("button", { name: "Get a price", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "What needs doing?", exact: true })).toBeVisible();
+    await page.goBack(); await expect(page).toHaveURL(`${app}/`);
+    await page.reload(); await expect(page).toHaveURL(`${app}/`);
   });
   test("lost final response keeps the review; retry acknowledges exactly one job and cleans only its key", async ({ page }) => {
     const data = await guest(page);
