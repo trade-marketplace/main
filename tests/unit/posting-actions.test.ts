@@ -24,9 +24,9 @@ beforeEach(() => {
 });
 
 describe("wizard posting account binding", () => {
-  it("keeps a signed-out draft at the account gate without touching data", async () => {
+  it("returns the shared expiry sentinel when a confirmed owned Review loses its session", async () => {
     vi.mocked(getViewer).mockResolvedValueOnce(null);
-    expect(await postJobAction(reviewedWithoutPhotos, key, customerA, { postKey: key, paths: [] })).toEqual({ status: "needs-account" });
+    expect(await postJobAction(reviewedWithoutPhotos, key, customerA, { postKey: key, paths: [] })).toEqual({ ok: false, error: "session-expired", values: {} });
     expect(getDb).not.toHaveBeenCalled(); expect(postJob).not.toHaveBeenCalled();
   });
 
