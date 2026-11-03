@@ -7,16 +7,19 @@ import { verificationPath } from "@/lib/auth/verification";
 import { DRAFT_STORAGE_KEY, postJobSchema, type JobDraft } from "@/lib/job-draft";
 import { currentSchedule } from "@/lib/job-time-windows";
 import { initializeOwnedPhotoDraft, loadPhotoDraft } from "@/lib/jobs/draft-photo-browser";
-import { bindPostIntent, clearPostedLocalDraft, decodePostIntent, POST_INTENT_PARAM, POST_INTENT_STORAGE_KEY, postIntentDraft, writePostIntent, type PostIntent } from "@/lib/jobs/post-intent";
+import { abandonPostIntent, bindPostIntent, clearPostedLocalDraft, decodePostIntent, POST_INTENT_PARAM, POST_INTENT_STORAGE_KEY, postIntentDraft, writePostIntent, type PostIntent } from "@/lib/jobs/post-intent";
 import { canonicalDraft, decodeWizardDraft, encodeWizardDraft, reconcileStepSave, type WizardDraft } from "@/lib/post-job-wizard";
 import { saveDraftAction } from "@/server/jobs/actions";
 import { inspectPostKeyAction } from "@/server/jobs/posting-actions";
+import { Button } from "@/components/Button";
+import { Banner } from "@/components/overlays/Banner";
+import styles from "./post-job.module.css";
 
 export type PostingSource = { initialDraft: JobDraft; hasServerDraft: boolean; initialManualCategory?: boolean | null };
 export type PostingReady = PostingSource & { initialLocalDraft?: WizardDraft; ignoreLocalPostKey?: string; resumeIntent?: PostIntent; resumeConflict?: boolean };
 type Props = PostingSource & {
   ownerId: string | null; verified: boolean; children(source: PostingReady): ReactNode;
-  fallback(error: boolean, retry: () => void): ReactNode;
+  fallback(error: boolean, retry: () => void, leave: () => void, conflict: boolean): ReactNode;
 };
 type ReadyState = { mode: "normal" } | { mode: "fresh"; ignored: string; source: PostingSource }
   | { mode: "handoff"; source: PostingSource; local: WizardDraft; intent: PostIntent; conflict: boolean };
@@ -26,19 +29,25 @@ function comparable(data: JobDraft, now: Date) {
   return parsed.success ? JSON.stringify(parsed.data) : null;
 }
 function safeRead(key: string) { try { return localStorage.getItem(key); } catch { return null; } }
+class SavedDraftConflict extends Error {}
+export function PostingEntryError({ retry, leave, conflict }: { retry(): void; leave(): void; conflict: boolean }) {
+  return <div className={styles.entryRecovery}><Banner tone="alert" title={conflict ? "You already have a saved draft." : "Couldn’t load your draft."} action={<Button variant="tertiary" onClick={retry}>Try again</Button>} /><Button variant="secondary" onClick={leave}>{conflict ? "Use my saved draft" : "Back to my draft"}</Button></div>;
+}
 
 /** Entry-only preparation. It finishes an explicit guest claim before mounting any account photo controller. */
 export function PostingDraft({ ownerId, verified, initialDraft, hasServerDraft, initialManualCategory, children, fallback }: Props) {
   const router = useRouter(); const path = usePathname(); const params = useSearchParams();
-  const [ready, setReady] = useState<ReadyState | null>(null); const [error, setError] = useState(false); const [attempt, setAttempt] = useState(0);
-  const sequence = useRef(0);
+  const [ready, setReady] = useState<ReadyState | null>(null); const [error, setError] = useState(false); const [conflict, setConflict] = useState(false); const [attempt, setAttempt] = useState(0);
+  const sequence = useRef(0); const [entered, setEntered] = useState<string[]>([]);
   async function initialize(isActive: () => boolean) {
-    const request = ++sequence.current; setError(false);
+    const request = ++sequence.current; setError(false); setConflict(false); setEntered([]);
     const finish = (value: ReadyState) => { if (isActive() && request === sequence.current) setReady(value); };
     try {
-      const stored = decodePostIntent(safeRead(POST_INTENT_STORAGE_KEY));
+      const rawIntent = safeRead(POST_INTENT_STORAGE_KEY);
+      const stored = decodePostIntent(rawIntent);
       const intent = stored && params.get(POST_INTENT_PARAM) === stored.postKey ? stored : null;
       if (intent) {
+        if (rawIntent !== null) setEntered([rawIntent]);
         const query = new URLSearchParams({ step: "review", [POST_INTENT_PARAM]: intent.postKey });
         const next = `${path}?${query}`;
         if (!ownerId) { router.replace(signupLink("/login", next)); return; }
@@ -50,7 +59,8 @@ export function PostingDraft({ ownerId, verified, initialDraft, hasServerDraft, 
         if (status.status === "unverified") { router.replace(verificationPath(next)); return; }
         if (status.status === "posted") { router.replace(`/jobs/${status.jobId}?posted=1`); return; }
         if (status.status !== "unposted") throw new Error("Draft status unavailable");
-        if (hasServerDraft && initialDraft.postKey !== intent.postKey) throw new Error("Different current draft");
+        if (hasServerDraft && initialDraft.postKey !== intent.postKey) throw new SavedDraftConflict();
+        setEntered(values => [...new Set([...values, JSON.stringify(bound)])]);
         if (!writePostIntent(localStorage, bound)) throw new Error("Intent could not be kept");
         // This atomic claim also binds competing tabs to one owner. [] is an existing intentional selection.
         if (bound.sourceOwnerId === null) {
@@ -92,7 +102,7 @@ export function PostingDraft({ ownerId, verified, initialDraft, hasServerDraft, 
         }
       }
       finish({ mode: "normal" });
-    } catch { if (isActive() && request === sequence.current) { setReady(null); setError(true); } }
+    } catch (failure) { if (isActive() && request === sequence.current) { setReady(null); setError(true); setConflict(failure instanceof SavedDraftConflict); } }
   }
   const enter = useEffectEvent(initialize);
   // Step navigation and same-owner RSC refreshes keep the live controller; only a new entry/account initializes it.
@@ -101,14 +111,19 @@ export function PostingDraft({ ownerId, verified, initialDraft, hasServerDraft, 
     return () => { active = false; };
   }, [ownerId, attempt]);
   const retry = () => setAttempt(value => value + 1);
+  const leave = () => {
+    try { abandonPostIntent(localStorage, entered); } catch { /* Access to storage itself may be blocked. */ }
+    // A full, clean entry discards no draft/files and cannot resume the abandoned gesture, even if storage failed.
+    window.location.assign(path);
+  };
   if (!ownerId && !params.has(POST_INTENT_PARAM)) return children({ initialDraft, hasServerDraft, initialManualCategory });
-  if (!ready) return fallback(error, retry);
+  if (!ready) return fallback(error, retry, leave, conflict);
   if (ready.mode === "normal") return children({ initialDraft, hasServerDraft, initialManualCategory });
   if (ready.mode === "fresh") {
     const live = hasServerDraft && initialDraft.postKey !== ready.ignored ? { initialDraft, hasServerDraft, initialManualCategory } : ready.source;
     return children({ ...live, ignoreLocalPostKey: ready.ignored });
   }
-  if (hasServerDraft && initialDraft.postKey !== ready.intent.postKey) return fallback(true, retry);
+  if (hasServerDraft && initialDraft.postKey !== ready.intent.postKey) return fallback(true, retry, leave, true);
   const live = hasServerDraft ? { initialDraft, hasServerDraft, initialManualCategory } : ready.source;
   return children({ ...live, initialLocalDraft: ready.local, resumeIntent: ready.intent, resumeConflict: ready.conflict });
 }

@@ -65,6 +65,40 @@ test.describe("review and verified posting through real services", () => {
     await expect(page.getByRole("heading", { name: "Repair the leaking tap downstairs.", exact: true })).toBeVisible();
     await page.getByRole("link", { name: "Home", exact: true }).click(); await expect(page).toHaveURL(`${app}/`);
   });
+  for (const blocked of [false, true]) test(`existing owned draft has a safe escape from guest login handoff${blocked ? " with blocked cleanup" : ""}`, async ({ page }) => {
+    const currentKey = randomUUID(); const path = `drafts/${SECURITY_USER.id}/${currentKey}/${randomUUID().replaceAll("-", "")}.webp`;
+    const current = { postKey: currentKey, description: "Keep the existing upstairs wiring job.", category: "ELECTRICAL", photoPaths: [path], addressLine1: "8 Existing Street", suburb: "Gladstone", city: "Invercargill", locationSource: "TYPED", anyTime: true, timeWindows: [] };
+    const data = await guest(page, true); storage.objects.set(`photos/${path}`, await sharp({ create: { width: 80, height: 60, channels: 3, background: "green" } }).webp().toBuffer());
+    await db.query("INSERT INTO job_drafts(profile_id,data,manual_category,updated_at) VALUES($1,$2,true,now()) ON CONFLICT(profile_id) DO UPDATE SET data=EXCLUDED.data,manual_category=true", [SECURITY_USER.id, current]);
+    await page.getByRole("button", { name: "Post it", exact: true }).click(); await page.getByRole("dialog").getByRole("link", { name: "Log in instead", exact: true }).click();
+    await expect(page).toHaveURL(/\/login\?/); await page.reload();
+    await page.getByLabel("Email", { exact: true }).fill(SECURITY_USER.email); await page.getByLabel("Password", { exact: true }).fill(SECURITY_PASSWORD); await page.getByRole("button", { name: "Log in", exact: true }).click();
+    await expect(page.getByText("You already have a saved draft.", { exact: true })).toBeVisible(); await expectNoA11yViolations(page);
+    if (blocked) await page.evaluate(() => { const remove = Storage.prototype.removeItem; Storage.prototype.removeItem = function(key) { if (key === "trade.job-post-intent.v1") throw new DOMException("Blocked", "SecurityError"); return remove.call(this, key); }; });
+    await page.getByRole("button", { name: "Use my saved draft", exact: true }).press("Enter"); await expect(page).toHaveURL(`${app}/jobs/new`);
+    await expect(page.getByRole("textbox", { name: "Describe the job", exact: true })).toHaveValue(current.description);
+    await page.reload(); await expect(page.getByRole("textbox", { name: "Describe the job", exact: true })).toHaveValue(current.description);
+    expect((await db.query("SELECT data FROM job_drafts WHERE profile_id=$1", [SECURITY_USER.id])).rows[0].data).toEqual(current);
+    expect((await db.query("SELECT count(*)::int AS count FROM jobs WHERE post_key=$1", [data.postKey])).rows[0].count).toBe(0);
+    const originals = await page.evaluate(key => new Promise<{ count: number; bytes: number }>((resolve, reject) => {
+      const request = indexedDB.open("trade.job-photos.v1", 1); request.onerror = () => reject(request.error); request.onsuccess = () => {
+        const database = request.result, read = database.transaction("drafts", "readonly").objectStore("drafts").get(`guest:${key}`);
+        read.onsuccess = () => { resolve({ count: read.result.length, bytes: read.result[0].file.size }); database.close(); }; read.onerror = () => reject(read.error);
+      };
+    }), data.postKey);
+    expect(originals.count).toBe(1); expect(originals.bytes).toBeGreaterThan(0);
+  });
+  test("generic handoff/account errors also allow a clean draft entry without deleting originals", async ({ page }) => {
+    const data = await guest(page, true); await page.getByRole("button", { name: "Post it", exact: true }).click();
+    await page.evaluate(() => { const key = "trade.job-post-intent.v1", intent = JSON.parse(localStorage.getItem(key)!); localStorage.setItem(key, JSON.stringify({ ...intent, ownerId: "22222222-2222-4222-8222-222222222113" })); });
+    await page.getByRole("dialog").getByRole("link", { name: "Log in instead", exact: true }).click();
+    await expect(page).toHaveURL(/\/login\?/); await page.reload();
+    await page.getByLabel("Email", { exact: true }).fill(SECURITY_USER.email); await page.getByLabel("Password", { exact: true }).fill(SECURITY_PASSWORD); await page.getByRole("button", { name: "Log in", exact: true }).click();
+    await expect(page.getByText("Couldn’t load your draft.", { exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Back to my draft", exact: true }).click(); await expect(page).toHaveURL(`${app}/jobs/new`);
+    await expect(page.getByRole("textbox", { name: "Describe the job", exact: true })).toBeVisible();
+    expect((await db.query("SELECT count(*)::int AS count FROM jobs WHERE post_key=$1", [data.postKey])).rows[0].count).toBe(0);
+  });
   for (const held of [0, 1]) test(`partial refresh resumes reviewed order when selected photo ${held + 1} is still uploading`, async ({ page }) => {
     test.setTimeout(90_000); const data = await guest(page, true, 2); await page.getByRole("button", { name: "Post it", exact: true }).click();
     let release!: () => void; const gate = new Promise<void>(resolve => { release = resolve; });
@@ -201,6 +235,14 @@ test.describe("review and verified posting through real services", () => {
       await expect(dialog.getByText("You’re offline.", { exact: true })).toBeVisible(); await expect(dialog.getByText("We can’t create your account right now.", { exact: true })).toBeVisible();
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true); await expectNoA11yViolations(page);
       if (viewport.width === 390 || viewport.width === 1440) await page.screenshot({ path: `/tmp/120-signup-recovery-${viewport.width}.png`, fullPage: true });
+    }
+  });
+  for (const viewport of VIEWPORTS) test(`draft conflict, generic escape and combined recovery at ${viewport.width}`, async ({ page }) => {
+    for (const state of ["draft-conflict", "entry-error", "error"]) {
+      await page.setViewportSize(viewport); await page.goto(`${app}/dev/components/post-job-review?state=${state}`);
+      await expect(page.getByRole("heading", { name: "All good?", exact: true })).toBeVisible();
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true); await expectNoA11yViolations(page);
+      if ((viewport.width === 390 || viewport.width === 1440) && state === "draft-conflict") await page.screenshot({ path: `/tmp/120-draft-conflict-${viewport.width}.png`, fullPage: true });
     }
   });
 });
