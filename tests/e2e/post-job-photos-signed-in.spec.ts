@@ -66,7 +66,7 @@ test.describe("signed-in draft photos through real actions, private Storage tran
     await expect(page.getByRole("list", { name: "Photos", exact: true }).getByRole("img")).toHaveCount(2);
     expect((await db.query("SELECT data->'photoPaths' AS paths FROM job_drafts WHERE profile_id=$1", [SECURITY_USER.id])).rows[0].paths).toEqual(ordered);
     expect(storage.events.filter(event => event.method === "POST" && /^\/storage\/v1\/object\/photos\//.test(event.path))).toHaveLength(2);
-    await page.getByRole("button", { name: "Next", exact: true }).click(); await expect(page.getByRole("heading", { name: "Where & when", exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Next", exact: true }).click(); await expect(page.getByRole("heading", { name: "Where and when?", exact: true })).toBeVisible();
   });
   test("an expired upload session keeps its file and recovers through the shared login dialog", async ({ page }) => {
     await login(page, SECURITY_USER.email, "/jobs/new?step=photos");
@@ -102,7 +102,7 @@ test.describe("signed-in draft photos through real actions, private Storage tran
       await page.reload(); await expect(page.getByRole("button", { name: "Next", exact: true })).not.toHaveAttribute("aria-disabled", "true");
       const photos = page.getByRole("list", { name: "Photos", exact: true }).getByRole("img"); await expect(photos).toHaveCount(3);
       await expect(photos.first()).toHaveAttribute("src", new RegExp(current[0].replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
-      await page.getByRole("button", { name: "Next", exact: true }).click(); await expect(page.getByRole("heading", { name: "Where & when", exact: true })).toBeVisible();
+      await page.getByRole("button", { name: "Next", exact: true }).click(); await expect(page.getByRole("heading", { name: "Where and when?", exact: true })).toBeVisible();
       expect((await db.query("SELECT data->'photoPaths' AS paths FROM job_drafts WHERE profile_id=$1", [SECURITY_USER.id])).rows[0].paths).toEqual(current);
       await page.getByRole("link", { name: "Back", exact: true }).click(); await expect(page.getByRole("heading", { name: "Add some photos", exact: true })).toBeVisible();
       await page.getByRole("button", { name: "Save & exit", exact: true }).click(); await expect(page).toHaveURL(`${app}/`);
@@ -166,7 +166,7 @@ test.describe("signed-in draft photos through real actions, private Storage tran
       await expect(page.getByRole("list", { name: "Photos", exact: true }).getByRole("img").first()).toHaveAttribute("src", new RegExp(current[0].replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
       expect(await page.evaluate(() => (window as Window & { __photoRscMarker?: string }).__photoRscMarker)).toBe("same-document");
       await expect(page.getByRole("button", { name: "Next", exact: true })).not.toHaveAttribute("aria-disabled", "true");
-      await page.getByRole("button", { name: "Next", exact: true }).click(); await expect(page.getByRole("heading", { name: "Where & when", exact: true })).toBeVisible();
+      await page.getByRole("button", { name: "Next", exact: true }).click(); await expect(page.getByRole("heading", { name: "Where and when?", exact: true })).toBeVisible();
       await page.getByRole("link", { name: "Back", exact: true }).click(); await expect(page.getByRole("heading", { name: "Add some photos", exact: true })).toBeVisible();
       await page.getByRole("button", { name: "Save & exit", exact: true }).click(); await expect(page).toHaveURL(`${app}/`);
       expect((await db.query("SELECT data->'photoPaths' AS paths FROM job_drafts WHERE profile_id=$1", [SECURITY_USER.id])).rows[0].paths).toEqual(current);
@@ -209,7 +209,7 @@ test.describe("signed-in draft photos through real actions, private Storage tran
           await expect(page.getByRole("button", { name: "Next", exact: true })).not.toHaveAttribute("aria-disabled", "true");
           expect((await db.query("SELECT data->'photoPaths' AS paths FROM job_drafts WHERE profile_id=$1", [SECURITY_USER.id])).rows[0].paths).toEqual(current);
           await page.getByRole("button", { name: action, exact: true }).click();
-          if (action === "Next") { await expect(page.getByRole("heading", { name: "Where & when", exact: true })).toBeVisible(); await page.getByRole("link", { name: "Back", exact: true }).click(); await expect(page.getByRole("heading", { name: "Add some photos", exact: true })).toBeVisible(); }
+          if (action === "Next") { await expect(page.getByRole("heading", { name: "Where and when?", exact: true })).toBeVisible(); await page.getByRole("link", { name: "Back", exact: true }).click(); await expect(page.getByRole("heading", { name: "Add some photos", exact: true })).toBeVisible(); }
           else await expect(page).toHaveURL(`${app}/`, { timeout: 15_000 });
           expect((await db.query("SELECT data->'photoPaths' AS paths FROM job_drafts WHERE profile_id=$1", [SECURITY_USER.id])).rows[0].paths).toEqual(current);
         } finally { release(); await page.unrouteAll({ behavior: "wait" }); }

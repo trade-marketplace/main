@@ -26,6 +26,12 @@
 .category { justify-self: start; border: 1px solid var(--trade-chip-line); background: var(--trade-chip-bg); border-radius: var(--trade-radius-pill); padding: var(--trade-space-1) var(--trade-space-3); font-size: var(--trade-fs-small); }
 .summaryText { margin: 0; font-size: var(--trade-fs-small); overflow-wrap: anywhere; white-space: pre-line; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; overflow: hidden; }
 .summaryTrust p { text-wrap: pretty; }
+.summaryWhere { margin: 0; color: var(--trade-text-2); font-size: var(--trade-fs-caption); line-height: var(--trade-lh-small); text-wrap: pretty; overflow-wrap: anywhere; }
+.manualAddress { display: grid; gap: var(--trade-space-4); }
+.whereForm [id="job-address-status"] { text-wrap: pretty; }
+.schedule { display: grid; gap: var(--trade-space-4); }
+.expiredWindows { display: flex; flex-wrap: wrap; gap: var(--trade-space-2); list-style: none; padding: 0; margin: 0; color: var(--trade-danger); font-size: var(--trade-fs-caption); }
+.expiredWindows li { padding: var(--trade-space-1) var(--trade-space-2); border: 1px solid var(--trade-danger); border-radius: var(--trade-radius-field); }
 .actions { display: flex; justify-content: flex-end; gap: var(--trade-space-3); margin-top: var(--trade-space-1); }
 .actions > button { min-width: 110px; }
 .notSure { margin-top: var(--trade-space-1); min-height: 36px; }
@@ -79,4 +85,4 @@
   .photoForm [data-empty="true"] ul { grid-template-columns: minmax(0, 1fr); }
   .photoForm [data-empty="true"] [data-photo-add] { aspect-ratio: auto; min-height: 160px; }
 }
-@media (max-width: 359px) { .navActions .saved { display: none; } .card { padding: var(--trade-space-4); } }
+@media (max-width: 359px) { .navActions .saved { display: none; } .card { padding: var(--trade-space-4); } .schedule input[name="time-windows"] + span { padding-inline: var(--trade-space-1); font-size: var(--trade-fs-caption); } }

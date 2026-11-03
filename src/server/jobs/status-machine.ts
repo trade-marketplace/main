@@ -5,6 +5,9 @@ import { queuePayoutForJob } from "@/server/payouts/queue-payout";
 import { eligibilityFailure, JOB_ELIGIBILITY_SELECT, WORKER_ELIGIBILITY_SELECT, type EligibilityFailure } from "@/server/workers/eligibility";
 import { hasCurrentTradeLicence } from "@/server/workers/verification";
 import { lockEligibilityRows } from "@/server/workers/eligibility-mutations";
+import { licenceToday } from "@/lib/account/trades";
+import { timeWindowsExpired } from "@/lib/job-time-windows";
+import { lockJobWindows } from "./window-lock";
 
 // The job status machine (#93): the one place a job's status changes. Each transition says which statuses it
 // starts from, who may trigger it (customer / worker / office / system) and what must be true first. It runs in
@@ -132,6 +135,7 @@ export type PreconditionFailure =
   | "licence-required"
   | "trade-unavailable"
   | "worker-paused"
+  | "time-windows-expired"
   | "own-job"
   | "evidence-not-sent"
   | "extra-work-open"
@@ -225,6 +229,7 @@ export type JobFacts = {
   tradeEnabled?: boolean;
   workerPaused?: boolean;
   workerEligibilityFailure?: EligibilityFailure | null;
+  timeWindowsExpired?: boolean;
   /** When the evidence was sent (completion_evidence.submitted_at). */
   evidenceSentAt?: Date | null;
   /** Extra work waiting on the office or the customer (REQUESTED or PRICED). */
@@ -321,6 +326,7 @@ export function decideTransition(job: JobSnapshot, request: TransitionRequest, f
     case "claim": {
       if (facts.workerPaused) throw fail("worker-paused");
       if (facts.tradeEnabled === false) throw fail("trade-unavailable");
+      if (facts.timeWindowsExpired) throw fail("time-windows-expired");
       const workerId = actorId(actor) as string;
       if (workerId === job.customerId) throw fail("own-job");
       if (facts.workerEligibilityFailure) throw fail(facts.workerEligibilityFailure);
@@ -517,11 +523,15 @@ async function loadFacts(tx: Tx, job: Prisma.JobGetPayload<{ select: typeof JOB_
       };
 
     case "claim": {
+      // Share the job row lock with the customer's narrow window refresh and the expiry reminder.
+      await lockJobWindows(tx, jobId);
+      const schedule = await tx.job.findUnique({ where: { id: jobId }, select: { anyTime: true, timeWindows: { select: { date: true } } } });
+      const expired = schedule ? timeWindowsExpired(schedule.timeWindows.map(window => ({ date: window.date.toISOString().slice(0, 10) })), schedule.anyTime, request.now ?? new Date()) : false;
       const settings = await tx.settings.findUnique({ where: { id: 1 }, select: { enabledTrades: true } });
       const tradeEnabled = !settings || settings.enabledTrades.includes(job.category);
       const worker = request.actor.role === "SYSTEM" ? null : await tx.profile.findUnique({ where: { id: request.actor.userId }, select: WORKER_ELIGIBILITY_SELECT });
       const now = request.now ?? new Date();
-      return { tradeEnabled, workerPaused: Boolean(worker?.workerProfile?.pausedAt),
+      return { tradeEnabled, timeWindowsExpired: expired, workerPaused: Boolean(worker?.workerProfile?.pausedAt),
         workerLicensed: Boolean(worker && hasCurrentTradeLicence(worker, job.category, now)),
         workerEligibilityFailure: eligibilityFailure(worker, job, "claim", { now, ...(settings ? { enabledTrades: settings.enabledTrades } : {}) }) };
     }

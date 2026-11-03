@@ -16,7 +16,7 @@ describe("job actions before sign-in", () => {
     expect(getDb).not.toHaveBeenCalled();
   });
   it("guards stored drafts and their private photo previews with the shared role guard", async () => {
-    expect(await saveDraftAction({})).toMatchObject({ ok: false, error: "session-expired" });
+    expect(await saveDraftAction({}, undefined, undefined, undefined, "describe")).toMatchObject({ ok: false, error: "session-expired" });
     expect(await loadDraftAction()).toMatchObject({ ok: false, error: "session-expired" });
     expect(await loadDraftPhotosAction("owner", randomUUID())).toMatchObject({ ok: false, error: "session-expired" });
     expect(await saveDraftPhotosAction("owner", randomUUID(), [], [])).toMatchObject({ ok: false, error: "session-expired" });
@@ -25,7 +25,7 @@ describe("job actions before sign-in", () => {
   });
   it("refuses a stale wizard after logging in with another customer account", async () => {
     vi.mocked(getViewer).mockResolvedValueOnce({ userId: "customer-b", email: "b@example.test", firstName: "B", role: "CUSTOMER", emailVerified: true });
-    expect(await saveDraftAction({ description: "Customer A's private job" }, "customer-a")).toEqual({ status: "forbidden" });
+    expect(await saveDraftAction({ description: "Customer A's private job" }, "customer-a", { absent: true }, false, "describe")).toEqual({ status: "forbidden" });
     expect(getDb).not.toHaveBeenCalled();
   });
   it("does not read or change photo references after the session switches to another customer", async () => {
@@ -42,14 +42,22 @@ describe("job actions before sign-in", () => {
     await expect(loadDraftPhotosAction("customer-a", randomUUID())).rejects.toThrow("Should not access data");
     const reads = vi.mocked(getDb).mock.calls.length;
     vi.mocked(getViewer).mockResolvedValueOnce(viewer);
-    expect(await saveDraftAction({ description: "Unconfirmed local text" }, "customer-a")).toEqual({ status: "unconfirmed" });
+    expect(await saveDraftAction({ description: "Unconfirmed local text" }, "customer-a", undefined, false, "describe")).toEqual({ status: "unconfirmed" });
     vi.mocked(getViewer).mockResolvedValueOnce(viewer);
     expect(await saveDraftPhotosAction("customer-a", randomUUID(), [], undefined as unknown as string[])).toEqual({ status: "unconfirmed" });
     expect(getDb).toHaveBeenCalledTimes(reads);
   });
   it("rejects an invalid category-origin argument before accessing the database", async () => {
     vi.mocked(getViewer).mockResolvedValueOnce({ userId: "customer-a", email: "a@example.test", firstName: "A", role: "CUSTOMER", emailVerified: true });
-    expect(await saveDraftAction({}, "customer-a", { absent: true }, "false")).toEqual({ status: "invalid", fields: { category: "Type of job" } });
+    expect(await saveDraftAction({}, "customer-a", { absent: true }, "false", "describe")).toEqual({ status: "invalid", fields: { category: "Type of job" } });
+    expect(getDb).not.toHaveBeenCalled();
+  });
+  it("requires a validated wizard step before touching an authenticated draft", async () => {
+    const viewer = { userId: "customer-a", email: "a@example.test", firstName: "A", role: "CUSTOMER" as const, emailVerified: true };
+    for (const step of [undefined, "", "fullSnapshot", "WHERE", { where: true }]) {
+      vi.mocked(getViewer).mockResolvedValueOnce(viewer);
+      expect(await saveDraftAction({}, viewer.userId, { absent: true }, false, step)).toEqual({ status: "unconfirmed" });
+    }
     expect(getDb).not.toHaveBeenCalled();
   });
 });
