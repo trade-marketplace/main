@@ -275,6 +275,28 @@ test.describe("signed-in eligible board", () => {
     await expect(page.getByRole("link", { name: "Board job 3", exact: true })).toBeVisible();
     await expectNoA11yViolations(page);
   });
+  test("ASAP jobs show their matching Flexible or This week schedule under those filters", async ({ page }) => {
+    const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Pacific/Auckland", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+    await db.query("INSERT INTO job_time_windows(job_id,date,time_of_day) VALUES($1,$2::date,'MORNING') ON CONFLICT DO NOTHING", [jobId(2), today]);
+    await page.setViewportSize({ width: 390, height: 900 }); await login(page);
+    const card = page.locator("#board-cards article").filter({ has: page.getByRole("link", { name: "Board job 2", exact: true }) }).locator("..");
+    await expect(card.getByText("ASAP", { exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Filters", exact: true }).click();
+    await page.getByRole("checkbox", { name: "ASAP", exact: true }).uncheck();
+    await page.getByRole("checkbox", { name: "This week", exact: true }).uncheck();
+    await expect(page).toHaveURL(/when=flexible/);
+    await expect(card.getByText("Flexible", { exact: true })).toBeVisible();
+    await expect(card.getByText("ASAP", { exact: true })).toHaveCount(0);
+    await page.getByRole("checkbox", { name: "This week", exact: true }).check();
+    await page.getByRole("checkbox", { name: "Flexible", exact: true }).uncheck();
+    await expect(page).toHaveURL(/when=week/);
+    await expect(card.getByText(/Morning/)).toBeVisible();
+    await expect(card.getByText("ASAP", { exact: true })).toHaveCount(0);
+    await expectNoA11yViolations(page);
+    await page.getByRole("checkbox", { name: "ASAP", exact: true }).check();
+    await expect(card.getByText("ASAP", { exact: true })).toBeVisible();
+    await expectNoA11yViolations(page);
+  });
   test("failed browser storage never pretends to save a bookmark", async ({ page }) => {
     await page.addInitScript(() => { const write = Storage.prototype.setItem; Storage.prototype.setItem = function(key, value) { if (key.startsWith("trade.jobs.saved.")) throw Error("quota"); return write.call(this, key, value); }; });
     await login(page); await page.getByRole("button", { name: "Save Board job 1", exact: true }).click();

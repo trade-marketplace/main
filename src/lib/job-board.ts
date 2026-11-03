@@ -89,6 +89,9 @@ export function boardCardTag(card: Pick<BoardCard, "status" | "earnCents" | "alr
   if (card.status === "QUOTE_BOUNTY") return { kind: "bounty", text: "Quote bounty" };
   return card.alreadyEstimated ? { kind: "estimated" } : { kind: "estimate" };
 }
+export function boardCardWhen(card: Pick<BoardCard, "asap" | "whenLabel">, when: BoardQuery["when"]): string {
+  return card.asap && (when === null || when.includes("asap")) ? "ASAP" : card.whenLabel;
+}
 
 /** A response started before a refresh/filter/bookmark change cannot repopulate its obsolete pill. */
 export class BoardUpdateRequests {

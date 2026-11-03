@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { afterBoardCursor, BoardUpdateRequests, boardAlertsRoute, boardAvailabilityWindow, boardCardTag, boardHref, boardJobHref, boardQuerySchema, boardReturn, boardSelectionKey, boardToday, boardWeek, compareBoardJobs, decodeBoardCursor, DEFAULT_BOARD_QUERY, encodeBoardCursor, matchesBoardKind, parseBoardQuery, parseSavedJobs, savedJobsKey, type BoardUpdates, type SortableBoardJob } from "@/lib/job-board";
+import { afterBoardCursor, BoardUpdateRequests, boardAlertsRoute, boardAvailabilityWindow, boardCardTag, boardCardWhen, boardHref, boardJobHref, boardQuerySchema, boardReturn, boardSelectionKey, boardToday, boardWeek, compareBoardJobs, decodeBoardCursor, DEFAULT_BOARD_QUERY, encodeBoardCursor, matchesBoardKind, parseBoardQuery, parseSavedJobs, savedJobsKey, type BoardUpdates, type SortableBoardJob } from "@/lib/job-board";
 import { BOTTOM_NAV, currentLink } from "@/components/app/app-links";
 
 const first = "13800000-0000-4000-8000-000000000001", second = "13800000-0000-4000-8000-000000000002";
@@ -100,6 +100,15 @@ describe("job board URL and safe client rules", () => {
     expect(boardCardTag({ status: "REVIEW", earnCents: null, alreadyEstimated: true })).toEqual({ kind: "estimated" });
     expect(boardCardTag({ status: "QUOTE_BOUNTY", earnCents: null, alreadyEstimated: true })).toEqual({ kind: "bounty", text: "Quote bounty" });
     expect(boardCardTag({ status: "QUOTE_BOUNTY", earnCents: null, alreadyEstimated: false })).toEqual({ kind: "bounty", text: "Quote bounty" });
+  });
+  it("shows the selected schedule instead of masking it with another valid ASAP option", () => {
+    const window = { asap: true, whenLabel: "Sat,14 Nov · Afternoon" };
+    expect(boardCardWhen(window, null)).toBe("ASAP");
+    expect(boardCardWhen(window, ["asap"])).toBe("ASAP");
+    expect(boardCardWhen(window, ["asap", "week"])).toBe("ASAP");
+    expect(boardCardWhen(window, ["week"])).toBe(window.whenLabel);
+    expect(boardCardWhen({ asap: true, whenLabel: "Flexible" }, ["flexible"])).toBe("Flexible");
+    expect(boardCardWhen({ asap: false, whenLabel: "Flexible" }, null)).toBe("Flexible");
   });
   it.each(["same-query refresh", "Saved set changed"])("discards a deferred old poll after %s without restoring its old pill", async () => {
     const requests = new BoardUpdateRequests(); let finish!: (value: BoardUpdates) => void;

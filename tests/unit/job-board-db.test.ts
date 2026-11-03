@@ -137,7 +137,7 @@ describe.skipIf(!testDatabaseUrl)("eligible job board real PostgreSQL reader", (
   });
 
   it("labels the matching current-week window after Auckland Monday starts, retaining same-day morning availability", async () => {
-    const actor = await worker(), current = await job({ anyTime: false }), expired = await job({ anyTime: false }), today = await job({ anyTime: false });
+    const actor = await worker(), current = await job({ anyTime: false, asap: true }), expired = await job({ anyTime: false }), today = await job({ anyTime: false });
     await schema.db.jobTimeWindow.createMany({ data: [
       { jobId: current.id, date: new Date("2026-11-08"), timeOfDay: "MORNING" },
       { jobId: current.id, date: new Date("2026-11-14"), timeOfDay: "AFTERNOON" },
@@ -147,7 +147,7 @@ describe.skipIf(!testDatabaseUrl)("eligible job board real PostgreSQL reader", (
     const monday = { ...deps(), now: () => new Date("2026-11-09T07:00:00Z") }; // Auckland Monday20:00, date-only expiry.
     const filtered = boardOf(await loadJobBoard(schema.db, actor, { ...DEFAULT_BOARD_QUERY, when: ["week"] }, {}, monday));
     expect(filtered.total).toBe(2); expect(filtered.cards.map(card => card.id)).not.toContain(expired.id);
-    expect(filtered.cards.find(card => card.id === current.id)?.whenLabel).toMatch(/Sat.*14 Nov.*Afternoon/);
+    expect(filtered.cards.find(card => card.id === current.id)).toMatchObject({ asap: true, whenLabel: expect.stringMatching(/Sat.*14 Nov.*Afternoon/) });
     expect(filtered.cards.find(card => card.id === today.id)?.whenLabel).toMatch(/Mon.*9 Nov.*Morning/);
     const all = boardOf(await loadJobBoard(schema.db, actor, DEFAULT_BOARD_QUERY, {}, monday));
     expect(all.cards.find(card => card.id === current.id)?.whenLabel).toMatch(/Sat.*14 Nov.*Afternoon/);
