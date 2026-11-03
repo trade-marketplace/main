@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import type { JobStatus, Prisma, PrismaClient, TimeOfDay, Trade } from "@/generated/prisma/client";
 import { isPoint, type Point } from "@/lib/geo/distance";
 import { jobApproximatePin } from "@/server/geo/job-location";
+import { redactContactDetails } from "@/lib/problem-threads";
 import { canReadJob, isClaimedJob, workerHasPrivateAccess, WORKER_VISIBLE_STATUSES, type JobAccess, type JobViewer } from "./access";
 
 const PERSON_SELECT = { id: true, firstName: true, lastName: true, phone: true, email: true } as const;
@@ -73,7 +74,7 @@ export function workerJobListView(viewer: JobViewer | null, job: JobSummarySourc
   const assignedToYou = workerHasPrivateAccess(viewer, job);
   const payable = assignedToYou || job.status === "BOOKABLE";
   const gross = job.pricing?.workerGrossCents, holiday = job.pricing?.holidayPayCents;
-  return { ...summary(job), assignedToYou, point: assignedToYou ? point(job.lat, job.lng) : jobApproximatePin(job),
+  return { ...summary(job), title: redactContactDetails(job.title, assignedToYou), assignedToYou, point: assignedToYou ? point(job.lat, job.lng) : jobApproximatePin(job),
     precision: assignedToYou ? "exact" as const : "approximate" as const,
     earnCents: payable && typeof gross === "number" && typeof holiday === "number" ? gross + holiday : null };
 }
@@ -115,7 +116,7 @@ export function workerJobView(viewer: JobViewer | null, job: JobSource) {
   const list = workerJobListView(viewer, job);
   if (!list) return null;
   const own = job.estimates.find(estimate => estimate.workerId === viewer!.userId);
-  return { ...list, description: job.description, address: list.assignedToYou ? address(job) : null,
+  return { ...list, description: redactContactDetails(job.description, list.assignedToYou), address: list.assignedToYou ? address(job) : null,
     customer: list.assignedToYou ? shortPerson(job.customer, true) : null,
     anyTime: job.anyTime, timeWindows: windows(job), bookedDate: job.bookedDate?.toISOString().slice(0, 10) ?? null,
     bookedTime: job.bookedTime, photos: photos(job), ownEstimate: own ? { minutes: own.minutes, materialsCents: own.materialsCents, note: own.note, needsSiteVisit: own.needsSiteVisit, madeBeforeEdit: own.madeBeforeEdit } : null };

@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { PayoutStatus } from "@/generated/prisma/client";
+import { redactContactDetails } from "@/lib/problem-threads";
 import { workerHasPrivateAccess, type JobAccess, type JobViewer } from "./access";
 
 type PayoutSource = {
@@ -15,7 +16,7 @@ export function workerPayoutView(viewer: JobViewer, payout: PayoutSource) {
   return { id: payout.id, minutes: payout.minutes, rateCents: payout.rateCents, grossCents: payout.grossCents,
     holidayPayCents: payout.holidayPayCents, status: payout.status, createdAt: payout.createdAt.toISOString(),
     exportedAt: payout.exportedAt?.toISOString() ?? null, paidAt: payout.paidAt?.toISOString() ?? null,
-    job: { jobNumber: payout.job.jobNumber, title: payout.job.title } };
+    job: { jobNumber: payout.job.jobNumber, title: redactContactDetails(payout.job.title, false) } };
 }
 
 /** Private payout calculation stays with the pricing module; only its worker total crosses this boundary. */

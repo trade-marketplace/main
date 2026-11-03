@@ -48,6 +48,20 @@ describe("job projections for every status", () => {
 });
 
 describe("revocation and explicit allowlists", () => {
+  it("redacts phone/email canaries in worker title/description before claim and after cancellation, preserving authorized originals", () => {
+    const title = "Call +64 21 123 4567", description = "Contact private95@example.test or 021-765-4321";
+    const assigned = exampleJob({ title, description });
+    expect(workerJobView(VIEWERS.worker, assigned)).toMatchObject({ title, description });
+    for (const status of ["REVIEW", "BOOKABLE", "CANCELLED"] as const) {
+      const job = { ...assigned, status };
+      const workerWire = JSON.stringify([workerJobView(VIEWERS.worker, job), workerJobsView(VIEWERS.worker, [job])]);
+      expect(workerWire).not.toMatch(/private95@example.test|123 4567|765-4321/);
+      expect(workerWire).toContain("hidden until the job is booked");
+      expect(customerJobView(VIEWERS.customer, job)).toMatchObject({ title, description });
+      expect(officeJobView(VIEWERS.office, job)).toMatchObject({ title, description });
+    }
+  });
+
   it("allows only current participants to read message job context, even for an otherwise public board job", () => {
     const job = exampleJob();
     expect(jobThreadContextView(VIEWERS.worker, job)).toEqual({ id: job.id, jobNumber: 1005, title: "Sub wiring", suburb: "Windsor", status: "ASSIGNED", worker: "Jack W" });
@@ -128,6 +142,8 @@ describe("Earnings projection boundaries", () => {
     expect(workerPayoutView(VIEWERS.worker, payout)?.job).toEqual({ jobNumber: 1005, title: "Sub wiring" });
     expect(workerPayoutView({ ...VIEWERS.worker, userId: "other" }, payout)).toBeNull();
     expect(workerPayoutView(VIEWERS.customer, payout)).toBeNull();
+    const titleCanary = { ...payout, job: { ...payout.job, title: "Call 021 123 4567 or payout95@example.test" } };
+    expect(JSON.stringify(workerPayoutView(VIEWERS.worker, titleCanary))).not.toMatch(/123 4567|payout95@example.test/);
     expect(workerWaitingJobView(VIEWERS.worker, exampleJob(), 18900)).toMatchObject({ totalCents: 18900 });
     expect(workerWaitingJobView(VIEWERS.worker, exampleJob({ workerId: "other" }), 18900)).toBeNull();
     expect(workerWaitingJobView(VIEWERS.worker, exampleJob({ status: "CANCELLED" }), 18900)).toBeNull();

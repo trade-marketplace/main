@@ -22,6 +22,10 @@ the customer are private. Re-read the current row for every request; do not cach
 Private worker access requires **both** the current `workerId` and status `ASSIGNED`, `SUBMITTED`, `COMPLETED` or
 `CANCEL_REVIEW`. A retained worker id on `CANCELLED`, or on a stale pre-claim row, never preserves address/phone access.
 After reassignment the old worker receives 404 for a private job; after reopening they receive the public worker tier.
+Worker titles/descriptions reuse the existing phone/email redactor whenever private access is false; the owning
+customer, office and authorized current assignee retain the original text. Historical payout labels also redact
+phone/email because a payroll record does not establish current job-contact access. Structured address fields are
+gated, but identifying addresses in arbitrary prose or images needs a separate content policy ([#471](https://github.com/trade-marketplace/main/issues/471)).
 
 The approximate pin is the existing cryptographically random point saved when the job location is posted. Reads do
 not generate jitter, because repeated samples can reveal the address. An absent, invalid or out-of-range saved pin
