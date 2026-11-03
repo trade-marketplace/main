@@ -99,6 +99,8 @@ export function usePostReview({ ownerId, verified, draft, manager, state, save, 
       const committed = reviewedSnapshot(reconciled, result.draft.photoPaths ?? [], new Date());
       if (!committed.success || JSON.stringify(committed.data) !== JSON.stringify(reviewed.data)) throw new Error("Review changed");
       const posted = await postJobAction(reviewed.data, draft.data.postKey, ownerId, { postKey: draft.data.postKey, paths: current.photoPaths });
+      if (session?.check(posted, { resend: () => post(automatic) })) return;
+      if (!("status" in posted)) throw new Error("Session changed");
       if (posted.status === "outside-area") { router.push(waitlistSharePath(posted.waitlist.suburb)); return; }
       if (posted.status === "needs-account") {
         if (!writePostIntent(localStorage, createPostIntent(entered, ownerId, selectedIds))) throw new Error("Intent unavailable");

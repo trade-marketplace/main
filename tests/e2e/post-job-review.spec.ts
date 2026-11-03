@@ -176,7 +176,7 @@ test.describe("review and verified posting through real services", () => {
     expect((await db.query("SELECT count(*)::int AS count FROM jobs WHERE post_key=$1", [data.postKey])).rows[0].count).toBe(1);
     expect(await page.evaluate(key => localStorage.getItem(key), DRAFT_STORAGE_KEY)).toBeNull();
   });
-  for (const expireAt of ["inspect", "photos", "save"]) test(`an expired Review ${expireAt} action preserves photos and resumes once through the shared login dialog`, async ({ page }) => {
+  for (const expireAt of ["inspect", "photos", "save", "post"]) test(`an expired Review ${expireAt} action preserves photos and resumes once through the shared login dialog`, async ({ page }) => {
     const data = await guest(page);
     await db.query("INSERT INTO job_drafts(profile_id,data,manual_category,updated_at) VALUES($1,$2,true,now()) ON CONFLICT(profile_id) DO UPDATE SET data=EXCLUDED.data,manual_category=true", [SECURITY_USER.id, data]);
     await login(page, SECURITY_USER.email, "/jobs/new?step=photos"); await expect(page.getByRole("heading", { name: "Add some photos", exact: true })).toBeVisible();
@@ -190,7 +190,7 @@ test.describe("review and verified posting through real services", () => {
       let expired = false;
       await page.route("**/jobs/new**", async route => {
         let args; try { args = JSON.parse(route.request().postData() ?? "null"); } catch { /* Regular navigation. */ }
-        const matches = Array.isArray(args) && (expireAt === "photos" ? args.length === 2 && args[0] === SECURITY_USER.id && args[1] === data.postKey : args.length === 5 && args[1] === SECURITY_USER.id && args[4] === "review");
+        const matches = Array.isArray(args) && (expireAt === "photos" ? args.length === 2 && args[0] === SECURITY_USER.id && args[1] === data.postKey : expireAt === "post" ? args.length === 4 && args[1] === data.postKey && args[2] === SECURITY_USER.id : args.length === 5 && args[1] === SECURITY_USER.id && args[4] === "review");
         if (!expired && matches) { expired = true; await page.context().clearCookies(); await route.continue({ headers: { ...route.request().headers(), cookie: "" } }); }
         else await route.continue();
       });

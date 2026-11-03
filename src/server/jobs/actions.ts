@@ -43,7 +43,9 @@ export const loadDraftPhotosAction = withRole(["CUSTOMER"], async (viewer, owner
 
 export async function postJobAction(input: unknown, postKey: string, expectedOwnerId?: string, photoVersion?: PhotoVersion) {
   const viewer = await getViewer();
-  if (!viewer) return { status: "needs-account" } as const;
+  if (!viewer) return z.uuid().safeParse(expectedOwnerId).success
+    ? { ok: false, error: "session-expired", values: {} } as const
+    : { status: "needs-account" } as const;
   if (!expectedOwnerId || viewer.userId !== expectedOwnerId) return { status: "forbidden" } as const;
   const version = photoVersionSchema.safeParse(photoVersion);
   if (!version.success || "absent" in version.data || version.data.postKey !== postKey) return { status: "photos-pending" } as const;
