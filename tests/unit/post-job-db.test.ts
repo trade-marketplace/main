@@ -157,7 +157,7 @@ describe.skipIf(!testDatabaseUrl)("drafts and posting a job (database)", () => {
     expect(result.status).toBe("posted"); if (result.status !== "posted") return;
     const rows = await schema.db.notification.findMany({ where: { type: "job.posted", payload: { path: ["jobId"], equals: result.jobId } } });
     expect(rows.map((r) => r.userId)).toEqual([workers[0].userId]);
-    expect(rows[0].payload).toEqual({ jobId: result.jobId, jobNumber: result.jobNumber });
+    expect(rows[0].payload).toEqual({ jobId: result.jobId, jobNumber: result.jobNumber, asap: false });
     // A later retry must not alert a newly available worker about a job that has already closed.
     await schema.db.job.update({ where: { id: result.jobId }, data: { status: "CANCELLED" } });
     await schema.db.workerProfile.update({ where: { userId: workers[2].userId }, data: { available: true } });

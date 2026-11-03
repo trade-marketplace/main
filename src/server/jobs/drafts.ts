@@ -6,6 +6,8 @@ import type { Viewer } from "@/server/auth/viewer";
 
 type Db = Pick<PrismaClient, "$transaction">;
 type DraftOptions = {
+  /** Full wizard snapshots can clear absent optional fields; photo-only and legacy callers remain patches. */
+  fullSnapshot?: boolean;
   expectedDraftAbsent?: boolean;
   expectedPostKey?: string;
   expectedPhotoPaths?: readonly string[];
@@ -28,7 +30,7 @@ export async function saveDraft(db: Db, viewer: Viewer | null, input: unknown, o
     if (options.expectedPhotoPaths && JSON.stringify(old.photoPaths ?? []) !== JSON.stringify(options.expectedPhotoPaths)) {
       return { status: "photos-changed", photoPaths: old.photoPaths ?? [] } as const;
     }
-    const data = jobDraftSchema.parse({ ...((previous?.data ?? {}) as object), ...parsed.data }) as Prisma.InputJsonObject;
+    const data = jobDraftSchema.parse({ ...(options.fullSnapshot ? {} : (previous?.data ?? {}) as object), ...parsed.data }) as Prisma.InputJsonObject;
     if (options.validatePhotos && JSON.stringify(old.photoPaths ?? []) !== JSON.stringify(data.photoPaths ?? [])) {
       const next = jobDraftSchema.parse(data);
       if (!await options.validatePhotos(tx, next.postKey, next.photoPaths ?? [])) return { status: "invalid", fields: { photoPaths: "Add some photos" } } as const;

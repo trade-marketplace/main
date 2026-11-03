@@ -3,6 +3,8 @@ import "server-only";
 import type { JobStatus, Prisma, PrismaClient, Role, Trade } from "@/generated/prisma/client";
 import { queuePayoutForJob } from "@/server/payouts/queue-payout";
 import { licenceToday } from "@/lib/account/trades";
+import { timeWindowsExpired } from "@/lib/job-time-windows";
+import { lockJobWindows } from "./window-lock";
 
 // The job status machine (#93): the one place a job's status changes. Each transition says which statuses it
 // starts from, who may trigger it (customer / worker / office / system) and what must be true first. It runs in
@@ -128,6 +130,7 @@ export type PreconditionFailure =
   | "not-paid"
   | "licence-required"
   | "trade-unavailable"
+  | "time-windows-expired"
   | "own-job"
   | "evidence-not-sent"
   | "extra-work-open"
@@ -219,6 +222,7 @@ export type JobFacts = {
   /** The acting worker has a VERIFIED, unexpired licence for the job's trade. */
   workerLicensed?: boolean;
   tradeEnabled?: boolean;
+  timeWindowsExpired?: boolean;
   /** When the evidence was sent (completion_evidence.submitted_at). */
   evidenceSentAt?: Date | null;
   /** Extra work waiting on the office or the customer (REQUESTED or PRICED). */
@@ -314,6 +318,7 @@ export function decideTransition(job: JobSnapshot, request: TransitionRequest, f
 
     case "claim": {
       if (facts.tradeEnabled === false) throw fail("trade-unavailable");
+      if (facts.timeWindowsExpired) throw fail("time-windows-expired");
       const workerId = actorId(actor) as string;
       if (workerId === job.customerId) throw fail("own-job");
       // DECISIONS.md 1: anyone can take Other jobs; restricted work needs a licence first.
@@ -507,9 +512,13 @@ async function loadFacts(tx: Tx, job: JobSnapshot, request: TransitionRequest): 
       };
 
     case "claim": {
+      // Share the job row lock with the customer's narrow window refresh and the expiry reminder.
+      await lockJobWindows(tx, jobId);
+      const schedule = await tx.job.findUnique({ where: { id: jobId }, select: { anyTime: true, timeWindows: { select: { date: true } } } });
+      const expired = schedule ? timeWindowsExpired(schedule.timeWindows.map(window => ({ date: window.date.toISOString().slice(0, 10) })), schedule.anyTime, request.now ?? new Date()) : false;
       const settings = await tx.settings.findUnique({ where: { id: 1 }, select: { enabledTrades: true } });
       const tradeEnabled = !settings || settings.enabledTrades.includes(job.category);
-      if (request.actor.role === "SYSTEM" || job.category === "OTHER") return { tradeEnabled };
+      if (request.actor.role === "SYSTEM" || job.category === "OTHER") return { tradeEnabled, timeWindowsExpired: expired };
       const today = new Date(`${licenceToday(request.now ?? new Date())}T00:00:00Z`);
       const licences = await tx.licence.count({
         where: {
@@ -519,7 +528,7 @@ async function loadFacts(tx: Tx, job: JobSnapshot, request: TransitionRequest): 
           OR: [{ expiresOn: null }, { expiresOn: { gte: today } }],
         },
       });
-      return { workerLicensed: licences > 0, tradeEnabled };
+      return { workerLicensed: licences > 0, tradeEnabled, timeWindowsExpired: expired };
     }
 
     case "submit": {

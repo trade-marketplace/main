@@ -66,7 +66,7 @@ describe("decideRoute: signed out", () => {
 
 describe("decideRoute: wrong role", () => {
   it("redirects a tradie who opens a customer-only page to their home", () => {
-    for (const path of ["/jobs/new", "/pay/p1", "/receipts/j1", "/profile/payments", "/jobs/j1/problem"]) {
+    for (const path of ["/jobs/new", "/pay/p1", "/receipts/j1", "/profile/payments", "/jobs/j1/problem", "/jobs/j1/windows"]) {
       expect(decideRoute(path, tradie), path).toEqual({ action: "redirect", to: "/jobs" });
     }
   });

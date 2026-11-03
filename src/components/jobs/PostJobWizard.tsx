@@ -18,9 +18,13 @@ import { PhotoThumbnail } from "@/components/media/PhotoPicker";
 import { DRAFT_STORAGE_KEY, type JobDraft } from "@/lib/job-draft";
 import { wentUp } from "@/lib/motion/helpers";
 import { useBump } from "@/lib/motion/hooks";
-import { canonicalDraft, decodeWizardDraft, describeErrors, editDescription, encodeWizardDraft, initialWizardDraft, reconcileWizardPhotos, JOB_TYPES, WIZARD_STEPS, type WizardDraft } from "@/lib/post-job-wizard";
+import { canonicalDraft, decodeWizardDraft, describeErrors, editDescription, encodeWizardDraft, initialWizardDraft, reconcileWizardPhotos, whereErrors, JOB_TYPES, WIZARD_STEPS, type WizardDraft } from "@/lib/post-job-wizard";
+import { currentSchedule, postingDateRange } from "@/lib/job-time-windows";
+import { waitlistSharePath } from "@/lib/waitlist";
 import { loadDraftPhotosAction, type saveDraftAction } from "@/server/jobs/actions";
+import { checkJobDraftLocationAction } from "@/server/jobs/address-actions";
 import { DraftPhotos } from "./DraftPhotos";
+import { DraftWhere } from "./DraftWhere";
 import { useDraftPhotos } from "./useDraftPhotos";
 
 import styles from "./post-job.module.css";
@@ -33,6 +37,7 @@ type Props = {
   save: typeof saveDraftAction;
   /** Only the guarded component preview passes this. */
   previewState?: string;
+  initialNow?: string;
 };
 function subscribeDraft(onChange: () => void) {
   window.addEventListener("storage", onChange);
@@ -72,17 +77,18 @@ export function WizardFrame({ step = 0, saved, saveExit, children, summary, back
         {Boolean(photoPreviews?.length) && <div className={styles.summaryPhotos}>{photoPreviews!.slice(0, 3).map((photo, index) => <span className={styles.summaryPhoto} key={`${photo.src}-${index}`}><PhotoThumbnail photo={photo} index={index} /></span>)}</div>}
         {summary?.data.category && <span className={styles.category}>{JOB_TYPES.find((item) => item.value === summary.data.category)?.label}</span>}
         {summary?.description && <p className={styles.summaryText}>{summary.description}</p>}
+        {summary?.data.addressLine1 && <p className={styles.summaryWhere}>{[summary.data.addressLine1, summary.data.suburb].filter(Boolean).join(", ")}{summary.data.asap ? " · ASAP" : summary.data.anyTime ? " · Any time" : ""}</p>}
         <Banner tone="brand" icon="lock" className={styles.summaryTrust}>Free to post. You only pay if you accept the price.</Banner>
       </aside>
     </div>
   </div>;
 }
 
-export function PostJobWizard({ ownerId = null, initialDraft = {}, hasServerDraft = false, loadFailed = false, save, previewState }: Props) {
-  return <ToastProvider><PostJobWizardForm {...{ ownerId, initialDraft, hasServerDraft, loadFailed, save, previewState }} /></ToastProvider>;
+export function PostJobWizard({ ownerId = null, initialDraft = {}, hasServerDraft = false, loadFailed = false, save, previewState, initialNow }: Props) {
+  return <ToastProvider><PostJobWizardForm {...{ ownerId, initialDraft, hasServerDraft, loadFailed, save, previewState, initialNow }} /></ToastProvider>;
 }
 
-function PostJobWizardForm({ ownerId = null, initialDraft = {}, hasServerDraft = false, loadFailed = false, save, previewState }: Props) {
+function PostJobWizardForm({ ownerId = null, initialDraft = {}, hasServerDraft = false, loadFailed = false, save, previewState, initialNow }: Props) {
   const router = useRouter(); const path = usePathname(); const params = useSearchParams();
   const raw = useSyncExternalStore(subscribeDraft, snapshot, () => null);
   const restored = previewState ? null : reconcileWizardPhotos(decodeWizardDraft(raw, ownerId), initialDraft, Boolean(ownerId && hasServerDraft));
@@ -95,17 +101,21 @@ function PostJobWizardForm({ ownerId = null, initialDraft = {}, hasServerDraft =
   const [error, setError] = useState(previewState === "save-error");
   const [fields, setFields] = useState<Record<string, string>>(previewState === "invalid" ? { description: "Describe the job", category: "Type of job" } : {});
   const [busy, setBusy] = useState(previewState === "saving"); const pending = useRef(false);
+  const [now, setNow] = useState(() => initialNow ? new Date(initialNow) : new Date());
+  useEffect(() => { const timer = setInterval(() => setNow(previous => postingDateRange(previous).today === postingDateRange(new Date()).today ? previous : new Date()), 60_000); return () => clearInterval(timer); }, []);
   const descriptionRef = useRef<HTMLTextAreaElement>(null); const headingRef = useRef<HTMLHeadingElement>(null);
   const session = useOptionalSessionExpired(); const online = useOnlineStatus();
   const offline = !online || previewState === "offline";
   const describeValid = !Object.keys(describeErrors(draft)).length;
   const requestedStep = params.get("step") ?? (previewState === "photos" ? "photos" : "describe");
   const described = draft.completedDescribe && describeValid && Boolean(draft.data.postKey);
-  const step = described && requestedStep === "where-when" && draft.completedPhotos ? 2 : described && (requestedStep === "photos" || requestedStep === "where-when") ? 1 : 0;
+  const whereValid = !Object.keys(whereErrors(draft, now)).length;
+  const requestedWhere = ["where", "where-when", "review"].includes(requestedStep);
+  const step = described && requestedStep === "review" && draft.completedPhotos && draft.completedWhere && whereValid ? 3 : described && requestedWhere && draft.completedPhotos ? 2 : described && (requestedStep === "photos" || requestedWhere) ? 1 : 0;
   const stepHref = (value: string) => { const query = new URLSearchParams(params.toString()); query.set("step", value); return `${path}?${query}`; };
-  const stepHrefs = [stepHref("describe"), stepHref("photos"), stepHref("where-when")];
-  const backHref = step === 2 ? stepHrefs[1] : stepHrefs[0];
-  const nextHref = step === 0 ? stepHrefs[1] : stepHrefs[2];
+  const stepHrefs = [stepHref("describe"), stepHref("photos"), stepHref("where"), stepHref("review")];
+  const backHref = stepHrefs[Math.max(0, step - 1)];
+  const nextHref = stepHrefs[Math.min(3, step + 1)];
   const effectiveDraft = { ...draft, data: { ...draft.data, ...(photos.active && !photos.state.restoring ? { photoPaths: photos.manager.paths() } : {}) } };
   const restoredNotice = previewState === "restored" || Boolean(!edited && (restored || hasServerDraft));
   const previousStep = useRef(step);
@@ -126,10 +136,13 @@ function PostJobWizardForm({ ownerId = null, initialDraft = {}, hasServerDraft =
   async function advance(exit = false) {
     if (pending.current) return;
     if (!exit) {
-      const invalid = describeErrors(draft); setFields(invalid);
+      const invalid = { ...describeErrors(draft), ...(step === 2 ? whereErrors(draft, now) : {}) }; setFields(invalid);
       if (Object.keys(invalid).length) {
         if (invalid.description) descriptionRef.current?.focus();
-        else document.querySelector<HTMLInputElement>("input[name=job-type]")?.focus();
+        else if (invalid.category) document.querySelector<HTMLInputElement>("input[name=job-type]")?.focus();
+        else if (invalid.addressLine1 || invalid.locationSource || invalid.point) document.getElementById("job-address")?.focus();
+        else if (invalid.suburb || invalid.city || invalid.postcode) document.getElementById(invalid.suburb ? "job-suburb" : invalid.city ? "job-city" : "job-postcode")?.focus();
+        else document.querySelector<HTMLInputElement>('input[name="time-windows"]')?.focus();
         return;
       }
     }
@@ -137,6 +150,12 @@ function PostJobWizardForm({ ownerId = null, initialDraft = {}, hasServerDraft =
     try {
       const commandKey = draft.data.postKey ?? crypto.randomUUID();
       let photoVersion: { absent: true } | { postKey: string; paths: string[] } | undefined;
+      if (!exit && step === 2) {
+        const data = canonicalDraft(draft); const location = await checkJobDraftLocationAction({ locationSource: data.locationSource, suburb: data.suburb, point: data.point });
+        if (location.status === "outside") { keep(draft); router.push(waitlistSharePath(location.suburb)); return; }
+        if (location.status === "invalid") { setFields({ point: "Address" }); document.getElementById("job-address")?.focus(); return; }
+        if (location.status !== "inside") { setError(true); return; }
+      }
       if (photos.active) {
         await photos.manager.waitForRestore();
         if (exit) await photos.manager.prepareExit();
@@ -156,7 +175,7 @@ function PostJobWizardForm({ ownerId = null, initialDraft = {}, hasServerDraft =
         if (current.status === "loaded") photoVersion = { postKey: commandKey, paths: photos.manager.confirmedPaths() };
         if (!exit && step === 1 && photos.manager.getSnapshot().photos.some(photo => photo.status !== "done")) return;
       }
-      const kept = keep({ ...effectiveDraft, data: { ...effectiveDraft.data, postKey: commandKey, ...(photos.active ? { photoPaths: photos.manager.paths() } : {}) } });
+      const kept = keep({ ...effectiveDraft, data: { ...effectiveDraft.data, ...(step === 2 ? currentSchedule(draft.data, now) : {}), postKey: commandKey, ...(photos.active ? { photoPaths: photos.manager.paths() } : {}) } });
       if (!kept || offline && !exit) return;
       if (ownerId && !offline) {
         const result = await save(canonicalDraft(kept), ownerId, photoVersion);
@@ -169,7 +188,7 @@ function PostJobWizardForm({ ownerId = null, initialDraft = {}, hasServerDraft =
         }
         await photos.manager.confirmSaved(kept.data.photoPaths ?? []);
       } else if (previewState === "save-error") { setError(true); return; }
-      if (!exit && !keep({ ...kept, completedDescribe: true, completedPhotos: step === 1 ? true : kept.completedPhotos })) return;
+      if (!exit && !keep({ ...kept, completedDescribe: true, completedPhotos: step === 1 ? true : kept.completedPhotos, completedWhere: step === 2 ? true : kept.completedWhere })) return;
       router.push(exit ? "/" : nextHref);
     } catch { setError(true); }
     finally { pending.current = false; setBusy(false); }
@@ -184,7 +203,7 @@ function PostJobWizardForm({ ownerId = null, initialDraft = {}, hasServerDraft =
     {restoredNotice && <Banner tone="good" title="Draft restored" className={styles.notice} />}
     {loadFailed && <Banner tone="alert" title="Couldn’t load your draft." className={styles.notice} action={<Button variant="tertiary" onClick={() => router.refresh()}>Try again</Button>} />}
     {error && <Banner tone="alert" title="Couldn’t save." className={styles.notice} live />}
-    <h1 ref={headingRef} tabIndex={-1} className={styles.title}>{step === 0 ? "What needs doing?" : step === 1 ? "Add some photos" : "Where & when"}</h1>
+    <h1 ref={headingRef} tabIndex={-1} className={styles.title}>{step === 0 ? "What needs doing?" : step === 1 ? "Add some photos" : step === 2 ? "Where and when?" : "All good?"}</h1>
     {step === 0 ? <form className={styles.form} onSubmit={submit} noValidate aria-label="Describe the job">
       <div>
         <TextAreaField ref={descriptionRef} label={category === "OTHER" ? "What do you need done?" : "Describe the job"} id="job-description" name="description" value={draft.description} maxLength={1000} rows={5} required
@@ -201,7 +220,8 @@ function PostJobWizardForm({ ownerId = null, initialDraft = {}, hasServerDraft =
         <Button variant="tertiary" size="sm" className={styles.notSure} disabled={busy} onClick={() => { keep({ ...draft, data: { ...draft.data, category: "OTHER" }, manualCategory: true, completedDescribe: false }); setFields({}); }}>Not sure</Button>
       </div>
       <div className={styles.actions}><Button type="submit" loading={busy || previewState === "saving"} disabled={offline} width="full-on-phone">Next</Button></div>
-    </form> : step === 1 ? <DraftPhotos state={photos.state} controls={photos.manager} category={category} offline={offline} busy={busy} onNext={() => void advance()} backHref={backHref} /> : <div className={styles.actions}><Button href={backHref} variant="secondary" width="auto">Back</Button></div>}
+    </form> : step === 1 ? <DraftPhotos state={photos.state} controls={photos.manager} category={category} offline={offline} busy={busy} onNext={() => void advance()} backHref={backHref} /> : step === 2 ? <DraftWhere draft={draft} now={now} fields={fields} busy={busy} offline={offline} backHref={backHref} onNext={() => void advance()}
+      onChange={next => { keep(next); setFields({}); }} onOutside={(next, suggestion) => { keep(next); router.push(waitlistSharePath(suggestion.suburb)); }} /> : <div className={styles.actions}><Button href={backHref} variant="secondary" width="auto">Back</Button></div>}
   </WizardFrame>;
 }
 

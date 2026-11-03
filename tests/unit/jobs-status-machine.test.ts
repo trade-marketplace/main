@@ -780,9 +780,10 @@ describe("transitionJob without a database", () => {
     let reads = 0;
     const tx = {
       $queryRaw: async () => [],
+      $executeRaw: async () => 0,
       job: {
-        findUnique: async () =>
-          ++reads === 1
+        findUnique: async ({ select }: { select?: { timeWindows?: unknown } }) =>
+          select?.timeWindows ? { anyTime: false, timeWindows: [] } : ++reads === 1
             ? snapshot("BOOKABLE", { id: "job-1" })
             : snapshot("ASSIGNED", { id: "job-1", workerId: randomUUID() }),
         updateMany: async () => ({ count: 0 }),

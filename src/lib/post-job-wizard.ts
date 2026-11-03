@@ -1,5 +1,5 @@
 import { draftFieldErrors, jobDraftSchema, postJobSchema, type JobDraft } from "./job-draft";
-import { timeWindowsInRange } from "./job-time-windows";
+import { currentSchedule, timeWindowsInRange } from "./job-time-windows";
 
 export const WIZARD_STEPS = ["What needs doing", "Photos", "Where & when", "Check & post"] as const;
 export const JOB_TYPES = [
@@ -54,12 +54,14 @@ export function whereInputs(draft: WizardDraft): WhereInputs {
 
 /** Keep incomplete address typing locally, while canonical fields continue to use #116's shared schema. */
 export function editWhere(draft: WizardDraft, patch: Partial<WhereInputs>, location?: Pick<JobDraft, "locationSource" | "point">): WizardDraft {
-  const next = { ...draft, where: { ...whereInputs(draft), ...patch }, data: { ...draft.data, ...location }, completedWhere: false };
+  const raw = { ...whereInputs(draft), ...patch };
+  const where = Object.fromEntries(Object.entries(WHERE_TEXT_LIMITS).map(([key, max]) => [key, raw[key as keyof WhereInputs].slice(0, max)])) as WhereInputs;
+  const next = { ...draft, where, data: { ...draft.data, ...location }, completedWhere: false };
   return { ...next, data: canonicalDraft(next) };
 }
 
 export function whereErrors(draft: WizardDraft, now: Date): Record<string, string> {
-  const input = { ...canonicalDraft(draft), photoPaths: draft.data.photoPaths ?? [], anyTime: draft.data.anyTime ?? false, asap: draft.data.asap ?? false, timeWindows: draft.data.timeWindows ?? [] };
+  const input = { ...canonicalDraft(draft), photoPaths: draft.data.photoPaths ?? [], ...currentSchedule(draft.data, now) };
   const parsed = postJobSchema.safeParse(input);
   const all = parsed.success ? {} : draftFieldErrors(parsed.error);
   const fields = Object.fromEntries(Object.entries(all).filter(([key]) => ["addressLine1", "addressLine2", "suburb", "city", "postcode", "point", "locationSource", "accessNotes", "timeWindows"].includes(key)));

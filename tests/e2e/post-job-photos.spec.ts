@@ -35,13 +35,13 @@ test("guest multi-picker: immediate previews → resize/draft → cover/menu →
   await page.getByRole("link", { name: "Back", exact: true }).click(); await expect(page.getByRole("textbox", { name: "Describe the job", exact: true })).toHaveValue("Lights and wiring in the lounge need checking.");
   await page.getByRole("button", { name: "Next", exact: true }).click(); await expect(page.getByRole("heading", { name: "Add some photos", exact: true })).toBeVisible(); await page.reload();
   await expect(page.getByRole("list", { name: "Photos", exact: true }).getByRole("img").first()).toHaveAttribute("alt", "Photo 1: close.jpg");
-  await page.getByRole("button", { name: "Next", exact: true }).click(); await expect(page.getByRole("heading", { name: "Where & when", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Next", exact: true }).click(); await expect(page.getByRole("heading", { name: "Where and when?", exact: true })).toBeVisible();
   await page.getByRole("link", { name: "Back", exact: true }).click(); await expect(page.getByRole("heading", { name: "Add some photos", exact: true })).toBeVisible(); await expectNoA11yViolations(page);
 });
 
 test("no photos is allowed with the nudge; HEIC uses a clean grid and sidebar fallback; wrong files stay isolated", async ({ page }) => {
   await describe(page); await expect(page.getByText("Photos get you a price faster", { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Next", exact: true }).click(); await expect(page.getByRole("heading", { name: "Where & when", exact: true })).toBeVisible(); await page.getByRole("link", { name: "Back", exact: true }).click();
+  await page.getByRole("button", { name: "Next", exact: true }).click(); await expect(page.getByRole("heading", { name: "Where and when?", exact: true })).toBeVisible(); await page.getByRole("link", { name: "Back", exact: true }).click();
   await input(page).setInputFiles([{ name: "IMG_1001.HEIC", mimeType: "image/heic", buffer: Buffer.from("0000ftypheic") }, { name: "notes.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.7") }]);
   await expect(page.getByRole("button", { name: "Next", exact: true })).not.toHaveAttribute("aria-disabled", "true");
   await expect(page.getByRole("list", { name: "Photos", exact: true }).getByRole("img", { name: "Photo 1: IMG_1001.HEIC", exact: true })).toBeVisible();

@@ -1,0 +1,10 @@
+.page { max-width: 720px; width: 100%; margin-inline: auto; padding: var(--trade-space-8) var(--trade-space-6); display: grid; gap: var(--trade-space-4); }
+.page > a { justify-self: start; }
+.card { padding: var(--trade-space-8); display: grid; gap: var(--trade-space-5); background: var(--trade-surface); border: 1px solid var(--trade-line); border-radius: var(--trade-radius-card); }
+.eyebrow { margin: 0; color: var(--trade-text-2); font-size: var(--trade-fs-small); }
+.title { margin: 0; font-family: var(--trade-font-heading); font-size: var(--trade-fs-heading); font-variation-settings: var(--trade-display-axes); font-weight: 900; line-height: var(--trade-lh-heading); }
+.job { margin: 0; overflow-wrap: anywhere; text-wrap: pretty; }
+.form { display: grid; gap: var(--trade-space-6); }
+.actions { display: flex; justify-content: flex-end; }
+@media (max-width: 599px) { .page { padding: var(--trade-space-5) var(--trade-inset-browse); } .card { padding: var(--trade-space-5); } .actions > button { width: 100%; } }
+@media (max-width: 359px) { .card { padding: var(--trade-space-4); } }

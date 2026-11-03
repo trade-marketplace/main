@@ -19,6 +19,6 @@ export default async function NewJob({ searchParams }: { searchParams: Promise<R
   let draft = null; let loadFailed = false;
   if (viewer) { try { draft = await loadDraft(getDb(), viewer); } catch { loadFailed = true; } }
   return <SessionExpiredProvider logIn={logInAgainAction} email={viewer?.email} role={viewer?.role}>
-    <PostJobWizard key={viewer?.userId ?? "guest"} ownerId={viewer?.userId} initialDraft={draft ?? landingWizardDraft(params)} hasServerDraft={Boolean(draft)} loadFailed={loadFailed} save={saveDraftAction} />
+    <PostJobWizard key={viewer?.userId ?? "guest"} ownerId={viewer?.userId} initialDraft={draft ?? landingWizardDraft(params)} hasServerDraft={Boolean(draft)} loadFailed={loadFailed} save={saveDraftAction} initialNow={new Date().toISOString()} />
   </SessionExpiredProvider>;
 }

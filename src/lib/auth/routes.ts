@@ -49,6 +49,7 @@ const RULES: readonly Rule[] = [
   // Customer only.
   { pattern: /^\/jobs\/new$/, access: { kind: "roles", roles: CUSTOMER, allowGuest: true } },
   { pattern: /^\/jobs\/[^/]+\/problem$/, access: { kind: "roles", roles: CUSTOMER } },
+  { pattern: /^\/jobs\/[^/]+\/windows$/, access: { kind: "roles", roles: CUSTOMER } },
   { pattern: /^\/pay(\/.*)?$/, access: { kind: "roles", roles: CUSTOMER } },
   { pattern: /^\/receipts(\/.*)?$/, access: { kind: "roles", roles: CUSTOMER } },
   { pattern: /^\/profile\/(payments|addresses)(\/.*)?$/, access: { kind: "roles", roles: CUSTOMER } },

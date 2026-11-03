@@ -25,16 +25,17 @@ export function DraftWhere({ draft, onChange, onNext, onOutside, backHref, now, 
   useEffect(() => {
     if (preview || selected || query.trim().length < 3) return;
     const id = ++sequence.current;
+    let cancelled = false;
     const timeout = setTimeout(() => {
       if (offline) { setManual(true); setLookup({ status: "error", suggestions: [] }); return; }
       setLookup({ status: "loading", suggestions: [] });
       void search(query).then(result => {
-        if (id !== sequence.current) return;
+        if (cancelled || id !== sequence.current) return;
         if (result.mode === "manual") { setManual(true); setLookup({ status: "error", suggestions: [] }); }
         else { setLookup({ status: "ready", suggestions: result.suggestions }); if (!result.suggestions.length) setManual(true); }
-      }, () => { if (id === sequence.current) { setManual(true); setLookup({ status: "error", suggestions: [] }); } });
+      }, () => { if (!cancelled && id === sequence.current) { setManual(true); setLookup({ status: "error", suggestions: [] }); } });
     }, 250);
-    return () => { clearTimeout(timeout); sequence.current++; };
+    return () => { cancelled = true; clearTimeout(timeout); };
   }, [query, selected, search, offline, preview]);
 
   function pick(suggestion: SearchSuggestion) {
@@ -43,7 +44,7 @@ export function DraftWhere({ draft, onChange, onNext, onOutside, backHref, now, 
     if (suggestion.coverage.status === "outside") onOutside(next, suggestion);
   }
   return <form className={`${styles.form} ${styles.whereForm}`} onSubmit={event => { event.preventDefault(); onNext(); }} noValidate aria-label="Where and when">
-    <AddressField id="job-address" name="address" label="Address" hint="Only shared with the person who takes the job." value={query} maxLength={200} required readOnly={busy}
+    <AddressField id="job-address" name="address" label="Address" hint="Only shared with the person who takes the job." hintVisible value={query} maxLength={200} required readOnly={busy}
       autoComplete="street-address" error={fields.addressLine1 ?? fields.point ?? fields.locationSource} suggestions={lookup.suggestions} status={lookup.status}
       onQueryChange={value => { setQuery(value); setSelected(false); sequence.current++; setLookup({ status: "idle", suggestions: [] }); onChange(editWhere(draft, { addressLine1: value }, { locationSource: "TYPED", point: undefined })); }}
       onSelect={option => { const suggestion = lookup.suggestions.find(value => value.id === option.id); if (suggestion) pick(suggestion); }} />

@@ -19,7 +19,7 @@ export const saveDraftAction = withRole(["CUSTOMER"], async (viewer, input: unkn
   if (expectedOwnerId !== undefined && viewer.userId !== expectedOwnerId) return { status: "forbidden" } as const;
   const version = photoVersionSchema.safeParse(photoVersion);
   if (!version.success) return { status: "unconfirmed" } as const;
-  return saveDraft(getDb(), viewer, input, { ...("absent" in version.data ? { expectedDraftAbsent: true } : { expectedPostKey: version.data.postKey, expectedPhotoPaths: version.data.paths }), validatePhotos: (tx, key, paths) => validatePhotoPaths(tx, viewer, key, paths, createSupabaseFileStore) });
+  return saveDraft(getDb(), viewer, input, { fullSnapshot: true, ...("absent" in version.data ? { expectedDraftAbsent: true } : { expectedPostKey: version.data.postKey, expectedPhotoPaths: version.data.paths }), validatePhotos: (tx, key, paths) => validatePhotoPaths(tx, viewer, key, paths, createSupabaseFileStore) });
 });
 
 export const saveDraftPhotosAction = withRole(["CUSTOMER"], async (viewer, ownerId: string, postKey: string, photoPaths: string[], expectedPhotoPaths: string[]) => {

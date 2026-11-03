@@ -18,11 +18,12 @@ export type TimeWindowPickerProps = FieldMessageProps & {
   disabled?: boolean;
   emptyMessage?: string;
   id?: string;
+  hintVisible?: boolean;
 };
 
 /** The caller supplies dates, availability and unique window values. No scheduling rules live in the UI. */
 export function TimeWindowPicker({ label, hint, error, success, required, days, name, value, defaultValue = [],
-  onChange, disabled, emptyMessage = "No time windows are available yet.", id }: TimeWindowPickerProps) {
+  onChange, disabled, emptyMessage = "No time windows are available yet.", id, hintVisible = false }: TimeWindowPickerProps) {
   const field = useField({ id, hint, error, success });
   const [ownValue, setOwnValue] = useState<readonly string[]>(defaultValue);
   const current = value ?? ownValue;
@@ -31,7 +32,8 @@ export function TimeWindowPicker({ label, hint, error, success, required, days, 
   function change(next: string[]) { setOwnValue(next); onChange?.(next); }
   return <fieldset id={field.id} className={styles.group} disabled={disabled} aria-describedby={field.describedBy} aria-invalid={error ? true : undefined}>
     <legend className={styles.legend}>{label}{required && <span className={styles.required} hidden> (required)</span>}</legend>
-    <FieldMessages id={field.id} {...{ hint, error, success }} />
+    {hintVisible && hint && <p id={`${field.id}-hint`} className={styles.hint}>{hint}</p>}
+    <FieldMessages id={field.id} {...{ hint: hintVisible ? undefined : hint, error, success }} />
     {enabled.length > 0 && <div className={styles.windowActions}>
       <Button variant="secondary" size="sm" width="auto" disabled={disabled} aria-pressed={allSelected}
         onClick={() => change(allSelected ? current.filter((item) => !enabled.includes(item)) : [...new Set([...current, ...enabled])])}>Any time</Button>

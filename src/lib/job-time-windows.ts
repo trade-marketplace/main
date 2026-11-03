@@ -1,4 +1,4 @@
-import type { JobDraft } from "./job-draft";
+import type { JobDraft, JobSchedule } from "./job-draft";
 
 export type JobTimeWindow = NonNullable<JobDraft["timeWindows"]>[number];
 export const DAY_PARTS = [{ value: "MORNING", label: "Morning" }, { value: "AFTERNOON", label: "Afternoon" }, { value: "EVENING", label: "Evening" }] as const;
@@ -26,7 +26,11 @@ export function selectedTimeWindows(values: readonly string[], now: Date): JobTi
 export function timeWindowsInRange(windows: readonly JobTimeWindow[], now: Date) {
   const { today, last } = postingDateRange(now); return windows.every(window => window.date >= today && window.date <= last);
 }
+/** Explicit Any time keeps its flexible semantics and fills the currently offered seven days on save. */
+export function currentSchedule(value: Pick<JobDraft, "asap" | "anyTime" | "timeWindows">, now: Date): JobSchedule {
+  return { asap: value.asap ?? false, anyTime: value.anyTime ?? false, timeWindows: value.anyTime ? postingDays(now).flatMap(day => DAY_PARTS.map(part => ({ date: day.value, timeOfDay: part.value }))) : value.timeWindows ?? [] };
+}
 /** Any time retains #116's flexible/no-dated-window semantics. Empty legacy schedules aren't declared expired. */
 export function timeWindowsExpired(windows: readonly Pick<JobTimeWindow, "date">[], anyTime: boolean, now: Date) {
-  return !anyTime && windows.length > 0 && windows.every(window => window.date < postingDateRange(now).today);
+  const { today } = postingDateRange(now); return !anyTime && windows.length > 0 && windows.every(window => window.date < today);
 }

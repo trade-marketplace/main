@@ -118,5 +118,5 @@ export async function notifyEligibleWorkers(db: PrismaClient, posted: Posted, no
       && (job.category === "OTHER" || worker.licences.some((licence) => !licence.expiresOn || licence.expiresOn >= today))
       && haversineKm({ lat: area.areaLat, lng: area.areaLng }, { lat: job.lat!, lng: job.lng! }) <= area.areaRadiusKm;
   }).map((worker) => worker.id);
-  await createNotify(db)("job.posted", recipients, { eventId: `job.posted:${job.id}`, payload: { jobId: job.id, jobNumber: job.jobNumber } });
+  await createNotify(db)("job.posted", recipients, { eventId: `job.posted:${job.id}`, payload: { jobId: job.id, jobNumber: job.jobNumber, asap: job.asap } });
 }
