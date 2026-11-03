@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { z } from "zod";
 import type { PrismaClient } from "@/generated/prisma/client";
 import type { Viewer } from "@/server/auth/viewer";
+import type { BrowserPushStatus } from "@/lib/browser-push";
 
 export const PUSH_DEVICE_COOKIE = "tm-push-device";
 const proofSchema = z.string().regex(/^[a-f0-9]{64}$/);
@@ -44,6 +45,20 @@ export async function hasBrowserPush(db: PrismaClient, viewer: Viewer, proof: un
   return Boolean(await db.browserPushRegistration.findFirst({ where: { deviceHash: pushHash(proof), userId: viewer.userId, revokedAt: null,
     user: { role: "CUSTOMER", emailVerifiedAt: { not: null }, notificationPreferences: { some: { event: "job.priced", channel: "PUSH", enabled: true } } },
   }, select: { id: true } }));
+}
+
+/** Advisory card state only. Never exposes a foreign device owner or changes a preference/registration. */
+export async function browserPushStatus(db: PrismaClient, viewer: Viewer, proof: unknown): Promise<BrowserPushStatus> {
+  if (viewer.role !== "CUSTOMER") return "unavailable";
+  const profile = await db.profile.findUnique({ where: { id: viewer.userId }, select: {
+    role: true, emailVerifiedAt: true,
+    notificationPreferences: { where: { event: "job.priced", channel: "PUSH" }, select: { enabled: true }, take: 1 },
+    pushRegistrations: { where: { deviceHash: validDeviceProof(proof) ? pushHash(proof) : "" }, select: { revokedAt: true }, take: 1 },
+  } });
+  if (profile?.role !== "CUSTOMER" || !profile.emailVerifiedAt) return "unavailable";
+  if (profile.notificationPreferences[0]?.enabled === false) return "opted-out";
+  const own = profile.pushRegistrations[0];
+  return own ? own.revokedAt ? "revoked" : profile.notificationPreferences[0]?.enabled === true ? "active" : "inactive" : "inactive";
 }
 
 /** One durable display claim, even if FCM retries after an accepted response was lost or a popup was dismissed. */

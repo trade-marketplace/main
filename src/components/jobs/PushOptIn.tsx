@@ -4,26 +4,35 @@ import { Button } from "@/components/Button";
 import { Icon } from "@/components/Icon";
 import { Skeleton } from "@/components/feedback/Skeleton";
 import { Banner } from "@/components/overlays/Banner";
-import { PUSH_ENABLED_EVENT, PUSH_NOTICE, PUSH_WORKER_PATH, type FirebaseWebConfig, type PushCardState } from "@/lib/browser-push";
+import { PUSH_ENABLED_EVENT, PUSH_NOTICE, PUSH_WORKER_PATH, shouldOfferBrowserPush, type FirebaseWebConfig, type PushCardState } from "@/lib/browser-push";
 import { onceStore } from "@/lib/motion/once";
-import { prepareBrowserPushAction, registerBrowserPushAction } from "@/server/notifications/push-actions";
+import { browserPushStatusAction, prepareBrowserPushAction, registerBrowserPushAction } from "@/server/notifications/push-actions";
 import { useOptionalSessionExpired } from "@/components/auth/SessionExpired";
 import styles from "./posted-job.module.css";
 
 export function PushOptIn({ ownerId, config, previewState }: { ownerId: string; config: FirebaseWebConfig | null; previewState?: PushCardState }) {
   const titleId = useId();
   const [state, setState] = useState<PushCardState>(previewState ?? "loading"); const [hidden, setHidden] = useState(false);
+  const [retry, setRetry] = useState(0);
   const pending = useRef(false); const entered = useRef(false); const prompted = useRef(false); const session = useOptionalSessionExpired();
   const onceKey = `posted-notification-card:${ownerId}`;
-  const enter = useEffectEvent(() => {
+  const dismissedKey = `posted-notification-dismissed:${ownerId}`, consentedKey = `posted-notification-consented:${ownerId}`;
+  const enter = useEffectEvent(async (active: () => boolean) => {
     if (previewState || entered.current) return; entered.current = true;
-    if (onceStore.hasRun(onceKey)) { setHidden(true); return; }
+    if (onceStore.hasRun(dismissedKey)) { setHidden(true); return; }
     if (!config) { setState("unavailable"); return; }
     if (!("Notification" in window) || !("serviceWorker" in navigator) || !("PushManager" in window)) { setState("unsupported"); return; }
+    let result;
+    try { result = await browserPushStatusAction(ownerId); } catch { if (active()) setState("unavailable"); return; }
+    if (!active()) return;
+    if (session?.check(result, { resend: () => { entered.current = false; setState("loading"); setRetry(value => value + 1); } })) return;
+    if (!("status" in result) || result.status === "unavailable") { setState("unavailable"); return; }
+    if (!shouldOfferBrowserPush({ asked: onceStore.hasRun(onceKey), dismissed: false, consented: onceStore.hasRun(consentedKey) || onceStore.hasRun(`posted-notification-enabled:${ownerId}`), permission: Notification.permission, status: result.status })) { setHidden(true); return; }
     onceStore.claim(onceKey);
     setState(Notification.permission === "denied" ? "denied" : "ready");
   });
-  useEffect(() => { queueMicrotask(() => enter()); }, []);
+  useEffect(() => { let active = true; queueMicrotask(() => { if (active) void enter(() => active); }); return () => { active = false; }; }, [retry]);
+  function dismiss() { onceStore.claim(onceKey); onceStore.claim(dismissedKey); setHidden(true); }
   async function enable() {
     if (pending.current) return;
     if (previewState) { setState("enabled"); return; }
@@ -33,11 +42,13 @@ export function PushOptIn({ ownerId, config, previewState }: { ownerId: string; 
       // This native call is inside the user's own Yes-please gesture, never an effect/page load.
       let permission = Notification.permission;
       if (permission === "default") {
-        if (prompted.current) { setHidden(true); return; }
+        if (prompted.current) { dismiss(); return; }
         prompted.current = true; permission = await Notification.requestPermission();
       }
-      if (permission === "default") { setHidden(true); return; }
-      if (permission !== "granted") { setState("denied"); return; }
+      if (permission === "default") { dismiss(); return; }
+      if (permission !== "granted") { onceStore.claim(dismissedKey); setState("denied"); return; }
+      // Consent survives an interrupted registration; it is not evidence of an active device.
+      onceStore.claim(consentedKey);
       const prepared = await prepareBrowserPushAction(ownerId);
       if (session?.check(prepared, { resend: enable })) return;
       if (!("status" in prepared) || prepared.status !== "ready") { setState("error"); return; }
@@ -63,7 +74,7 @@ export function PushOptIn({ ownerId, config, previewState }: { ownerId: string; 
       {notice && <Banner tone={state === "error" ? "alert" : "info"} live>{notice}</Banner>}
       <div className={styles.optInActions}>
         <Button variant="secondary" size="sm" width="auto" onClick={() => void enable()} loading={state === "requesting"} disabled={state === "denied" || state === "unavailable" || state === "unsupported"}>{state === "error" ? "Try again" : "Yes please"}</Button>
-        <Button variant="tertiary" size="sm" width="auto" disabled={state === "requesting"} onClick={() => { onceStore.claim(onceKey); setHidden(true); }}>Not now</Button>
+        <Button variant="tertiary" size="sm" width="auto" disabled={state === "requesting"} onClick={dismiss}>Not now</Button>
       </div>
     </>}
   </section>;

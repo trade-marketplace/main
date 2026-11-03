@@ -1,6 +1,6 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { registerBrowserPush, claimPushDisplay, revokeBrowserPush, pushHash } from "@/server/notifications/browser-push";
+import { browserPushStatus, registerBrowserPush, claimPushDisplay, revokeBrowserPush, pushHash } from "@/server/notifications/browser-push";
 import { createPriceReadyPushRule } from "@/server/notifications/price-push";
 import { createNotify } from "@/server/notifications/notify";
 import type { PushSender } from "@/server/notifications/firebase-provider";
@@ -60,6 +60,24 @@ describe.skipIf(!testDatabaseUrl)("owned browser push lifecycle", () => {
     expect(await schema.db.browserPushRegistration.findFirst()).toMatchObject({ userId: next.userId, deviceHash: pushHash(item.proof) });
     expect(await schema.db.priceReadyPushDelivery.findUnique({ where: { id: item.row.id } })).toMatchObject({ userId: item.person.userId, failedAt: now });
     expect(await claimPushDisplay(schema.db, item.person, item.proof, item.row.id)).toBeNull(); expect(await claimPushDisplay(schema.db, next, item.proof, item.row.id)).toBeNull();
+  });
+  it("distinguishes active/revoked/self-opted-out state without revealing or changing another account's mapping", async () => {
+    const item = await queued(), other = await customer();
+    expect(await browserPushStatus(schema.db, item.person, item.proof)).toBe("active");
+    await revokeBrowserPush(schema.db, item.proof, now);
+    expect(await browserPushStatus(schema.db, item.person, item.proof)).toBe("revoked");
+    expect(await browserPushStatus(schema.db, other, item.proof)).toBe("inactive");
+    await registerBrowserPush(schema.db, other, item.proof, item.token, now);
+    expect(await browserPushStatus(schema.db, other, item.proof)).toBe("active");
+    expect(await browserPushStatus(schema.db, item.person, item.proof)).toBe("inactive");
+    await schema.db.notificationPreference.update({ where: { userId_event_channel: { userId: other.userId, event: "job.priced", channel: "PUSH" } }, data: { enabled: false } });
+    expect(await browserPushStatus(schema.db, other, item.proof)).toBe("opted-out");
+    expect((await schema.db.notificationPreference.findFirstOrThrow({ where: { userId: other.userId, event: "job.priced", channel: "PUSH" } })).enabled).toBe(false);
+    await schema.db.notificationPreference.delete({ where: { userId_event_channel: { userId: other.userId, event: "job.priced", channel: "PUSH" } } });
+    expect(await browserPushStatus(schema.db, other, item.proof)).toBe("inactive");
+    await schema.db.profile.update({ where: { id: other.userId }, data: { emailVerifiedAt: null } });
+    expect(await browserPushStatus(schema.db, other, item.proof)).toBe("unavailable");
+    expect(await schema.db.browserPushRegistration.findFirstOrThrow()).toMatchObject({ userId: other.userId, revokedAt: null, token: item.token });
   });
   it("gives concurrent foreground/background resolvers exactly one display even before provider acceptance commits", async () => {
     const item = await queued();

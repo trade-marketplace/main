@@ -21,7 +21,7 @@ export function PostedJob({ job, ownerId, push, previewState }: { job: CustomerJ
       {lead && <p className={styles.lead}>{lead}</p>}
       {job.status !== "REVIEW" && <span id={statusId}><StatusPill status={job.status} audience="customer" /></span>}
       {tracker && <div className={styles.tracker}><Tracker {...tracker} /></div>}
-      {(job.status === "REVIEW" || job.status === "QUOTE_BOUNTY") && previewState !== "hidden" && <PushOptIn ownerId={ownerId} config={push} previewState={previewState} />}
+      {(job.status === "REVIEW" || job.status === "QUOTE_BOUNTY") && previewState !== "hidden" && <PushOptIn key={ownerId} ownerId={ownerId} config={push} previewState={previewState} />}
       <Button href={`/jobs/${job.id}`} width="full" variant="hero">View my job</Button>
     </div>
   </section>;

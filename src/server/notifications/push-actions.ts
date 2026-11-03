@@ -5,7 +5,7 @@ import { withRole } from "@/server/auth/guard";
 import { getDb } from "@/server/db";
 import { authCookieOptions, REMEMBER_ME_MAX_AGE } from "@/server/supabase";
 import { firebaseWebConfig } from "./push-config";
-import { hasBrowserPush, PUSH_DEVICE_COOKIE, registerBrowserPush, validDeviceProof } from "./browser-push";
+import { browserPushStatus, hasBrowserPush, PUSH_DEVICE_COOKIE, registerBrowserPush, validDeviceProof } from "./browser-push";
 
 /** The browser must acknowledge this cookie response before any token is bound to it. */
 export const prepareBrowserPushAction = withRole(["CUSTOMER"], async (viewer, expectedOwnerId: string) => {
@@ -32,4 +32,10 @@ export const browserPushReceiverAction = withRole(["CUSTOMER"], async viewer => 
   const proof = (await cookies()).get(PUSH_DEVICE_COOKIE)?.value;
   if (!await hasBrowserPush(getDb(), viewer, proof)) return { status: "disabled" } as const;
   return { status: "ready", config, ownerId: viewer.userId } as const;
+});
+
+export const browserPushStatusAction = withRole(["CUSTOMER"], async (viewer, expectedOwnerId: string) => {
+  if (viewer.userId !== expectedOwnerId || !firebaseWebConfig()) return { status: "unavailable" } as const;
+  try { return { status: await browserPushStatus(getDb(), viewer, (await cookies()).get(PUSH_DEVICE_COOKIE)?.value) }; }
+  catch { return { status: "unavailable" } as const; }
 });

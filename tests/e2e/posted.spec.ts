@@ -67,13 +67,28 @@ test.describe("real owned posted success and optional browser pings", () => {
     }
   });
   test.afterAll(async () => { await storage?.close(); await db?.end(); });
-  async function job(status = "REVIEW", workerId: string | null = null) {
+  async function job(status = "REVIEW", workerId: string | null = null, customerId = SECURITY_USER.id) {
     const price = ["REVIEW", "QUOTE_BOUNTY", "CANCELLED"].includes(status) ? null : 12500;
-    return (await db.query("INSERT INTO jobs(customer_id,category,title,description,address_line1,suburb,city,status,price_cents,worker_id,any_time,updated_at) VALUES($1,'OTHER','Move the couch','Move the couch upstairs.','1 Example Street','Gladstone','Invercargill',$2::job_status,$3,$4,true,now()) RETURNING id,job_number", [SECURITY_USER.id, status, price, workerId])).rows[0];
+    return (await db.query("INSERT INTO jobs(customer_id,category,title,description,address_line1,suburb,city,status,price_cents,worker_id,any_time,updated_at) VALUES($1,'OTHER','Move the couch','Move the couch upstairs.','1 Example Street','Gladstone','Invercargill',$2::job_status,$3,$4,true,now()) RETURNING id,job_number", [customerId, status, price, workerId])).rows[0];
   }
   async function login(page: Page, id: string, email = SECURITY_USER.email) {
     await page.goto(`${app}/login?next=${encodeURIComponent(`/jobs/${id}?posted=1`)}`); await page.getByLabel("Email", { exact: true }).fill(email); await page.getByLabel("Password", { exact: true }).fill(SECURITY_PASSWORD); await page.getByRole("button", { name: "Log in", exact: true }).click();
     await expect(page.getByRole("heading", { name: "Posted.", exact: true })).toBeVisible();
+  }
+  async function logout(page: Page) {
+    await page.getByRole("button", { name: /^Account:/ }).click();
+    await page.getByRole("menuitem", { name: "Log out", exact: true }).click();
+    await expect(page).toHaveURL(`${app}/`);
+  }
+  async function pushDouble(page: Page, token: string) {
+    await page.addInitScript(() => {
+      const subscription = { endpoint: "https://push.example.test/test-device", getKey: (name: string) => new Uint8Array(name === "auth" ? 16 : 65).fill(1).buffer };
+      Object.defineProperty(PushManager.prototype, "getSubscription", { configurable: true, value: async () => { localStorage.setItem("fixture121-enable-phase", "subscription"); return subscription; } });
+      Object.defineProperty(ServiceWorkerRegistration.prototype, "showNotification", { configurable: true, value: async () => { const count = String(Number(localStorage.getItem("fixture121-shown-pings") ?? 0) + 1); localStorage.setItem("fixture121-shown-pings", count); document.documentElement.dataset.shownPings = count; } });
+      Object.defineProperty(Notification, "requestPermission", { configurable: true, value: async () => { localStorage.setItem("fixture121-native-reprompts", String(Number(localStorage.getItem("fixture121-native-reprompts") ?? 0) + 1)); return Notification.permission; } });
+    });
+    await page.route("https://firebaseinstallations.googleapis.com/**", route => route.fulfill({ json: { fid: "c1234567890123456789012", refreshToken: "test-refresh", authToken: { token: "test-installation-token", expiresIn: "604800s" } } }));
+    await page.route("https://fcmregistrations.googleapis.com/**", route => route.fulfill({ json: { token } }));
   }
   test("guest photo → signup and one-use verification → fresh login → Posted → real owned job", async ({ page }) => {
     test.setTimeout(90_000); await page.setViewportSize({ width: 390, height: 844 });
@@ -157,14 +172,13 @@ test.describe("real owned posted success and optional browser pings", () => {
   });
   test("a granted token survives a lost binding response and foreground retries display only once", async ({ page, context }) => {
     test.setTimeout(60_000); const token = `test-browser-fcm-${randomUUID()}`;
-    await test.step("grant the browser's native notification permission", () => context.grantPermissions(["notifications"], { origin: app! }));
-    await test.step("install local subscription and provider HTTP doubles", async () => { await page.addInitScript(() => {
-      const subscription = { endpoint: "https://push.example.test/test-device", getKey: (name: string) => new Uint8Array(name === "auth" ? 16 : 65).fill(1).buffer };
-      Object.defineProperty(PushManager.prototype, "getSubscription", { configurable: true, value: async () => subscription });
-      Object.defineProperty(ServiceWorkerRegistration.prototype, "showNotification", { configurable: true, value: async () => { document.documentElement.dataset.shownPings = String(Number(document.documentElement.dataset.shownPings ?? 0) + 1); } });
+    const actionStates: string[] = [];
+    page.on("response", async response => {
+      if (!response.request().headers()["next-action"]) return;
+      try { actionStates.push(...((await response.text()).match(/"status":"[a-z-]+"/g) ?? [])); } catch { /* An intentionally lost response has no readable body. */ }
     });
-    await page.route("https://firebaseinstallations.googleapis.com/**", route => route.fulfill({ json: { fid: "c1234567890123456789012", refreshToken: "test-refresh", authToken: { token: "test-installation-token", expiresIn: "604800s" } } }));
-    await page.route("https://fcmregistrations.googleapis.com/**", route => route.fulfill({ json: { token } })); });
+    await test.step("grant the browser's native notification permission", () => context.grantPermissions(["notifications"], { origin: app! }));
+    await test.step("install local subscription and provider HTTP doubles", () => pushDouble(page, token));
     const value = await test.step("create an owned job fixture", () => job());
     await test.step("log in through the actual Auth SDK", () => login(page, value.id)); let lost = false;
     expect(await page.evaluate(() => Notification.permission)).toBe("granted");
@@ -184,21 +198,85 @@ test.describe("real owned posted success and optional browser pings", () => {
     expect((await context.cookies()).find(cookie => cookie.name === "tm-push-device")?.value).toBe(proof!.value);
     await db.query("UPDATE jobs SET status='PRICED',price_cents=12500 WHERE id=$1", [value.id]);
     const notificationId = randomUUID(); await db.query("INSERT INTO notifications(id,user_id,type,payload) VALUES($1,$2,'job.priced',$3)", [notificationId, SECURITY_USER.id, { jobId: value.id, jobNumber: value.job_number }]);
-    const delivery = (await db.query("SELECT id FROM price_ready_push_deliveries WHERE notification_id=$1", [notificationId])).rows[0].id;
+    const delivery = (await db.query("SELECT q.id FROM price_ready_push_deliveries q JOIN browser_push_registrations r ON r.id=q.registration_id WHERE q.notification_id=$1 AND r.token=$2", [notificationId, token])).rows[0].id;
     const displayResponses: number[] = [];
     page.on("response", response => { if (new URL(response.url()).pathname === `/api/notifications/push/${delivery}/display`) displayResponses.push(response.status()); });
     // Retry the same durable delivery while the receiver initializes. Distinct transport ids ensure the
     // server's once-only claim is exercised even if the SDK deduplicates identical FCM message ids.
     await expect.poll(async () => {
       await page.evaluate(id => { for (let attempt = 0; attempt < 2; attempt++) { const message = { isFirebaseMessaging: true, messageType: "push-received", from: "12345678", fcmMessageId: crypto.randomUUID(), data: { deliveryId: id } }; navigator.serviceWorker.dispatchEvent(new MessageEvent("message", { data: message })); } }, delivery);
-      return Number(await page.locator("html").getAttribute("data-shown-pings") ?? 0);
-    }).toBe(1);
+      return page.evaluate(() => Number(localStorage.getItem("fixture121-shown-pings") ?? 0));
+    }).toBe(1).catch(error => { throw new Error(`Foreground claim failed; display HTTP statuses=${displayResponses.join(",")}; action states=${actionStates.join(",")}`, { cause: error }); });
     await expect.poll(() => displayResponses.length).toBeGreaterThanOrEqual(2);
     expect(displayResponses.filter(status => status === 200)).toHaveLength(1);
-    await expect(page.locator("html")).toHaveAttribute("data-shown-pings", "1");
+    expect(await page.evaluate(() => localStorage.getItem("fixture121-shown-pings"))).toBe("1");
     expect((await db.query("SELECT displayed_at,delivered_at FROM price_ready_push_deliveries WHERE id=$1", [delivery])).rows[0]).toMatchObject({ displayed_at: expect.any(Date), delivered_at: null });
     await expectNoA11yViolations(page);
-    await expect(page.locator("html")).toHaveAttribute("data-shown-pings", "1");
+    expect(await page.evaluate(() => localStorage.getItem("fixture121-shown-pings"))).toBe("1");
+  });
+  test("explicit granted consent survives a failed pre-commit binding and refresh without another native prompt", async ({ page, context }) => {
+    const token = `interrupted-fcm-${randomUUID()}`; await context.grantPermissions(["notifications"], { origin: app! }); await pushDouble(page, token);
+    const value = await job(); await login(page, value.id); let blocked = false;
+    await page.route(`**/jobs/${value.id}?posted=1`, async route => {
+      let args; try { args = JSON.parse(route.request().postData() ?? "null"); } catch { /* Normal navigation. */ }
+      if (!blocked && Array.isArray(args) && args[0] === SECURITY_USER.id && args[1] === token) { blocked = true; await route.abort("connectionfailed"); }
+      else await route.continue();
+    });
+    await page.getByRole("button", { name: "Yes please", exact: true }).click(); await expect(page.getByText("Couldn’t turn on notifications.", { exact: true })).toBeVisible();
+    expect(blocked).toBe(true); expect((await db.query("SELECT count(*)::int AS count FROM browser_push_registrations WHERE token=$1", [token])).rows[0].count).toBe(0);
+    const proof = (await context.cookies()).find(cookie => cookie.name === "tm-push-device")!.value;
+    await page.reload(); await page.getByRole("button", { name: "Yes please", exact: true }).click(); await expect(page.getByText("Notifications are on.", { exact: true })).toBeVisible();
+    expect((await db.query("SELECT user_id,revoked_at FROM browser_push_registrations WHERE token=$1", [token])).rows[0]).toEqual({ user_id: SECURITY_USER.id, revoked_at: null });
+    expect((await context.cookies()).find(cookie => cookie.name === "tm-push-device")!.value).toBe(proof);
+    expect(await page.evaluate(() => localStorage.getItem("fixture121-native-reprompts"))).toBeNull();
+  });
+  test("successful opt-in reconnects after real logout and A→B→A without native re-prompts, while Not now and settings stay off", async ({ page, context }) => {
+    test.setTimeout(90_000); const token = `reconnect-fcm-${randomUUID()}`;
+    const network: string[] = [];
+    page.on("response", response => { const url = new URL(response.url()); if (url.hostname.endsWith("googleapis.com") || response.request().headers()["next-action"]) network.push(`${response.status()} ${response.request().method()} ${url.pathname}`); });
+    await page.addInitScript(() => {
+      const register = ServiceWorkerContainer.prototype.register;
+      Object.defineProperty(ServiceWorkerContainer.prototype, "register", { configurable: true, value: async function(this: ServiceWorkerContainer, ...args: Parameters<ServiceWorkerContainer["register"]>) { localStorage.setItem("fixture121-enable-phase", "sw-register"); const result = await register.apply(this, args); localStorage.setItem("fixture121-enable-phase", "sw-registered"); return result; } });
+    });
+    async function enable() {
+      await page.evaluate(() => localStorage.setItem("fixture121-enable-phase", "gesture"));
+      await page.getByRole("button", { name: "Yes please", exact: true }).click();
+      await expect(page.getByText("Notifications are on.", { exact: true })).toBeVisible().catch(async error => {
+        const phase = await page.evaluate(() => localStorage.getItem("fixture121-enable-phase"));
+        throw new Error(`Registration phase=${phase}; recent response paths=${network.slice(-10).join(";")}`, { cause: error });
+      });
+    }
+    await context.grantPermissions(["notifications"], { origin: app! }); await pushDouble(page, token);
+    await db.query("DELETE FROM notification_preferences WHERE user_id=ANY($1::uuid[]) AND event='job.priced' AND channel='PUSH'", [[SECURITY_USER.id, SECURITY_TRADIE.id]]);
+    const a = await job(), b = await job("REVIEW", null, SECURITY_TRADIE.id);
+    await login(page, a.id); await enable();
+    const proof = (await context.cookies()).find(cookie => cookie.name === "tm-push-device")!.value;
+    await page.reload(); await expect(page.getByRole("status", { name: "Loading notifications", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Yes please", exact: true })).toHaveCount(0);
+    await logout(page);
+    expect((await db.query("SELECT revoked_at FROM browser_push_registrations WHERE token=$1", [token])).rows[0].revoked_at).not.toBeNull();
+    expect((await context.cookies()).find(cookie => cookie.name === "tm-push-device")!.value).toBe(proof);
+    const next = await job(); await login(page, next.id);
+    await enable();
+    expect((await db.query("SELECT user_id,revoked_at FROM browser_push_registrations WHERE token=$1", [token])).rows[0]).toEqual({ user_id: SECURITY_USER.id, revoked_at: null });
+    await logout(page); await login(page, b.id, SECURITY_TRADIE.email);
+    await enable();
+    expect((await db.query("SELECT user_id FROM browser_push_registrations WHERE token=$1", [token])).rows[0].user_id).toBe(SECURITY_TRADIE.id);
+    expect((await page.request.get(`${app}/jobs/${a.id}?posted=1`)).status()).toBe(404);
+    await logout(page); await login(page, next.id);
+    await enable();
+    expect((await db.query("SELECT user_id,revoked_at FROM browser_push_registrations WHERE token=$1", [token])).rows[0]).toEqual({ user_id: SECURITY_USER.id, revoked_at: null });
+    expect((await page.request.get(`${app}/jobs/${b.id}?posted=1`)).status()).toBe(404);
+    await db.query("UPDATE notification_preferences SET enabled=false WHERE user_id=$1 AND event='job.priced' AND channel='PUSH'", [SECURITY_USER.id]);
+    await page.reload(); await expect(page.getByRole("status", { name: "Loading notifications", exact: true })).toHaveCount(0); await expect(page.getByRole("button", { name: "Yes please", exact: true })).toHaveCount(0);
+    expect((await db.query("SELECT enabled FROM notification_preferences WHERE user_id=$1 AND event='job.priced' AND channel='PUSH'", [SECURITY_USER.id])).rows[0].enabled).toBe(false);
+    await db.query("UPDATE notification_preferences SET enabled=true WHERE user_id=$1 AND event='job.priced' AND channel='PUSH'", [SECURITY_USER.id]);
+    await logout(page); await login(page, next.id);
+    await page.getByRole("button", { name: "Not now", exact: true }).click(); await page.reload();
+    await expect(page.getByRole("button", { name: "Yes please", exact: true })).toHaveCount(0);
+    expect((await db.query("SELECT revoked_at FROM browser_push_registrations WHERE token=$1", [token])).rows[0].revoked_at).not.toBeNull();
+    expect(await page.evaluate(() => localStorage.getItem("fixture121-native-reprompts"))).toBeNull();
+    expect((await context.cookies()).find(cookie => cookie.name === "tm-push-device")!.value).toBe(proof);
   });
   test("stale success URLs show current cancellation and legacy timing, with owner-only access", async ({ page }) => {
     const value = await job("CANCELLED"); await login(page, value.id);

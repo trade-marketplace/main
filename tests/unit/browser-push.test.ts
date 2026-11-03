@@ -4,10 +4,31 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { firebaseCredentials, firebaseWebConfig } from "@/server/notifications/push-config";
 import { firebasePushSender } from "@/server/notifications/firebase-provider";
 import { displayPriceReady } from "@/lib/push-display";
+import { shouldOfferBrowserPush, type BrowserPushStatus } from "@/lib/browser-push";
 
 const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048, privateKeyEncoding: { type: "pkcs8", format: "pem" }, publicKeyEncoding: { type: "spki", format: "pem" } });
 const config = { NEXT_PUBLIC_FIREBASE_API_KEY: "public-test-value", NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: "trade-test.firebaseapp.com", NEXT_PUBLIC_FIREBASE_PROJECT_ID: "trade-test", NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: "12345678", NEXT_PUBLIC_FIREBASE_APP_ID: "1:12345678:web:example", NEXT_PUBLIC_FIREBASE_VAPID_KEY: "B".repeat(87), FIREBASE_SERVICE_ACCOUNT_JSON: JSON.stringify({ project_id: "trade-test", client_email: "test@trade-test.iam.gserviceaccount.com", private_key: privateKey }) };
 afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
+describe("registration-aware permission-card consent", () => {
+  const previous = { asked: true, dismissed: false, consented: true, permission: "granted" as NotificationPermission, status: "inactive" as BrowserPushStatus };
+  it("recovers a revoked successful opt-in or returned account without another native request", () => {
+    expect(shouldOfferBrowserPush(previous)).toBe(true);
+    expect(shouldOfferBrowserPush({ ...previous, status: "revoked" })).toBe(true);
+    expect(shouldOfferBrowserPush({ ...previous, consented: false, status: "revoked" })).toBe(true); // legacy successful opt-in
+  });
+  it("keeps Not-now/default dismissal, explicit settings opt-out and active devices hidden", () => {
+    expect(shouldOfferBrowserPush({ ...previous, dismissed: true, status: "revoked" })).toBe(false);
+    expect(shouldOfferBrowserPush({ ...previous, status: "opted-out" })).toBe(false);
+    expect(shouldOfferBrowserPush({ ...previous, status: "active" })).toBe(false);
+    expect(shouldOfferBrowserPush({ ...previous, status: "unavailable" })).toBe(false);
+  });
+  it("never turns an earlier ask into another native prompt or treats a legacy dismissal as consent", () => {
+    expect(shouldOfferBrowserPush({ ...previous, permission: "default", status: "revoked" })).toBe(false);
+    expect(shouldOfferBrowserPush({ ...previous, permission: "denied", status: "revoked" })).toBe(false);
+    expect(shouldOfferBrowserPush({ ...previous, consented: false })).toBe(false);
+    expect(shouldOfferBrowserPush({ ...previous, asked: false, consented: false, permission: "default" })).toBe(true);
+  });
+});
 describe("configured Firebase data-only transport", () => {
   it("keeps missing, malformed or mismatched credentials unavailable and returns only public fields", () => {
     expect(firebaseWebConfig({})).toBeNull(); expect(firebaseCredentials({ FIREBASE_SERVICE_ACCOUNT_JSON: "bad" })).toBeNull();
