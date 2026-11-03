@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { afterBoardCursor, BoardUpdateRequests, boardAlertsRoute, boardAvailabilityWindow, boardCardTag, boardCardWhen, boardHref, boardJobHref, boardQuerySchema, boardReturn, boardSelectionKey, boardToday, boardWeek, compareBoardJobs, decodeBoardCursor, DEFAULT_BOARD_QUERY, encodeBoardCursor, matchesBoardKind, parseBoardQuery, parseSavedJobs, savedJobsKey, type BoardUpdates, type SortableBoardJob } from "@/lib/job-board";
+import { afterBoardCursor, BoardUpdateRequests, boardAlertsRoute, boardAvailabilityWindow, boardCardTag, boardCardWhen, boardDistanceLabel, boardHref, boardJobHref, boardQuerySchema, boardReturn, boardSelectionKey, boardToday, boardWeek, compareBoardJobs, decodeBoardCursor, DEFAULT_BOARD_QUERY, encodeBoardCursor, matchesBoardKind, parseBoardQuery, parseSavedJobs, savedJobsKey, type BoardUpdates, type SortableBoardJob } from "@/lib/job-board";
 import { BOTTOM_NAV, currentLink } from "@/components/app/app-links";
 
 const first = "13800000-0000-4000-8000-000000000001", second = "13800000-0000-4000-8000-000000000002";
@@ -109,6 +109,11 @@ describe("job board URL and safe client rules", () => {
     expect(boardCardWhen(window, ["week"])).toBe(window.whenLabel);
     expect(boardCardWhen({ asap: true, whenLabel: "Flexible" }, ["flexible"])).toBe("Flexible");
     expect(boardCardWhen({ asap: false, whenLabel: "Flexible" }, null)).toBe("Flexible");
+  });
+  it("preserves nearby distance precision while keeping the under-one fallback and whole kilometres from ten", () => {
+    for (const [km, label] of [[0, "<1 km"], [.999, "<1 km"], [1, "1.0 km"], [1.05, "1.1 km"], [3.6, "3.6 km"], [9.94, "9.9 km"], [9.95, "10.0 km"], [10, "10 km"], [10.5, "11 km"], [1000, "1000 km"]] as const) {
+      expect(boardDistanceLabel(km)).toBe(label);
+    }
   });
   it.each(["same-query refresh", "Saved set changed"])("discards a deferred old poll after %s without restoring its old pill", async () => {
     const requests = new BoardUpdateRequests(); let finish!: (value: BoardUpdates) => void;

@@ -72,6 +72,9 @@ test.describe("guarded job board states", () => {
       expect(await metadata.evaluate(element => element.scrollWidth <= element.clientWidth && element.scrollHeight <= element.clientHeight)).toBe(true);
       const box = await metadata.boundingBox(), bookmark = await card.getByRole("button", { name: "Save Sub wiring", exact: true }).boundingBox();
       expect(box!.x + box!.width).toBeLessThanOrEqual(bookmark!.x);
+      const nearby = page.locator("#board-cards article").nth(9).getByText("1.2 km · Windsor", { exact: true });
+      await expect(nearby).toBeVisible();
+      expect(await nearby.evaluate(element => element.scrollWidth <= element.clientWidth && element.scrollHeight <= element.clientHeight)).toBe(true);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true); await expectNoA11yViolations(page);
       if (process.env.BOARD_E2E_SCREENSHOTS_DIR) await page.screenshot({ path: join(process.env.BOARD_E2E_SCREENSHOTS_DIR, `ready-${width}.png`), fullPage: true, animations: "disabled" });
     }

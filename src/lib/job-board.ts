@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { Trade } from "@/generated/prisma/client";
 import type { JobTimeWindowView, WorkerJobListView } from "@/server/views/jobs";
+import { roundKm } from "@/lib/geo/distance";
 
 export const BOARD_PAGE_SIZE = 12;
 export const BOARD_TRADES = ["ELECTRICAL", "PLUMBING", "GAS", "CONSTRUCTION", "OTHER"] as const;
@@ -91,6 +92,10 @@ export function boardCardTag(card: Pick<BoardCard, "status" | "earnCents" | "alr
 }
 export function boardCardWhen(card: Pick<BoardCard, "asap" | "whenLabel">, when: BoardQuery["when"]): string {
   return card.asap && (when === null || when.includes("asap")) ? "ASAP" : card.whenLabel;
+}
+export function boardDistanceLabel(km: number): string {
+  const whole = roundKm(km);
+  return km < 1 ? "<1 km" : `${km < 10 ? new Intl.NumberFormat("en-NZ", { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(km) : whole} km`;
 }
 
 /** A response started before a refresh/filter/bookmark change cannot repopulate its obsolete pill. */

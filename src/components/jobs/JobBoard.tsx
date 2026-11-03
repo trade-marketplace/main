@@ -14,7 +14,7 @@ import { ErrorState, InlineError } from "@/components/feedback/ErrorState";
 import { LoadingRegion } from "@/components/feedback/LoadingRegion";
 import { OfflineBanner, useOnlineStatus } from "@/components/feedback/OfflineBanner";
 import { Skeleton } from "@/components/feedback/Skeleton";
-import { BOARD_TRADES, BOARD_WHEN, BoardUpdateRequests, boardAlertsRoute, boardCardTag, boardCardWhen, boardHref, boardJobHref, boardSelectionKey, DEFAULT_BOARD_QUERY, parseBoardQuery, parseSavedJobs, savedJobsKey,
+import { BOARD_TRADES, BOARD_WHEN, BoardUpdateRequests, boardAlertsRoute, boardCardTag, boardCardWhen, boardDistanceLabel, boardHref, boardJobHref, boardSelectionKey, DEFAULT_BOARD_QUERY, parseBoardQuery, parseSavedJobs, savedJobsKey,
   type BoardKind, type BoardPage, type BoardQuery, type BoardResult, type BoardSource } from "@/lib/job-board";
 import { loadJobBoardAction, newBoardJobsAction } from "@/server/jobs/board-actions";
 import styles from "./board.module.css";
@@ -170,7 +170,7 @@ export function JobBoard({ initial, ownerId, source = LIVE_SOURCE, previewState,
               secondaryAction={<TextLink href={alerts}>Alerts settings</TextLink>} /><p>Need to change your work area? <TextLink href={contact} inline>Contact us</TextLink>.</p></div>
             : <><div className={styles.grid}>{board.cards.map(card => <div key={card.id} className={styles.card}>
               <JobTile href={previewState ? `/dev/components/job-board?state=detail${query.entry === "all" ? "&view=all" : ""}&from=${encodeURIComponent(returnTo)}` : boardJobHref(card.id, returnTo)} title={card.title} photo={card.photoUrl}
-                meta={`${card.distanceKm < 1 ? "<1" : Math.round(card.distanceKm)} km · ${card.suburb}`} tag={boardCardTag(card)} saved={saved.includes(card.id)} onSavedChange={value => save(card.id, value)} shape="tall" headingLevel={2} />
+                meta={`${boardDistanceLabel(card.distanceKm)} · ${card.suburb}`} tag={boardCardTag(card)} saved={saved.includes(card.id)} onSavedChange={value => save(card.id, value)} shape="tall" headingLevel={2} />
               <div className={styles.cardFooter}><strong>{card.tradeLabel}</strong><span>{boardCardWhen(card, query.when)}</span></div>
             </div>)}</div>{more && <LoadingRegion loading label="Loading more jobs" skeleton={<BoardSkeleton count={4} />} />}
               {board.nextCursor && <div ref={sentinel} className={styles.more}><Button variant="secondary" loading={more} disabled={!online ? "You’re offline" : false} onClick={() => load(true)}>Load more jobs</Button></div>}
