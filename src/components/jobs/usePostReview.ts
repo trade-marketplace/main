@@ -2,6 +2,7 @@
 
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useOptionalSessionExpired } from "@/components/auth/SessionExpired";
 import { postJobSchema } from "@/lib/job-draft";
 import { currentSchedule } from "@/lib/job-time-windows";
 import { verificationPath } from "@/lib/auth/verification";
@@ -28,6 +29,7 @@ export function usePostReview({ ownerId, verified, draft, manager, state, save, 
   resumeIntent?: PostIntent; resumeConflict?: boolean; preview?: boolean;
 }) {
   const router = useRouter(); const path = usePathname(); const params = useSearchParams();
+  const session = useOptionalSessionExpired();
   const [busy, setBusy] = useState(false); const [error, setError] = useState(false); const [detail, setDetail] = useState<string>();
   const [signup, setSignup] = useState(false); const pending = useRef(false); const attempted = useRef<string | null>(null);
   const returnPath = `${path}?${new URLSearchParams({ step: "review", [POST_INTENT_PARAM]: draft.data.postKey ?? "" })}`;
@@ -72,15 +74,22 @@ export function usePostReview({ ownerId, verified, draft, manager, state, save, 
         return;
       }
       const status = await inspectPostKeyAction(ownerId, draft.data.postKey, false, true);
+      if (session?.check(status, { resend: () => post(automatic) })) return;
       if (!("status" in status)) throw new Error("Session changed");
+      if (status.status === "unverified") {
+        if (!writePostIntent(localStorage, createPostIntent(entered, ownerId, selectedIds))) throw new Error("Intent unavailable");
+        router.push(verificationPath(returnPath)); return;
+      }
       if (status.status === "posted") { await finishPosted(status.jobId, draft.data.postKey, selectedIds); return; }
       if (status.status !== "unposted") throw new Error("Draft status unavailable");
       const current = await loadDraftPhotosAction(ownerId, draft.data.postKey);
+      if (session?.check(current, { resend: () => post(automatic) })) return;
       if (!("status" in current) || current.status !== "loaded") throw new Error("Draft changed");
       if (JSON.stringify(current.photoPaths) !== JSON.stringify(reviewed.data.photoPaths)) {
         manager.reconcile(current.photoPaths, true); await manager.flush(); throw new Error("Photos changed");
       }
       const result = await save(reviewed.data, ownerId, { postKey: draft.data.postKey, paths: current.photoPaths }, draft.manualCategory, "review");
+      if (session?.check(result, { resend: () => post(automatic) })) return;
       if (!("status" in result) || result.status !== "saved") {
         if ("status" in result && result.status === "photos-changed") manager.reconcile(result.photoPaths, true);
         throw new Error("Draft changed");
