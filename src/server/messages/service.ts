@@ -29,11 +29,11 @@ export async function requireJobAccess(db: Pick<PrismaClient, "profile" | "job">
   if (!job || (role !== "ADMIN" && actor.userId !== job.customerId && actor.userId !== job.workerId)) throw new ProblemThreadError("forbidden");
   return job;
 }
-async function requireThread(tx: Tx, actor: Actor, id: string) {
+async function requireThread(tx: Tx, actor: Actor, id: string, lockJob = true) {
   const thread = await tx.supportThread.findUnique({ where: { id }, select: { id: true, jobId: true, jobParticipants: true, status: true } });
   if (!thread?.jobParticipants || !thread.jobId) throw new ProblemThreadError("forbidden");
   // A row write provides the same job lock the office helper uses, without an unqualified raw table name.
-  await tx.job.updateMany({ where: { id: thread.jobId }, data: { updatedAt: new Date() } });
+  if (lockJob) await tx.job.updateMany({ where: { id: thread.jobId }, data: { updatedAt: new Date() } });
   const job = await requireJobAccess(tx, actor, thread.jobId);
   return { thread, job };
 }
@@ -119,7 +119,8 @@ export function sendProblemMessage(db: PrismaClient, actor: Actor, threadId: str
 
 export async function markThreadRead(db: PrismaClient, actor: Actor, threadId: string, messageId: string) {
   return db.$transaction(async tx => {
-    await requireThread(tx, actor, threadId);
+    // A receipt authorizes against the current job, like a thread read, without changing job activity/order.
+    await requireThread(tx, actor, threadId, false);
     const message = await tx.supportMessage.findFirst({ where: { id: messageId, threadId, internal: false }, select: { createdAt: true } });
     if (!message) throw new ProblemThreadError("forbidden");
     const previous = await tx.supportThreadRead.findUnique({ where: { threadId_userId: { threadId, userId: actor.userId } } });

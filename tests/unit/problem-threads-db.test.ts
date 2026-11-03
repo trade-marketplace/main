@@ -109,8 +109,10 @@ describe.skipIf(!testDatabaseUrl)("shared job problem threads (database)", () =>
     expect(view.selected?.messages.at(-1)?.author).toBe("Trade Marketplace");
     expect(await schema.db.notification.count({ where: { userId: f.customer.userId, type: "message.received", payload: { path: ["threadId"], equals: id } } })).toBe(1);
     const first = view.selected!.messages[0];
+    const beforeRead = (await schema.db.job.findUniqueOrThrow({ where: { id: f.job.id } })).updatedAt;
     await expect(markThreadRead(schema.db, f.stranger, id, first.id)).rejects.toMatchObject({ code: "forbidden" });
     await markThreadRead(schema.db, f.worker, id, first.id);
+    expect((await schema.db.job.findUniqueOrThrow({ where: { id: f.job.id } })).updatedAt).toEqual(beforeRead);
     expect((await getMessages(schema.db, f.customer, id)).selected?.messages[0].seen).toBe(true);
   });
   it("saves notifications atomically with the message and leaves a failed send retryable", async () => {
