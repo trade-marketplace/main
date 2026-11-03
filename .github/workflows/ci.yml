@@ -24,7 +24,7 @@ jobs:
     # Branch protection: mark "Lint, typecheck, test, build" as the required check.
     name: Lint, typecheck, test, build
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     # A throwaway Postgres for the database tests (docs/TESTING.md). Never the Supabase project.
     # Same major version as Supabase. Each test file migrates its own schema, so nothing is shared.
     services:
