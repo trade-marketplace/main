@@ -105,8 +105,8 @@ export function PostJobWizard({ ownerId = null, initialDraft = {}, hasServerDraf
     setEdited(withKey); setError(false);
     try {
       if (!previewState) localStorage.setItem(DRAFT_STORAGE_KEY, encodeWizardDraft(withKey, ownerId));
-      setSaved(true); return withKey;
-    } catch { setSaved(false); setError(true); return null; }
+      setSaved(true); return { draft: withKey, persisted: true };
+    } catch { setSaved(false); setError(true); return { draft: withKey, persisted: false }; }
   }
 
   async function advance(exit = false) {
@@ -119,23 +119,27 @@ export function PostJobWizard({ ownerId = null, initialDraft = {}, hasServerDraf
         return;
       }
     }
-    const kept = keep(draft);
-    if (!kept) return;
+    const kept = keep(draft); let durable = kept.persisted;
     if (offline && !exit) return;
     if (ownerId && !offline) {
       pending.current = true; setBusy(true);
       try {
-        const result = await save(canonicalDraft(kept), ownerId);
+        const canonical = canonicalDraft(kept.draft);
+        const result = await save(canonical, ownerId);
         if (session?.check(result, { resend: () => advance(exit) })) return;
         if (!("status" in result) || result.status !== "saved") {
           if ("status" in result && result.status === "invalid") setFields(result.fields);
           setError(true); return;
         }
+        // Unfinished text that the shared schema omits still needs local persistence before leaving.
+        durable ||= (canonical.description ?? "") === kept.draft.description.trim();
       } catch { setError(true); return; }
       finally { pending.current = false; setBusy(false); }
     } else if (previewState === "save-error") { setError(true); return; }
     // Only a successful Next completes Describe. Merely typing valid fields into a Photos URL never does.
-    if (!exit && !keep({ ...kept, completedDescribe: true })) return;
+    if (exit && !durable) { setError(true); return; }
+    if (!exit) keep({ ...kept.draft, completedDescribe: true });
+    if (durable) { setSaved(true); setError(false); }
     router.push(exit ? "/" : nextHref);
   }
 

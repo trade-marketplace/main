@@ -58,6 +58,7 @@ export function decodeWizardDraft(raw: string | null, ownerId: string | null): W
 export function landingWizardDraft(params: Record<string, string | string[] | undefined>): JobDraft {
   const description = typeof params.description === "string" ? params.description.slice(0, 120) : "";
   const type = typeof params.type === "string" ? params.type.toUpperCase() : "";
-  const category = JOB_TYPES.find((item) => item.value === type)?.value ?? guessJobType(description);
+  // Presence means an explicit landing choice. The initializer infers free text without marking it manual.
+  const category = JOB_TYPES.find((item) => item.value === type)?.value;
   return { ...(description ? { description } : {}), ...(category ? { category } : {}) };
 }
