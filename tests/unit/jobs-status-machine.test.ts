@@ -788,6 +788,7 @@ describe("transitionJob without a database", () => {
         updateMany: async () => ({ count: 0 }),
       },
       licence: { count: async () => 1 },
+      settings: { findUnique: async () => ({ enabledTrades: ["ELECTRICAL", "PLUMBING", "GAS", "CONSTRUCTION", "OTHER"] }) },
     };
     const db = { $transaction: async (work: (t: typeof tx) => unknown) => work(tx) } as unknown as PrismaClient;
     const deps: StatusMachineDeps = { audit: vi.fn(), notify: vi.fn() };

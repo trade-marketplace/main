@@ -3,18 +3,19 @@ import "server-only";
 import { z } from "zod";
 
 import type { Prisma, PrismaClient, Role } from "@/generated/prisma/client";
-import { createAudit, SYSTEM_ACTOR } from "@/server/audit/audit";
+import { createAudit, SYSTEM_ACTOR, type AuditActor } from "@/server/audit/audit";
 import { getDb } from "@/server/db";
 
 const emailSchema = z.string().trim().toLowerCase().max(254).pipe(z.email());
 const select = { id: true, email: true, role: true } as const;
 
 export class OfficeUserError extends Error {
-  constructor(readonly code: "invalid-email" | "unknown-account" | "last-admin") {
+  constructor(readonly code: "invalid-email" | "unknown-account" | "last-admin" | "forbidden") {
     super({
       "invalid-email": "Enter a valid email address.",
       "unknown-account": "No account has that email. They must sign up first.",
       "last-admin": "Cannot remove the last office user. Add another office user first.",
+      "forbidden": "Office access is required.",
     }[code]);
     this.name = "OfficeUserError";
   }
@@ -43,7 +44,7 @@ export const revokeOfficeSessions: SessionRevoker = async (tx, userId) => {
 };
 
 /** Server-only capability. Callers in a future Settings action must first authorize ADMIN with withRole(). */
-export function officeUsers(db: PrismaClient = getDb(), revokeSessions: SessionRevoker = revokeOfficeSessions) {
+export function officeUsers(db: PrismaClient = getDb(), revokeSessions: SessionRevoker = revokeOfficeSessions, actor: AuditActor = SYSTEM_ACTOR) {
   async function find(email: string): Promise<OfficeUser> {
     const profile = await db.profile.findUnique({ where: { email: officeUserEmail(email) }, select });
     if (!profile) throw new OfficeUserError("unknown-account");
@@ -56,6 +57,10 @@ export function officeUsers(db: PrismaClient = getDb(), revokeSessions: SessionR
       // Serialize all add/remove calls, including competing removals of the final two admins. READ COMMITTED
       // means the count below sees the previous holder's commit after this lock becomes available.
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(178, 1)`;
+      if (!("system" in actor)) {
+        const currentActor = await tx.profile.findUnique({ where: { id: actor.userId }, select: { role: true } });
+        if (currentActor?.role !== "ADMIN") throw new OfficeUserError("forbidden");
+      }
       const before = await tx.profile.findUnique({ where: { email }, select });
       if (!before) throw new OfficeUserError("unknown-account");
       if (before.role === role || (role === "CUSTOMER" && before.role !== "ADMIN")) {
@@ -67,8 +72,8 @@ export function officeUsers(db: PrismaClient = getDb(), revokeSessions: SessionR
       const after = await tx.profile.update({ where: { id: before.id }, data: { role }, select });
       if (role === "CUSTOMER") await revokeSessions(tx, before.id);
       // Audit actor ids are UUIDs. A script is the system actor, explicitly identified by reason="script".
-      await createAudit(tx)(SYSTEM_ACTOR, role === "ADMIN" ? "office_user.added" : "office_user.removed",
-        { type: "profiles", id: before.id }, { role: before.role }, { role }, "script");
+      await createAudit(tx)(actor, role === "ADMIN" ? "office_user.added" : "office_user.removed",
+        { type: "profiles", id: before.id }, { role: before.role }, { role }, "system" in actor ? "script" : null);
       return { ...after, changed: true };
     });
   }

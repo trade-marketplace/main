@@ -1,7 +1,7 @@
 import "server-only";
 
 import type { PrismaClient } from "@/generated/prisma/client";
-import type { Category } from "@/lib/cards";
+import { CATEGORIES, type Category } from "@/lib/cards";
 import type { ServiceContent, ServiceData } from "@/lib/services";
 import { serviceWaitlistInput } from "@/lib/services";
 import { suburbKey, type WaitlistResult } from "@/lib/waitlist";
@@ -31,20 +31,35 @@ export const SERVICE_CONTENT: Record<Category, ServiceContent> = {
   ]) },
 };
 
-type ServiceStore = Pick<PrismaClient, "review">;
+type AvailabilityStore = Partial<Pick<PrismaClient, "settings">>;
+/** Public entry points share the office's current launch-trade availability. */
+export async function enabledServiceCategories(db: AvailabilityStore | null = process.env.DATABASE_URL?.trim() ? getDb() : null): Promise<readonly Category[]> {
+  if (!db?.settings) return CATEGORIES;
+  try {
+    const settings = await db.settings.findUnique({ where: { id: 1 }, select: { enabledTrades: true } });
+    return settings ? CATEGORIES.filter(category => settings.enabledTrades.includes(tradeValue(category))) : CATEGORIES;
+  } catch {
+    // Fail open: a database hiccup must never make every trade look "Coming soon". Posting still checks for real.
+    console.error("Trade availability unavailable.");
+    return CATEGORIES;
+  }
+}
+type ServiceStore = Pick<PrismaClient, "review"> & AvailabilityStore;
 export async function loadService(category: Category, db: ServiceStore | null = process.env.DATABASE_URL?.trim() ? getDb() : null): Promise<ServiceData> {
   const coverage = await loadCoverage();
   if (!db) return { ...SERVICE_CONTENT[category], coverage, reviews: [] };
+  let live = SERVICE_CONTENT[category].live;
   try {
+    live = live && (await enabledServiceCategories(db)).includes(category);
     const reviews = await db.review.findMany({
       where: { hiddenAt: null, comment: { not: null }, job: { trade: tradeValue(category) } },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: 3,
       select: { id: true, rating: true, comment: true, reviewer: { select: { firstName: true } } },
     });
-    return { ...SERVICE_CONTENT[category], coverage, reviews: reviews.filter((r) => r.comment?.trim()).map((r) => ({ id: r.id, rating: r.rating, comment: r.comment!, name: r.reviewer.firstName })) };
+    return { ...SERVICE_CONTENT[category], live, coverage, reviews: reviews.filter((r) => r.comment?.trim()).map((r) => ({ id: r.id, rating: r.rating, comment: r.comment!, name: r.reviewer.firstName })) };
   } catch {
     console.error("Service reviews unavailable.");
-    return { ...SERVICE_CONTENT[category], coverage, reviews: [], reviewsUnavailable: true };
+    return { ...SERVICE_CONTENT[category], live, coverage, reviews: [], reviewsUnavailable: true };
   }
 }
 

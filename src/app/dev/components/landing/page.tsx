@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { SiteShellView } from "@/components/site/SiteShell";
+import { CATEGORIES } from "@/lib/cards";
 import { INVERCARGILL_COVERAGE } from "@/lib/geo/coverage";
 import { guardDevPage } from "@/server/dev-pages";
 import { LANDING_ILLUSTRATION_CENTS, LANDING_EXAMPLE_REVIEWS } from "@/server/landing";
@@ -14,6 +15,6 @@ export default async function LandingPreview({ searchParams }: { searchParams: P
   guardDevPage();
   const params = await searchParams;
   const state = typeof params.state === "string" ? params.state : "signed-out";
-  const data = { coverage: INVERCARGILL_COVERAGE, illustrationCents: LANDING_ILLUSTRATION_CENTS, reviews: state === "no-reviews" ? [] : REVIEWS, exampleReviews: state !== "reviews", location: state === "outside" ? { label: "Wellington", point: { lat: -41.2866, lng: 174.7756 } } : { label: "Invercargill", point: null } };
+  const data = { enabledCategories: state === "trade-disabled" ? CATEGORIES.filter(category => category !== "gas") : CATEGORIES, coverage: INVERCARGILL_COVERAGE, illustrationCents: LANDING_ILLUSTRATION_CENTS, reviews: state === "no-reviews" ? [] : REVIEWS, exampleReviews: state !== "reviews", location: state === "outside" ? { label: "Wellington", point: { lat: -41.2866, lng: 174.7756 } } : { label: "Invercargill", point: null } };
   return <SiteShellView viewer={state === "signed-in" ? { firstName: "Sarah", role: "CUSTOMER" } : null}><LandingDemo key={state} data={data} state={state} /></SiteShellView>;
 }

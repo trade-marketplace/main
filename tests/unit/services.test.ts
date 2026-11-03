@@ -4,7 +4,7 @@ import { CATEGORIES } from "@/lib/cards";
 import { INVERCARGILL_COVERAGE as coverage } from "@/lib/geo/coverage";
 import { jobStartPath } from "@/lib/landing";
 import { serviceDescription, serviceWaitlistInput } from "@/lib/services";
-import { loadService, saveServiceWaitlist, SERVICE_CONTENT, type ServiceWaitlistStore } from "@/server/services";
+import { enabledServiceCategories, loadService, saveServiceWaitlist, SERVICE_CONTENT, type ServiceWaitlistStore } from "@/server/services";
 
 vi.mock("@/server/geo/coverage-settings", () => ({ loadCoverage: async () => coverage }));
 
@@ -43,6 +43,22 @@ describe("service content and handoffs", () => {
     expect(data.reviewsUnavailable).toBe(true);
     expect(data.reviews).toEqual([]);
     expect(log).toHaveBeenCalledWith("Service reviews unavailable."); log.mockRestore();
+  });
+});
+
+describe("office trade availability at public entry points", () => {
+  it("shares enabled launch categories with homepage tiles and service pages", async () => {
+    const db = { settings: { findUnique: vi.fn().mockResolvedValue({ enabledTrades: ["ELECTRICAL", "OTHER"] }) }, review: { findMany: vi.fn().mockResolvedValue([]) } } as unknown as Parameters<typeof loadService>[1];
+    expect(await enabledServiceCategories(db)).toEqual(["electrical", "other"]);
+    expect(await loadService("gas", db)).toMatchObject({ live: false });
+    expect(await loadService("other", db)).toMatchObject({ live: true });
+  });
+  it("keeps launch defaults without a database, and shows every trade if its availability read fails (posting still checks)", async () => {
+    expect(await enabledServiceCategories(null)).toEqual(CATEGORIES);
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    expect(await enabledServiceCategories({ settings: { findUnique: vi.fn().mockRejectedValue(new Error("private database failure")) } } as unknown as Parameters<typeof enabledServiceCategories>[0])).toEqual(CATEGORIES);
+    expect(log).toHaveBeenCalledWith("Trade availability unavailable.");
+    expect(JSON.stringify(log.mock.calls)).not.toContain("private database"); log.mockRestore();
   });
 });
 

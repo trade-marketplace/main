@@ -4,7 +4,7 @@ import type { Point } from "./geo/distance";
 
 export type LandingLocation = { label: string; point: Point | null };
 export type LandingReview = { id: string; name: string; rating: number; comment: string; meta?: string };
-export type LandingData = { coverage: Coverage; location: LandingLocation; reviews: LandingReview[]; exampleReviews?: boolean; illustrationCents: number };
+export type LandingData = { enabledCategories?: readonly Category[]; coverage: Coverage; location: LandingLocation; reviews: LandingReview[]; exampleReviews?: boolean; illustrationCents: number };
 export type LandingDraft = { description: string; category?: Category; location: LandingLocation };
 export const LANDING_DRAFT_KEY = "tm-post-job-start";
 export const GEO_ASKED_KEY = "tm-home-location-asked";
