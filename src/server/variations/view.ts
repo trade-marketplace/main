@@ -12,5 +12,5 @@ export async function loadVariation(db: PrismaClient, actor: VariationActor, id:
   const common = { id: v.id, jobId: v.jobId, description: v.description, status: v.status, revision: v.revision, photoCount: v.photos.length, pricedAt: v.pricedAt?.toISOString() ?? null, decidedAt: v.decidedAt?.toISOString() ?? null };
   if (profile.role === "CUSTOMER") return { ...common, priceCents: v.priceCents, gstCents: v.gstCents };
   if (profile.role === "TRADIE") return { ...common, requestedMinutes: v.requestedMinutes, minutes: v.minutes, workerEarnsCents: v.workerGrossCents === null || v.holidayPayCents === null ? null : v.workerGrossCents + v.holidayPayCents };
-  return { ...common, requestedMinutes: v.requestedMinutes, minutes: v.minutes, priceCents: v.priceCents, gstCents: v.gstCents, workerGrossCents: v.workerGrossCents, holidayPayCents: v.holidayPayCents, onCostCents: v.onCostCents, marginCents: v.marginCents };
+  return { ...common, requestedMinutes: v.requestedMinutes, minutes: v.minutes, materialsCents: v.materialsCents, priceCents: v.priceCents, gstCents: v.gstCents, workerGrossCents: v.workerGrossCents, holidayPayCents: v.holidayPayCents, onCostCents: v.onCostCents, marginCents: v.marginCents };
 }

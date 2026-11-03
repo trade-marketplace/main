@@ -678,6 +678,21 @@ model VariationPhoto {
   @@map("variation_photos")
 }
 
+// Private raw-upload grants: small server actions exchange IDs, large bytes go directly to quarantine Storage.
+model VariationUploadStage {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  path String @unique
+  userId String @map("user_id") @db.Uuid
+  jobId String @map("job_id") @db.Uuid
+  requestKey String @map("request_key") @db.Uuid
+  expiresAt DateTime @map("expires_at") @db.Timestamptz
+  finalizedAt DateTime? @map("finalized_at") @db.Timestamptz
+  photoPath String? @map("photo_path")
+  @@index([userId, expiresAt])
+  @@index([expiresAt])
+  @@map("variation_upload_stages")
+}
+
 // What a worker is owed for a job, for payroll: one per worker per job, so a crew (milestone 4) gets one each.
 // Minutes include approved extra work. `rateCents` is copied from the job's frozen pricing. Once exported, the
 // amounts can't change and it can't go back to QUEUED (checked by the database). The worker reads their own

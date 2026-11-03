@@ -10,8 +10,9 @@ vi.mock("@/server/variations/request", () => ({ requestVariation: (...args: unkn
 vi.mock("@/server/variations/price", () => ({ priceVariation: (...args: unknown[]) => state.run(...args) }));
 vi.mock("@/server/variations/decide", () => ({ approveVariation: (...args: unknown[]) => state.run(...args), declineVariation: (...args: unknown[]) => state.run(...args) }));
 vi.mock("@/server/variations/photos", () => ({ uploadVariationPhoto: (...args: unknown[]) => state.run(...args), variationPhotoUrls: (...args: unknown[]) => state.run(...args) }));
+vi.mock("@/server/variations/staging", () => ({ getVariationStaging: () => state.store, beginVariationStage: (...args: unknown[]) => state.run(...args), finishVariationStage: (...args: unknown[]) => state.run(...args) }));
 
-import { approveVariationAction, declineVariationAction, priceVariationAction, requestVariationAction, uploadVariationPhotoAction, variationPhotoUrlsAction } from "@/server/variations/actions";
+import { approveVariationAction, declineVariationAction, priceVariationAction, requestVariationAction, beginVariationPhotoUploadAction, finishVariationPhotoUploadAction, variationPhotoUrlsAction } from "@/server/variations/actions";
 
 beforeEach(() => { state.viewer = null; state.run.mockReset().mockResolvedValue({ ok: true }); });
 const viewer = (role: Role): Viewer => ({ role, userId: "actor", firstName: "Test", email: "test@example.nz", emailVerified: true });
@@ -19,7 +20,8 @@ const input = { jobId: "job", requestKey: "key", description: "Extra work descri
 describe("variation server action role boundaries", () => {
   const cases = [
     { role: "TRADIE" as const, run: () => requestVariationAction(input) },
-    { role: "TRADIE" as const, run: () => uploadVariationPhotoAction("job", "key", new Uint8Array()) },
+    { role: "TRADIE" as const, run: () => beginVariationPhotoUploadAction("job", "key", 9 * 1024 * 1024) },
+    { role: "TRADIE" as const, run: () => finishVariationPhotoUploadAction("stage") },
     { role: "ADMIN" as const, run: () => priceVariationAction("variation", 1, 30) },
     { role: "CUSTOMER" as const, run: () => approveVariationAction("variation", 1) },
     { role: "CUSTOMER" as const, run: () => declineVariationAction("variation", 1) },

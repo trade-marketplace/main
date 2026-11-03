@@ -298,4 +298,26 @@ describe.skipIf(!testDatabaseUrl)("extra work request → frozen price → verif
     expect(retried.paymentId).not.toBe(payment.id);
     expect(await preparePayment(db(), api, f.customer.userId, retried.paymentId)).toMatchObject({ ok: true, paid: false });
   });
+
+  it("prices office-supplied materials with frozen margin/GST, preserves them on reprice, and never pays them as earnings", async () => {
+    const f = await requested(); const rates = await db().jobPricing.findUniqueOrThrow({ where: { jobId: f.job.id } });
+    for (const materials of [-1, 1.2, NaN, Infinity, 2_147_483_648]) expect(await priceVariation(db(), f.office, f.id, 0, 30, null, materials)).toMatchObject({ error: "invalid" });
+    const expected = priceWork({ minutes: 30, materialsCents: 12345 }, rates, { applyMinimum: false });
+    expect(await priceVariation(db(), f.office, f.id, 0, 30, null, 12345)).toMatchObject({ ok: true, revision: 1 });
+    expect(await db().variation.findUnique({ where: { id: f.id } })).toMatchObject({ materialsCents: 12345, priceCents: expected.customerPriceCents, gstCents: expected.gstCents, marginCents: expected.marginCents, workerGrossCents: expected.workerGrossCents });
+    expect(await priceVariation(db(), f.office, f.id, 1, undefined, null)).toMatchObject({ ok: true, revision: 2 });
+    expect(await db().variation.findUnique({ where: { id: f.id } })).toMatchObject({ materialsCents: 12345, priceCents: expected.customerPriceCents });
+    expect(await priceVariation(db(), f.office, f.id, 2, 30, null, 0)).toMatchObject({ ok: true, revision: 3 });
+    expect(await db().variation.findUnique({ where: { id: f.id } })).toMatchObject({ materialsCents: 0 });
+    const audit = await db().auditLog.findFirst({ where: { recordId: f.id, action: "variation.priced" }, orderBy: { createdAt: "asc" } });
+    expect(audit?.after).toMatchObject({ materialsCents: 12345 });
+    const g = await requested();
+    expect(await priceVariation(db(), g.office, g.id, 0, 30, null, 12345)).toMatchObject({ ok: true });
+    const { api, rows } = provider(); const payment = await checkout(g, api);
+    expect(payment.amountCents).toBe(expected.customerPriceCents);
+    expect(await handleStripeEvent(db(), success(rows.get(payment.providerPaymentId!)!))).toBe("paid");
+    await db().$transaction(tx => queuePayoutForJob(tx, g.job.id));
+    const payout = await db().payout.findUniqueOrThrow({ where: { jobId_workerId: { jobId: g.job.id, workerId: g.worker.userId } } });
+    expect(payout.grossCents).toBe(Math.round((rates.minutes + 30) * rates.workerRateCents / 60));
+  });
 });

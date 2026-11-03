@@ -4,13 +4,18 @@ Issue #158 implements server commands and actions; it adds no screens. Stripe st
 existing key lock. The earlier prototype's request/pricing flow is reference only: its test payment shortcut
 and pending-payment deletion are replaced by the shared checkout and verified webhook.
 
-1. The current assigned worker (the lead) uploads JPG/PNG/HEIC evidence with `uploadVariationPhotoAction`,
-   using a UUID `requestKey`. The shared upload service checks actual bytes and stores a processed WebP privately.
+1. The current assigned worker (the lead) calls `beginVariationPhotoUploadAction(jobId, requestKey, size)`
+   with a UUID request key and declared size, then uploads JPG/PNG/HEIC bytes directly to the returned signed
+   Storage URL. Call `finishVariationPhotoUploadAction(stageId)` to validate actual bytes, strip metadata and
+   obtain a processed private WebP path. These actions exchange only small JSON, preserving the shared 10 MB
+   allowance without raising Next’s body limit or passing originals through Vercel. Invalid/failed finalization
+   consumes the grant; obtain a new grant to try again. Completed grants replay the same processed path.
 2. `requestVariationAction({ jobId, requestKey, description, hours, photoPaths })` requires an in-progress
    (`ASSIGNED`) job and 1–6 ready uploads belonging to that worker, job and request. Hours must resolve to whole
    minutes, up to 100 hours. Keep the UUID while retrying the same request; use a new UUID for another request.
-3. The office calls `priceVariationAction(id, revision, minutes?)`. It uses the job's frozen pricing, with no
-   second minimum. `loadVariationAction` supplies the current revision and only the requesting role's figures.
+3. The office calls `priceVariationAction(id, revision, minutes?, materialsCents?)`. It uses the job's frozen pricing, with no
+   second minimum. Office materials are whole cents at cost, ex GST; frozen margin/GST apply, and materials
+   never inflate worker labour pay. Omitted values retain the current quote on reprice. `loadVariationAction` supplies the current revision and only the requesting role's figures.
 4. The job's customer calls `approveVariationAction(id, revision)` and follows the returned `/pay/<paymentId>`
    `href`. The action calls `startPayment`; it does not mark extra work approved. The existing signed webhook
    records payment and changes `PRICED` to `APPROVED` atomically, then notifies the worker. Alternatively,
@@ -32,6 +37,9 @@ signed links are issued only to the current customer/worker/office. Upload recor
 unattached photos older than 24 hours are removed in batches of at most 10. Cleanup shares the upload/attachment
 lock, commits a deletion tombstone before removing Storage objects, and retains failed deletes for retry.
 Random object keys are never reused. Detached photos remain recorded after variation/job deletion.
+Raw staging grants bind owner, job and request, require the existing upload rate limit, and cap unfinished grants
+at ten per worker. Originals cannot be read or attached from the browser. Both finalized and abandoned grants
+remain tracked until their two-hour signed token expires plus five minutes, so a late token reuse is cleaned again.
 
 Schema, pricing, payments and authorization need William's review. The only new visible wording is the existing
 inbox's office-only label “Payment needs review”; Matt should review it. There are no changed screen layouts.
