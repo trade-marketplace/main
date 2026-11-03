@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { currentSchedule, postingDateRange, postingDays, selectedTimeWindows, timeWindowsExpired, timeWindowsInRange } from "@/lib/job-time-windows";
-import { canClearStaleDescribe, canonicalDraft, decodeWizardDraft, editWhere, encodeWizardDraft, inheritUneditedWhere, initialWizardDraft, localEnvelopeMatchesInput, recoverServerWizard, serverRepresentsWhere, whereErrors, whereInputs } from "@/lib/post-job-wizard";
+import { canClearStaleDescribe, canonicalDraft, decodeWizardDraft, editWhere, encodeWizardDraft, inheritUneditedWhere, initialWizardDraft, localEnvelopeMatchesInput, recoverServerWizard, reconcileStepSave, serverRepresentsInput, serverRepresentsWhere, whereErrors, whereInputs } from "@/lib/post-job-wizard";
 import { jobScheduleSchema } from "@/lib/job-draft";
 
 const now = new Date("2026-11-03T10:59:59Z");
@@ -104,5 +104,25 @@ describe("owned server recovery after failed device writes", () => {
     expect(localEnvelopeMatchesInput(current, old())).toBe(false);
     expect(localEnvelopeMatchesInput(current, { ...current, data: { ...current.data, asap: true } })).toBe(false);
     expect(localEnvelopeMatchesInput(current, { ...current, data: { ...current.data, point: { lat: -46.4, lng: 168.3 } } })).toBe(false);
+  });
+  it("requires the actually committed snapshot to represent all raw input before relying on server-only exit", () => {
+    const current = editWhere(initialWizardDraft(server, true, false), { postcode: "9810" });
+    expect(serverRepresentsInput(current, canonicalDraft(current), false)).toBe(true);
+    expect(serverRepresentsInput(current, { ...server, postcode: "9811" }, false)).toBe(false);
+    expect(serverRepresentsInput(current, { ...server, asap: true }, false)).toBe(false);
+    expect(serverRepresentsInput(current, server, true)).toBe(false);
+    expect(serverRepresentsInput(current, { ...server, description: "New description from another device" }, false)).toBe(false);
+    expect(serverRepresentsInput(old(), server, false)).toBe(false);
+  });
+  it("shows newer committed checkpoints from other steps, while retaining genuinely unfinished raw Where", () => {
+    const completed = { ...editWhere(initialWizardDraft(server, true, false), { postcode: "9810" }), completedWhere: true };
+    const newer = { ...server, addressLine1: "2 New Street", postcode: "9811", asap: true };
+    const restored = reconcileStepSave(completed, newer, false, "describe", now);
+    expect(whereInputs(restored)).toMatchObject({ addressLine1: "2 New Street", postcode: "9811" }); expect(restored.completedWhere).toBe(true);
+    expect(reconcileStepSave(old(), newer, false, "describe", now).where?.postcode).toBe("98");
+    expect(reconcileStepSave(old(), newer, false, "photos", now).where?.postcode).toBe("98");
+    const changedDescription = { ...newer, description: "Repair the leaking tap downstairs", category: "PLUMBING" as const };
+    expect(reconcileStepSave(completed, changedDescription, true, "where", now)).toMatchObject({ description: changedDescription.description, manualCategory: true, data: { category: "PLUMBING" }, where: { postcode: "9810" } });
+    expect(reconcileStepSave(completed, { ...changedDescription, description: undefined }, null, "where", now).completedDescribe).toBe(false);
   });
 });
