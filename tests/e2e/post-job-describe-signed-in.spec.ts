@@ -74,6 +74,10 @@ test.describe("customer Describe draft through the real server action", () => {
     await page.getByRole("link", { name: "Back", exact: true }).click(); await page.getByRole("textbox", { name: "Describe the job", exact: true }).fill("Li");
     await page.getByRole("button", { name: "Save & exit", exact: true }).click(); await expect(page.getByRole("textbox", { name: "Describe the job", exact: true })).toHaveValue("Li");
     await expect(page.getByText("Couldn’t save.", { exact: true })).toBeVisible(); await expect(page.getByText("Draft saved", { exact: true })).toHaveCount(0);
+    await page.getByRole("textbox", { name: "Describe the job", exact: true }).fill("   ");
+    await page.getByRole("button", { name: "Save & exit", exact: true }).click(); await expect(page.getByRole("textbox", { name: "Describe the job", exact: true })).toHaveValue("   ");
+    await expect(page.getByText("Couldn’t save.", { exact: true })).toBeVisible(); await expect(page.getByText("Draft saved", { exact: true })).toHaveCount(0);
+    expect((await db.query("SELECT data FROM job_drafts WHERE profile_id=$1", [SECURITY_USER.id])).rows[0].data.description).toBe("A leaking tap downstairs needs repair.");
     await page.getByRole("textbox", { name: "Describe the job", exact: true }).fill("Check the upstairs lights and wiring.");
     await page.getByRole("button", { name: "Save & exit", exact: true }).click(); await expect(page).toHaveURL(`${app}/`);
     await page.goto(`${app}/jobs/new`); await expect(page.getByRole("textbox", { name: "Describe the job", exact: true })).toHaveValue("Check the upstairs lights and wiring.");

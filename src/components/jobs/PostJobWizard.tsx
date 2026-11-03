@@ -132,7 +132,7 @@ export function PostJobWizard({ ownerId = null, initialDraft = {}, hasServerDraf
           setError(true); return;
         }
         // Unfinished text that the shared schema omits still needs local persistence before leaving.
-        durable ||= (canonical.description ?? "") === kept.draft.description.trim();
+        durable ||= typeof canonical.description === "string" && canonical.description === kept.draft.description.trim();
       } catch { setError(true); return; }
       finally { pending.current = false; setBusy(false); }
     } else if (previewState === "save-error") { setError(true); return; }
