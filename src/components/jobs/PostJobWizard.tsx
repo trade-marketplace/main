@@ -8,6 +8,8 @@ import { Button } from "@/components/Button";
 import { Icon } from "@/components/Icon";
 import { Wordmark } from "@/components/Wordmark";
 import { useOptionalSessionExpired } from "@/components/auth/SessionExpired";
+import { CustomerSignup } from "@/components/auth/CustomerSignup";
+import { Dialog } from "@/components/overlays/Dialog";
 import { OfflineBanner, useOnlineStatus } from "@/components/feedback/OfflineBanner";
 import { Skeleton } from "@/components/feedback/Skeleton";
 import { ChipGroup } from "@/components/forms/ChoiceFields";
@@ -23,10 +25,14 @@ import { loadDraftPhotosAction, type saveDraftAction } from "@/server/jobs/actio
 import { canResumeSavedPhotos } from "@/lib/jobs/draft-photo-path";
 import { currentSchedule, postingDateRange } from "@/lib/job-time-windows";
 import { waitlistSharePath } from "@/lib/waitlist";
+import { signupLink } from "@/lib/auth/signup";
 import { checkJobDraftLocationAction } from "@/server/jobs/address-actions";
 import { DraftPhotos } from "./DraftPhotos";
 import { DraftWhere } from "./DraftWhere";
 import { useDraftPhotos } from "./useDraftPhotos";
+import { DraftReview } from "./DraftReview";
+import { PostingDraft, type PostingReady } from "./PostingDraft";
+import { usePostReview } from "./usePostReview";
 
 import styles from "./post-job.module.css";
 
@@ -40,6 +46,8 @@ type Props = {
   /** Only the guarded component preview passes this. */
   previewState?: string;
   initialNow?: string;
+  verified?: boolean;
+  initialPosted?: { jobId: string; jobNumber: number };
 };
 const HANDOFF_PARAMS = ["description", "type"] as const;
 const LOCATION_PARAMS = ["location", "lat", "lng"] as const;
@@ -64,10 +72,10 @@ export function WizardFrame({ step = 0, saved, saveExit, children, summary, back
   const run = useBump(step, wentUp);
   return <div className={styles.page} data-mode="customer">
     <header className={styles.nav}>
-      <Link href="/" className={styles.logo}><Wordmark /></Link>
+      {busy ? <span className={styles.logo}><Wordmark /></span> : <Link href="/" className={styles.logo}><Wordmark /></Link>}
       <div className={styles.navActions}>
         {saved && <span className={styles.saved} role="status">Draft saved <Icon name="cloud_done" size="sm" decorative /></span>}
-        <Button variant="secondary" size="sm" width="auto" className={styles.exit} onClick={saveExit} disabled={!saveExit} loading={busy}>Save &amp; exit</Button>
+        <Button variant="secondary" size="sm" width="auto" className={styles.exit} onClick={saveExit} disabled={!saveExit} loading={busy && Boolean(saveExit)}>Save &amp; exit</Button>
       </div>
     </header>
     <div className={styles.wrap}>
@@ -76,7 +84,7 @@ export function WizardFrame({ step = 0, saved, saveExit, children, summary, back
         <ol className={styles.steps}>
           {WIZARD_STEPS.map((label, i) => <li key={label} data-state={i < step ? "done" : i === step ? "now" : "todo"} aria-current={i === step ? "step" : undefined}>
             <span key={i === step ? run : 0} className={`${styles.stepDot} ${i === step && run ? "tm-anim-step-dot" : ""}`} aria-hidden="true">{i < step ? <Icon name="check" size="sm" decorative /> : i + 1}</span>
-            {i < step && (stepHrefs?.[i] ?? backHref) ? <Link href={stepHrefs?.[i] ?? backHref!}>{label}<span className={styles.srOnly}>: Done</span></Link> : <span>{label}<span className={styles.srOnly}>: {i === step ? "Now" : "To do"}</span></span>}
+            {!busy && i < step && (stepHrefs?.[i] ?? backHref) ? <Link href={stepHrefs?.[i] ?? backHref!}>{label}<span className={styles.srOnly}>: Done</span></Link> : <span>{label}<span className={styles.srOnly}>: {i === step ? "Now" : "To do"}</span></span>}
           </li>)}
         </ol>
       </nav>
@@ -97,18 +105,25 @@ export function WizardFrame({ step = 0, saved, saveExit, children, summary, back
   </div>;
 }
 
-export function PostJobWizard({ ownerId = null, initialDraft = {}, initialManualCategory, hasServerDraft = false, loadFailed = false, save, previewState, initialNow }: Props) {
-  return <ToastProvider><PostJobWizardForm {...{ ownerId, initialDraft, initialManualCategory, hasServerDraft, loadFailed, save, previewState, initialNow }} /></ToastProvider>;
+export function PostJobWizard(props: Props) {
+  const { ownerId = null, initialDraft = {}, initialManualCategory, hasServerDraft = false, verified = false } = props;
+  return <ToastProvider>{props.initialPosted ? <WizardFrame step={3}><h1 className={styles.title}>Posted.</h1><p className={styles.hint}>TM-{props.initialPosted.jobNumber}</p><Button href="/" width="full-on-phone">Home</Button></WizardFrame>
+    : props.previewState ? <PostJobWizardForm {...props} />
+    : <PostingDraft {...{ ownerId, verified, initialDraft, initialManualCategory, hasServerDraft }}
+      fallback={(error, retry) => <WizardFrame step={3}><h1 className={styles.title}>All good?</h1>{error ? <Banner tone="alert" title="Couldn’t load your draft." action={<Button variant="tertiary" onClick={retry}>Try again</Button>} /> : <div role="status" aria-label="Loading draft"><Skeleton height={100} /><Skeleton height={100} /></div>}</WizardFrame>}>
+      {source => <PostJobWizardForm {...props} {...source} />}
+    </PostingDraft>}</ToastProvider>;
 }
 
-function PostJobWizardForm({ ownerId = null, initialDraft = {}, initialManualCategory, hasServerDraft = false, loadFailed = false, save, previewState, initialNow }: Props) {
+function PostJobWizardForm({ ownerId = null, initialDraft = {}, initialManualCategory, hasServerDraft = false, loadFailed = false, save, previewState, initialNow, verified = false, initialLocalDraft, ignoreLocalPostKey, resumeIntent, resumeConflict }: Props & Partial<PostingReady>) {
   const router = useRouter(); const path = usePathname(); const params = useSearchParams();
   const [now, setNow] = useState(() => initialNow ? new Date(initialNow) : new Date());
   const raw = useSyncExternalStore(subscribeDraft, snapshot, () => null);
   const recover = Boolean(ownerId && hasServerDraft && initialDraft.postKey && params.get(SERVER_DRAFT_PARAM) === initialDraft.postKey);
   const confirmedWhereSave = recover && (params.get("step") === "review" || params.get(SERVER_WHERE_PARAM) === initialDraft.postKey);
   const reconcileLocal = (value: WizardDraft | null) => inheritUneditedWhere(reconcileWizardPhotos(value, initialDraft, Boolean(ownerId && hasServerDraft)), initialDraft, Boolean(ownerId && hasServerDraft));
-  const local = previewState ? null : reconcileLocal(decodeWizardDraft(raw, ownerId));
+  const cached = decodeWizardDraft(raw, ownerId);
+  const local = previewState ? null : reconcileLocal((cached?.data.postKey === ignoreLocalPostKey ? null : cached) ?? initialLocalDraft ?? null);
   const restored = recover ? recoverServerWizard(local, initialDraft, initialManualCategory, confirmedWhereSave, now) : local;
   const [edited, setEdited] = useState<WizardDraft>();
   const queryString = params.toString();
@@ -122,11 +137,11 @@ function PostJobWizardForm({ ownerId = null, initialDraft = {}, initialManualCat
   const draft = queryHint ? { ...describedDraft, locationHint: queryHint } : describedDraft;
   const serverPaths = ownerId && hasServerDraft && initialDraft.postKey === draft.data.postKey ? initialDraft.photoPaths ?? [] : draft.data.photoPaths ?? [];
   const photoAuthority = Boolean(ownerId && hasServerDraft && initialDraft.postKey === draft.data.postKey);
-  const photos = useDraftPhotos({ ownerId, postKey: draft.data.postKey, serverPaths, authoritative: photoAuthority, preview: Boolean(previewState) });
+  const photos = useDraftPhotos({ ownerId, postKey: draft.data.postKey, serverPaths, authoritative: photoAuthority, preview: Boolean(previewState), restoreOrder: resumeConflict ? undefined : resumeIntent?.photoIds });
   const [saved, setSaved] = useState<boolean>();
   const [error, setError] = useState(previewState === "save-error");
   const [fields, setFields] = useState<Record<string, string>>(previewState === "invalid" ? { description: "Describe the job", category: "Type of job" } : {});
-  const [busy, setBusy] = useState(previewState === "saving"); const pending = useRef(false);
+  const [saving, setBusy] = useState(previewState === "saving"); const pending = useRef(false);
   useEffect(() => { const timer = setInterval(() => setNow(previous => postingDateRange(previous).today === postingDateRange(new Date()).today ? previous : new Date()), 60_000); return () => clearInterval(timer); }, []);
   const descriptionRef = useRef<HTMLTextAreaElement>(null); const headingRef = useRef<HTMLHeadingElement>(null);
   const session = useOptionalSessionExpired(); const online = useOnlineStatus();
@@ -165,6 +180,9 @@ function PostJobWizardForm({ ownerId = null, initialDraft = {}, initialManualCat
       setSaved(true); return { draft: withKey, persisted: true };
     } catch { setSaved(false); setError(true); return { draft: withKey, persisted: false }; }
   }, [ownerId, previewState]);
+
+  const posting = usePostReview({ ownerId, verified, draft: effectiveDraft, manager: photos.manager, state: photos.state, save, keep, step, offline, resumeIntent, resumeConflict, preview: Boolean(previewState) });
+  const busy = saving || posting.busy || previewState === "posting";
 
   const consumeHandoff = useEffectEvent((key: string | null, incomingQuery: string) => {
     const query = new URLSearchParams(incomingQuery); const hint = landingLocationHint(Object.fromEntries(query));
@@ -289,11 +307,12 @@ function PostJobWizardForm({ ownerId = null, initialDraft = {}, initialManualCat
   const category = draft.data.category;
   const label = JOB_TYPES.find((item) => item.value === category)?.label;
   const photosSaved = !photos.active || !photos.state.storageError && !photos.state.saving && !photos.state.restoring && photos.state.photos.every(photo => photo.status === "done");
-  return <WizardFrame step={step} saved={photosSaved && !recoveryPending && (saved ?? Boolean(restored || hasServerDraft || previewState === "restored"))} summary={effectiveDraft} photoPreviews={photos.state.photos} backHref={backHref} stepHrefs={stepHrefs} saveExit={() => void advance(true)} busy={busy}>
+  return <><WizardFrame step={step} saved={photosSaved && !recoveryPending && !posting.busy && (saved ?? Boolean(restored || hasServerDraft || previewState === "restored"))} summary={effectiveDraft} photoPreviews={photos.state.photos} backHref={backHref} stepHrefs={stepHrefs} saveExit={posting.busy ? undefined : () => void advance(true)} busy={busy}>
     <OfflineBanner online={previewState === "offline" ? false : undefined} sticky={false} />
     {restoredNotice && <Banner tone="good" title="Draft restored" className={styles.notice} />}
     {loadFailed && <Banner tone="alert" title="Couldn’t load your draft." className={styles.notice} action={<Button variant="tertiary" onClick={() => router.refresh()}>Try again</Button>} />}
     {(error || recoveryPending) && <Banner tone="alert" title="Couldn’t save." className={styles.notice} live />}
+    {posting.detail && <Banner tone="alert" className={styles.notice}>{posting.detail}</Banner>}
     <h1 ref={headingRef} tabIndex={-1} className={styles.title}>{step === 0 ? "What needs doing?" : step === 1 ? "Add some photos" : step === 2 ? "Where and when?" : "All good?"}</h1>
     {step === 0 ? <form className={styles.form} onSubmit={submit} noValidate aria-label="Describe the job">
       <div>
@@ -312,8 +331,10 @@ function PostJobWizardForm({ ownerId = null, initialDraft = {}, initialManualCat
       </div>
       <div className={styles.actions}><Button type="submit" loading={busy || previewState === "saving"} disabled={offline} width="full-on-phone">Next</Button></div>
     </form> : step === 1 ? <DraftPhotos state={photos.state} controls={photos.manager} category={category} offline={offline} busy={busy} onNext={() => void advance()} backHref={backHref} /> : step === 2 ? <DraftWhere draft={draft} now={now} fields={fields} busy={busy} offline={offline} backHref={backHref} onNext={() => void advance()}
-      onChange={next => { keep(next); setFields({}); }} onOutside={(next, suggestion) => { keep(next); router.push(waitlistSharePath(suggestion.suburb)); }} /> : <div className={styles.actions}><Button href={backHref} variant="secondary" width="auto">Back</Button></div>}
-  </WizardFrame>;
+      onChange={next => { keep(next); setFields({}); }} onOutside={(next, suggestion) => { keep(next); router.push(waitlistSharePath(suggestion.suburb)); }} /> : <DraftReview draft={effectiveDraft} photos={photos.state} editHrefs={stepHrefs} backHref={backHref} busy={busy} offline={offline} error={posting.error || previewState === "post-error"} onPost={posting.post} onEdit={posting.cancel} />}
+  </WizardFrame><Dialog open={posting.signup || previewState === "signup"} onClose={posting.cancel} title="Create account" size="md" footer={<Link href={signupLink("/login", posting.returnPath)}>Log in instead</Link>}>
+    <CustomerSignup embedded next={posting.returnPath} />
+  </Dialog></>;
 }
 
 export function PostJobLoading() {

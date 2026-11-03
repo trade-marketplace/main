@@ -149,6 +149,75 @@ describe.skipIf(!testDatabaseUrl)("drafts and posting a job (database)", () => {
     expect(await schema.db.job.count({ where: { postKey: key } })).toBe(1);
   });
 
+  it.each([
+    { description: "Move two sofas upstairs" },
+    { addressLine1: "2 New Street", postcode: "9812", accessNotes: "Use the side door" },
+    { asap: true },
+    { timeWindows: [{ date: "2026-11-04", timeOfDay: "AFTERNOON" }] },
+  ])("refuses a changed complete checkpoint before first posting: %j", async changed => {
+    const customer = await person(); const key = randomUUID(); const reviewed = { ...input(customer, key), photoPaths: [] };
+    await saveDraft(schema.db, customer, reviewed);
+    // Another tab saves after the review's final save. The key and photo list still match.
+    await saveDraft(schema.db, customer, changed);
+    const current = await loadDraft(schema.db, customer);
+    const rateLimit = vi.fn(async () => ({ allowed: true } as const)); const notifyWorkers = vi.fn(async () => {});
+    expect(await post(customer, reviewed, key, { expectedDraft: { postKey: key, paths: [] }, rateLimit, notifyWorkers })).toEqual({ status: "draft-changed" });
+    expect(await loadDraft(schema.db, customer)).toEqual(current);
+    expect(await schema.db.job.count({ where: { customerId: customer.userId } })).toBe(0);
+    expect(await schema.db.auditLog.count({ where: { actorId: customer.userId, action: "job.posted" } })).toBe(0);
+    expect(rateLimit).not.toHaveBeenCalled(); expect(notifyWorkers).not.toHaveBeenCalled();
+  });
+
+  it("refuses a missing or replaced wizard checkpoint without consuming the newer draft", async () => {
+    const customer = await person(); const key = randomUUID(); const reviewed = { ...input(customer, key), photoPaths: [] };
+    const notifyWorkers = vi.fn(async () => {}); const expectedDraft = { postKey: key, paths: [] };
+    expect(await post(customer, reviewed, key, { expectedDraft, notifyWorkers })).toEqual({ status: "draft-changed" });
+    const newer = { ...input(customer, randomUUID()), photoPaths: [], description: "Assemble a garden bench" };
+    await saveDraft(schema.db, customer, newer, { manualCategory: true });
+    expect(await post(customer, reviewed, key, { expectedDraft, notifyWorkers })).toEqual({ status: "draft-changed" });
+    expect(await loadWizardDraft(schema.db, customer)).toEqual({ draft: newer, manualCategory: true });
+    expect(await schema.db.job.count({ where: { customerId: customer.userId } })).toBe(0);
+    expect(await schema.db.auditLog.count({ where: { actorId: customer.userId, action: "job.posted" } })).toBe(0);
+    expect(notifyWorkers).not.toHaveBeenCalled();
+  });
+
+  it("replays an owned posted key before checking its old input or checkpoint and preserves a newer draft", async () => {
+    const customer = await person(); const key = randomUUID(); const reviewed = { ...input(customer, key), photoPaths: [] };
+    await saveDraft(schema.db, customer, reviewed);
+    const rateLimit = vi.fn(async () => ({ allowed: true } as const));
+    const first = await post(customer, reviewed, key, { expectedDraft: { postKey: key, paths: [] }, rateLimit });
+    expect(first.status).toBe("posted"); if (first.status !== "posted") return;
+    const newer = { ...input(customer, randomUUID()), photoPaths: [], description: "Assemble a garden bench" };
+    await saveDraft(schema.db, customer, newer, { manualCategory: true });
+    // An ambiguous response can be retried after both the local input and the server draft have moved on.
+    expect(await post(customer, {}, key.toUpperCase(), { expectedDraft: { postKey: newer.postKey, paths: ["stale-checkpoint"] }, rateLimit })).toEqual(first);
+    expect(await loadWizardDraft(schema.db, customer)).toEqual({ draft: newer, manualCategory: true });
+    expect(await schema.db.job.count({ where: { postKey: key } })).toBe(1);
+    expect(await schema.db.auditLog.count({ where: { recordId: first.jobId, action: "job.posted" } })).toBe(1);
+    expect(rateLimit).toHaveBeenCalledTimes(1);
+  });
+
+  it("retains legacy posting without a checkpoint and deletes only the matching current draft", async () => {
+    const customer = await person(); const oldKey = randomUUID(); const currentKey = randomUUID();
+    const current = { ...input(customer, currentKey), photoPaths: [], description: "Assemble a garden bench" };
+    await saveDraft(schema.db, customer, current, { manualCategory: true });
+    // Existing #116 callers may post an older valid key without taking ownership of the current draft.
+    expect((await post(customer, { ...input(customer, oldKey), photoPaths: [] }, oldKey)).status).toBe("posted");
+    expect(await loadWizardDraft(schema.db, customer)).toEqual({ draft: current, manualCategory: true });
+    expect((await post(customer, current, currentKey, { expectedDraft: { postKey: currentKey, paths: [] } })).status).toBe("posted");
+    expect(await loadDraft(schema.db, customer)).toBeNull();
+    expect(await schema.db.job.count({ where: { customerId: customer.userId } })).toBe(2);
+  });
+
+  it("compares canonical checkpoints independently of object key order and omitted default values", async () => {
+    const customer = await person(); const key = randomUUID(); const data = { ...input(customer, key), photoPaths: [], asap: false, anyTime: false };
+    const stored = Object.fromEntries(Object.entries(data).filter(([field]) => !["photoPaths", "asap", "anyTime"].includes(field)));
+    await saveDraft(schema.db, customer, stored);
+    const differentlyOrdered = Object.fromEntries(Object.entries({ ...data, postKey: key.toUpperCase() }).reverse());
+    expect((await post(customer, differentlyOrdered, key.toUpperCase(), { expectedDraft: { postKey: key, paths: [] } })).status).toBe("posted");
+    expect(await loadDraft(schema.db, customer)).toBeNull();
+  });
+
   it("rolls back the job, photos and draft deletion if the audit write fails", async () => {
     const customer = await person(); const key = randomUUID(); const data = input(customer, key);
     await saveDraft(schema.db, customer, data);

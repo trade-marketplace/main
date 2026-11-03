@@ -64,14 +64,14 @@ export async function initializeOwnedPhotoDraft(ownerId: string, postKey: string
         if (target.result !== undefined) {
           // Even [] can represent an intentional removal; never recopy on retry.
           if (!Array.isArray(target.result)) return;
-          store.put({ ownerId }, claimKey); result = "existing"; return;
+          store.put(claim.result ?? { ownerId, photoIds: [...photoIds] }, claimKey); result = "existing"; return;
         }
         const photos = source.result === undefined && !photoIds.length ? [] : source.result;
         if (!Array.isArray(photos) || photos.length > MAX_PHOTOS || JSON.stringify(photos.map(photo => photo?.id)) !== JSON.stringify(photoIds)
           || photos.some(photo => !photo || typeof photo.name !== "string" || photo.name.length > 255 || !(photo.file instanceof Blob))) return;
         // Browser paths are not upload authority. Each retained original goes through the normal owned uploader.
         store.put(photos.map(photo => ({ id: photo.id, name: photo.name, file: photo.file, prepared: photo.prepared === true })), photoDraftKey({ ownerId, postKey }));
-        store.put({ ownerId }, claimKey); result = "initialized";
+        store.put({ ownerId, photoIds: [...photoIds] }, claimKey); result = "initialized";
       };
       source.onsuccess = target.onsuccess = claim.onsuccess = ready;
       transaction.oncomplete = () => resolve(result);
@@ -94,6 +94,28 @@ export async function clearPhotoDraft(scope: PhotoDraftScope, expectedIds?: read
       };
       transaction.oncomplete = () => resolve(cleared);
       transaction.onabort = transaction.onerror = () => reject(transaction.error);
+    });
+  } finally { db.close(); }
+}
+
+/** A claim is local recovery metadata, never authentication. Keep it if device cleanup is blocked. */
+export async function guestPhotoClaim(ownerId: string, postKey: string): Promise<readonly string[] | null> {
+  const db = await photoDatabase();
+  try {
+    return await new Promise((resolve, reject) => {
+      const transaction = db.transaction("drafts", "readonly"); const request = transaction.objectStore("drafts").get(`handoff:${postKey}`);
+      request.onsuccess = () => resolve(request.result?.ownerId === ownerId && Array.isArray(request.result.photoIds) ? request.result.photoIds : null);
+      transaction.onabort = transaction.onerror = () => reject(transaction.error);
+    });
+  } finally { db.close(); }
+}
+export async function releasePhotoClaim(ownerId: string, postKey: string) {
+  const db = await photoDatabase();
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const transaction = db.transaction("drafts", "readwrite"); const store = transaction.objectStore("drafts"); const key = `handoff:${postKey}`;
+      const claim = store.get(key); claim.onsuccess = () => { if (claim.result?.ownerId === ownerId) store.delete(key); };
+      transaction.oncomplete = () => resolve(); transaction.onabort = transaction.onerror = () => reject(transaction.error);
     });
   } finally { db.close(); }
 }

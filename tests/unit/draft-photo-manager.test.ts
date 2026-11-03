@@ -31,6 +31,19 @@ describe("browser preparation and identity", () => {
 });
 
 describe("draft photo lifecycle", () => {
+  it.each([0, 1])("restores reviewed signup photo order when selected photo %i completed before refresh", async completed => {
+    const records = ["a", "b"].map((id, index) => ({ id, name: `${id}.jpg`, file: file(`${id}.jpg`), prepared: true, ...(index === completed ? { path: `path-${id}` } : {}) }));
+    const { manager } = await fixture({ restoreOrder: ["a", "b"], read: async () => records, preview: async path => `signed:${path}`, upload: async () => new Promise<string>(() => {}) }, "owner", [`path-${completed ? "b" : "a"}`]);
+    expect(manager.getSnapshot().photos.map(photo => photo.id)).toEqual(["a", "b"]);
+    expect(manager.confirmedPaths()).toEqual([`path-${completed ? "b" : "a"}`]);
+  });
+  it("never uses signup order hints to restore remotely reordered, removed or empty owned selections", async () => {
+    const records = ["a", "b"].map(id => ({ id, name: `${id}.jpg`, file: file(`${id}.jpg`), path: `path-${id}`, prepared: true }));
+    const setup = { restoreOrder: ["a", "b"], read: async () => records, preview: async (path: string) => `signed:${path}` };
+    expect((await fixture(setup, "owner", ["path-b", "path-a"])).manager.getSnapshot().photos.map(photo => photo.id)).toEqual(["b", "a"]);
+    expect((await fixture(setup, "owner", ["path-b"])).manager.getSnapshot().photos.map(photo => photo.id)).toEqual(["b"]);
+    expect((await fixture({ ...setup, read: async () => [] }, "owner", [])).manager.getSnapshot().photos).toEqual([]);
+  });
   it("shows local thumbnails immediately and keeps guest blobs without any network upload", async () => {
     const { manager, deps } = await fixture(); const source = file(); manager.add([source]);
     expect(manager.getSnapshot().photos[0]).toMatchObject({ src: expect.stringContaining("blob:"), status: "uploading", file: source });
