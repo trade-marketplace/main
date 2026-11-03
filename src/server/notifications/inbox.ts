@@ -59,7 +59,7 @@ export function inboxItem(row: Row): InboxItem {
   else if (row.type === "message.received" && threadId) href = `/messages/${encodeURIComponent(threadId)}`;
   else if (jobId) {
     if (row.type === "job.reschedule_requested" && payload.refreshWindows === true) href = `/jobs/${encodeURIComponent(jobId)}/windows`;
-    if (row.type === "payment.review_required" || row.type === "variation.requested") href = `/admin/jobs/${encodeURIComponent(jobId)}`;
+    else if (row.type === "payment.review_required" || row.type === "variation.requested") href = `/admin/jobs/${encodeURIComponent(jobId)}`;
     else if (row.type === "message.received") href = `/messages/${encodeURIComponent(jobId)}`;
     else if (row.type === "job.paid") href = `/receipts/${encodeURIComponent(jobId)}`;
     else href = `/jobs/${encodeURIComponent(jobId)}`;
