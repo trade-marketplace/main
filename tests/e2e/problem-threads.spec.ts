@@ -23,7 +23,7 @@ test.describe("job problem threads", () => {
   for (const viewport of VIEWPORTS) {
     test(`${viewport.width}px: every state and role fit and pass axe`, async ({ page }) => {
       test.setTimeout(240_000); await page.setViewportSize(viewport);
-      for (const mode of ["customer", "trade"]) for (const state of ["empty", "thread", "offline", "error", "loading"]) {
+      for (const mode of ["customer", "trade"]) for (const state of ["empty", "thread", "offline", "error", "loading", "long-thread&before=older"]) {
         await page.goto(url(`state=${state}&mode=${mode}`));
         await expect(page.getByRole("heading", { name: "Messages", exact: true })).toBeVisible();
         expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), `${mode}/${state}`).toBe(false);
@@ -77,5 +77,15 @@ test.describe("job problem threads", () => {
     await expect(page.getByRole("button", { name: "Remove photo.png", exact: true })).toHaveCount(0);
     await input.setInputFiles({ name: "fail.png", mimeType: "image/png", buffer: Buffer.from("test fixture") });
     await expect(page.getByRole("region", { name: "Messages", exact: true }).getByRole("alert")).toContainText("Your photo wasn’t uploaded.");
+  });
+  test("Earlier and Latest navigate bounded history while retaining the thread draft", async ({ page }) => {
+    await page.goto(url("state=long-thread")); const message = page.getByRole("textbox", { name: "Message", exact: true });
+    await message.fill("Unsent history draft"); const history = page.getByRole("navigation", { name: "Message history", exact: true });
+    await history.getByRole("link", { name: "Earlier", exact: true }).click(); await expect(page).toHaveURL(/before=older/);
+    await expect(message).toHaveValue("Unsent history draft"); await expect(page.getByRole("log").getByRole("article")).toHaveCount(50);
+    await history.getByRole("link", { name: "Earlier", exact: true }).click(); await expect(page).toHaveURL(/before=oldest/);
+    await expect(message).toHaveValue("Unsent history draft");
+    await history.getByRole("link", { name: "Latest", exact: true }).click(); await expect(page).not.toHaveURL(/before=/);
+    await expect(message).toHaveValue("Unsent history draft");
   });
 });

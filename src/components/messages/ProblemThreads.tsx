@@ -56,7 +56,10 @@ export function ProblemThreads({ data, state = "thread", jobId, preview = false,
   const thread = selected;
   const lastMessage = thread?.messages.at(-1);
   const currentThreadId = thread?.id, lastMessageId = lastMessage?.id;
+  const earlier = thread?.earlier ?? false;
+  const windowKey = `${currentThreadId ?? ""}:${earlier ? thread?.messages[0]?.id ?? "empty" : "latest"}`;
   const scroll = useRef<HTMLDivElement>(null); const atBottom = useRef(true);
+  const previousWindow = useRef(windowKey);
   useEffect(() => {
     if (preview) return;
     const refresh = () => { if (navigator.onLine && document.visibilityState === "visible") router.refresh(); };
@@ -64,10 +67,15 @@ export function ProblemThreads({ data, state = "thread", jobId, preview = false,
     return () => { window.removeEventListener("focus", refresh); window.clearInterval(timer); };
   }, [preview, router]);
   useEffect(() => {
-    if (preview || !currentThreadId || !lastMessageId) return;
+    if (preview || earlier || !currentThreadId || !lastMessageId) return;
     void markProblemThreadReadAction(currentThreadId, lastMessageId).then(result => { if (result.ok) router.refresh(); }).catch(() => {});
-  }, [preview, currentThreadId, lastMessageId, router]); // A new public message advances the read receipt once.
-  useEffect(() => { if (atBottom.current && scroll.current) scroll.current.scrollTop = scroll.current.scrollHeight; }, [thread?.id, lastMessage?.id]);
+  }, [preview, earlier, currentThreadId, lastMessageId, router]); // An older window must not acknowledge unseen latest messages.
+  useEffect(() => {
+    const changed = previousWindow.current !== windowKey;
+    if ((atBottom.current || changed) && scroll.current) scroll.current.scrollTop = scroll.current.scrollHeight;
+    if (changed) atBottom.current = true;
+    previousWindow.current = windowKey;
+  }, [windowKey, lastMessage?.id]);
   const filtered = data.threads.filter(row => `${row.subject} ${row.title} ${row.jobNumber}`.toLowerCase().includes(search.toLowerCase()));
   return <section className={styles.page} aria-label="Messages" data-mode={data.role === "TRADIE" ? "trade" : "customer"}>
     <header className={styles.heading}><h1>Messages</h1><Button variant="secondary" size="sm" onClick={() => { setOpening(true); setError(""); }}>Ask about a job</Button></header>
@@ -100,6 +108,10 @@ export function ProblemThreads({ data, state = "thread", jobId, preview = false,
           : thread ? <>
             <header className={styles.conversationHeader}><Link href={listHref} className={styles.back}><Icon name="arrow_back" decorative />Back</Link><span className={styles.avatar}><Icon name="bolt" decorative /></span><div><h2>{thread.subject}</h2><p>{thread.job.title} · {thread.job.number}</p></div><span className={styles.info}><IconButton icon="info" label="Job context" pressed={context} onClick={() => setContext(!context)} /></span></header>
             {context && <div className={styles.mobileContext}><JobContext data={data} /></div>}
+            {(thread.olderCursor || thread.earlier) && <nav className={styles.history} aria-label="Message history">
+              {thread.olderCursor && <Link prefetch={false} href={`${threadHref(thread.id)}${threadHref(thread.id).includes("?") ? "&" : "?"}before=${encodeURIComponent(thread.olderCursor)}`}>Earlier</Link>}
+              {thread.earlier && <Link prefetch={false} href={threadHref(thread.id)}>Latest</Link>}
+            </nav>}
             <div ref={scroll} tabIndex={0} className={styles.bubbles} aria-label="Conversation" role="log" aria-live="polite" aria-relevant="additions" onScroll={() => { const el = scroll.current; atBottom.current = !el || el.scrollHeight - el.scrollTop - el.clientHeight < 80; }}>
               {[...thread.messages.map(message => ({ type: "message" as const, at: message.at, message })), ...thread.events.map(event => ({ type: "event" as const, at: event.at, event }))].sort((a, b) => a.at.localeCompare(b.at)).map(item => item.type === "event"
                 ? <p className={styles.event} key={`event-${item.event.id}`}><Icon name="bolt" size="sm" decorative />{item.event.label}</p>
@@ -111,11 +123,11 @@ export function ProblemThreads({ data, state = "thread", jobId, preview = false,
                     // eslint-disable-next-line @next/next/no-img-element
                     ? <a key={photo.id} href={photo.url} target="_blank" rel="noreferrer"><img src={photo.url} alt={`Message photo ${i + 1}`} /></a>
                     : <span key={photo.id}>Photo unavailable</span>)}</div>}
-                  {item.message.id === lastMessage?.id && item.message.own && <span className={styles.receipt}>{item.message.seen ? "Read" : "Sent"}</span>}
+                  {item.message.id === thread.latestMessageId && item.message.own && <span className={styles.receipt}>{item.message.seen ? "Read" : "Sent"}</span>}
                 </article>)}
             </div>
             {thread.closed ? <p className={styles.help}>This thread is closed.</p> : <Composer key={thread.id} viewerId={data.viewerId} draftId={thread.id} jobId={thread.job.id} online={online} error={error} setError={setError} upload={upload}
-              onSend={async input => { const result = await send(thread.id, input); if (result.ok) router.refresh(); return result; }} />}
+              onSend={async input => { const result = await send(thread.id, input); if (result.ok) { if (thread.earlier) router.push(threadHref(thread.id)); router.refresh(); } return result; }} />}
           </>
           : state === "error" ? <ErrorState title="Can’t load messages." message="Check your connection and try again." onRetry={() => router.refresh()} />
           : <EmptyState title="No threads yet." icon="chat_bubble" message="Threads open when you need help with a job." action={<Button onClick={() => setOpening(true)}>Ask about a job</Button>} />}

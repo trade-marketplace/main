@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import pg from "pg";
+import { randomUUID } from "node:crypto";
 import { SECURITY_PASSWORD, SECURITY_TRADIE, SECURITY_USER, startSecurityAuthStub } from "./support/security-auth-stub";
 
 const app = process.env.PROBLEM_THREADS_E2E_APP_URL;
@@ -83,5 +84,24 @@ test.describe("signed-in problem threads", () => {
       await expect(worker.locator("body")).not.toContainText("fixture-181@example.test");
     } finally { await context.close(); }
     expect(auth.events.some(event => event.path === "/auth/v1/user")).toBe(true);
+  });
+  test("older windows keep latest replies unread until Latest is actually opened", async ({ page }) => {
+    test.setTimeout(180_000); await page.setViewportSize({ width: 390, height: 844 });
+    await db.query("UPDATE jobs SET worker_id=$1 WHERE id=$2", [SECURITY_TRADIE.id, ownJob]);
+    const threadId = (await db.query("SELECT id FROM support_threads WHERE job_id=$1 AND job_participants AND status='OPEN'", [ownJob])).rows[0].id;
+    const ids = Array.from({ length: 151 }, () => randomUUID()); const start = new Date(Date.now() + 1000);
+    await db.query("INSERT INTO support_messages(id,thread_id,author_id,body,created_at) SELECT x.id,$2,CASE WHEN (x.n-1)%2=0 THEN $3::uuid ELSE $4::uuid END,'History entry '||(x.n-1),$5::timestamptz+(x.n-1)*interval '1 second' FROM unnest($1::uuid[]) WITH ORDINALITY AS x(id,n)", [ids, threadId, SECURITY_USER.id, SECURITY_TRADIE.id, start]);
+    await db.query("DELETE FROM support_thread_reads WHERE thread_id=$1 AND user_id=$2", [threadId, SECURITY_TRADIE.id]);
+    await login(page, SECURITY_TRADIE.email, `/messages/${threadId}?before=${ids[100]}`);
+    await expect(page.getByRole("textbox", { name: "Message", exact: true })).toBeEnabled(); await page.waitForLoadState("networkidle");
+    await expect(page.getByRole("log").getByRole("article")).toHaveCount(50);
+    await expect(page.getByRole("log")).not.toContainText("History entry 150");
+    await expect(page.getByText("Sent", { exact: true })).toHaveCount(0);
+    expect((await db.query("SELECT count(*) FROM support_thread_reads WHERE thread_id=$1 AND user_id=$2", [threadId, SECURITY_TRADIE.id])).rows[0].count).toBe("0");
+    const history = page.getByRole("navigation", { name: "Message history", exact: true });
+    await history.getByRole("link", { name: "Earlier", exact: true }).click(); await expect(page).toHaveURL(new RegExp(`before=${ids[50]}`));
+    await history.getByRole("link", { name: "Latest", exact: true }).click(); await expect(page).toHaveURL(`${app}/messages/${threadId}`);
+    await expect(page.getByRole("log")).toContainText("History entry 150");
+    await expect.poll(async () => (await db.query("SELECT read_at FROM support_thread_reads WHERE thread_id=$1 AND user_id=$2", [threadId, SECURITY_TRADIE.id])).rows[0]?.read_at.toISOString()).toBe(new Date(start.getTime() + 150_000).toISOString());
   });
 });

@@ -34,6 +34,9 @@
 .contextCard dt { color:var(--trade-text-2); }
 .contextCard dd { text-align:right; margin:0; overflow-wrap:anywhere; }
 .mobileContext { display:none; }
+.history { display:flex; justify-content:space-between; gap:var(--trade-space-4); padding:var(--trade-space-3) var(--trade-space-5); border-bottom:1px solid var(--trade-line); }
+.history a { color:var(--trade-link); min-height:var(--trade-tap); display:inline-flex; align-items:center; }
+.history a:focus-visible { outline:var(--trade-focus-ring); outline-offset:2px; }
 .composer { padding:var(--trade-space-5); border-top:1px solid var(--trade-line); display:grid; gap:var(--trade-space-3); }
 .composerActions { display:flex; justify-content:space-between; align-items:center; gap:var(--trade-space-3); }
 .upload { position:relative; display:flex; gap:var(--trade-space-2); align-items:center; padding:var(--trade-space-2); min-height:var(--trade-tap); border:1px solid var(--trade-field-stroke); border-radius:var(--trade-radius-field); cursor:pointer; }

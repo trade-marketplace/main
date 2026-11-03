@@ -1,4 +1,5 @@
 import "server-only";
+import { z } from "zod";
 
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { messageSchema, problemSchema, redactContactDetails, type MessagesData, type MessageResult } from "@/lib/problem-threads";
@@ -16,6 +17,7 @@ const JOB_SELECT = { id: true, jobNumber: true, title: true, suburb: true, statu
   customer: { select: { firstName: true, lastName: true } }, worker: { select: { firstName: true, lastName: true } } } as const;
 const name = (person: { firstName: string; lastName: string | null }) => `${person.firstName}${person.lastName ? ` ${person.lastName[0]}` : ""}`;
 const time = (date: Date) => new Intl.DateTimeFormat("en-NZ", { timeZone: "Pacific/Auckland", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }).format(date);
+export const THREAD_MESSAGE_PAGE_SIZE = 50;
 
 export async function currentRole(db: Pick<PrismaClient, "profile">, actor: Actor) {
   const person = await db.profile.findUnique({ where: { id: actor.userId }, select: { role: true } });
@@ -134,17 +136,17 @@ export async function markThreadRead(db: PrismaClient, actor: Actor, threadId: s
 export async function unreadProblemThreadCount(db: Pick<PrismaClient, "supportThread">, userId: string) {
   const rows = await db.supportThread.findMany({
     where: { jobParticipants: true, job: { is: { OR: [{ customerId: userId }, { workerId: userId }] } } },
-    select: { reads: { where: { userId }, select: { readAt: true } }, messages: { where: { internal: false }, orderBy: { createdAt: "desc" }, take: 1, select: { authorId: true, createdAt: true } } },
+    select: { reads: { where: { userId }, select: { readAt: true } }, messages: { where: { internal: false }, orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: 1, select: { authorId: true, createdAt: true } } },
   });
   return rows.filter(row => { const last = row.messages[0]; return last && last.authorId !== userId && (!row.reads[0] || row.reads[0].readAt < last.createdAt); }).length;
 }
 
-export async function getMessages(db: PrismaClient, actor: Actor, selectedId?: string, signPhoto?: (path: string) => Promise<string>): Promise<MessagesData> {
+export async function getMessages(db: PrismaClient, actor: Actor, selectedId?: string, signPhoto?: (path: string) => Promise<string>, beforeCursor?: string): Promise<MessagesData> {
   const role = await currentRole(db, actor);
   const access: Prisma.JobWhereInput = role === "ADMIN" ? {} : { OR: [{ customerId: actor.userId }, { workerId: actor.userId }] };
   const [rows, jobs] = await Promise.all([
     db.supportThread.findMany({ where: { jobParticipants: true, job: { is: access } }, orderBy: { lastMessageAt: "desc" },
-      include: { job: { select: JOB_SELECT }, reads: true, messages: { where: { internal: false }, orderBy: { createdAt: "desc" }, take: 1 } } }),
+      include: { job: { select: JOB_SELECT }, reads: true, messages: { where: { internal: false }, orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: 1 } } }),
     db.job.findMany({ where: access, orderBy: { updatedAt: "desc" }, select: { id: true, jobNumber: true, title: true, workerId: true } }),
   ]);
   const selected = selectedId ? rows.find(row => row.id === selectedId) : null;
@@ -157,21 +159,29 @@ export async function getMessages(db: PrismaClient, actor: Actor, selectedId?: s
   let view: MessagesData["selected"] = null;
   if (selected?.job) {
     const job = selected.job; const claimed = !!job.workerId;
-    const [messages, history, variations] = await Promise.all([
-      db.supportMessage.findMany({ where: { threadId: selected.id, internal: false }, orderBy: [{ createdAt: "asc" }, { id: "asc" }], include: { author: { select: { firstName: true, lastName: true } }, photos: { orderBy: { position: "asc" } } } }),
+    if (beforeCursor && (!z.uuid().safeParse(beforeCursor).success || !await db.supportMessage.findFirst({ where: { id: beforeCursor, threadId: selected.id, internal: false }, select: { id: true } }))) throw new ProblemThreadError("forbidden");
+    const [messageRows, history, variations] = await Promise.all([
+      db.supportMessage.findMany({ where: { threadId: selected.id, internal: false }, orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: THREAD_MESSAGE_PAGE_SIZE + 1,
+        ...(beforeCursor ? { cursor: { id: beforeCursor }, skip: 1 } : {}), include: { author: { select: { firstName: true, lastName: true } }, photos: { orderBy: { position: "asc" } } } }),
       db.jobStatusHistory.findMany({ where: { jobId: job.id, toStatus: { in: ["BOOKABLE", "ASSIGNED", "SUBMITTED", "COMPLETED"] } }, orderBy: { createdAt: "asc" } }),
-      db.variation.findMany({ where: { jobId: job.id }, select: { id: true, status: true, createdAt: true, updatedAt: true } }),
+      db.variation.findMany({ where: { jobId: job.id }, select: { id: true, status: true, createdAt: true, decidedAt: true } }),
     ]);
+    const hasOlder = messageRows.length > THREAD_MESSAGE_PAGE_SIZE;
+    const messages = messageRows.slice(0, THREAD_MESSAGE_PAGE_SIZE).reverse();
     const sign = signPhoto ?? (async path => createSupabaseFileStore().signedUrl(PHOTO_BUCKET, path, SIGNED_URL_SECONDS));
     const labels = { BOOKABLE: "Paid", ASSIGNED: "Job booked", SUBMITTED: "Work finished", COMPLETED: "Job completed" };
     view = { id: selected.id, subject: redactContactDetails(selected.subject, claimed), closed: selected.status === "CLOSED",
+      latestMessageId: selected.messages[0]?.id ?? null, olderCursor: hasOlder ? messages[0]?.id ?? null : null, earlier: Boolean(beforeCursor),
       job: { id: job.id, number: `TM-${job.jobNumber}`, title: redactContactDetails(job.title, claimed), suburb: job.suburb, status: job.status, worker: job.worker ? name(job.worker) : null },
       messages: await Promise.all(messages.map(async message => ({ id: message.id, author: message.fromOffice ? "Trade Marketplace" : message.author ? name(message.author) : "Former member", office: message.fromOffice, own: message.authorId === actor.userId,
         body: redactContactDetails(message.body, claimed), at: message.createdAt.toISOString(), when: time(message.createdAt),
         photos: await Promise.all(message.photos.map(async photo => { try { return { id: photo.id, url: await sign(photo.path) }; } catch { return { id: photo.id, url: null }; } })),
         seen: selected.reads.some(read => read.userId !== actor.userId && [job.customerId, job.workerId].includes(read.userId) && read.readAt >= message.createdAt),
       }))),
-      events: [...history.map(h => ({ id: h.id, label: labels[h.toStatus as keyof typeof labels], at: h.createdAt.toISOString() })), ...variations.map(v => ({ id: v.id, label: v.status === "APPROVED" ? "Extra work approved" : v.status === "DECLINED" ? "Extra work declined" : "Extra work requested", at: v.createdAt.toISOString() }))].sort((a, b) => a.at.localeCompare(b.at)),
+      events: [...history.map(h => ({ id: h.id, label: labels[h.toStatus as keyof typeof labels], at: h.createdAt.toISOString() })), ...variations.flatMap(v => [
+        { id: `${v.id}:requested`, label: "Extra work requested", at: v.createdAt.toISOString() },
+        ...(v.decidedAt && ["APPROVED", "DECLINED"].includes(v.status) ? [{ id: `${v.id}:decided`, label: v.status === "APPROVED" ? "Extra work approved" : "Extra work declined", at: v.decidedAt.toISOString() }] : []),
+      ])].sort((a, b) => a.at.localeCompare(b.at)),
     };
   }
   return { role, viewerId: actor.userId, threads: summaries, selected: view, jobs: jobs.map(job => ({ id: job.id, number: `TM-${job.jobNumber}`, title: redactContactDetails(job.title, !!job.workerId) })) };

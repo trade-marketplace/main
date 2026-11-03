@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Role } from "@/generated/prisma/client";
-import { getMessages, markThreadRead, openProblemThread, sendProblemMessage, unreadProblemThreadCount } from "@/server/messages/service";
+import { getMessages, markThreadRead, openProblemThread, sendProblemMessage, THREAD_MESSAGE_PAGE_SIZE, unreadProblemThreadCount } from "@/server/messages/service";
 import { problemContactHref } from "@/server/messages/contact";
 import { performJobAction } from "@/server/office/job-mutations";
 import { uploadSupportPhoto } from "@/server/messages/photos";
@@ -12,6 +12,8 @@ import { testDatabaseUrl, useTestSchema } from "../support/test-db";
 
 describe.skipIf(!testDatabaseUrl)("shared job problem threads (database)", () => {
   const schema = useTestSchema(import.meta.filename);
+  // Each fixture's office recipient belongs to that test; older fixture accounts must not accumulate in fan-out.
+  afterEach(async () => { await schema.db.profile.updateMany({ where: { role: "ADMIN" }, data: { role: "CUSTOMER" } }); });
   const deps = { rateLimit: async () => ({ allowed: true } as const), notify: async () => {} };
   async function person(role: Role = "CUSTOMER") {
     const id = randomUUID();
@@ -72,6 +74,20 @@ describe.skipIf(!testDatabaseUrl)("shared job problem threads (database)", () =>
     await schema.db.job.update({ where: { id: f.job.id }, data: { workerId: f.worker.userId, status: "ASSIGNED", priceCents: 12000 } });
     expect((await getMessages(schema.db, f.worker, result.threadId)).selected?.messages[0].body).toBe(text);
   });
+  it("places extra-work requests at creation and approvals/declines at their actual decision time", async () => {
+    const f = await fixture(); const id = await opened(f); const createdAt = new Date(Date.now() - 2 * 60 * 60 * 1000);
+    for (const status of ["APPROVED", "DECLINED"] as const) {
+      const variation = await schema.db.variation.create({ data: { jobId: f.job.id, requestedById: f.worker.userId, description: "Second switch is cracked too.", requestedMinutes: 30, createdAt } });
+      await schema.db.variation.update({ where: { id: variation.id }, data: { status: "PRICED", minutes: 30, materialsCents: 0, workerGrossCents: 3500, holidayPayCents: 280, onCostCents: 473, marginCents: 851, gstCents: 766, priceCents: 5870 } });
+      const decided = await schema.db.variation.update({ where: { id: variation.id }, data: { status } });
+      const events = (await getMessages(schema.db, f.worker, id)).selected!.events.filter(event => event.id.startsWith(variation.id));
+      expect(events).toEqual([
+        { id: `${variation.id}:requested`, label: "Extra work requested", at: createdAt.toISOString() },
+        { id: `${variation.id}:decided`, label: status === "APPROVED" ? "Extra work approved" : "Extra work declined", at: decided.decidedAt!.toISOString() },
+      ]);
+      expect(decided.decidedAt!.getTime()).toBeGreaterThan(createdAt.getTime());
+    }
+  });
   it("checks photo ownership and existence before saving; only authorized readers receive signed URLs", async () => {
     const f = await fixture(); const id = await opened(f); const path = `support/${f.job.id}/${f.worker.userId}/${"a".repeat(32)}.webp`;
     const data = { ...input(f.job.id, "Here is the photo."), photoPaths: [path] };
@@ -86,6 +102,40 @@ describe.skipIf(!testDatabaseUrl)("shared job problem threads (database)", () =>
     const officeView = await getOfficeJob(schema.db, f.job.id, new Date(), sign);
     expect(officeView?.messages.at(-1)?.photos).toEqual([expect.objectContaining({ url: "https://files.example/signed" })]);
   });
+  it("windows long public history and signs only the photos returned in each page", async () => {
+    const f = await fixture(); const id = await opened(f); const base = Date.now() + 1000;
+    const rows = Array.from({ length: 120 }, (_, index) => ({ id: randomUUID(), threadId: id, authorId: f.customer.userId, body: `Public history ${index}`, createdAt: new Date(base + index * 1000) }));
+    await schema.db.supportMessage.createMany({ data: rows });
+    await schema.db.supportMessagePhoto.createMany({ data: rows.map(row => ({ messageId: row.id, path: `support/${f.job.id}/${f.customer.userId}/${row.id.replaceAll("-", "")}.webp` })) });
+    await schema.db.supportMessage.create({ data: { threadId: id, authorId: f.office.userId, body: "Private office history", internal: true } });
+    const sign = vi.fn(async () => "https://files.example/private");
+    const latest = (await getMessages(schema.db, f.worker, id, sign)).selected!;
+    expect(latest.messages.map(message => message.id)).toEqual(rows.slice(70).map(row => row.id));
+    expect(latest.messages).toHaveLength(THREAD_MESSAGE_PAGE_SIZE); expect(sign).toHaveBeenCalledTimes(50);
+    expect(latest.latestMessageId).toBe(rows[119].id); expect(latest.earlier).toBe(false);
+    sign.mockClear();
+    const earlier = (await getMessages(schema.db, f.worker, id, sign, latest.olderCursor!)).selected!;
+    expect(earlier.messages.map(message => message.id)).toEqual(rows.slice(20, 70).map(row => row.id));
+    expect(earlier.latestMessageId).toBe(rows[119].id); expect(earlier.earlier).toBe(true); expect(sign).toHaveBeenCalledTimes(50);
+    const oldest = (await getMessages(schema.db, f.worker, id, sign, earlier.olderCursor!)).selected!;
+    expect(oldest.messages).toHaveLength(21); expect(oldest.olderCursor).toBeNull();
+    expect(new Set([...latest.messages, ...earlier.messages, ...oldest.messages].map(message => message.id)).size).toBe(121);
+  });
+  it("rejects foreign/internal cursors and rechecks current-participant access for older history", async () => {
+    const f = await fixture(); const id = await opened(f);
+    const ownCursor = (await getMessages(schema.db, f.worker, id)).selected!.messages[0].id;
+    const internal = await schema.db.supportMessage.create({ data: { threadId: id, authorId: f.office.userId, body: "Private office history", internal: true } });
+    const sign = vi.fn(async () => "https://files.example/private");
+    const other = await fixture(); const otherId = await opened(other);
+    const foreignCursor = (await getMessages(schema.db, other.customer, otherId)).selected!.messages[0].id;
+    for (const cursor of [foreignCursor, internal.id, "not-a-cursor"]) {
+      sign.mockClear(); await expect(getMessages(schema.db, f.worker, id, sign, cursor)).rejects.toMatchObject({ code: "forbidden" }); expect(sign).not.toHaveBeenCalled();
+    }
+    sign.mockClear(); await expect(getMessages(schema.db, f.stranger, id, sign, ownCursor)).rejects.toMatchObject({ code: "forbidden" }); expect(sign).not.toHaveBeenCalled();
+    await schema.db.job.update({ where: { id: f.job.id }, data: { workerId: f.stranger.userId } });
+    await expect(getMessages(schema.db, f.worker, id, sign, ownCursor)).rejects.toMatchObject({ code: "forbidden" });
+    expect((await getMessages(schema.db, f.stranger, id, sign, ownCursor)).selected!.id).toBe(id);
+  });
   it("preserves text on validation/rate-limit/closed-thread errors and deduplicates send retries", async () => {
     const f = await fixture(); const id = await opened(f); const data = input(f.job.id, "Once only.");
     await Promise.all([sendProblemMessage(schema.db, f.worker, id, data, deps), sendProblemMessage(schema.db, f.worker, id, data, deps)]);
@@ -99,6 +149,11 @@ describe.skipIf(!testDatabaseUrl)("shared job problem threads (database)", () =>
     expect(await sendProblemMessage(schema.db, f.worker, id, data, { ...deps, rateLimit: async () => ({ allowed: false, retryAfter: 30 }) })).toEqual({ ok: false, error: "try-later", retryAfter: 30 });
     await schema.db.supportThread.update({ where: { id }, data: { status: "CLOSED" } });
     expect(await sendProblemMessage(schema.db, f.worker, id, data, deps)).toEqual({ ok: false, error: "closed" });
+    const next = await openProblemThread(schema.db, f.customer, input(f.job.id, "A new support request after closure."), deps);
+    expect(next.ok).toBe(true); if (!next.ok) throw new Error(next.error);
+    expect(next.threadId).not.toBe(id);
+    expect(await schema.db.supportThread.count({ where: { jobId: f.job.id, jobParticipants: true, status: "OPEN" } })).toBe(1);
+    expect((await getMessages(schema.db, f.customer, id)).selected?.closed).toBe(true);
   });
   it("records read receipts only for an authorized public message and uses the same office thread", async () => {
     const f = await fixture(); const id = await opened(f);
@@ -270,10 +325,71 @@ describe.skipIf(!testDatabaseUrl)("shared job problem threads (database)", () =>
     await schema.db.supportPhotoCleanup.update({ where: { path }, data: { createdAt: past() } });
     expect((await store.rule.run({ db: schema.db, now: new Date(), limit: 1 })).done).toBe(1); expect(store.objects.has(path)).toBe(false);
   });
+  it("serializes deleted-reference enqueue with cleanup so a concurrent final delete cannot lose its intent", async () => {
+    const f = await fixture(); const id = await opened(f); const store = storage();
+    const { path } = await uploadSupportPhoto(schema.db, store.files, f.worker, f.job.id, await bytes());
+    const data = { ...input(f.job.id), photoPaths: [path] };
+    expect((await sendProblemMessage(schema.db, f.worker, id, data, { ...deps, files: { exists: async () => true } })).ok).toBe(true);
+    const message = await schema.db.supportMessage.findUniqueOrThrow({ where: { requestKey: data.requestKey } });
+    let held!: () => void, release!: () => void, started!: (pid: number) => void;
+    const locked = new Promise<void>(resolve => { held = resolve; }), proceed = new Promise<void>(resolve => { release = resolve; });
+    const backend = new Promise<number>(resolve => { started = resolve; });
+    // Pause the referenced-object branch under the same lock used by the production cleanup rule.
+    const cleaning = schema.db.$transaction(async tx => {
+      await lockSupportPhoto(tx, path); expect(await tx.supportMessagePhoto.count({ where: { path } })).toBe(1); held(); await proceed;
+      await tx.supportPhotoCleanup.delete({ where: { path } });
+    }, { timeout: 10_000 });
+    await locked;
+    const deleting = schema.db.$transaction(async tx => {
+      const [row] = await tx.$queryRaw<{ pid: number }[]>`SELECT pg_backend_pid() AS pid`; started(row.pid);
+      await tx.supportMessage.delete({ where: { id: message.id } });
+    }, { timeout: 10_000 });
+    const pid = await backend;
+    try { await vi.waitFor(async () => { const [row] = await schema.db.$queryRaw<{ wait_event: string }[]>`SELECT wait_event FROM pg_stat_activity WHERE pid=${pid}`; expect(row.wait_event).toBe("advisory"); }); }
+    finally { release(); }
+    await Promise.all([cleaning, deleting]);
+    expect(await schema.db.supportMessagePhoto.count({ where: { path } })).toBe(0);
+    expect(await schema.db.supportPhotoCleanup.findUnique({ where: { path } })).not.toBeNull();
+    await schema.db.supportPhotoCleanup.update({ where: { path }, data: { createdAt: past() } });
+    expect((await store.rule.run({ db: schema.db, now: new Date(), limit: 1 })).done).toBe(1);
+    expect(store.objects.has(path)).toBe(false);
+  });
   it("never deletes a queued object outside the support-photo namespace", async () => {
     const store = storage(); const path = "avatars/unrelated.webp";
     await schema.db.supportPhotoCleanup.create({ data: { path, createdAt: past() } });
     expect((await store.rule.run({ db: schema.db, now: new Date(), limit: 1 })).skipped).toBe(1);
     expect(store.files.remove).not.toHaveBeenCalled();
+  });
+  it("requeues photo cleanup through a restricted Auth deletion cascade without granting direct queue access", async () => {
+    const f = await fixture(); const store = storage();
+    const { path } = await uploadSupportPhoto(schema.db, store.files, f.worker, f.job.id, await bytes());
+    const legacy = await schema.db.supportThread.create({ data: { userId: f.worker.userId, jobId: f.job.id, subject: "Private history" } });
+    await schema.db.supportMessage.create({ data: { threadId: legacy.id, authorId: f.worker.userId, body: "Saved photo", photos: { create: { path } } } });
+    // Jobs intentionally retain customer/worker references. Reassign before deleting this former worker's Auth
+    // account so the test reaches their owned support-history cascade rather than the unrelated jobs FK guard.
+    await schema.db.job.update({ where: { id: f.job.id }, data: { workerId: f.stranger.userId } });
+    await schema.db.supportPhotoCleanup.update({ where: { path }, data: { createdAt: past() } });
+    expect((await store.rule.run({ db: schema.db, now: new Date(), limit: 1 })).skipped).toBe(1);
+    expect(await schema.db.supportPhotoCleanup.findUnique({ where: { path } })).toBeNull();
+    const role = `support_auth_${randomUUID().replaceAll("-", "").slice(0, 12)}`;
+    await schema.db.$executeRawUnsafe(`CREATE ROLE "${role}" NOLOGIN NOINHERIT`);
+    try {
+      await schema.db.$executeRawUnsafe(`GRANT USAGE ON SCHEMA auth TO "${role}"`);
+      await schema.db.$executeRawUnsafe(`GRANT SELECT, DELETE ON auth.users TO "${role}"`);
+      const permission = await schema.db.$queryRawUnsafe<{ allowed: boolean; callable: boolean }[]>(`SELECT has_table_privilege('${role}', '"${schema.name}".support_photo_cleanup', 'INSERT') AS allowed, has_function_privilege('${role}', '"${schema.name}".queue_deleted_support_photo()', 'EXECUTE') AS callable`);
+      expect(permission[0].allowed).toBe(false);
+      expect(permission[0].callable).toBe(false);
+      await schema.db.$transaction(async tx => {
+        await tx.$executeRawUnsafe(`SET LOCAL ROLE "${role}"`);
+        await tx.$executeRaw`DELETE FROM auth.users WHERE id=${f.worker.userId}::uuid`;
+      });
+      expect(await schema.db.profile.findUnique({ where: { id: f.worker.userId } })).toBeNull();
+      expect(await schema.db.supportPhotoCleanup.findUnique({ where: { path } })).not.toBeNull();
+      expect(store.objects.has(path)).toBe(true);
+    } finally {
+      await schema.db.$executeRawUnsafe(`DROP OWNED BY "${role}"`); await schema.db.$executeRawUnsafe(`DROP ROLE "${role}"`);
+    }
+    await schema.db.supportPhotoCleanup.update({ where: { path }, data: { createdAt: past() } });
+    expect((await store.rule.run({ db: schema.db, now: new Date(), limit: 1 })).done).toBe(1);
   });
 });

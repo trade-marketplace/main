@@ -19,6 +19,7 @@ export type ThreadSummary = { id: string; subject: string; jobNumber: string; ti
 export type ThreadMessage = { id: string; author: string; office: boolean; own: boolean; body: string; at: string; when: string; photos: { url: string | null; id: string }[]; seen: boolean };
 export type ThreadView = {
   id: string; subject: string; closed: boolean;
+  latestMessageId: string | null; olderCursor: string | null; earlier: boolean;
   job: { id: string; number: string; title: string; suburb: string; status: JobStatus; worker: string | null };
   messages: ThreadMessage[];
   events: { id: string; label: string; at: string }[];

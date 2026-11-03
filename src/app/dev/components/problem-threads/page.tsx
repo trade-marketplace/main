@@ -10,6 +10,6 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
   const trade = params.mode === "trade";
   return <AppShellView viewer={{ role: trade ? "TRADIE" : "CUSTOMER", firstName: trade ? "Jack" : "Sarah", lastName: "Thompson", email: "preview@example.test", emailVerified: true, counts: { messages: 1, notifications: 0 } }} testMode
     preview={{ at: "/messages", base: "/dev/components/problem-threads" }}>
-    <ProblemThreadsDemo key={`${params.state}-${params.thread}-${params.mode}`} state={typeof params.state === "string" ? params.state : "thread"} second={params.thread === "second"} trade={trade} />
+    <ProblemThreadsDemo key={`${params.state}-${params.thread}-${params.mode}-${params.before}`} state={typeof params.state === "string" ? params.state : "thread"} second={params.thread === "second"} trade={trade} earlier={typeof params.before === "string"} oldest={params.before === "oldest"} />
   </AppShellView>;
 }
