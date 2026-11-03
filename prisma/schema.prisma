@@ -686,6 +686,7 @@ model JobMaterials {
 // no Data API policy. Money is cents, percentages basis points (20% = 2000), time minutes or hours as named.
 model Settings {
   id                   Int      @id @default(1)
+  revision             Int      @default(0)
   // The worker's hourly rate for every licensed trade (ELECTRICAL, PLUMBING, GAS, CONSTRUCTION) and for OTHER.
   // Per-trade rates may come later (DECISIONS.md 9).
   sharedRateCents      Int      @default(7000) @map("shared_rate_cents")
@@ -704,6 +705,11 @@ model Settings {
   quickLookPriceCents  Int      @default(3000) @map("quick_look_price_cents")
   // How long a quote bounty stays open.
   bountyExpiryHours    Int      @default(24) @map("bounty_expiry_hours")
+  bountyAmountCents    Int      @default(3000) @map("bounty_amount_cents")
+  // Configuration only: the share base and bonus policy still need a founder decision.
+  quoterRewardBps      Int      @default(200) @map("quoter_reward_bps")
+  quoterBonusCents     Int?     @map("quoter_bonus_cents")
+  enabledTrades       Trade[]  @default([ELECTRICAL, PLUMBING, GAS, CONSTRUCTION, OTHER]) @map("enabled_trades")
   // Where we work (#97): a circle around a centre, Invercargill at launch (DECISIONS.md 12). A job is covered
   // when its point is within `coverage_radius_km` of the centre: 60 km at launch (Matt, 26 Oct), 1–200 km.
   coverageCentreLat    Float    @default(-46.4132) @map("coverage_centre_lat")

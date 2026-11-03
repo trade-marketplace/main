@@ -126,6 +126,7 @@ export type PreconditionFailure =
   | "not-priced"
   | "not-paid"
   | "licence-required"
+  | "trade-unavailable"
   | "own-job"
   | "evidence-not-sent"
   | "extra-work-open"
@@ -216,6 +217,7 @@ export type JobFacts = {
   moneyHeld?: boolean;
   /** The acting worker has a VERIFIED, unexpired licence for the job's trade. */
   workerLicensed?: boolean;
+  tradeEnabled?: boolean;
   /** When the evidence was sent (completion_evidence.submitted_at). */
   evidenceSentAt?: Date | null;
   /** Extra work waiting on the office or the customer (REQUESTED or PRICED). */
@@ -310,6 +312,7 @@ export function decideTransition(job: JobSnapshot, request: TransitionRequest, f
     }
 
     case "claim": {
+      if (facts.tradeEnabled === false) throw fail("trade-unavailable");
       const workerId = actorId(actor) as string;
       if (workerId === job.customerId) throw fail("own-job");
       // DECISIONS.md 1: anyone can take Other jobs; restricted work needs a licence first.
@@ -503,7 +506,9 @@ async function loadFacts(tx: Tx, job: JobSnapshot, request: TransitionRequest): 
       };
 
     case "claim": {
-      if (request.actor.role === "SYSTEM" || job.category === "OTHER") return {};
+      const settings = await tx.settings.findUnique({ where: { id: 1 }, select: { enabledTrades: true } });
+      const tradeEnabled = !settings || settings.enabledTrades.includes(job.category);
+      if (request.actor.role === "SYSTEM" || job.category === "OTHER") return { tradeEnabled };
       const today = startOfUtcDay(request.now ?? new Date());
       const licences = await tx.licence.count({
         where: {
@@ -513,7 +518,7 @@ async function loadFacts(tx: Tx, job: JobSnapshot, request: TransitionRequest): 
           OR: [{ expiresOn: null }, { expiresOn: { gte: today } }],
         },
       });
-      return { workerLicensed: licences > 0 };
+      return { workerLicensed: licences > 0, tradeEnabled };
     }
 
     case "submit": {

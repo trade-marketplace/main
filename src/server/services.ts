@@ -31,20 +31,23 @@ export const SERVICE_CONTENT: Record<Category, ServiceContent> = {
   ]) },
 };
 
-type ServiceStore = Pick<PrismaClient, "review">;
+type ServiceStore = Pick<PrismaClient, "review"> & Partial<Pick<PrismaClient, "settings">>;
 export async function loadService(category: Category, db: ServiceStore | null = process.env.DATABASE_URL?.trim() ? getDb() : null): Promise<ServiceData> {
   const coverage = await loadCoverage();
   if (!db) return { ...SERVICE_CONTENT[category], coverage, reviews: [] };
+  let live = SERVICE_CONTENT[category].live;
   try {
+    const availability = await db.settings?.findUnique({ where: { id: 1 }, select: { enabledTrades: true } });
+    if (availability) live = live && availability.enabledTrades.includes(tradeValue(category));
     const reviews = await db.review.findMany({
       where: { hiddenAt: null, comment: { not: null }, job: { trade: tradeValue(category) } },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: 3,
       select: { id: true, rating: true, comment: true, reviewer: { select: { firstName: true } } },
     });
-    return { ...SERVICE_CONTENT[category], coverage, reviews: reviews.filter((r) => r.comment?.trim()).map((r) => ({ id: r.id, rating: r.rating, comment: r.comment!, name: r.reviewer.firstName })) };
+    return { ...SERVICE_CONTENT[category], live, coverage, reviews: reviews.filter((r) => r.comment?.trim()).map((r) => ({ id: r.id, rating: r.rating, comment: r.comment!, name: r.reviewer.firstName })) };
   } catch {
     console.error("Service reviews unavailable.");
-    return { ...SERVICE_CONTENT[category], coverage, reviews: [], reviewsUnavailable: true };
+    return { ...SERVICE_CONTENT[category], live, coverage, reviews: [], reviewsUnavailable: true };
   }
 }
 

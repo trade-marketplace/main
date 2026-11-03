@@ -16,7 +16,7 @@ import { createJobInReview } from "./status-machine";
 
 type Posted = { status: "posted"; jobId: string; jobNumber: number };
 export type PostJobResult = Posted
-  | { status: "needs-account" | "forbidden" | "photos-pending" }
+  | { status: "needs-account" | "forbidden" | "photos-pending" | "trade-unavailable" }
   | { status: "invalid"; fields: DraftFieldErrors }
   | { status: "rate-limited"; retryAfter: number }
   | { status: "outside-area"; waitlist: { path: string; suburb: string; areaName: string; email: string } };
@@ -67,6 +67,8 @@ export async function postJob(db: PrismaClient, viewer: Viewer | null, input: un
     }
     const rate = await (deps.rateLimit ?? ((id) => consumeForUser("postJob", id)))(viewer.userId);
     if (!rate.allowed) return { status: "rate-limited", retryAfter: rate.retryAfter };
+    const availability = await tx.settings.findUnique({ where: { id: 1 }, select: { enabledTrades: true } });
+    if (availability && !availability.enabledTrades.includes(data.category)) return { status: "trade-unavailable" };
 
     const coverage = await loadCoverage(settingsCoverageSource(() => tx));
     const location = resolveJobLocation(data.locationSource === "TYPED"
