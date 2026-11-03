@@ -25,6 +25,7 @@ pg_cron (every minute) → run_scheduled_jobs() → pg_net POST → /api/schedul
 | `price-slow-banner` | `REVIEW` jobs posted 24h ago | marks `price.slow`: the customer's job page shows "taking longer than 24h" while the mark exists and the job is still `REVIEW`. No notification | `scheduled_job_marks` |
 | `unclaimed-alert` | `BOOKABLE` for 48h | marks `job.unclaimed`, notifies the office | `scheduled_job_marks` |
 | `review-reminder` | `COMPLETED` 24h to 7 days ago with no review | marks `review.reminded`, one `review.reminder` to the customer | `scheduled_job_marks` |
+| `support-photo-cleanup` | private support-photo cleanup intents at least 24h old, at most 10 per run | checks current message references under the upload/attachment path lock; removes unreferenced objects, retries failed removals | durable intent plus deletion tombstone; referenced photos stay private and retained |
 
 "Entered the status" is the latest `job_status_history` row for that status. Each marked rule writes its
 `scheduled_job_marks` row and its notification in **one transaction**, so a failure rolls both back and the job is due
@@ -38,6 +39,11 @@ again next minute. Notification ids come from the event id (`scheduler:<rule>:<j
   than 7 days, which would only be noise).
 - One job failing is logged and counted (`failed`); the jobs behind it still run and it is retried next minute.
 - A job that moved on between the search and the action (signed off, priced, claimed) is left alone (`skipped`).
+
+Support-photo upload intents commit before Storage receives bytes. Uploads always use new owner/job-bound random
+paths. A failed attachment/audit leaves its intent intact; deleting a saved photo reference queues cleanup again.
+Before remote removal the cleanup persists a tombstone so an ambiguous Storage failure cannot allow a new attachment
+to that path. The next minute retries it; any remaining message reference preserves the object.
 
 ## Turning it on (William, once per environment)
 

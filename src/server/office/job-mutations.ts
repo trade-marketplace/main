@@ -255,9 +255,18 @@ async function refund(tx: Tx, office: Office, job: LockedJob, input: Extract<Job
  * to the office do.
  */
 async function sendMessage(tx: Tx, office: Office, job: LockedJob, body: string) {
+  const shared = await tx.supportThread.findFirst({ where: { jobId: job.id, jobParticipants: true, status: "OPEN" }, select: { id: true } });
+  if (shared) {
+    const message = await tx.supportMessage.create({ data: { threadId: shared.id, authorId: office.userId, body } });
+    await createAudit(tx)(office, "support_thread.message_sent", { type: "support_threads", id: shared.id }, null, { messageId: message.id, photoCount: 0 });
+    await createNotify(tx)("message.received", [job.customerId, job.workerId].filter((id): id is string => !!id && id !== office.userId), {
+      eventId: `support.message:${message.id}`, payload: { threadId: shared.id, jobId: job.id },
+    });
+    return;
+  }
   for (const userId of [job.customerId, job.workerId]) {
     if (!userId) continue;
-    const open = await tx.supportThread.findFirst({ where: { userId, jobId: job.id, status: "OPEN" }, select: { id: true } });
+    const open = await tx.supportThread.findFirst({ where: { userId, jobId: job.id, jobParticipants: false, status: "OPEN" }, select: { id: true } });
     const threadId =
       open?.id ??
       (await tx.supportThread.create({ data: { userId, jobId: job.id, subject: `TM-${job.jobNumber}` }, select: { id: true } })).id;
