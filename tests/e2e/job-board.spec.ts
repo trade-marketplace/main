@@ -151,6 +151,23 @@ test.describe("signed-in eligible board", () => {
     await page.reload(); await expect(page.getByRole("heading", { name: "Your account is paused", exact: true })).toBeVisible(); await expect(page.locator("#board-cards article")).toHaveCount(0);
     await db.query("UPDATE worker_profiles SET paused_at=NULL WHERE user_id=$1", [SECURITY_TRADIE.id]);
   });
+  test("expired session → login → Alerts → Back preserves the filtered board", async ({ page }) => {
+    await login(page);
+    const board = "/jobs?trade=electrical&distance=10&sort=earn";
+    const alerts = `/profile/notifications?next=${encodeURIComponent(board)}`;
+    await page.goto(`${app}${board}`);
+    await expect(page.getByRole("heading", { name: "No jobs match that.", exact: true })).toBeVisible();
+    await page.context().clearCookies();
+    await Promise.all([page.waitForURL(url => url.pathname === "/login"), page.getByRole("link", { name: "Alerts settings", exact: true }).click()]);
+    expect(new URL(page.url()).searchParams.get("next")).toBe(alerts);
+    await expect(async () => { await page.getByRole("button", { name: /^(Show|Hide) password$/ }).click(); await expect(page.getByLabel("Password", { exact: true })).toHaveAttribute("type", "text", { timeout: 500 }); }).toPass();
+    await page.getByLabel("Email", { exact: true }).fill(SECURITY_TRADIE.email); await page.getByLabel("Password", { exact: true }).fill(SECURITY_PASSWORD);
+    await Promise.all([page.waitForURL(`${app}${alerts}`), page.getByRole("button", { name: "Log in", exact: true }).click()]);
+    await expect(page.getByRole("heading", { name: "Notifications", exact: true })).toBeVisible(); await expectNoA11yViolations(page);
+    await page.getByRole("link", { name: "Back to jobs", exact: true }).click(); await expect(page).toHaveURL(`${app}${board}`);
+    await expect(page.getByLabel("Sort by", { exact: true })).toHaveValue("earn");
+    await expect(page.getByRole("heading", { name: "No jobs match that.", exact: true })).toBeVisible(); await expectNoA11yViolations(page);
+  });
   test("failed browser storage never pretends to save a bookmark", async ({ page }) => {
     await page.addInitScript(() => { const write = Storage.prototype.setItem; Storage.prototype.setItem = function(key, value) { if (key.startsWith("trade.jobs.saved.")) throw Error("quota"); return write.call(this, key, value); }; });
     await login(page); await page.getByRole("button", { name: "Save Board job 1", exact: true }).click();

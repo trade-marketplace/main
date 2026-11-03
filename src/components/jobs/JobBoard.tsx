@@ -14,7 +14,7 @@ import { ErrorState, InlineError } from "@/components/feedback/ErrorState";
 import { LoadingRegion } from "@/components/feedback/LoadingRegion";
 import { OfflineBanner, useOnlineStatus } from "@/components/feedback/OfflineBanner";
 import { Skeleton } from "@/components/feedback/Skeleton";
-import { BOARD_TRADES, BOARD_WHEN, BoardUpdateRequests, boardCardTag, boardHref, DEFAULT_BOARD_QUERY, parseBoardQuery, parseSavedJobs, savedJobsKey,
+import { BOARD_TRADES, BOARD_WHEN, BoardUpdateRequests, boardAlertsRoute, boardCardTag, boardHref, DEFAULT_BOARD_QUERY, parseBoardQuery, parseSavedJobs, savedJobsKey,
   type BoardKind, type BoardPage, type BoardQuery, type BoardResult, type BoardSource } from "@/lib/job-board";
 import { loadJobBoardAction, newBoardJobsAction } from "@/server/jobs/board-actions";
 import styles from "./board.module.css";
@@ -117,7 +117,7 @@ export function JobBoard({ initial, ownerId, source = LIVE_SOURCE, previewState,
   const meta = board?.meta ?? (initial.ok ? initial.board.meta : null);
   const returnTo = boardHref(query);
   const contact = `/contact?next=${encodeURIComponent(returnTo)}`;
-  const alerts = `/profile/notifications?next=${encodeURIComponent(returnTo)}`;
+  const alerts = boardAlertsRoute(returnTo).href;
   const filtered = key !== "/jobs";
   return <div className={styles.page} data-mode="trade">
     <OfflineBanner online={previewState === "offline" ? false : undefined} onRetry={() => load()} sticky={false} />

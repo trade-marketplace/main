@@ -49,6 +49,11 @@ export function boardReturn(value: unknown): string {
   try { const url = new URL(value, "https://board.invalid"); return url.origin === "https://board.invalid" && url.pathname === "/jobs" ? boardHref(parseBoardQuery(url.searchParams)) : "/jobs"; }
   catch { return "/jobs"; }
 }
+/** Keep the canonical board destination through the Alerts page's independent login guard. */
+export function boardAlertsRoute(value: unknown): { href: string; back: string | null } {
+  const back = typeof value === "string" && value.startsWith("/jobs") ? boardReturn(value) : null;
+  return { href: back ? `/profile/notifications?next=${encodeURIComponent(back)}` : "/profile/notifications", back };
+}
 
 export type BoardCard = WorkerJobListView & { distanceKm: number; photoUrl: string | null; tradeLabel: string; whenLabel: string; alreadyEstimated: boolean };
 export type BoardCounts = Record<BoardKind | "saved" | "estimated", number>;
