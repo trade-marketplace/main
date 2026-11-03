@@ -115,7 +115,7 @@ test.describe("signed-in eligible board", () => {
     await page.reload(); await expect(page.getByRole("button", { name: "Save Board job 1", exact: true })).toHaveAttribute("aria-pressed", "true");
     await page.getByRole("button", { name: "Filters", exact: true }).click(); await page.getByRole("checkbox", { name: /^Saved/ }).check();
     await expect(page).toHaveURL(/saved=1/); await expect(page.locator("#board-cards article")).toHaveCount(1);
-    await page.getByRole("link", { name: "Board job 1", exact: true }).press("Enter");
+    await Promise.all([page.waitForURL(url => url.pathname === `/jobs/${jobId(1)}`), page.getByRole("link", { name: "Board job 1", exact: true }).press("Enter")]);
     await expect(page.getByRole("heading", { name: "Board job 1", level: 1, exact: true })).toBeVisible();
     await page.getByRole("link", { name: "Back to jobs", exact: true }).press("Enter"); await expect(page).toHaveURL(/saved=1/);
     await page.getByRole("tab", { name: "Map", exact: true }).click(); await expect(page.getByRole("heading", { name: "Map", exact: true })).toBeVisible();
@@ -125,6 +125,13 @@ test.describe("signed-in eligible board", () => {
     await page.getByRole("link", { name: "Back to jobs", exact: true }).click(); await expect(page).toHaveURL(/trade=electrical&distance=10/);
     await page.getByRole("link", { name: "Contact us", exact: true }).click(); await expect(page.getByRole("heading", { name: "Get in touch", exact: true })).toBeVisible();
     await page.getByRole("link", { name: "Back to jobs", exact: true }).click(); await expect(page).toHaveURL(/trade=electrical&distance=10/);
+    await expectNoA11yViolations(page);
+    await page.goto(`${app}/jobs/${jobId(1)}?from=/jobs&from=/jobs`);
+    await expect(page.getByRole("heading", { name: "Board job 1", level: 1, exact: true })).toBeVisible();
+    await page.getByRole("link", { name: "Back to jobs", exact: true }).click(); await expect(page).toHaveURL(`${app}/jobs`);
+    await page.goto(`${app}/profile/notifications?next=/jobs&next=/jobs`);
+    await expect(page.getByRole("heading", { name: "Notifications", exact: true })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Back to jobs", exact: true })).toHaveCount(0);
     await expectNoA11yViolations(page);
   });
   test("real list is contained/accessible at five widths, detects new jobs without duplicates, and blocks after office pause", async ({ page }) => {

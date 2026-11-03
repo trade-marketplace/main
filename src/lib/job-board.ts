@@ -44,8 +44,8 @@ export function boardHref(query: BoardQuery, base = "/jobs", extra = ""): string
   if (query.view !== "grid") params.set("view", query.view);
   return `${base}${params.size ? `?${params}` : ""}`;
 }
-export function boardReturn(value: string | null | undefined): string {
-  if (!value || value.length > 4096 || !value.startsWith("/jobs")) return "/jobs";
+export function boardReturn(value: unknown): string {
+  if (typeof value !== "string" || value.length > 4096 || !value.startsWith("/jobs")) return "/jobs";
   try { const url = new URL(value, "https://board.invalid"); return url.origin === "https://board.invalid" && url.pathname === "/jobs" ? boardHref(parseBoardQuery(url.searchParams)) : "/jobs"; }
   catch { return "/jobs"; }
 }

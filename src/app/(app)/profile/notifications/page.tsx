@@ -10,8 +10,8 @@ import { loadPreferencesAction } from "@/server/notifications/preference-actions
 
 export const metadata: Metadata = { ...privateMetadata, title: "Notifications" };
 
-export default async function NotificationPreferencesPage({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
-  const next = (await searchParams).next;
+export default async function NotificationPreferencesPage({ searchParams }: { searchParams: Promise<{ next?: string | string[] }> }) {
+  const raw = (await searchParams).next, next = typeof raw === "string" ? raw : null;
   const viewer = await requireRole(["CUSTOMER", "TRADIE"], { next: "/profile/notifications" });
   return <AccountSettings role={viewer.role === "TRADIE" ? "TRADIE" : "CUSTOMER"} active="/profile/notifications">
     {viewer.role === "TRADIE" && next?.startsWith("/jobs") && <TextLink href={boardReturn(next)}>Back to jobs</TextLink>}

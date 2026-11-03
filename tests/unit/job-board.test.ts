@@ -15,6 +15,7 @@ describe("job board URL and safe client rules", () => {
   it("rejects malformed enum/distance values and never accepts a return path outside the board", () => {
     expect(parseBoardQuery(new URLSearchParams("kind=admin&distance=-5&sort=price&view=raw"))).toEqual(DEFAULT_BOARD_QUERY);
     for (const url of ["//evil.test/jobs", "https://evil.test/jobs", "/jobs/other", "/admin?next=/jobs", "/jobs%2F..%2Fadmin"]) expect(boardReturn(url)).toBe("/jobs");
+    for (const value of [["/jobs", "/jobs"], { next: "/jobs" }, 1, true, null, undefined]) expect(boardReturn(value)).toBe("/jobs");
     expect(boardReturn("/jobs?trade=other&distance=25&saved=1")).toBe("/jobs?trade=other&distance=25&saved=1");
   });
   it("sorts actual public earnings and stable IDs, with unknown pay after known pay", () => {
