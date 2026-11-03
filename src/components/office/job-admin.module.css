@@ -52,6 +52,8 @@
 .messages { list-style: none; margin: var(--trade-space-3) 0 0; padding: 0; display: grid; gap: var(--trade-space-3); }
 .messages li { display: grid; gap: var(--trade-space-1); max-width: 70%; }
 .messages li[data-from="office"] { margin-left: auto; justify-items: end; text-align: right; }
+.messagePhotos { display:flex; flex-wrap:wrap; gap:var(--trade-space-2); }
+.messagePhotos img { max-width:100%; width:140px; height:100px; object-fit:cover; border-radius:var(--trade-radius-field); }
 .bubble {
   margin: 0; padding: 10px 14px;
   border-radius: 18px 18px 18px 4px;

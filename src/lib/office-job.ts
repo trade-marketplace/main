@@ -67,6 +67,7 @@ export type MessageView = {
   /** True for the office's own messages (shown on the right). */
   fromOffice: boolean;
   body: string;
+  photos?: { id: string; url: string | null }[];
   at: string;
   when: string;
 };

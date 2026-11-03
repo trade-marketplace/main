@@ -10,19 +10,21 @@ import { isAppRole } from "@/components/app/app-links";
 import { DatabaseNotConfiguredError, getDb } from "@/server/db";
 import type { Viewer } from "@/server/auth/viewer";
 import { paymentsInTestMode as stripeTestMode } from "@/server/payments/stripe";
+import { unreadProblemThreadCount } from "@/server/messages/service";
 
-export type ShellExtras = { lastName: string | null; unreadNotifications: number };
+export type ShellExtras = { lastName: string | null; unreadNotifications: number; unreadMessages?: number };
 
 /** Where the extras come from. Swapped for a fake in tests, so no test talks to a database. */
 export type ShellSources = { findExtras: (userId: string) => Promise<ShellExtras | null> };
 
-/** One query: the last name and the unread count (the notifications' partial index covers the count). */
+/** The name and notification count, alongside unread shared problem threads for this current participant. */
 export async function findShellExtras(userId: string): Promise<ShellExtras | null> {
-  const row = await getDb().profile.findUnique({
+  const db = getDb();
+  const [row, unreadMessages] = await Promise.all([db.profile.findUnique({
     where: { id: userId },
     select: { lastName: true, _count: { select: { notifications: { where: { readAt: null } } } } },
-  });
-  return row ? { lastName: row.lastName, unreadNotifications: row._count.notifications } : null;
+  }), unreadProblemThreadCount(db, userId)]);
+  return row ? { lastName: row.lastName, unreadNotifications: row._count.notifications, unreadMessages } : null;
 }
 
 /**
@@ -46,7 +48,7 @@ export async function loadShellViewer(viewer: Viewer | null, sources: ShellSourc
     lastName: extras?.lastName ?? null,
     email: viewer.email,
     emailVerified: viewer.emailVerified,
-    counts: { notifications: extras?.unreadNotifications ?? 0, messages: 0 },
+    counts: { notifications: extras?.unreadNotifications ?? 0, messages: extras?.unreadMessages ?? 0 },
   };
 }
 
