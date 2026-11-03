@@ -60,10 +60,11 @@ describe.skipIf(!testDatabaseUrl)("office queues with real PostgreSQL", () => {
   });
 
   it("resets unclaimed age on a recent BOOKABLE re-entry and ignores a retained/closed assignment", async () => {
-    const old = await fixture("BOOKABLE", 49), recent = await fixture("BOOKABLE", 1), cancelled = await fixture("CANCELLED", 80);
+    const old = await fixture("BOOKABLE", 49), oldest = await fixture("BOOKABLE", 55), recent = await fixture("BOOKABLE", 1), cancelled = await fixture("CANCELLED", 80);
+    for (const [job, suburb] of [[old.job, "Waverley"], [oldest.job, "Richmond"], [recent.job, "Otatara"], [cancelled.job, "Bluff"]] as const) await schema.db.job.update({ where: { id: job.id }, data: { suburb } });
     const data = await readOfficeQueues(schema.db, old.office, parseQueueQuery({ tab: "unclaimed" }), NOW);
-    expect(data.kpis.unclaimed.count).toBe(1);
-    expect(data.rows.map(row => row.jobId)).toEqual([old.job.id]);
+    expect(data.kpis.unclaimed).toMatchObject({ count: 2, detail: "Richmond", oldestAt: ago(55).toISOString(), overdue: true });
+    expect(data.rows.map(row => row.jobId)).toEqual([oldest.job.id, old.job.id]);
     expect(data.rows).not.toContainEqual(expect.objectContaining({ jobId: recent.job.id }));
     expect(data.rows).not.toContainEqual(expect.objectContaining({ jobId: cancelled.job.id }));
     await clearJobs();

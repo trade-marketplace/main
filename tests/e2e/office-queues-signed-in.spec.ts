@@ -31,7 +31,7 @@ test.describe("office queues against signed-in routes and PostgreSQL", () => {
     const states = ["REVIEW", "REVIEW", "ASSIGNED", "CANCEL_REVIEW", "SUBMITTED", "BOOKABLE", "PRICED", "ASSIGNED"];
     for (let index = 0; index < jobs.length; index++) {
       const status = states[index], claimed = ["ASSIGNED", "SUBMITTED", "CANCEL_REVIEW"].includes(status);
-      await db.query("INSERT INTO jobs(id,customer_id,worker_id,category,title,description,address_line1,suburb,city,status,price_cents) VALUES($1,$2,$3,'OTHER',$4,'Queue browser fixture','1 Private Fixture Street','Windsor','Invercargill',$5,$6)", [jobs[index], customer.id, claimed ? worker.id : null, `Queue fixture ${index}`, status, status === "REVIEW" ? null : 12000]);
+      await db.query("INSERT INTO jobs(id,customer_id,worker_id,category,title,description,address_line1,suburb,city,status,price_cents) VALUES($1,$2,$3,'OTHER',$4,'Queue browser fixture','1 Private Fixture Street',$7,'Invercargill',$5,$6)", [jobs[index], customer.id, claimed ? worker.id : null, `Queue fixture ${index}`, status, status === "REVIEW" ? null : 12000, index === 5 ? "Richmond" : "Windsor"]);
       // Historical status entries are fixture data in this disposable DB; the app clock is never overridden.
       const hours = index === 0 ? 26 : index === 5 ? 55 : 3;
       await db.query("UPDATE job_status_history SET created_at=now()-($2 * interval '1 hour') WHERE job_id=$1", [jobs[index], hours]);
@@ -56,6 +56,7 @@ test.describe("office queues against signed-in routes and PostgreSQL", () => {
   test("real counts, urgent order, pricing-dialog handoff and Back, each existing action destination", async ({ page }) => {
     test.setTimeout(120_000); await signIn(page); await page.goto(`${app}/admin`);
     await expect(page.getByRole("heading", { name: "Today", exact: true })).toBeVisible();
+    await expect(page.getByRole("group", { name: "Queue totals", exact: true }).getByRole("button", { name: "Unclaimed > 48h 1 Richmond", exact: true })).toBeVisible();
     await expect(page.getByRole("tab", { name: "To price (2)", exact: true })).toBeVisible();
     await expect(page.getByRole("link", { name: "Queues, 7 waiting", exact: true })).toBeVisible();
     await expect(page.getByRole("link", { name: "Tradies, 1 waiting", exact: true })).toBeVisible();
@@ -98,6 +99,7 @@ test.describe("office queues against signed-in routes and PostgreSQL", () => {
   });
   test("390px actual route fits and passes axe, offline input stays and network actions disable", async ({ page, context }) => {
     await signIn(page); await page.setViewportSize({ width: 390, height: 844 }); await page.goto(`${app}/admin`);
+    await expect(page.getByRole("group", { name: "Queue totals", exact: true }).getByRole("button", { name: "Unclaimed > 48h 1 Richmond", exact: true })).toBeVisible();
     await expectNoA11yViolations(page);
     expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
     const search = page.getByRole("searchbox", { name: "Search jobs and people", exact: true });
