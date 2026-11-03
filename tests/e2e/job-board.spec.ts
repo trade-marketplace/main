@@ -190,6 +190,39 @@ test.describe("signed-in eligible board", () => {
     await expect(allJobs).toHaveAttribute("aria-current", "page"); await expect(page.locator("#board-cards")).not.toContainText("Filters on");
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true); await expectNoA11yViolations(page);
   });
+  test("offline Saved/filter changes hide stale cards and reconnect loads the current selection", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 900 }); await login(page);
+    await page.getByRole("button", { name: "Save Board job 1", exact: true }).click();
+    await expect(page.getByRole("button", { name: "Save Board job 1", exact: true })).toHaveAttribute("aria-pressed", "true");
+    await page.getByRole("button", { name: "Filters", exact: true }).click();
+    await page.getByRole("checkbox", { name: /^Saved/ }).check();
+    await expect(page.locator("#board-cards article")).toHaveCount(1);
+    let offlinePosts = 0;
+    const requested = (request: import("@playwright/test").Request) => { if (request.method() === "POST" && new URL(request.url()).pathname === "/jobs") offlinePosts++; };
+    await page.context().setOffline(true); page.on("request", requested);
+    try {
+      // The unchanged snapshot remains useful until a data selection no longer matches it.
+      await expect(page.getByRole("link", { name: "Board job 1", exact: true })).toBeVisible();
+      await page.getByRole("button", { name: "Save Board job 1", exact: true }).click();
+      await expect(page.locator("#board-cards article")).toHaveCount(0);
+      await expect(page.getByRole("heading", { name: "Can’t load your jobs", exact: true })).toBeVisible();
+      await expect(page.getByRole("checkbox", { name: "Saved", exact: true })).toBeChecked();
+      await expect(page.getByRole("tab", { name: "All jobs", exact: true })).toBeVisible();
+      await page.getByRole("checkbox", { name: "Saved", exact: true }).uncheck();
+      await page.getByLabel("Distance", { exact: true }).selectOption("10");
+      await page.getByRole("tab", { name: "Ready to claim", exact: true }).click();
+      await expect(page).toHaveURL(/kind=ready&distance=10/);
+      await expect(page.getByLabel("Distance", { exact: true })).toHaveValue("10");
+      await expect(page.locator("#board-cards article")).toHaveCount(0);
+      await expect(page.getByRole("heading", { name: "Can’t load your jobs", exact: true })).toBeVisible();
+      await expectNoA11yViolations(page); expect(offlinePosts).toBe(0);
+    } finally { page.off("request", requested); await page.context().setOffline(false); }
+    await expect(page.getByRole("link", { name: "Board job 3", exact: true })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Board job 1", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Can’t load your jobs", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("tab", { name: /^Ready to claim/ })).toHaveAttribute("aria-selected", "true");
+    await expectNoA11yViolations(page);
+  });
   test("failed browser storage never pretends to save a bookmark", async ({ page }) => {
     await page.addInitScript(() => { const write = Storage.prototype.setItem; Storage.prototype.setItem = function(key, value) { if (key.startsWith("trade.jobs.saved.")) throw Error("quota"); return write.call(this, key, value); }; });
     await login(page); await page.getByRole("button", { name: "Save Board job 1", exact: true }).click();

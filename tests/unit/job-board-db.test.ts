@@ -114,6 +114,22 @@ describe.skipIf(!testDatabaseUrl)("eligible job board real PostgreSQL reader", (
     expect(boardOf(await loadJobBoard(schema.db, actor, { ...DEFAULT_BOARD_QUERY, saved: true }, { savedIds: [c.id] }, deps())).cards[0].id).toBe(c.id);
   });
 
+  it("bounds polling by updatedAt before fetching candidates or looking up their estimates", async () => {
+    const actor = await worker(), old = await job(), since = new Date(NOW.getTime() - 30_000);
+    const fresh = await job({ at: new Date(NOW.getTime() - 10_000) });
+    const scans = vi.spyOn(schema.db.job, "findMany"), estimates = vi.spyOn(schema.db.estimate, "findMany");
+    try {
+      expect(await newBoardJobs(schema.db, actor, DEFAULT_BOARD_QUERY, { since: since.toISOString(), knownIds: [], savedIds: [] }, deps())).toEqual({ ok: true, count: 1 });
+      expect(scans).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ updatedAt: { lte: NOW, gt: since } }) }));
+      expect(estimates).toHaveBeenCalledTimes(1);
+      expect(estimates.mock.calls[0][0]).toMatchObject({ where: { jobId: { in: [fresh.id] } } });
+      expect(estimates.mock.calls[0][0]).not.toMatchObject({ where: { jobId: { in: expect.arrayContaining([old.id]) } } });
+      scans.mockClear(); estimates.mockClear();
+      expect(await newBoardJobs(schema.db, actor, DEFAULT_BOARD_QUERY, { since: NOW.toISOString(), knownIds: [], savedIds: [] }, deps())).toEqual({ ok: true, count: 0 });
+      expect(scans).toHaveBeenCalledTimes(1); expect(estimates).not.toHaveBeenCalled();
+    } finally { scans.mockRestore(); estimates.mockRestore(); }
+  });
+
   it("labels the matching current-week window after Auckland Monday starts, retaining same-day morning availability", async () => {
     const actor = await worker(), current = await job({ anyTime: false }), expired = await job({ anyTime: false }), today = await job({ anyTime: false });
     await schema.db.jobTimeWindow.createMany({ data: [

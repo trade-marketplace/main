@@ -41,7 +41,7 @@ function scopeFor(worker: EligibilityWorker, query: BoardQuery, enabled: readonl
 }
 
 /** Scan narrow server-only candidates in bounded batches. No early cap may turn an ineligible first page into empty. */
-async function candidatesFor(db: PrismaClient, viewer: JobViewer, worker: EligibilityWorker, query: BoardQuery, meta: BoardMeta, enabled: Trade[], before: Date, now: Date): Promise<Candidate[]> {
+async function candidatesFor(db: PrismaClient, viewer: JobViewer, worker: EligibilityWorker, query: BoardQuery, meta: BoardMeta, enabled: Trade[], before: Date, now: Date, since?: Date): Promise<Candidate[]> {
   const area = worker.workerProfile!;
   const centre = { lat: area.areaLat!, lng: area.areaLng! };
   const allowed = meta.trades.filter(trade => trade.allowed && (query.trades === null || query.trades.includes(trade.trade))).map(trade => trade.trade);
@@ -53,7 +53,7 @@ async function candidatesFor(db: PrismaClient, viewer: JobViewer, worker: Eligib
   const candidates: Candidate[] = [];
   for (;;) {
     const rows = await db.job.findMany({ where: { status: { in: ["REVIEW", "QUOTE_BOUNTY", "BOOKABLE"] }, workerId: null, customerId: { not: viewer.userId }, category: { in: allowed },
-      updatedAt: { lte: before }, approxLat: { gte: centre.lat - latitudeSpan, lte: centre.lat + latitudeSpan }, approxLng: { gte: centre.lng - longitudeSpan, lte: centre.lng + longitudeSpan },
+      updatedAt: { lte: before, ...(since ? { gt: since } : {}) }, approxLat: { gte: centre.lat - latitudeSpan, lte: centre.lat + latitudeSpan }, approxLng: { gte: centre.lng - longitudeSpan, lte: centre.lng + longitudeSpan },
       ...(after ? { id: { gt: after } } : {}), ...whereWhen(query, now) }, select: JOB_LIST_SELECT, orderBy: { id: "asc" }, take: SCAN_PAGE_SIZE });
     if (!rows.length) break;
     const ids = new Set(eligibleJobsFor(worker, rows, { now, enabledTrades: enabled }));
@@ -157,9 +157,9 @@ export async function newBoardJobs(db: PrismaClient, viewer: JobViewer, query: B
     const settings = await db.settings.findUnique({ where: { id: 1 }, select: { enabledTrades: true } });
     const enabled = settings?.enabledTrades ?? [...BOARD_TRADES], meta = metaFor(worker, query, enabled, now);
     if (meta.blocked) return { ok: true, count: 0 };
-    // Count all matching safe candidates, not just the first page; no detail rows or file URLs are fetched.
-    const candidates = await candidatesFor(db, viewer, worker, query, meta, enabled, now, now);
+    // Scan only recently changed matching candidates; no detail rows or file URLs are fetched.
+    const candidates = await candidatesFor(db, viewer, worker, query, meta, enabled, now, now, new Date(since));
     const { rows } = countsAndRows(candidates, query, request.savedIds), known = new Set(request.knownIds);
-    return { ok: true, count: rows.filter(row => Date.parse(row.updatedAt) > since && !known.has(row.id)).length };
+    return { ok: true, count: rows.filter(row => !known.has(row.id)).length };
   } catch { console.error("Job board updates unavailable."); return { ok: false, error: "unavailable" }; }
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { afterBoardCursor, BoardUpdateRequests, boardAlertsRoute, boardAvailabilityWindow, boardCardTag, boardHref, boardJobHref, boardQuerySchema, boardReturn, boardToday, boardWeek, compareBoardJobs, decodeBoardCursor, DEFAULT_BOARD_QUERY, encodeBoardCursor, matchesBoardKind, parseBoardQuery, parseSavedJobs, savedJobsKey, type BoardUpdates, type SortableBoardJob } from "@/lib/job-board";
+import { afterBoardCursor, BoardUpdateRequests, boardAlertsRoute, boardAvailabilityWindow, boardCardTag, boardHref, boardJobHref, boardQuerySchema, boardReturn, boardSelectionKey, boardToday, boardWeek, compareBoardJobs, decodeBoardCursor, DEFAULT_BOARD_QUERY, encodeBoardCursor, matchesBoardKind, parseBoardQuery, parseSavedJobs, savedJobsKey, type BoardUpdates, type SortableBoardJob } from "@/lib/job-board";
 import { BOTTOM_NAV, currentLink } from "@/components/app/app-links";
 
 const first = "13800000-0000-4000-8000-000000000001", second = "13800000-0000-4000-8000-000000000002";
@@ -52,6 +52,14 @@ describe("job board URL and safe client rules", () => {
     expect(parseBoardQuery(new URLSearchParams("view=grid"))).toEqual(DEFAULT_BOARD_QUERY);
     expect(parseBoardQuery(new URLSearchParams("view=wrong&layout=wrong"))).toEqual(DEFAULT_BOARD_QUERY);
     expect(parseBoardQuery(new URLSearchParams("view=all&layout=wrong"))).toMatchObject({ entry: "all", view: "grid" });
+  });
+  it("invalidates cached selections for filters or Saved changes while ignoring presentation and bookmark ordering", () => {
+    const snapshot = boardSelectionKey(DEFAULT_BOARD_QUERY, [first, second]);
+    expect(boardSelectionKey({ ...DEFAULT_BOARD_QUERY, entry: "all", view: "map" }, [second, first, first])).toBe(snapshot);
+    for (const patch of [{ kind: "ready" as const }, { distance: 10 }, { saved: true }, { when: ["asap" as const] }]) {
+      expect(boardSelectionKey({ ...DEFAULT_BOARD_QUERY, ...patch }, [first, second])).not.toBe(snapshot);
+    }
+    expect(boardSelectionKey(DEFAULT_BOARD_QUERY, [second])).not.toBe(snapshot);
   });
   it("fails closed for malformed return markers and keeps the canonical marker in a detail login destination", () => {
     expect(boardReturn(["/jobs", "/jobs"], ["all", "map"])).toBe("/jobs");

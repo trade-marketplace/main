@@ -14,7 +14,7 @@ import { ErrorState, InlineError } from "@/components/feedback/ErrorState";
 import { LoadingRegion } from "@/components/feedback/LoadingRegion";
 import { OfflineBanner, useOnlineStatus } from "@/components/feedback/OfflineBanner";
 import { Skeleton } from "@/components/feedback/Skeleton";
-import { BOARD_TRADES, BOARD_WHEN, BoardUpdateRequests, boardAlertsRoute, boardCardTag, boardHref, boardJobHref, DEFAULT_BOARD_QUERY, parseBoardQuery, parseSavedJobs, savedJobsKey,
+import { BOARD_TRADES, BOARD_WHEN, BoardUpdateRequests, boardAlertsRoute, boardCardTag, boardHref, boardJobHref, boardSelectionKey, DEFAULT_BOARD_QUERY, parseBoardQuery, parseSavedJobs, savedJobsKey,
   type BoardKind, type BoardPage, type BoardQuery, type BoardResult, type BoardSource } from "@/lib/job-board";
 import { loadJobBoardAction, newBoardJobsAction } from "@/server/jobs/board-actions";
 import styles from "./board.module.css";
@@ -41,11 +41,14 @@ export function JobBoard({ initial, ownerId, source = LIVE_SOURCE, previewState,
   const [storageError, setStorageError] = useState(previewState === "storage-error"), [busy, setBusy] = useState(previewState === "loading"), [more, setMore] = useState(previewState === "loading-more");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [error, setError] = useState(false), [newCount, setNewCount] = useState(previewState === "new-jobs" ? 3 : 0);
+  const [loadedSelection, setLoadedSelection] = useState(() => boardSelectionKey(urlQuery, initialSaved));
   const generation = useRef(0), pending = useRef(false), sentinel = useRef<HTMLDivElement>(null), boardRef = useRef<BoardPage | null>(initial.ok ? initial.board : null), lastQuery = useRef(key);
   const [updates] = useState(() => new BoardUpdateRequests());
   const savedRef = useRef(saved), queryRef = useRef(query);
-  const board = result.ok ? result.board : null;
-  useEffect(() => { savedRef.current = saved; queryRef.current = query; boardRef.current = board; }, [saved, query, board]);
+  const cachedBoard = result.ok ? result.board : null;
+  const offlineChanged = !online && loadedSelection !== boardSelectionKey(query, saved);
+  const board = offlineChanged ? null : cachedBoard;
+  useEffect(() => { savedRef.current = saved; queryRef.current = query; boardRef.current = cachedBoard; }, [saved, query, cachedBoard]);
   const extra = new URLSearchParams(search); for (const name of ["kind", "trade", "distance", "when", "sort", "saved", "estimated", "view", "layout"]) extra.delete(name);
   const href = (next: BoardQuery) => boardHref(next, pathname, extra.toString());
   const update = (patch: Partial<BoardQuery>) => { const next = { ...query, ...patch }; updates.invalidate(); setQuery(next); window.history.pushState(null, "", href(next)); };
@@ -61,15 +64,16 @@ export function JobBoard({ initial, ownerId, source = LIVE_SOURCE, previewState,
 
   const load = useCallback(async function loadPage(append = false, quiet = false) {
     if (!online || pending.current || previewState === "loading" || previewState === "loading-more") return;
-    const snapshot = boardRef.current, round = ++generation.current, current = queryRef.current;
+    const snapshot = boardRef.current, round = ++generation.current, current = queryRef.current, currentSaved = savedRef.current;
     updates.invalidate();
     pending.current = true; setError(false); if (append) setMore(true); else if (!quiet) setBusy(true);
     try {
-      const answer = await source.load(current, { savedIds: savedRef.current, ...(append && snapshot ? { cursor: snapshot.nextCursor, before: snapshot.before } : {}) });
+      const answer = await source.load(current, { savedIds: currentSaved, ...(append && snapshot ? { cursor: snapshot.nextCursor, before: snapshot.before } : {}) });
       if (round !== generation.current) return;
       if (session?.check(answer, { resend: () => loadPage(false) })) return;
       if (!answer.ok && answer.error === "changed" && append) { pending.current = false; void loadPage(false); return; }
       if (answer.ok) {
+        setLoadedSelection(boardSelectionKey(current, currentSaved));
         const ids = new Set(snapshot?.cards.map(card => card.id));
         setResult({ ok: true, board: append && snapshot ? { ...answer.board, cards: [...snapshot.cards, ...answer.board.cards.filter(card => !ids.has(card.id))] } : answer.board });
         if (!append && previewState !== "new-jobs") setNewCount(0);
@@ -81,11 +85,12 @@ export function JobBoard({ initial, ownerId, source = LIVE_SOURCE, previewState,
   const savedKey = saved.join(",");
   useEffect(() => {
     generation.current++; pending.current = false; updates.invalidate();
-    const quiet = lastQuery.current === key; lastQuery.current = key;
-    if (hydrated) void load(false, quiet);
+    const quiet = lastQuery.current === key; lastQuery.current = online ? key : "";
+    if (!online) { setBusy(false); setMore(false); setNewCount(0); }
+    else if (hydrated) void load(false, quiet);
     const cancel = () => { generation.current++; pending.current = false; updates.invalidate(); };
     return cancel;
-  }, [key, savedKey, hydrated, load, updates]);
+  }, [key, savedKey, hydrated, online, load, updates]);
 
   useEffect(() => {
     if (!online || previewState || !hydrated) return;
@@ -115,7 +120,8 @@ export function JobBoard({ initial, ownerId, source = LIVE_SOURCE, previewState,
     try { const value = JSON.stringify(next); parseSavedJobs(value); if (!previewState) localStorage.setItem(savedJobsKey(ownerId), value); updates.invalidate(); setSaved(next); setStorageError(false); }
     catch { setStorageError(true); }
   };
-  const meta = board?.meta ?? (initial.ok ? initial.board.meta : null);
+  const cachedMeta = cachedBoard?.meta ?? (initial.ok ? initial.board.meta : null);
+  const meta = offlineChanged && cachedMeta ? { ...cachedMeta, distanceKm: Math.min(query.distance ?? 25, cachedMeta.maxDistanceKm) } : cachedMeta;
   const returnTo = boardHref(query);
   const contact = `/contact?next=${encodeURIComponent(returnTo)}`;
   const alerts = boardAlertsRoute(returnTo).href;
@@ -151,7 +157,8 @@ export function JobBoard({ initial, ownerId, source = LIVE_SOURCE, previewState,
         {error && <InlineError message="Can’t load your jobs. Check your connection and try again." onRetry={() => load()} />}
         {newCount > 0 && <div className={styles.newJobs}><Button size="sm" onClick={() => load()} disabled={!online ? "You’re offline" : busy}>{newCount} new {newCount === 1 ? "job" : "jobs"}</Button></div>}
         <div id="board-cards"><LoadingRegion loading={busy || !hydrated} label="Loading your jobs" skeleton={<BoardSkeleton />}>
-          {!result.ok ? <ErrorState className={styles.empty} title={result.error === "forbidden" ? "Trade account required" : "Can’t load your jobs"} message="Check your connection and try again." onRetry={() => load()} />
+          {offlineChanged ? <ErrorState className={styles.empty} title="Can’t load your jobs" message="Check your connection and try again." onRetry={() => load()} />
+            : !result.ok ? <ErrorState className={styles.empty} title={result.error === "forbidden" ? "Trade account required" : "Can’t load your jobs"} message="Check your connection and try again." onRetry={() => load()} />
             : meta?.blocked ? <EmptyState className={styles.empty} icon="verified_user" title={meta.blocked === "worker-paused" ? "Your account is paused" : meta.blocked === "work-area-required" ? "Set your work area" : "Get verified to see jobs"}
               message={meta.blocked === "email-required" ? "Confirm your email to continue." : meta.blocked === "worker-paused" ? "Contact us to get back to work." : meta.blocked === "work-area-required" ? "Contact us to set the area you work in." : "We need to check your ID before you can see jobs."}
               action={<Button href={contact}>Contact us</Button>} />

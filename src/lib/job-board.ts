@@ -47,6 +47,10 @@ export function boardHref(query: BoardQuery, base = "/jobs", extra = ""): string
   else if (query.view !== "grid") params.set("view", query.view);
   return `${base}${params.size ? `?${params}` : ""}`;
 }
+/** Identify the data behind cached results independently of navigation/layout or bookmark ordering. */
+export function boardSelectionKey(query: BoardQuery, savedIds: readonly string[]): string {
+  return JSON.stringify([boardHref({ ...query, entry: "find-work", view: "grid" }), [...new Set(savedIds)].sort()]);
+}
 export function boardReturn(value: unknown, entry?: unknown): string {
   const fallback = entry === "all" ? "/jobs?view=all" : "/jobs";
   if (typeof value !== "string" || value.length > 4096 || !value.startsWith("/jobs")) return fallback;
