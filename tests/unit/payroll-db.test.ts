@@ -36,11 +36,28 @@ describe.skipIf(!testDatabaseUrl)("private payroll save in Postgres", () => {
     for (const privateText of [input.bankAccount, input.irdNumber, input.currentPassword, row.bankAccountEncrypted!, row.irdNumberEncrypted!]) expect(JSON.stringify([result, audits])).not.toContain(privateText);
     expect(await loadPayroll(schema.db, id, env)).toEqual(result.ok ? result.summary : null);
   });
-  it("keeps legacy approved3% and selectable4%, and supports unenrolled without changing a saved choice", async () => {
+  it("supports standard elections and unenrolled without automatically changing a saved choice", async () => {
     const { id, deps } = await person();
-    for (const rate of ["3", "4", "none", "3.5"]) {
+    for (const rate of ["4", "none", "3.5"]) {
       expect(await savePayroll(schema.db, deps, id, { ...input, kiwiSaverRate: rate }, { env, rateLimit: allowed })).toMatchObject({ ok: true, summary: { kiwiSaverRatePct: rate === "none" ? null : Number(rate) } });
     }
+  });
+  it("preserves a legacy3% election but holds readiness until the worker chooses a supported standard rate", async () => {
+    const { id, deps } = await person();
+    await savePayroll(schema.db, deps, id, input, { env, rateLimit: allowed });
+    await schema.db.payrollDetails.update({ where: { userId: id }, data: { kiwiSaverRatePct: 3 } });
+    expect(await loadPayroll(schema.db, id, env)).toMatchObject({ saved: true, complete: false, review: ["kiwisaver"], kiwiSaverRatePct: 3 });
+    expect(await savePayroll(schema.db, deps, id, { ...input, kiwiSaverRate: "3" }, { env, rateLimit: allowed })).toMatchObject({ ok: false, error: "invalid" });
+    expect(Number((await schema.db.payrollDetails.findUniqueOrThrow({ where: { userId: id } })).kiwiSaverRatePct)).toBe(3);
+    expect(await savePayroll(schema.db, deps, id, input, { env, rateLimit: allowed })).toMatchObject({ ok: true, summary: { complete: true, review: [], kiwiSaverRatePct: 3.5 } });
+  });
+  it.each(["STC", "NSW", "UNKNOWN"])("holds preserved%s until certificate/eligibility review instead of treating it as payroll-ready", async taxCode => {
+    const { id, deps } = await person();
+    await savePayroll(schema.db, deps, id, input, { env, rateLimit: allowed });
+    await schema.db.payrollDetails.update({ where: { userId: id }, data: { taxCode } });
+    const result = await loadPayroll(schema.db, id, env);
+    expect(result).toMatchObject({ saved: true, complete: false, review: ["tax-code"], taxCode });
+    expect(JSON.stringify(result)).not.toMatch(/49091850|01-0902-0068389-00/);
   });
   it("refuses missing/malformed keys without touching auth or the database", async () => {
     const { id, deps } = await person();

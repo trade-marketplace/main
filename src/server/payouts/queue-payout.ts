@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { Prisma } from "@/generated/prisma/client";
+import { payrollReviewReasons } from "@/lib/payroll";
 
 import { calculatePayout } from "./calculate";
 import { createNotify } from "@/server/notifications/notify";
@@ -12,12 +13,12 @@ import { createNotify } from "@/server/notifications/notify";
 //   pays twice and never rewrites a payout that has already gone to payroll.
 // - Amounts come from the job's frozen `job_pricing` (rate, holiday pay %, billed minutes) plus APPROVED extra
 //   work, so a later change to settings never changes what was agreed.
-// - Status is QUEUED. Payroll export (a later issue) picks up QUEUED payouts.
+// - Status is QUEUED. Payroll export must require checkPayrollDetails(...).complete before sending it.
 
 /** The three things payroll needs before it can pay someone. */
 export type PayrollDetailsCheck = {
   complete: boolean;
-  missing: ("ird" | "bank" | "taxCode")[];
+  missing: ("ird" | "bank" | "taxCode" | "review")[];
 };
 
 export type QueuePayoutResult =
@@ -37,12 +38,14 @@ export function checkPayrollDetails(
     irdNumberEncrypted: string | null;
     bankAccountEncrypted: string | null;
     taxCode: string | null;
+    kiwiSaverRatePct?: unknown;
   } | null,
 ): PayrollDetailsCheck {
   const missing: PayrollDetailsCheck["missing"] = [];
   if (!details?.irdNumberEncrypted) missing.push("ird");
   if (!details?.bankAccountEncrypted) missing.push("bank");
   if (!details?.taxCode?.trim()) missing.push("taxCode");
+  if (payrollReviewReasons(details).length) missing.push("review");
   return { complete: missing.length === 0, missing };
 }
 
@@ -97,11 +100,12 @@ export async function queuePayoutForJob(tx: Prisma.TransactionClient, jobId: str
       irdNumberEncrypted: true,
       bankAccountEncrypted: true,
       taxCode: true,
+      kiwiSaverRatePct: true,
     },
   });
   const payrollDetails = checkPayrollDetails(details);
   if (!payrollDetails.complete) await createNotify(tx)("payout.details_missing", [workerId], {
-    eventId: `payout.details_missing:${payout.id}`, payload: { payoutId: payout.id },
+    eventId: `payout.details_missing:${payout.id}`, payload: { payoutId: payout.id, ...(payrollDetails.missing.includes("review") ? { needsPayrollReview: true } : {}) },
   });
   return {
     queued: true,
