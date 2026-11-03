@@ -9,6 +9,7 @@
 // Public pages show the first name and initial only, no phone, email or exact location (WEBAPP_SPEC A12): pass
 // what may be shown. Badge wording must match what the office actually checked ("Licence checked", never
 // "Certified"). On a computer (320px wide and up) the avatar and name are bigger.
+import { VerifiedBadge, type VerifiedBadgeProps } from "@/components/status/VerifiedBadge";
 import type { ReactNode } from "react";
 
 import { initials } from "@/lib/cards";
@@ -24,6 +25,8 @@ export type ProfileCardProps = {
   photo?: string | null;
   /** Kit pills for what's been checked. */
   badges?: ReactNode;
+  /** The server computed this for the advertised trade; no raw contact/identity proofs reach the browser. */
+  verification?: VerifiedBadgeProps;
   stats?: StatStripProps["items"];
   /** card: white with the card shadow (desktop sidebar). plain (default): straight on the page (phone). */
   variant?: "plain" | "card";
@@ -32,7 +35,7 @@ export type ProfileCardProps = {
   className?: string;
 };
 
-export function ProfileCard({ name, meta, photo, badges, stats, variant = "plain", headingLevel = 1, className }: ProfileCardProps) {
+export function ProfileCard({ name, meta, photo, badges, verification, stats, variant = "plain", headingLevel = 1, className }: ProfileCardProps) {
   const Heading = `h${headingLevel}` as const;
   return (
     <section className={[styles.profile, className].filter(Boolean).join(" ")} data-variant={variant} aria-label={name}>
@@ -46,7 +49,7 @@ export function ProfileCard({ name, meta, photo, badges, stats, variant = "plain
       </span>
       <Heading className={styles.profileName}>{name}</Heading>
       {meta && <p className={styles.profileMeta}>{meta}</p>}
-      {badges && <div className={styles.profileBadges}>{badges}</div>}
+      {(badges || verification?.verified) && <div className={styles.profileBadges}>{verification && <VerifiedBadge {...verification} />}{badges}</div>}
       {stats && stats.length > 0 && <StatStrip items={stats} />}
     </section>
   );

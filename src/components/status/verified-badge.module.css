@@ -1,0 +1,2 @@
+.badge { display: inline-flex; align-items: center; gap: var(--trade-space-1); min-height: var(--trade-space-6); padding-inline: var(--trade-space-2); border-radius: var(--trade-radius-pill); background: var(--trade-success-bg); color: var(--trade-success); font-size: var(--trade-fs-caption); font-weight: 700; line-height: var(--trade-lh-caption); }
+.icon { font-size: var(--trade-fs-small); }

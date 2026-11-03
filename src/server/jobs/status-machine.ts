@@ -2,7 +2,9 @@ import "server-only";
 
 import type { JobStatus, Prisma, PrismaClient, Role, Trade } from "@/generated/prisma/client";
 import { queuePayoutForJob } from "@/server/payouts/queue-payout";
-import { licenceToday } from "@/lib/account/trades";
+import { eligibilityFailure, JOB_ELIGIBILITY_SELECT, WORKER_ELIGIBILITY_SELECT, type EligibilityFailure } from "@/server/workers/eligibility";
+import { hasCurrentTradeLicence } from "@/server/workers/verification";
+import { lockEligibilityRows } from "@/server/workers/eligibility-mutations";
 
 // The job status machine (#93): the one place a job's status changes. Each transition says which statuses it
 // starts from, who may trigger it (customer / worker / office / system) and what must be true first. It runs in
@@ -123,11 +125,13 @@ export type JobTransitionErrorCode =
   | "conflict";
 
 export type PreconditionFailure =
+  | EligibilityFailure
   | "reason-required"
   | "not-priced"
   | "not-paid"
   | "licence-required"
   | "trade-unavailable"
+  | "worker-paused"
   | "own-job"
   | "evidence-not-sent"
   | "extra-work-open"
@@ -219,6 +223,8 @@ export type JobFacts = {
   /** The acting worker has a VERIFIED, unexpired licence for the job's trade. */
   workerLicensed?: boolean;
   tradeEnabled?: boolean;
+  workerPaused?: boolean;
+  workerEligibilityFailure?: EligibilityFailure | null;
   /** When the evidence was sent (completion_evidence.submitted_at). */
   evidenceSentAt?: Date | null;
   /** Extra work waiting on the office or the customer (REQUESTED or PRICED). */
@@ -313,9 +319,11 @@ export function decideTransition(job: JobSnapshot, request: TransitionRequest, f
     }
 
     case "claim": {
+      if (facts.workerPaused) throw fail("worker-paused");
       if (facts.tradeEnabled === false) throw fail("trade-unavailable");
       const workerId = actorId(actor) as string;
       if (workerId === job.customerId) throw fail("own-job");
+      if (facts.workerEligibilityFailure) throw fail(facts.workerEligibilityFailure);
       // DECISIONS.md 1: anyone can take Other jobs; restricted work needs a licence first.
       if (job.category !== "OTHER" && !facts.workerLicensed) throw fail("licence-required");
       return plan("ASSIGNED", workerId);
@@ -403,6 +411,7 @@ export type StatusMachineDeps = {
 // ---------------------------------------------------------------- Running it
 
 const JOB_SELECT = {
+  ...JOB_ELIGIBILITY_SELECT,
   id: true,
   jobNumber: true,
   status: true,
@@ -443,6 +452,7 @@ export async function applyTransition(
 ): Promise<JobStatusChange> {
   // Who is acting, for the history trigger and the audit log's default. Local to this transaction.
   await tx.$queryRaw`SELECT set_config('app.actor_id', ${actorId(request.actor) ?? ""}, true)`;
+  if (request.transition === "claim" && request.actor.role === "TRADIE") await lockEligibilityRows(tx, request.actor.userId, request.jobId);
 
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
     const job = await tx.job.findUnique({ where: { id: request.jobId }, select: JOB_SELECT });
@@ -491,7 +501,7 @@ export async function applyTransition(
 }
 
 /** Reads only what the transition's preconditions need. */
-async function loadFacts(tx: Tx, job: JobSnapshot, request: TransitionRequest): Promise<JobFacts> {
+async function loadFacts(tx: Tx, job: Prisma.JobGetPayload<{ select: typeof JOB_SELECT }>, request: TransitionRequest): Promise<JobFacts> {
   const jobId = job.id;
   switch (request.transition) {
     case "send-price":
@@ -509,17 +519,11 @@ async function loadFacts(tx: Tx, job: JobSnapshot, request: TransitionRequest): 
     case "claim": {
       const settings = await tx.settings.findUnique({ where: { id: 1 }, select: { enabledTrades: true } });
       const tradeEnabled = !settings || settings.enabledTrades.includes(job.category);
-      if (request.actor.role === "SYSTEM" || job.category === "OTHER") return { tradeEnabled };
-      const today = new Date(`${licenceToday(request.now ?? new Date())}T00:00:00Z`);
-      const licences = await tx.licence.count({
-        where: {
-          userId: request.actor.userId,
-          trade: job.category,
-          status: "VERIFIED",
-          OR: [{ expiresOn: null }, { expiresOn: { gte: today } }],
-        },
-      });
-      return { workerLicensed: licences > 0, tradeEnabled };
+      const worker = request.actor.role === "SYSTEM" ? null : await tx.profile.findUnique({ where: { id: request.actor.userId }, select: WORKER_ELIGIBILITY_SELECT });
+      const now = request.now ?? new Date();
+      return { tradeEnabled, workerPaused: Boolean(worker?.workerProfile?.pausedAt),
+        workerLicensed: Boolean(worker && hasCurrentTradeLicence(worker, job.category, now)),
+        workerEligibilityFailure: eligibilityFailure(worker, job, "claim", { now, ...(settings ? { enabledTrades: settings.enabledTrades } : {}) }) };
     }
 
     case "submit": {

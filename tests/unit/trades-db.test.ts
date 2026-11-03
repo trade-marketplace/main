@@ -8,7 +8,7 @@ import { tradesRoute } from "@/server/account/trades-route";
 import { createLicenceDocumentUploader } from "@/server/account/licence-documents";
 import type { FileStore } from "@/server/files/storage";
 import { loadTrades, saveTrade } from "@/server/account/trades";
-import { transitionJob, TransitionPreconditionError, type StatusMachineDeps } from "@/server/jobs/status-machine";
+import { transitionJob, type StatusMachineDeps } from "@/server/jobs/status-machine";
 import { licenceExpiryReminder } from "@/server/scheduler/licence-reminders";
 import { testDatabaseUrl, useTestSchema } from "../support/test-db";
 
@@ -110,10 +110,13 @@ describe.skipIf(!testDatabaseUrl)("trades, licences and expiry reminders (Postgr
   });
   it("blocks restricted work after expiry at New Zealand midnight, while Other stays licence-free", async () => {
     const worker = await person(); await reviewed(worker, "2026-11-03");
+    await schema.db.workerProfile.update({ where: { userId: worker }, data: { identityCheckedAt: now, identityCheckedById: await person("ADMIN"),
+      baseSuburb: "Invercargill", areaLat: -46.4132, areaLng: 168.3538, areaRadiusKm: 25 } });
     const customer = await person("CUSTOMER");
-    const job = (category: Trade) => schema.db.job.create({ data: { customerId: customer, category, title: "A test job", description: "A test job requiring work", addressLine1: "1 Test St", suburb: "Windsor", city: "Invercargill", status: "BOOKABLE", priceCents: 10000 } });
+    const job = (category: Trade) => schema.db.job.create({ data: { customerId: customer, category, title: "A test job", description: "A test job requiring work", addressLine1: "1 Test St", suburb: "Windsor", city: "Invercargill", status: "BOOKABLE", priceCents: 10000,
+      lat: -46.4132, lng: 168.3538, approxLat: -46.4117, approxLng: 168.3538 } });
     const deps: StatusMachineDeps = { audit: async () => {}, notify: async () => {} };
-    await expect(transitionJob(schema.db, deps, { jobId: (await job("ELECTRICAL")).id, transition: "claim", actor: { role: "TRADIE", userId: worker }, now })).rejects.toBeInstanceOf(TransitionPreconditionError);
+    await expect(transitionJob(schema.db, deps, { jobId: (await job("ELECTRICAL")).id, transition: "claim", actor: { role: "TRADIE", userId: worker }, now })).rejects.toMatchObject({ failure: "licence-required" });
     expect((await transitionJob(schema.db, deps, { jobId: (await job("OTHER")).id, transition: "claim", actor: { role: "TRADIE", userId: worker }, now })).to).toBe("ASSIGNED");
     await schema.db.licence.update({ where: { userId_trade: { userId: worker, trade: "ELECTRICAL" } }, data: { expiresOn: new Date("2026-11-04") } });
     expect((await transitionJob(schema.db, deps, { jobId: (await job("ELECTRICAL")).id, transition: "claim", actor: { role: "TRADIE", userId: worker }, now })).to).toBe("ASSIGNED");
