@@ -1040,6 +1040,16 @@ model SupportThreadRead {
   @@map("support_thread_reads")
 }
 
+// Durable private-object cleanup intents deliberately outlive jobs/accounts and message transactions.
+model SupportPhotoCleanup {
+  path      String   @id
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  deleting  Boolean  @default(false)
+
+  @@index([createdAt, path])
+  @@map("support_photo_cleanup")
+}
+
 // Who did what to which record, when (F05 timeline, F08 decisions, settings changes). Append-only: rows can't be
 // changed or deleted (checked by the database), and `createdAt` is always the time of the insert. The audit helper
 // (#100) writes it. `actorId` has no foreign key so the history outlives the person; empty means the system (a
