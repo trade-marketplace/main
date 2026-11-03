@@ -5,6 +5,7 @@ vi.mock("@/server/auth/viewer", () => ({ getViewer: vi.fn(async () => null) }));
 vi.mock("@/server/db", () => ({ getDb: vi.fn(() => { throw new Error("Should not access data without a session"); }) }));
 
 import { getDb } from "@/server/db";
+import { getViewer } from "@/server/auth/viewer";
 import { draftPhotoUrlAction, loadDraftAction, postJobAction, saveDraftAction } from "@/server/jobs/actions";
 
 describe("job actions before sign-in", () => {
@@ -18,6 +19,11 @@ describe("job actions before sign-in", () => {
     expect(await saveDraftAction({})).toMatchObject({ ok: false, error: "session-expired" });
     expect(await loadDraftAction()).toMatchObject({ ok: false, error: "session-expired" });
     expect(await draftPhotoUrlAction(randomUUID(), "photo.webp")).toMatchObject({ ok: false, error: "session-expired" });
+    expect(getDb).not.toHaveBeenCalled();
+  });
+  it("refuses a stale wizard after logging in with another customer account", async () => {
+    vi.mocked(getViewer).mockResolvedValueOnce({ userId: "customer-b", email: "b@example.test", firstName: "B", role: "CUSTOMER", emailVerified: true });
+    expect(await saveDraftAction({ description: "Customer A's private job" }, "customer-a")).toEqual({ status: "forbidden" });
     expect(getDb).not.toHaveBeenCalled();
   });
 });
