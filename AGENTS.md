@@ -71,6 +71,11 @@ that claims to be done is worse than none.
   the soft page background, softly rounded fields with a light stroke (tokens `--trade-radius-field`,
   `--trade-field-stroke`), one clear primary action, plain trust lines where money or personal details are involved.
   Reference screens: the checkout (`/pay`, PR #442) and the contact form (`/contact`). Familiar patterns beat novel ones.
+- **Polish bar (every screen, before the PR):** compare your screenshot side by side with the mockup and the
+  reference screens. Only the brand fonts (never a system font: use kit components, or plain controls inherit it).
+  Spacing from the `--trade-space-*` scale, aligned edges, one primary button, no orphan words or cramped wrapping at
+  390, real states (loading skeletons, empty, error, offline) styled as carefully as the happy path. If it doesn't look
+  as good as `/pay`, it isn't done.
 - **Copy:** use the wording in the mockup and the spec. Don't add or remove text on your own; ask Matt if unsure.
 - **No focus boxes after clicks or taps.** Reuse the shared `FocusVisibility` behaviour and `--trade-focus-ring`.
   Keep M05 focus visible for keyboard navigation, including Tab, arrows and focus moved by keyboard interactions.
