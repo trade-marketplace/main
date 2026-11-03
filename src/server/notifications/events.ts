@@ -35,6 +35,7 @@ export const NOTIFICATION_EVENTS = {
   "crew.invited": { channels: ["IN_APP"], description: "A worker was invited to a crew." },
   "licence.verified": { channels: ["IN_APP"], description: "The office verified a licence." },
   "licence.rejected": { channels: ["IN_APP"], description: "The office rejected a licence." },
+  "licence.expiring": { channels: ["IN_APP"], description: "A checked licence expires within 30 days." },
 } as const satisfies Record<string, EventRule>;
 
 export type NotificationEvent = keyof typeof NOTIFICATION_EVENTS;

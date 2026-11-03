@@ -29,6 +29,7 @@ const tradie: readonly PreferenceDefinition[] = [
   { event: "crew.invited", label: "Crew invitation", email: true, push: true },
   { event: "licence.verified", label: "Licence checked", email: true, push: true },
   { event: "licence.rejected", label: "Check your licence", email: true, push: true },
+  { event: "licence.expiring", label: "Licence expiring", email: true, push: false },
 ];
 
 export const preferenceDefinitions = (role: PreferenceRole) => role === "CUSTOMER" ? customer : tradie;
