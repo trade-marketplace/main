@@ -5,6 +5,7 @@ import type { Metadata } from "next";
 
 import { Icon } from "@/components/Icon";
 import { CheckoutPage } from "@/components/payments/Checkout";
+import { PaymentDone } from "@/components/payments/PaymentDone";
 import { PayFormView, type PayState } from "@/components/payments/PayFormView";
 import styles from "@/components/payments/payments.module.css";
 import { guardDevPage } from "@/server/dev-pages";
@@ -64,6 +65,15 @@ function MockWallets() {
 export default async function PayPreview({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   guardDevPage();
   const { state } = await searchParams;
+  if (state === "variation-approved" || state === "variation-checking" || state === "variation-review" || state === "booked") {
+    return <PaymentDone completion={{ jobId: "preview", outcome: state }} />;
+  }
+  if (state === "variation" || state === "variation-succeeded") {
+    const summary = { ...SUMMARY, kind: "VARIATION" as const, variationDescription: "The switchboard’s second circuit is overloaded and needs a new breaker.", amountCents: 14800, gstCents: 1930 };
+    return <CheckoutPage summary={summary} testMode>
+      <PayFormView kind="VARIATION" state={state === "variation" ? "ready" : "succeeded"} amountCents={summary.amountCents} express={<MockWallets />} expressReady><MockCardFields /></PayFormView>
+    </CheckoutPage>;
+  }
   const shown = STATES.filter((entry) => !state || entry.state === state);
   return (
     <>

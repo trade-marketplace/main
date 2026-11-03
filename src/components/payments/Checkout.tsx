@@ -12,6 +12,8 @@ import { PAY_ACTION_ID } from "@/lib/payments/results";
 import styles from "./payments.module.css";
 
 export type CheckoutSummary = {
+  kind?: "JOB" | "VARIATION" | "QUICK_LOOK";
+  variationDescription?: string | null;
   title: string;
   jobNumber: number;
   suburb: string;
@@ -46,7 +48,7 @@ export function CheckoutPage({ summary, testMode, children }: { summary: Checkou
               Back to job
             </TextLink>
           )}
-          <h1 className={styles.title}>Pay &amp; book</h1>
+          <h1 className={styles.title}>{summary.kind === "VARIATION" ? "Extra work" : "Pay & book"}</h1>
           <div className={styles.card}>{children}</div>
         </div>
         <aside className={`${styles.card} ${styles.summary}`} aria-label="Order summary">
@@ -64,6 +66,10 @@ export function CheckoutPage({ summary, testMode, children }: { summary: Checkou
               </p>
             </div>
           </div>
+          {summary.kind === "VARIATION" && <div className={styles.extraDescription}>
+            <p>Extra cost · fixed · incl. GST</p>
+            {summary.variationDescription && <p>{summary.variationDescription}</p>}
+          </div>}
           <ul className={styles.lines}>
             {summary.gstCents !== null && (
               <>

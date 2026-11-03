@@ -10,6 +10,7 @@ import {
   applyTransition,
 } from "@/server/jobs/status-machine";
 import { createNotify } from "@/server/notifications/notify";
+import { settleVariationPayment } from "./variation-payment";
 
 // What Stripe's webhook events do to our records (#151). The route (src/app/api/stripe/webhook/route.ts) checks the
 // signature; this decides what an event means. Every handler is safe to run twice: Stripe retries, and sends the
@@ -80,6 +81,8 @@ async function onSucceeded(db: PrismaClient, event: Stripe.Event, intent: Stripe
     console.error("Stripe webhook: the amount paid doesn't match the payment.", { payment: found.id, intent: intent.id });
     return "ignored";
   }
+
+  if (found.kind === "VARIATION") return settleVariationPayment(db, found, event, intent);
 
   return db.$transaction(async (tx) => {
     const now = new Date();

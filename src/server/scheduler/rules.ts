@@ -1,4 +1,6 @@
 import "server-only";
+import { variationPhotoCleanup } from "./variation-photo-cleanup";
+import { variationStageCleanup } from "./variation-stage-cleanup";
 
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { JobTransitionError, transitionJob } from "@/server/jobs/status-machine";
@@ -249,4 +251,4 @@ export const reviewReminder: SchedulerRule = {
 };
 
 /** In the order they run. Money-relevant (sign-off) first. */
-export const SCHEDULER_RULES: readonly SchedulerRule[] = [autoSignOff, bountyExpiry, priceSlowBanner, unclaimedAlert, reviewReminder, licenceExpiryReminder, licenceUploadCleanup(), licenceDocumentCleanup(), supportPhotoCleanup(), draftPhotoRawCleanup(), draftPhotoCleanup(), windowExpiry];
+export const SCHEDULER_RULES: readonly SchedulerRule[] = [autoSignOff, bountyExpiry, priceSlowBanner, unclaimedAlert, reviewReminder, licenceExpiryReminder, licenceUploadCleanup(), licenceDocumentCleanup(), supportPhotoCleanup(), draftPhotoRawCleanup(), draftPhotoCleanup(), windowExpiry, variationPhotoCleanup(), variationStageCleanup()];

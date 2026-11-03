@@ -62,6 +62,8 @@ export const AUDIT_ACTIONS = {
   "payment.partially_refunded": { record: "payments", reason: "required" },
 
   // Extra work.
+  "variation.requested": { record: "variations" },
+  "variation.payment_started": { record: "variations" },
   "variation.priced": { record: "variations" },
   "variation.approved": { record: "variations" },
   "variation.declined": { record: "variations" },

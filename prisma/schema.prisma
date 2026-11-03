@@ -628,6 +628,7 @@ model Payment {
   kind               PaymentKind
   // The extra work being paid for: set for VARIATION, and only then. Must be extra work on the same job.
   variationId        String?       @map("variation_id") @db.Uuid
+  variationRevision  Int?          @map("variation_revision")
   variation          Variation?    @relation(fields: [variationId], references: [id], onDelete: Restrict)
   // What the customer is charged, incl GST.
   amountCents        Int           @map("amount_cents")
@@ -665,6 +666,8 @@ model Payment {
 // Data API policy: who sees which part arrives with who-sees-what (#95). Hours are minutes, as in Schema 2.
 model Variation {
   id                      String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  requestKey              String?         @unique @map("request_key") @db.Uuid
+  revision                Int             @default(0)
   jobId                   String          @map("job_id") @db.Uuid
   job                     Job             @relation(fields: [jobId], references: [id], onDelete: Cascade)
   // The worker who asked.
@@ -695,11 +698,45 @@ model Variation {
   updatedAt               DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   payments Payment[]
+  photos VariationPhoto[]
 
   @@index([jobId, createdAt])
   // Office queue: extra work waiting to be priced.
   @@index([status, createdAt])
   @@map("variations")
+}
+
+// Private processed uploads. An upload is recorded before Storage is called; unattached rows remain available
+// to bounded cleanup, including after a job/variation is deleted. No browser Data API access.
+model VariationPhoto {
+  path String @id
+  jobId String @map("job_id") @db.Uuid
+  uploadedById String @map("uploaded_by_id") @db.Uuid
+  requestKey String @map("request_key") @db.Uuid
+  variationId String? @map("variation_id") @db.Uuid
+  variation Variation? @relation(fields: [variationId], references: [id], onDelete: SetNull)
+  position Int @default(0)
+  ready Boolean @default(false)
+  deleting Boolean @default(false)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  @@index([variationId, position])
+  @@index([createdAt])
+  @@map("variation_photos")
+}
+
+// Private raw-upload grants: small server actions exchange IDs, large bytes go directly to quarantine Storage.
+model VariationUploadStage {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  path String @unique
+  userId String @map("user_id") @db.Uuid
+  jobId String @map("job_id") @db.Uuid
+  requestKey String @map("request_key") @db.Uuid
+  expiresAt DateTime @map("expires_at") @db.Timestamptz
+  finalizedAt DateTime? @map("finalized_at") @db.Timestamptz
+  photoPath String? @map("photo_path")
+  @@index([userId, expiresAt])
+  @@index([expiresAt])
+  @@map("variation_upload_stages")
 }
 
 // What a worker is owed for a job, for payroll: one per worker per job, so a crew (milestone 4) gets one each.
