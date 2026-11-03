@@ -65,6 +65,43 @@ test.describe("review and verified posting through real services", () => {
     await expect(page.getByRole("heading", { name: "Repair the leaking tap downstairs.", exact: true })).toBeVisible();
     await page.getByRole("link", { name: "Home", exact: true }).click(); await expect(page).toHaveURL(`${app}/`);
   });
+  for (const phase of ["inspect", "save"]) test(`guest handoff entry ${phase} expiry resumes the same explicit intent through shared login`, async ({ page }) => {
+    test.setTimeout(90_000); const data = await guest(page, true); await page.getByRole("button", { name: "Post it", exact: true }).click();
+    let expired = false;
+    await page.route("**/jobs/new**", async route => {
+      let args; try { args = JSON.parse(route.request().postData() ?? "null"); } catch { /* Ordinary navigation. */ }
+      const matches = Array.isArray(args) && (phase === "inspect" ? args.length === 4 && typeof args[0] === "string" && args[1] === data.postKey && args[3] === true : args.length === 5 && args[0]?.postKey === data.postKey && args[2]?.absent === true && args[4] === "review");
+      if (!expired && matches) { expired = true; await page.context().clearCookies(); await route.continue({ headers: { ...route.request().headers(), cookie: "" } }); }
+      else await route.continue();
+    });
+    const email = `entry-expiry-${randomUUID()}@example.test`; await register(page, email);
+    const dialog = page.getByRole("dialog", { name: "You’ve been logged out", exact: true }); await expect(dialog).toBeVisible(); expect(expired).toBe(true);
+    await expect(page.getByText("Couldn’t load your draft.", { exact: true })).toHaveCount(0);
+    expect((await db.query("SELECT count(*)::int AS count FROM jobs WHERE post_key=$1", [data.postKey])).rows[0].count).toBe(0);
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem("trade.job-post-intent.v1")!).postKey)).toBe(data.postKey);
+    await dialog.getByRole("button", { name: "Log in again", exact: true }).click(); await dialog.getByLabel("Password", { exact: true }).fill(SECURITY_PASSWORD); await dialog.getByRole("button", { name: "Log in", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "Posted.", exact: true })).toBeVisible({ timeout: 30_000 });
+    const posted = (await db.query("SELECT id,customer_id,description FROM jobs WHERE post_key=$1", [data.postKey])).rows; expect(posted).toHaveLength(1); expect(posted[0]).toMatchObject({ customer_id: storage.auth.registeredUser(email)!.id, description: data.description });
+    expect((await db.query("SELECT count(*)::int AS count FROM job_photos WHERE job_id=$1", [posted[0].id])).rows[0].count).toBe(1);
+  });
+  for (const phase of ["probe", "restart"]) test(`ordinary owned draft ${phase} expiry resumes without manufacturing a posting intent`, async ({ page }) => {
+    const data = await guest(page);
+    await db.query("INSERT INTO job_drafts(profile_id,data,manual_category,updated_at) VALUES($1,$2,true,now()) ON CONFLICT(profile_id) DO UPDATE SET data=EXCLUDED.data,manual_category=true", [SECURITY_USER.id, data]);
+    if (phase === "restart") await db.query("INSERT INTO jobs(customer_id,post_key,category,title,description,address_line1,suburb,city,status,updated_at) VALUES($1,$2,'PLUMBING','Repair the tap',$3,'1 Example Street','Gladstone','Invercargill','REVIEW',now())", [SECURITY_USER.id, data.postKey, data.description]);
+    let expired = false;
+    await page.route("**/jobs/new**", async route => {
+      let args; try { args = JSON.parse(route.request().postData() ?? "null"); } catch { /* Ordinary navigation. */ }
+      const matches = Array.isArray(args) && args[0] === SECURITY_USER.id && args[1] === data.postKey && (phase === "probe" ? args.length === 2 : args.length === 3 && args[2] === true);
+      if (!expired && matches) { expired = true; await page.context().clearCookies(); await route.continue({ headers: { ...route.request().headers(), cookie: "" } }); }
+      else await route.continue();
+    });
+    await login(page, SECURITY_USER.email, "/jobs/new?step=review"); const dialog = page.getByRole("dialog", { name: "You’ve been logged out", exact: true }); await expect(dialog).toBeVisible(); expect(expired).toBe(true);
+    await dialog.getByRole("button", { name: "Log in again", exact: true }).click(); await dialog.getByLabel("Password", { exact: true }).fill(SECURITY_PASSWORD); await dialog.getByRole("button", { name: "Log in", exact: true }).click();
+    if (phase === "probe") await expect(page.getByRole("heading", { name: "All good?", exact: true })).toBeVisible();
+    else await expect(page.getByRole("textbox", { name: "Describe the job", exact: true })).toHaveValue("");
+    expect(await page.evaluate(() => localStorage.getItem("trade.job-post-intent.v1"))).toBeNull(); await expect(page.getByRole("heading", { name: "Posted.", exact: true })).toHaveCount(0);
+    expect((await db.query("SELECT count(*)::int AS count FROM jobs WHERE post_key=$1", [data.postKey])).rows[0].count).toBe(phase === "probe" ? 0 : 1);
+  });
   for (const blocked of [false, true]) test(`existing owned draft has a safe escape from guest login handoff${blocked ? " with blocked cleanup" : ""}`, async ({ page }) => {
     const currentKey = randomUUID(); const path = `drafts/${SECURITY_USER.id}/${currentKey}/${randomUUID().replaceAll("-", "")}.webp`;
     const current = { postKey: currentKey, description: "Keep the existing upstairs wiring job.", category: "ELECTRICAL", photoPaths: [path], addressLine1: "8 Existing Street", suburb: "Gladstone", city: "Invercargill", locationSource: "TYPED", anyTime: true, timeWindows: [] };

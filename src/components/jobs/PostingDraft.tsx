@@ -13,6 +13,7 @@ import { saveDraftAction } from "@/server/jobs/actions";
 import { inspectPostKeyAction } from "@/server/jobs/posting-actions";
 import { Button } from "@/components/Button";
 import { Banner } from "@/components/overlays/Banner";
+import { useOptionalSessionExpired } from "@/components/auth/SessionExpired";
 import styles from "./post-job.module.css";
 
 export type PostingSource = { initialDraft: JobDraft; hasServerDraft: boolean; initialManualCategory?: boolean | null };
@@ -37,11 +38,14 @@ export function PostingEntryError({ retry, leave, conflict }: { retry(): void; l
 /** Entry-only preparation. It finishes an explicit guest claim before mounting any account photo controller. */
 export function PostingDraft({ ownerId, verified, initialDraft, hasServerDraft, initialManualCategory, children, fallback }: Props) {
   const router = useRouter(); const path = usePathname(); const params = useSearchParams();
+  const session = useOptionalSessionExpired();
   const [ready, setReady] = useState<ReadyState | null>(null); const [error, setError] = useState(false); const [conflict, setConflict] = useState(false); const [attempt, setAttempt] = useState(0);
   const sequence = useRef(0); const [entered, setEntered] = useState<string[]>([]);
   async function initialize(isActive: () => boolean) {
     const request = ++sequence.current; setError(false); setConflict(false); setEntered([]);
-    const finish = (value: ReadyState) => { if (isActive() && request === sequence.current) setReady(value); };
+    const current = () => isActive() && request === sequence.current;
+    const interrupted = (result: unknown) => !current() || Boolean(session?.check(result, { resend: () => setAttempt(value => value + 1) }));
+    const finish = (value: ReadyState) => { if (current()) setReady(value); };
     try {
       const rawIntent = safeRead(POST_INTENT_STORAGE_KEY);
       const stored = decodePostIntent(rawIntent);
@@ -55,6 +59,7 @@ export function PostingDraft({ ownerId, verified, initialDraft, hasServerDraft, 
         const bound = bindPostIntent(intent, ownerId);
         if (!bound) throw new Error("Different account");
         const status = await inspectPostKeyAction(ownerId, intent.postKey, false, true);
+        if (interrupted(status)) return;
         if (!("status" in status)) throw new Error("Session changed");
         if (status.status === "unverified") { router.replace(verificationPath(next)); return; }
         if (status.status === "posted") { router.replace(`/jobs/${status.jobId}?posted=1`); return; }
@@ -65,17 +70,20 @@ export function PostingDraft({ ownerId, verified, initialDraft, hasServerDraft, 
         // This atomic claim also binds competing tabs to one owner. [] is an existing intentional selection.
         if (bound.sourceOwnerId === null) {
           const claim = await initializeOwnedPhotoDraft(ownerId, bound.postKey, bound.photoIds);
+          if (!current()) return;
           if (claim !== "initialized" && claim !== "existing") throw new Error("Guest photos changed");
         }
         const source = postIntentDraft(bound); let committed = initialDraft; let origin = initialManualCategory ?? null;
         if (!hasServerDraft) {
           const result = await saveDraftAction({ ...canonicalDraft(source), photoPaths: [] }, ownerId, { absent: true }, source.manualCategory, "review");
+          if (interrupted(result)) return;
           if (!("status" in result) || result.status !== "saved") throw new Error("Draft changed before handoff");
           committed = result.draft; origin = result.manualCategory;
         }
         // Compare the complete selection, including unuploaded originals. The live manager separately
         // checks authoritative attachments/removals before automatic posting.
         const files = await loadPhotoDraft({ ownerId, postKey: bound.postKey });
+        if (!current()) return;
         const now = new Date(); const conflict = comparable(canonicalDraft(source), now) !== comparable(committed, now)
           || JSON.stringify((files ?? []).map(photo => photo.id)) !== JSON.stringify(bound.photoIds);
         const local = reconcileStepSave(source, committed, origin, "review", now);
@@ -92,9 +100,11 @@ export function PostingDraft({ ownerId, verified, initialDraft, hasServerDraft, 
         const key = initialDraft.postKey ?? cached?.data.postKey;
         if (key) {
           const status = await inspectPostKeyAction(ownerId, key);
+          if (interrupted(status)) return;
           if (!("status" in status) || status.status === "unknown") throw new Error("Draft status unavailable");
           if (status.status === "posted") {
             const fresh = await inspectPostKeyAction(ownerId, key, true);
+            if (interrupted(fresh)) return;
             if (!("status" in fresh) || fresh.status !== "fresh") throw new Error("Draft cleanup unavailable");
             clearPostedLocalDraft(localStorage, ownerId, key);
             finish({ mode: "fresh", ignored: key, source: fresh }); return;
