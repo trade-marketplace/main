@@ -5,6 +5,7 @@
 // transaction (#100), so the timeline can never disagree with the data.
 import "server-only";
 
+import { licenceToday } from "@/lib/account/trades";
 import { randomUUID } from "node:crypto";
 
 import type { JobStatus, Prisma, PrismaClient } from "@/generated/prisma/client";
@@ -55,11 +56,11 @@ class Refusal extends Error {
 }
 
 /** Checks, then does, one office action. Never throws for a refusal: it answers with what to tell the office. */
-export async function performJobAction(db: Db, office: Office, raw: unknown): Promise<JobActionResult> {
+export async function performJobAction(db: Db, office: Office, raw: unknown, now = new Date()): Promise<JobActionResult> {
   const parsed = parseJobAction(raw);
   if (!parsed.ok) return fail("invalid", parsed.message, parsed.field);
   try {
-    await db.$transaction((tx) => run(tx, office, parsed.input));
+    await db.$transaction((tx) => run(tx, office, parsed.input, now));
     return { ok: true };
   } catch (error) {
     if (error instanceof Refusal) return error.result;
@@ -72,7 +73,7 @@ export async function performJobAction(db: Db, office: Office, raw: unknown): Pr
   }
 }
 
-async function run(tx: Tx, office: Office, input: JobActionInput): Promise<void> {
+async function run(tx: Tx, office: Office, input: JobActionInput, now: Date): Promise<void> {
   // Who is acting, for the status history and the audit log's default. Local to this transaction.
   await tx.$queryRaw`SELECT set_config('app.actor_id', ${office.userId}, true)`;
   // Lock the job's row so a customer cancelling or a tradie claiming at the same moment waits for us, and what we
@@ -93,7 +94,7 @@ async function run(tx: Tx, office: Office, input: JobActionInput): Promise<void>
     case "price":
       return reprice(tx, office, job, input);
     case "reassign":
-      return reassign(tx, office, job, input);
+      return reassign(tx, office, job, input, now);
     case "status":
       return forceStatus(tx, office, job, input);
     case "cancel":
@@ -154,20 +155,20 @@ function deps(
   };
 }
 
-async function reassign(tx: Tx, office: Office, job: LockedJob, input: Extract<JobActionInput, { action: "reassign" }>) {
+async function reassign(tx: Tx, office: Office, job: LockedJob, input: Extract<JobActionInput, { action: "reassign" }>, now: Date) {
   if (!REASSIGNABLE.includes(job.status) || !job.workerId) throw new Refusal(notAllowed("There’s no tradie on this job to swap."));
   if (input.workerId === job.workerId) throw new Refusal(fail("invalid", "That tradie already has the job.", "workerId"));
   if (input.workerId === job.customerId) throw new Refusal(fail("invalid", "Pick a tradie.", "workerId"));
   const tradie = await tx.profile.findUnique({ where: { id: input.workerId }, select: { role: true } });
   if (tradie?.role !== "TRADIE") throw new Refusal(fail("invalid", "Pick a tradie.", "workerId"));
   if (job.category !== "OTHER") {
-    const today = new Date();
+    const today = new Date(`${licenceToday(now)}T00:00:00Z`);
     const licensed = await tx.licence.count({
       where: {
         userId: input.workerId,
         trade: job.category,
         status: "VERIFIED",
-        OR: [{ expiresOn: null }, { expiresOn: { gte: new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate())) } }],
+        OR: [{ expiresOn: null }, { expiresOn: { gte: today } }],
       },
     });
     if (licensed === 0) throw new Refusal(fail("invalid", "That tradie isn’t verified for this trade.", "workerId"));
