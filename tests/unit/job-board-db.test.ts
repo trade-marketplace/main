@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { JobStatus, Role, Trade } from "@/generated/prisma/client";
-import { DEFAULT_BOARD_QUERY, type BoardPage, type BoardResult } from "@/lib/job-board";
+import { DEFAULT_BOARD_QUERY, parseBoardQuery, type BoardPage, type BoardResult } from "@/lib/job-board";
 import { loadJobBoard, newBoardJobs, type BoardDependencies } from "@/server/jobs/board";
 import { testDatabaseUrl, useTestSchema } from "../support/test-db";
 
@@ -109,6 +109,35 @@ describe.skipIf(!testDatabaseUrl)("eligible job board real PostgreSQL reader", (
     const none = boardOf(await loadJobBoard(schema.db, actor, { ...DEFAULT_BOARD_QUERY, when: [] }, {}, deps())); expect(none.total).toBe(0);
     expect(await newBoardJobs(schema.db, actor, DEFAULT_BOARD_QUERY, { since: "2026-11-01T00:00:00Z", knownIds: [a.id, b.id], savedIds: [] }, deps())).toEqual({ ok: true, count: 1 });
     expect(boardOf(await loadJobBoard(schema.db, actor, { ...DEFAULT_BOARD_QUERY, saved: true }, { savedIds: [c.id] }, deps())).cards[0].id).toBe(c.id);
+  });
+
+  it("labels the matching current-week window after Auckland Monday starts, retaining same-day morning availability", async () => {
+    const actor = await worker(), current = await job({ anyTime: false }), expired = await job({ anyTime: false }), today = await job({ anyTime: false });
+    await schema.db.jobTimeWindow.createMany({ data: [
+      { jobId: current.id, date: new Date("2026-11-08"), timeOfDay: "MORNING" },
+      { jobId: current.id, date: new Date("2026-11-14"), timeOfDay: "AFTERNOON" },
+      { jobId: expired.id, date: new Date("2026-11-08"), timeOfDay: "EVENING" },
+      { jobId: today.id, date: new Date("2026-11-09"), timeOfDay: "MORNING" },
+    ] });
+    const monday = { ...deps(), now: () => new Date("2026-11-09T07:00:00Z") }; // Auckland Monday20:00, date-only expiry.
+    const filtered = boardOf(await loadJobBoard(schema.db, actor, { ...DEFAULT_BOARD_QUERY, when: ["week"] }, {}, monday));
+    expect(filtered.total).toBe(2); expect(filtered.cards.map(card => card.id)).not.toContain(expired.id);
+    expect(filtered.cards.find(card => card.id === current.id)?.whenLabel).toMatch(/Sat.*14 Nov.*Afternoon/);
+    expect(filtered.cards.find(card => card.id === today.id)?.whenLabel).toMatch(/Mon.*9 Nov.*Morning/);
+    const all = boardOf(await loadJobBoard(schema.db, actor, DEFAULT_BOARD_QUERY, {}, monday));
+    expect(all.cards.find(card => card.id === current.id)?.whenLabel).toMatch(/Sat.*14 Nov.*Afternoon/);
+    expect(all.cards.find(card => card.id === expired.id)?.whenLabel).toBe("Time to be arranged");
+  });
+
+  it("does not manufacture an empty board for unknown filter values while preserving explicit none and valid mixed choices", async () => {
+    const actor = await worker(), valid = await job();
+    for (const search of ["trade=electrcial&when=this-week", "trade=&when=", "trade=unknown,other&when=old,flexible"]) {
+      const board = boardOf(await loadJobBoard(schema.db, actor, parseBoardQuery(new URLSearchParams(search)), {}, deps()));
+      expect(board.total).toBe(1); expect(board.cards[0].id).toBe(valid.id);
+    }
+    for (const search of ["trade=none", "when=none"]) {
+      expect(boardOf(await loadJobBoard(schema.db, actor, parseBoardQuery(new URLSearchParams(search)), {}, deps())).total).toBe(0);
+    }
   });
 
   it("fails closed for current role/email/identity/area proof and malformed continuation", async () => {

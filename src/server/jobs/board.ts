@@ -5,7 +5,7 @@ import { unstable_noStore as noStore } from "next/cache";
 import type { Prisma, PrismaClient, Trade } from "@/generated/prisma/client";
 import { licenceToday, tradeLabel } from "@/lib/account/trades";
 import { haversineKm } from "@/lib/geo/distance";
-import { afterBoardCursor, BOARD_PAGE_SIZE, BOARD_TRADES, boardHref, boardSortValue, boardWeek, compareBoardJobs, decodeBoardCursor, encodeBoardCursor, matchesBoardKind,
+import { afterBoardCursor, BOARD_PAGE_SIZE, BOARD_TRADES, boardAvailabilityWindow, boardHref, boardSortValue, boardToday, boardWeek, compareBoardJobs, decodeBoardCursor, encodeBoardCursor, matchesBoardKind,
   type BoardCard, type BoardCounts, type BoardMeta, type BoardQuery, type BoardRequest, type BoardResult, type BoardUpdates, type SortableBoardJob } from "@/lib/job-board";
 import { canViewJobFiles } from "@/server/files/access";
 import { createSupabaseFileStore, PHOTO_BUCKET, SIGNED_URL_SECONDS } from "@/server/files/storage";
@@ -33,7 +33,7 @@ function whereWhen(query: BoardQuery, now: Date): Prisma.JobWhereInput {
   if (query.when === null) return {};
   const week = boardWeek(now);
   return { OR: query.when.map(when => when === "asap" ? { asap: true } : when === "flexible" ? { anyTime: true }
-    : { timeWindows: { some: { date: { gte: week.start, lte: week.end } } } }) };
+    : { timeWindows: { some: { date: { gte: new Date(`${boardToday(now)}T00:00:00Z`), lte: week.end } } } }) };
 }
 function scopeFor(worker: EligibilityWorker, query: BoardQuery, enabled: readonly Trade[], savedIds: string[], now: Date): string {
   const proofs = { ...worker, workerTrades: [...worker.workerTrades].sort((a, b) => a.trade.localeCompare(b.trade)) };
@@ -87,9 +87,10 @@ function countsAndRows(candidates: Candidate[], query: BoardQuery, savedIds: str
   return { counts, rows: selected.filter(job => matchesBoardKind(job, query.kind)).sort((a, b) => compareBoardJobs(a, b, query.sort)) };
 }
 
-function whenLabel(view: WorkerJobView): string {
-  if (view.anyTime) return "Flexible";
-  const window = view.timeWindows[0];
+function whenLabel(view: WorkerJobView, query: BoardQuery, now: Date): string {
+  const window = boardAvailabilityWindow(view.timeWindows, query.when, now);
+  const matchesWeek = query.when?.includes("week") && window && window.date <= boardWeek(now).end.toISOString().slice(0, 10);
+  if (view.anyTime && !matchesWeek) return "Flexible";
   if (!window) return "Time to be arranged";
   const day = new Intl.DateTimeFormat("en-NZ", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(`${window.date}T00:00:00Z`));
   return `${day} · ${window.timeOfDay === "MORNING" ? "Morning" : window.timeOfDay === "AFTERNOON" ? "Afternoon" : "Evening"}`;
@@ -138,7 +139,7 @@ export async function loadJobBoard(db: PrismaClient, viewer: JobViewer, query: B
         try { photoUrl = await (deps.signPhoto ?? ((actor, id, photo) => signBoardPhoto(db, actor, id, photo)))(viewer, raw.id, detail.photos[0].id); }
         catch { /* A missing/unavailable photo keeps the honest no-photo kit fallback. */ }
       }
-      cards.push({ ...safe, distanceKm, photoUrl, tradeLabel: tradeLabel(safe.category), whenLabel: whenLabel(detail), alreadyEstimated: Boolean(detail.ownEstimate) });
+      cards.push({ ...safe, distanceKm, photoUrl, tradeLabel: tradeLabel(safe.category), whenLabel: whenLabel(detail, query, now), alreadyEstimated: Boolean(detail.ownEstimate) });
     }
     const nextCursor = index < remaining.length && scanned ? encodeBoardCursor({ version: 1, scope, before: before.toISOString(), anchor: { id: scanned.id, value: boardSortValue(scanned, query.sort) } }) : null;
     return { ok: true, board: { meta, cards, counts, total: rows.length, nextCursor, before: before.toISOString(), scope } };

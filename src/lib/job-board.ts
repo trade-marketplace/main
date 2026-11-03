@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { Trade } from "@/generated/prisma/client";
-import type { WorkerJobListView } from "@/server/views/jobs";
+import type { JobTimeWindowView, WorkerJobListView } from "@/server/views/jobs";
 
 export const BOARD_PAGE_SIZE = 12;
 export const BOARD_TRADES = ["ELECTRICAL", "PLUMBING", "GAS", "CONSTRUCTION", "OTHER"] as const;
@@ -21,7 +21,7 @@ function choices<T extends string>(raw: string | undefined, allowed: readonly T[
   if (raw === "none") return [];
   const requested = new Set(raw.split(",").map(transform));
   const selected = allowed.filter(item => requested.has(item));
-  return selected.length === allowed.length ? null : [...selected];
+  return selected.length === 0 || selected.length === allowed.length ? null : [...selected];
 }
 export function parseBoardQuery(input: Search): BoardQuery {
   const kind = value(input, "kind"), sort = value(input, "sort"), distance = Number(value(input, "distance"));
@@ -100,11 +100,21 @@ export function afterBoardCursor(job: SortableBoardJob, cursor: BoardCursor, sor
 }
 
 /** Dates are New Zealand calendar days; DB date fields are represented at UTC midnight. */
+export function boardToday(now: Date): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Pacific/Auckland", year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
+}
 export function boardWeek(now: Date): { start: Date; end: Date } {
-  const day = new Intl.DateTimeFormat("en-CA", { timeZone: "Pacific/Auckland", year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
-  const start = new Date(`${day}T00:00:00Z`); start.setUTCDate(start.getUTCDate() - (start.getUTCDay() + 6) % 7);
+  const start = new Date(`${boardToday(now)}T00:00:00Z`); start.setUTCDate(start.getUTCDate() - (start.getUTCDay() + 6) % 7);
   const end = new Date(start); end.setUTCDate(end.getUTCDate() + 6);
   return { start, end };
+}
+/** A part of today's date stays valid all day; no booking-hour expiry policy is inferred here. */
+export function boardAvailabilityWindow(windows: readonly JobTimeWindowView[], when: BoardQuery["when"], now: Date): JobTimeWindowView | null {
+  const order = { MORNING: 0, AFTERNOON: 1, EVENING: 2 };
+  const today = boardToday(now);
+  const upcoming = windows.filter(window => window.date >= today).sort((a, b) => a.date.localeCompare(b.date) || order[a.timeOfDay] - order[b.timeOfDay]);
+  const end = boardWeek(now).end.toISOString().slice(0, 10);
+  return (when?.includes("week") ? upcoming.find(window => window.date <= end) : null) ?? upcoming[0] ?? null;
 }
 export const savedJobsKey = (ownerId: string) => `trade.jobs.saved.v1.${ownerId}`;
 export function parseSavedJobs(raw: string | null): string[] {

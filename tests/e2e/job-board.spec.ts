@@ -133,6 +133,9 @@ test.describe("signed-in eligible board", () => {
     await expect(page.getByRole("heading", { name: "Notifications", exact: true })).toBeVisible();
     await expect(page.getByRole("link", { name: "Back to jobs", exact: true })).toHaveCount(0);
     await expectNoA11yViolations(page);
+    await page.goto(`${app}/jobs?trade=electrcial&when=this-week`);
+    await expect(page.getByRole("link", { name: "Board job 1", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "No jobs match that.", exact: true })).toHaveCount(0);
   });
   test("real list is contained/accessible at five widths, detects new jobs without duplicates, and blocks after office pause", async ({ page }) => {
     await login(page);
