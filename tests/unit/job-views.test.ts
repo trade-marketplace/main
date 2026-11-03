@@ -4,7 +4,7 @@ import type { JobStatus, PrismaClient } from "@/generated/prisma/client";
 import { exampleJob, VIEWERS } from "@/app/dev/components/job-views/preview-data";
 import { approximatePin } from "@/server/geo/approximate";
 import { jobPinFor } from "@/server/geo/job-location";
-import { customerJobView, customerJobsView, workerJobView, workerJobsView, officeJobView, officeJobsView, publicJobView, loadJobView, jobViewWhere } from "@/server/views/jobs";
+import { customerJobView, customerJobsView, workerJobView, workerJobsView, officeJobView, officeJobsView, publicJobView, loadJobView, jobViewWhere, jobThreadContextView } from "@/server/views/jobs";
 import { workerPayoutView, workerWaitingJobView } from "@/server/views/earnings";
 
 const STATUSES: JobStatus[] = ["REVIEW", "QUOTE_BOUNTY", "PRICED", "BOOKABLE", "ASSIGNED", "SUBMITTED", "COMPLETED", "CANCEL_REVIEW", "CANCELLED"];
@@ -48,6 +48,15 @@ describe("job projections for every status", () => {
 });
 
 describe("revocation and explicit allowlists", () => {
+  it("allows only current participants to read message job context, even for an otherwise public board job", () => {
+    const job = exampleJob();
+    expect(jobThreadContextView(VIEWERS.worker, job)).toEqual({ id: job.id, jobNumber: 1005, title: "Sub wiring", suburb: "Windsor", status: "ASSIGNED", worker: "Jack W" });
+    expect(jobThreadContextView(VIEWERS.worker, { ...job, workerId: "replacement" })).toBeNull();
+    expect(jobThreadContextView(VIEWERS.worker, { ...job, workerId: null, status: "BOOKABLE" })).toBeNull();
+    expect(jobThreadContextView(VIEWERS.customer, { ...job, status: "CANCELLED" })?.worker).toBeNull();
+    expect(keys(jobThreadContextView(VIEWERS.office, job)).filter(key => /price|phone|email|address|margin|estimate/i.test(key))).toEqual([]);
+  });
+
   it("hides address and phone again immediately after losing the assignment, including list views", () => {
     const job = exampleJob();
     expect(workerJobView(VIEWERS.worker, job)?.customer?.phone).toBe(job.customer.phone);

@@ -28,7 +28,10 @@ not generate jitter, because repeated samples can reveal the address. An absent,
 produces `null`, with no exact-coordinate fallback. `jobPinFor()` uses the same assignment/status rule and validates
 that the persisted point is 100–300 metres from the actual location.
 
-Existing integration points: office job detail/list/CSV, checkout, Earnings/statement job references, and photo access.
+Existing integration points: office job detail/list/CSV, checkout, Earnings/statement job references, message thread
+job headers/pickers, and photo access. `jobThreadContextView` keeps message access restricted to current participants
+(an open job is not permission to read its conversation). The existing message contact redactor also uses the shared
+claimed-status predicate, so cancelled jobs with retained worker ids hide contact text again.
 Photo access retains the existing private Storage policy (open jobs/current assignment/owner/office); removing EXIF,
 private buckets and short-lived signed URLs remain in the file service. Foreign photo-upload ids return the same 404
 as missing ids. `workerPayoutView` preserves a worker's own payroll history after reassignment while returning only

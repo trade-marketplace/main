@@ -10,7 +10,7 @@ export const WORKER_VISIBLE_STATUSES = ["REVIEW", "QUOTE_BOUNTY", "BOOKABLE"] as
 export const CLAIMED_JOB_STATUSES = ["ASSIGNED", "SUBMITTED", "COMPLETED", "CANCEL_REVIEW"] as const;
 
 export function isClaimedJob(job: Pick<JobAccess, "workerId" | "status">): boolean {
-  return job.workerId !== null && (CLAIMED_JOB_STATUSES as readonly string[]).includes(job.status);
+  return Boolean(job.workerId) && (CLAIMED_JOB_STATUSES as readonly string[]).includes(job.status);
 }
 
 export function workerHasPrivateAccess(viewer: JobViewer | null, job: Pick<JobAccess, "workerId" | "status">): boolean {

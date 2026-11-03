@@ -85,6 +85,15 @@ export function officeJobListView(viewer: JobViewer | null, job: JobSummarySourc
     worker: job.worker ? { id: job.worker.id, firstName: job.worker.firstName, lastName: job.worker.lastName } : null };
 }
 
+/** Message threads keep their stricter current-participant rule; open-board access does not grant a conversation. */
+export function jobThreadContextView(viewer: JobViewer, job: JobSummarySource) {
+  if (viewer.role !== "ADMIN" && !(viewer.role === "CUSTOMER" && job.customerId === viewer.userId) && !(viewer.role === "TRADIE" && job.workerId === viewer.userId)) return null;
+  const visible = viewer.role === "CUSTOMER" ? customerJobListView(viewer, job) : viewer.role === "TRADIE" ? workerJobListView(viewer, job) : officeJobListView(viewer, job);
+  if (!visible) return null;
+  return { id: visible.id, jobNumber: visible.jobNumber, title: visible.title, suburb: visible.suburb, status: visible.status,
+    worker: job.worker && isClaimedJob(job) ? `${job.worker.firstName}${job.worker.lastName ? ` ${job.worker.lastName[0]}` : ""}` : null };
+}
+
 function address(job: JobSource) {
   return { line1: job.addressLine1, line2: job.addressLine2, postcode: job.postcode, accessNotes: job.accessNotes };
 }

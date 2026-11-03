@@ -8,6 +8,7 @@ import { createNotify } from "@/server/notifications/notify";
 import { consumeForUser, type RateLimitDecision } from "@/server/rate-limit";
 import { createSupabaseFileStore, PHOTO_BUCKET, SIGNED_URL_SECONDS, type InspectableFileStore } from "@/server/files/storage";
 import { createAudit } from "@/server/audit/audit";
+import { isClaimedJob, JOB_SUMMARY_SELECT, jobThreadContextView } from "@/server/views";
 import { lockSupportPhoto } from "./photo-cleanup";
 
 type Actor = Pick<Viewer, "userId">;
@@ -15,6 +16,7 @@ type Tx = Prisma.TransactionClient;
 export class ProblemThreadError extends Error { constructor(readonly code: string) { super(code); } }
 const JOB_SELECT = { id: true, jobNumber: true, title: true, suburb: true, status: true, customerId: true, workerId: true,
   customer: { select: { firstName: true, lastName: true } }, worker: { select: { firstName: true, lastName: true } } } as const;
+const JOB_CONTEXT_SELECT = { ...JOB_SUMMARY_SELECT, worker: { select: { id: true, firstName: true, lastName: true } } } as const;
 const name = (person: { firstName: string; lastName: string | null }) => `${person.firstName}${person.lastName ? ` ${person.lastName[0]}` : ""}`;
 const time = (date: Date) => new Intl.DateTimeFormat("en-NZ", { timeZone: "Pacific/Auckland", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }).format(date);
 export const THREAD_MESSAGE_PAGE_SIZE = 50;
@@ -146,19 +148,24 @@ export async function getMessages(db: PrismaClient, actor: Actor, selectedId?: s
   const access: Prisma.JobWhereInput = role === "ADMIN" ? {} : { OR: [{ customerId: actor.userId }, { workerId: actor.userId }] };
   const [rows, jobs] = await Promise.all([
     db.supportThread.findMany({ where: { jobParticipants: true, job: { is: access } }, orderBy: { lastMessageAt: "desc" },
-      include: { job: { select: JOB_SELECT }, reads: true, messages: { where: { internal: false }, orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: 1 } } }),
-    db.job.findMany({ where: access, orderBy: { updatedAt: "desc" }, select: { id: true, jobNumber: true, title: true, workerId: true } }),
+      include: { job: { select: JOB_CONTEXT_SELECT }, reads: true, messages: { where: { internal: false }, orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: 1 } } }),
+    db.job.findMany({ where: access, orderBy: { updatedAt: "desc" }, select: JOB_CONTEXT_SELECT }),
   ]);
   const selected = selectedId ? rows.find(row => row.id === selectedId) : null;
   if (selectedId && !selected) throw new ProblemThreadError("forbidden");
-  const summaries = rows.map(row => {
-    const claimed = !!row.job?.workerId;
+  const viewer = { userId: actor.userId, role };
+  const summaries = rows.flatMap(row => {
+    const context = row.job ? jobThreadContextView(viewer, row.job) : null;
+    if (!context || !row.job) return [];
+    const claimed = isClaimedJob(row.job);
     const last = row.messages[0]; const read = row.reads.find(r => r.userId === actor.userId)?.readAt;
-    return { id: row.id, subject: redactContactDetails(row.subject, claimed), jobNumber: `TM-${row.job!.jobNumber}`, title: redactContactDetails(row.job!.title, claimed), preview: last ? redactContactDetails(last.body, claimed) : "", when: time(row.lastMessageAt), unread: !!last && last.authorId !== actor.userId && (!read || read < last.createdAt) };
+    return [{ id: row.id, subject: redactContactDetails(row.subject, claimed), jobNumber: `TM-${context.jobNumber}`, title: redactContactDetails(context.title, claimed), preview: last ? redactContactDetails(last.body, claimed) : "", when: time(row.lastMessageAt), unread: !!last && last.authorId !== actor.userId && (!read || read < last.createdAt) }];
   });
   let view: MessagesData["selected"] = null;
   if (selected?.job) {
-    const job = selected.job; const claimed = !!job.workerId;
+    const job = selected.job; const claimed = isClaimedJob(job);
+    const context = jobThreadContextView(viewer, job);
+    if (!context) throw new ProblemThreadError("forbidden");
     if (beforeCursor && (!z.uuid().safeParse(beforeCursor).success || !await db.supportMessage.findFirst({ where: { id: beforeCursor, threadId: selected.id, internal: false }, select: { id: true } }))) throw new ProblemThreadError("forbidden");
     const [messageRows, history, variations] = await Promise.all([
       db.supportMessage.findMany({ where: { threadId: selected.id, internal: false }, orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: THREAD_MESSAGE_PAGE_SIZE + 1,
@@ -172,7 +179,7 @@ export async function getMessages(db: PrismaClient, actor: Actor, selectedId?: s
     const labels = { BOOKABLE: "Paid", ASSIGNED: "Job booked", SUBMITTED: "Work finished", COMPLETED: "Job completed" };
     view = { id: selected.id, subject: redactContactDetails(selected.subject, claimed), closed: selected.status === "CLOSED",
       latestMessageId: selected.messages[0]?.id ?? null, olderCursor: hasOlder ? messages[0]?.id ?? null : null, earlier: Boolean(beforeCursor),
-      job: { id: job.id, number: `TM-${job.jobNumber}`, title: redactContactDetails(job.title, claimed), suburb: job.suburb, status: job.status, worker: job.worker ? name(job.worker) : null },
+      job: { id: context.id, number: `TM-${context.jobNumber}`, title: redactContactDetails(context.title, claimed), suburb: context.suburb, status: context.status, worker: context.worker },
       messages: await Promise.all(messages.map(async message => ({ id: message.id, author: message.fromOffice ? "Trade Marketplace" : message.author ? name(message.author) : "Former member", office: message.fromOffice, own: message.authorId === actor.userId,
         body: redactContactDetails(message.body, claimed), at: message.createdAt.toISOString(), when: time(message.createdAt),
         photos: await Promise.all(message.photos.map(async photo => { try { return { id: photo.id, url: await sign(photo.path) }; } catch { return { id: photo.id, url: null }; } })),
@@ -184,5 +191,8 @@ export async function getMessages(db: PrismaClient, actor: Actor, selectedId?: s
       ])].sort((a, b) => a.at.localeCompare(b.at)),
     };
   }
-  return { role, viewerId: actor.userId, threads: summaries, selected: view, jobs: jobs.map(job => ({ id: job.id, number: `TM-${job.jobNumber}`, title: redactContactDetails(job.title, !!job.workerId) })) };
+  return { role, viewerId: actor.userId, threads: summaries, selected: view, jobs: jobs.flatMap(job => {
+    const context = jobThreadContextView(viewer, job);
+    return context ? [{ id: context.id, number: `TM-${context.jobNumber}`, title: redactContactDetails(context.title, isClaimedJob(job)) }] : [];
+  }) };
 }
