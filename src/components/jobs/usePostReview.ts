@@ -8,7 +8,7 @@ import { currentSchedule } from "@/lib/job-time-windows";
 import { verificationPath } from "@/lib/auth/verification";
 import { clearPhotoDraft, guestPhotoClaim, releasePhotoClaim } from "@/lib/jobs/draft-photo-browser";
 import type { DraftPhotoManager, PhotoSnapshot } from "@/lib/jobs/draft-photo-manager";
-import { clearPostIntent, clearPostedLocalDraft, createPostIntent, matchesPostIntent, POST_INTENT_PARAM, writePostIntent, type PostIntent } from "@/lib/jobs/post-intent";
+import { abandonPostIntent, clearPostIntent, clearPostedLocalDraft, createPostIntent, matchesPostIntent, POST_INTENT_PARAM, writePostIntent, type PostIntent } from "@/lib/jobs/post-intent";
 import { canonicalDraft, reconcileStepSave, type WizardDraft } from "@/lib/post-job-wizard";
 import { tryAgainText } from "@/lib/rate-limit";
 import { waitlistSharePath } from "@/lib/waitlist";
@@ -32,12 +32,21 @@ export function usePostReview({ ownerId, verified, draft, manager, state, save, 
   const session = useOptionalSessionExpired();
   const [busy, setBusy] = useState(false); const [error, setError] = useState(false); const [detail, setDetail] = useState<string>();
   const [signup, setSignup] = useState(false); const pending = useRef(false); const attempted = useRef<string | null>(null);
+  const cancelled = useRef(false); const createdIntent = useRef<PostIntent | undefined>(undefined);
   const returnPath = `${path}?${new URLSearchParams({ step: "review", [POST_INTENT_PARAM]: draft.data.postKey ?? "" })}`;
   function cancel() {
-    setSignup(false);
-    if (draft.data.postKey) clearPostIntent(localStorage, ownerId, draft.data.postKey);
+    // Synchronous: an already-queued resume may still see the old router params until navigation commits.
+    cancelled.current = true; attempted.current = resumeIntent?.postKey ?? draft.data.postKey ?? null;
+    setSignup(false); setError(false); setDetail(undefined);
+    const intent = createdIntent.current ?? resumeIntent;
+    try { if (intent) abandonPostIntent(localStorage, [JSON.stringify(intent)]); } catch { /* Navigation still cancels when storage access is blocked. */ }
     const query = new URLSearchParams(window.location.search); query.delete(POST_INTENT_PARAM);
-    window.history.replaceState(null, "", `${path}${query.size ? `?${query}` : ""}`);
+    window.history.replaceState(null, "", `${window.location.pathname}${query.size ? `?${query}` : ""}`);
+  }
+  function rememberIntent(entered: WizardDraft, selectedIds: string[]) {
+    const intent = createPostIntent(entered, ownerId, selectedIds);
+    if (!writePostIntent(localStorage, intent)) throw new Error("Intent unavailable");
+    createdIntent.current = intent;
   }
   async function finishPosted(jobId: string, postKey: string, selectedIds: string[]) {
     if (!ownerId) return;
@@ -54,6 +63,7 @@ export function usePostReview({ ownerId, verified, draft, manager, state, save, 
     router.replace(`/jobs/${jobId}?posted=1`);
   }
   async function post(automatic = false) {
+    if (automatic && cancelled.current) return;
     if (pending.current || offline || !photosReady(manager.getSnapshot())) return;
     const selectedIds = manager.getSnapshot().photos.map(photo => photo.id);
     if (automatic && (resumeConflict || !resumeIntent || !matchesPostIntent(draft, resumeIntent, new Date()) || JSON.stringify(selectedIds) !== JSON.stringify(resumeIntent.photoIds))) { setError(true); return; }
@@ -63,32 +73,35 @@ export function usePostReview({ ownerId, verified, draft, manager, state, save, 
     pending.current = true; setBusy(true); setError(false); setDetail(undefined);
     try {
       await manager.waitForRestore(); await manager.flush();
+      if (automatic && cancelled.current) return;
       if (!photosReady(manager.getSnapshot()) || JSON.stringify(selectedIds) !== JSON.stringify(manager.getSnapshot().photos.map(photo => photo.id))) throw new Error("Photos changed");
       const entered = { ...draft, data: { ...draft.data, ...reviewed.data } };
       keep(entered);
       if (!ownerId || !verified) {
-        const intent = createPostIntent(entered, ownerId, selectedIds);
-        if (!writePostIntent(localStorage, intent)) throw new Error("Intent unavailable");
+        rememberIntent(entered, selectedIds);
         if (!ownerId) setSignup(true);
         else router.push(verificationPath(returnPath));
         return;
       }
       const status = await inspectPostKeyAction(ownerId, draft.data.postKey, false, true);
+      if (automatic && cancelled.current) return;
       if (session?.check(status, { resend: () => post(automatic) })) return;
       if (!("status" in status)) throw new Error("Session changed");
       if (status.status === "unverified") {
-        if (!writePostIntent(localStorage, createPostIntent(entered, ownerId, selectedIds))) throw new Error("Intent unavailable");
+        rememberIntent(entered, selectedIds);
         router.push(verificationPath(returnPath)); return;
       }
       if (status.status === "posted") { await finishPosted(status.jobId, draft.data.postKey, selectedIds); return; }
       if (status.status !== "unposted") throw new Error("Draft status unavailable");
       const current = await loadDraftPhotosAction(ownerId, draft.data.postKey);
+      if (automatic && cancelled.current) return;
       if (session?.check(current, { resend: () => post(automatic) })) return;
       if (!("status" in current) || current.status !== "loaded") throw new Error("Draft changed");
       if (JSON.stringify(current.photoPaths) !== JSON.stringify(reviewed.data.photoPaths)) {
         manager.reconcile(current.photoPaths, true); await manager.flush(); throw new Error("Photos changed");
       }
       const result = await save(reviewed.data, ownerId, { postKey: draft.data.postKey, paths: current.photoPaths }, draft.manualCategory, "review");
+      if (automatic && cancelled.current) return;
       if (session?.check(result, { resend: () => post(automatic) })) return;
       if (!("status" in result) || result.status !== "saved") {
         if ("status" in result && result.status === "photos-changed") manager.reconcile(result.photoPaths, true);
@@ -103,7 +116,7 @@ export function usePostReview({ ownerId, verified, draft, manager, state, save, 
       if (!("status" in posted)) throw new Error("Session changed");
       if (posted.status === "outside-area") { router.push(waitlistSharePath(posted.waitlist.suburb)); return; }
       if (posted.status === "needs-account") {
-        if (!writePostIntent(localStorage, createPostIntent(entered, ownerId, selectedIds))) throw new Error("Intent unavailable");
+        rememberIntent(entered, selectedIds);
         router.push(verificationPath(returnPath)); return;
       }
       if (posted.status === "rate-limited") setDetail(tryAgainText(posted.retryAfter));
@@ -113,10 +126,16 @@ export function usePostReview({ ownerId, verified, draft, manager, state, save, 
     finally { pending.current = false; setBusy(false); }
   }
   const resume = useEffectEvent(() => {
-    if (!resumeIntent || !ownerId || !verified || step !== 3 || !photosReady(state) || params.get(POST_INTENT_PARAM) !== resumeIntent.postKey || attempted.current === resumeIntent.postKey) return;
+    if (cancelled.current || !resumeIntent || !ownerId || !verified || step !== 3 || !photosReady(state) || params.get(POST_INTENT_PARAM) !== resumeIntent.postKey || attempted.current === resumeIntent.postKey) return;
     attempted.current = resumeIntent.postKey;
     void post(true);
   });
   useEffect(() => { if (!preview) queueMicrotask(() => resume()); }, [step, state, resumeIntent, ownerId, verified, preview]);
+  const cancelHistory = useEffectEvent(cancel);
+  useEffect(() => {
+    const back = () => cancelHistory();
+    window.addEventListener("popstate", back);
+    return () => window.removeEventListener("popstate", back);
+  }, []);
   return { busy, error, detail, signup, returnPath, post: () => void post(), cancel };
 }
