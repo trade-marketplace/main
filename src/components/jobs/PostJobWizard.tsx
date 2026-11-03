@@ -16,7 +16,7 @@ import { Banner } from "@/components/overlays/Banner";
 import { DRAFT_STORAGE_KEY, type JobDraft } from "@/lib/job-draft";
 import { wentUp } from "@/lib/motion/helpers";
 import { useBump } from "@/lib/motion/hooks";
-import { applyLandingHandoff, canonicalDraft, decodeWizardDraft, describeErrors, editDescription, encodeWizardDraft, initialWizardDraft, landingLocationHint, landingWizardDraft, localEnvelopeMatchesInput, JOB_TYPES, WIZARD_STEPS, type WizardDraft } from "@/lib/post-job-wizard";
+import { applyLandingHandoff, canClearStaleDescribe, canonicalDraft, decodeWizardDraft, describeErrors, editDescription, encodeWizardDraft, initialWizardDraft, landingLocationHint, landingWizardDraft, localEnvelopeMatchesInput, recoverServerDescribe, JOB_TYPES, WIZARD_STEPS, type WizardDraft } from "@/lib/post-job-wizard";
 import type { saveDraftAction } from "@/server/jobs/actions";
 
 import styles from "./post-job.module.css";
@@ -33,9 +33,11 @@ type Props = {
 };
 const HANDOFF_PARAMS = ["description", "type"] as const;
 const LOCATION_PARAMS = ["location", "lat", "lng"] as const;
+const SERVER_DRAFT_PARAM = "savedDraft";
 function withoutLandingFallback(href: string) {
   const url = new URL(href, window.location.origin);
   for (const name of [...HANDOFF_PARAMS, ...LOCATION_PARAMS]) url.searchParams.delete(name);
+  url.searchParams.delete(SERVER_DRAFT_PARAM);
   return `${url.pathname}${url.search}`;
 }
 function subscribeDraft(onChange: () => void) {
@@ -84,14 +86,18 @@ export function WizardFrame({ step = 0, saved, saveExit, children, summary, back
 export function PostJobWizard({ ownerId = null, initialDraft = {}, initialManualCategory, hasServerDraft = false, loadFailed = false, save, previewState }: Props) {
   const router = useRouter(); const path = usePathname(); const params = useSearchParams();
   const raw = useSyncExternalStore(subscribeDraft, snapshot, () => null);
-  const restored = previewState ? null : decodeWizardDraft(raw, ownerId);
+  const recover = Boolean(ownerId && hasServerDraft && initialDraft.postKey && params.get(SERVER_DRAFT_PARAM) === initialDraft.postKey);
+  const local = previewState ? null : decodeWizardDraft(raw, ownerId);
+  const restored = recover ? recoverServerDescribe(local, initialDraft, initialManualCategory) : local;
   const [edited, setEdited] = useState<WizardDraft>();
   const queryString = params.toString();
   const handoff = previewState ? {} : landingWizardDraft(Object.fromEntries(params));
   const queryHint = previewState ? undefined : landingLocationHint(Object.fromEntries(params));
   const handoffKey = handoff.description || handoff.category ? JSON.stringify(handoff) : null;
   const appliedHandoff = useRef<string | null>(null); const [consumedHandoff, setConsumedHandoff] = useState<string | null>(null);
-  const baseDraft = edited ?? restored ?? initialWizardDraft(initialDraft, hasServerDraft || previewState === "photos", initialManualCategory);
+  const memory = recover && edited?.data.postKey !== initialDraft.postKey ? undefined : edited;
+  const baseDraft = memory ?? restored ?? initialWizardDraft(initialDraft, hasServerDraft || previewState === "photos", initialManualCategory);
+  const recoveryPending = Boolean(recover && !memory && local && !localEnvelopeMatchesInput(baseDraft, local));
   const describedDraft = handoffKey && handoffKey !== consumedHandoff ? applyLandingHandoff(baseDraft, handoff) : baseDraft;
   const draft = queryHint ? { ...describedDraft, locationHint: queryHint } : describedDraft;
   const [saved, setSaved] = useState<boolean>();
@@ -134,7 +140,8 @@ export function PostJobWizard({ ownerId = null, initialDraft = {}, initialManual
     const describe = Boolean(key && appliedHandoff.current !== key);
     if (!describe && !hint) return;
     // Read the device snapshot here too: useSyncExternalStore hydrates after its empty server snapshot.
-    let current = edited ?? decodeWizardDraft(snapshot(), ownerId) ?? initialWizardDraft(initialDraft, hasServerDraft, initialManualCategory);
+    const stored = decodeWizardDraft(snapshot(), ownerId);
+    let current = memory ?? (recover ? recoverServerDescribe(stored, initialDraft, initialManualCategory) : stored) ?? initialWizardDraft(initialDraft, hasServerDraft, initialManualCategory);
     if (ownerId && hasServerDraft && current.data.postKey !== initialDraft.postKey) current = initialWizardDraft(initialDraft, true, initialManualCategory);
     if (ownerId && hasServerDraft) current = { ...current, data: { ...current.data, photoPaths: initialDraft.photoPaths } };
     if (hint) current = { ...current, locationHint: hint };
@@ -145,6 +152,7 @@ export function PostJobWizard({ ownerId = null, initialDraft = {}, initialManual
     const clean = new URLSearchParams(incomingQuery);
     if (describe) clean.delete("step");
     if (persisted) for (const name of HANDOFF_PARAMS) clean.delete(name);
+    if (persisted) clean.delete(SERVER_DRAFT_PARAM);
     if (hint && persisted) for (const name of LOCATION_PARAMS) clean.delete(name);
     // Next copies its router state itself; forwarding __NA would bypass its search-param update.
     if (clean.toString() !== incomingQuery) window.history.replaceState(null, "", `${path}${clean.size ? `?${clean}` : ""}`);
@@ -166,7 +174,7 @@ export function PostJobWizard({ ownerId = null, initialDraft = {}, initialManual
         return;
       }
     }
-    const kept = keep(draft); let durable = kept.persisted;
+    const kept = keep(draft); let durable = kept.persisted; let savedToServer = false;
     if (offline && !exit) return;
     if (ownerId && !offline) {
       pending.current = true; setBusy(true);
@@ -178,8 +186,12 @@ export function PostJobWizard({ ownerId = null, initialDraft = {}, initialManual
           if ("status" in result && result.status === "invalid") setFields(result.fields);
           setError(true); return;
         }
+        savedToServer = true;
         // Unfinished text that the shared schema omits still needs local persistence before leaving.
         durable ||= typeof canonical.description === "string" && canonical.description === kept.draft.description.trim() && localEnvelopeMatchesInput(kept.draft, decodeWizardDraft(snapshot(), ownerId));
+        if (!exit && !durable && canClearStaleDescribe(kept.draft, decodeWizardDraft(snapshot(), ownerId))) {
+          try { localStorage.removeItem(DRAFT_STORAGE_KEY); durable = localStorage.getItem(DRAFT_STORAGE_KEY) === null; } catch { /* Keep memory and use the key-bound server fallback below. */ }
+        }
       } catch { setError(true); return; }
       finally { pending.current = false; setBusy(false); }
     } else if (previewState === "save-error") { setError(true); return; }
@@ -187,17 +199,19 @@ export function PostJobWizard({ ownerId = null, initialDraft = {}, initialManual
     if (exit && !durable) { setError(true); return; }
     if (!exit) keep({ ...kept.draft, completedDescribe: true });
     if (durable) { setSaved(true); setError(false); }
-    router.push(exit ? "/" : durable ? withoutLandingFallback(nextHref) : nextHref);
+    const destination = new URL(durable ? withoutLandingFallback(nextHref) : nextHref, window.location.origin);
+    if (!exit && savedToServer && !durable) destination.searchParams.set(SERVER_DRAFT_PARAM, kept.draft.data.postKey!);
+    router.push(exit ? "/" : `${destination.pathname}${destination.search}`);
   }
 
   function submit(event: FormEvent) { event.preventDefault(); void advance(); }
   const category = draft.data.category;
   const label = JOB_TYPES.find((item) => item.value === category)?.label;
-  return <WizardFrame step={step} saved={saved ?? Boolean(restored || hasServerDraft || previewState === "restored")} summary={draft} backHref={backHref} saveExit={() => void advance(true)} busy={busy}>
+  return <WizardFrame step={step} saved={!recoveryPending && (saved ?? Boolean(restored || hasServerDraft || previewState === "restored"))} summary={draft} backHref={backHref} saveExit={() => void advance(true)} busy={busy}>
     <OfflineBanner online={previewState === "offline" ? false : undefined} sticky={false} />
     {restoredNotice && <Banner tone="good" title="Draft restored" className={styles.notice} />}
     {loadFailed && <Banner tone="alert" title="Couldn’t load your draft." className={styles.notice} action={<Button variant="tertiary" onClick={() => router.refresh()}>Try again</Button>} />}
-    {error && <Banner tone="alert" title="Couldn’t save." className={styles.notice} live />}
+    {(error || recoveryPending) && <Banner tone="alert" title="Couldn’t save." className={styles.notice} live />}
     <h1 ref={headingRef} tabIndex={-1} className={styles.title}>{step === 0 ? "What needs doing?" : "Photos"}</h1>
     {step === 0 ? <form className={styles.form} onSubmit={submit} noValidate aria-label="Describe the job">
       <div>

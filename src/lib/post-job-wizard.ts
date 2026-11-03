@@ -50,6 +50,20 @@ export function editDescription(draft: WizardDraft, description: string): Wizard
   return { ...draft, description, data: { ...draft.data, category }, completedDescribe: false };
 }
 
+/** A key-bound recovery URL can restore represented server fields without dropping local-only hints. */
+export function recoverServerDescribe(local: WizardDraft | null, server: JobDraft, manualCategory?: boolean | null): WizardDraft | null {
+  if (!local || !server.postKey || local.data.postKey !== server.postKey) return null;
+  const confirmed = initialWizardDraft(server, true, manualCategory);
+  return { ...local, description: confirmed.description, manualCategory: confirmed.manualCategory, completedDescribe: confirmed.completedDescribe,
+    data: { ...local.data, description: server.description, category: server.category } };
+}
+
+/** Later raw steps and local-only location hints cannot be discarded by a Describe recovery. */
+export function canClearStaleDescribe(draft: WizardDraft, stored: WizardDraft | null): boolean {
+  return Boolean(stored && stored.data.postKey === draft.data.postKey && !stored.locationHint && !draft.locationHint
+    && Object.keys(stored.data).every(key => ["postKey", "description", "category", "photoPaths"].includes(key)));
+}
+
 /** The canonical draft always uses #116's schema. A separate bounded string keeps unfinished typing too. */
 export function canonicalDraft(draft: WizardDraft): JobDraft {
   const rest = { ...draft.data }; delete rest.description;

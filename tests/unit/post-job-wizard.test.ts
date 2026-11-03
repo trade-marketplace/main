@@ -1,8 +1,25 @@
 import { describe, expect, it } from "vitest";
 import { jobDraftSchema } from "@/lib/job-draft";
-import { applyLandingHandoff, canonicalDraft, decodeWizardDraft, describeErrors, editDescription, encodeWizardDraft, guessJobType, initialWizardDraft, landingLocationHint, landingWizardDraft, localEnvelopeMatchesInput } from "@/lib/post-job-wizard";
+import { applyLandingHandoff, canClearStaleDescribe, canonicalDraft, decodeWizardDraft, describeErrors, editDescription, encodeWizardDraft, guessJobType, initialWizardDraft, landingLocationHint, landingWizardDraft, localEnvelopeMatchesInput, recoverServerDescribe } from "@/lib/post-job-wizard";
 
 describe("Describe step", () => {
+  it("recovers represented server Describe fields while retaining key-bound local-only hints and later fields", () => {
+    const key = "9b58063b-12c2-4b46-9c45-38353f41173e";
+    const local = { ...initialWizardDraft({ postKey: key, description: "Repair a leaking tap", category: "PLUMBING", photoPaths: ["cached-photo"], addressLine1: "1 Example Street" }), locationHint: { label: "Bluff", point: null } };
+    const server = { postKey: key, description: "Check the lights and wiring upstairs", category: "ELECTRICAL" as const };
+    expect(recoverServerDescribe(local, server, false)).toMatchObject({ description: server.description, manualCategory: false, completedDescribe: true, locationHint: local.locationHint, data: { category: "ELECTRICAL", photoPaths: local.data.photoPaths, addressLine1: local.data.addressLine1 } });
+    expect(recoverServerDescribe(local, { ...server, category: undefined }, false)?.completedDescribe).toBe(false);
+    expect(recoverServerDescribe(local, { ...server, postKey: "other-key" }, false)).toBeNull();
+    expect(local).toMatchObject({ description: "Repair a leaking tap", data: { postKey: key, category: "PLUMBING" }, locationHint: { label: "Bluff", point: null } });
+    expect(recoverServerDescribe(null, server, false)).toBeNull();
+  });
+  it("only clears a stale Describe envelope when its local-only content can safely be replaced", () => {
+    const draft = initialWizardDraft({ postKey: "9b58063b-12c2-4b46-9c45-38353f41173e", description: "Repair a leaking tap", category: "PLUMBING", photoPaths: [] });
+    expect(canClearStaleDescribe(draft, draft)).toBe(true); expect(canClearStaleDescribe(draft, null)).toBe(false);
+    expect(canClearStaleDescribe(draft, { ...draft, data: { ...draft.data, postKey: "other-key" } })).toBe(false);
+    expect(canClearStaleDescribe(draft, { ...draft, locationHint: { label: "Bluff", point: null } })).toBe(false);
+    expect(canClearStaleDescribe(draft, { ...draft, data: { ...draft.data, addressLine1: "Unsubmitted later state" } })).toBe(false);
+  });
   it("refuses server-only exit when a readable local envelope would restore older input", () => {
     const draft = initialWizardDraft({ postKey: "9b58063b-12c2-4b46-9c45-38353f41173e", description: "Check the lights upstairs", category: "ELECTRICAL" });
     expect(localEnvelopeMatchesInput(draft, null)).toBe(true); expect(localEnvelopeMatchesInput(draft, draft)).toBe(true);

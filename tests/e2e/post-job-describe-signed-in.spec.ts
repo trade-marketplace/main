@@ -167,4 +167,36 @@ test.describe("customer Describe draft through the real server action", () => {
     await page.evaluate(() => Reflect.set(window, "allowDraftStorage", true)); await page.getByRole("button", { name: "Save & exit", exact: true }).click(); await expect(page).toHaveURL(`${app}/`);
     await page.goto(`${app}/jobs/new`); await expect(page.getByText(/We guessed Electrical/)).toHaveCount(0); await expect(field).toHaveValue(data.description);
   });
+  for (const removalBlocked of [false, true]) test(`server-saved Next survives stale readable storage and refresh (clear blocked: ${removalBlocked})`, async ({ page }) => {
+    const key = crypto.randomUUID(); const data = { postKey: key, description: "Repair a leaking tap downstairs.", category: "PLUMBING", photoPaths: [] };
+    await db.query("INSERT INTO job_drafts(profile_id,data,manual_category,updated_at) VALUES($1,$2,false,now()) ON CONFLICT(profile_id) DO UPDATE SET data=EXCLUDED.data,manual_category=false", [SECURITY_USER.id, data]);
+    await page.addInitScript(({ owner, data, removalBlocked }) => {
+      const set = Storage.prototype.setItem; const remove = Storage.prototype.removeItem;
+      if (!sessionStorage.getItem("staleDraftSeeded")) { set.call(localStorage, "trade.job-draft.v1", JSON.stringify({ version: 1, ownerId: owner, data, description: data.description, manualCategory: false, completedDescribe: false })); set.call(sessionStorage, "staleDraftSeeded", "1"); }
+      Storage.prototype.setItem = function(key, value) { if (key === "trade.job-draft.v1" && !Reflect.get(window, "allowDraftStorage") && !sessionStorage.getItem("allowDraftStorage")) throw new DOMException("Storage full", "QuotaExceededError"); set.call(this, key, value); };
+      Storage.prototype.removeItem = function(key) { if (key === "trade.job-draft.v1" && removalBlocked) throw new DOMException("Storage blocked", "SecurityError"); remove.call(this, key); };
+    }, { owner: SECURITY_USER.id, data, removalBlocked });
+    await page.goto(`${app}/login?next=%2Fjobs%2Fnew`); await page.getByLabel("Email", { exact: true }).fill(SECURITY_USER.email); await page.getByLabel("Password", { exact: true }).fill(SECURITY_PASSWORD); await page.getByRole("button", { name: "Log in", exact: true }).click();
+    const field = page.getByRole("textbox", { name: "Describe the job", exact: true }); await field.fill("Check the lights and wiring upstairs.");
+    await page.getByRole("button", { name: "Next", exact: true }).click(); await expect(page.getByRole("heading", { name: "Photos", exact: true })).toBeVisible();
+    const stored = await page.evaluate(() => localStorage.getItem("trade.job-draft.v1"));
+    if (removalBlocked) { expect(JSON.parse(stored!).description).toBe(data.description); expect(new URL(page.url()).searchParams.get("savedDraft")).toBe(key); await expect(page.getByText("Draft saved", { exact: true })).toHaveCount(0); }
+    else { expect(stored).toBeNull(); expect(new URL(page.url()).searchParams.has("savedDraft")).toBe(false); }
+    await page.reload(); await expect(page.getByRole("heading", { name: "Photos", exact: true })).toBeVisible();
+    await expect(page.getByRole("complementary", { name: "Your job" })).toContainText("Check the lights and wiring upstairs.");
+    if (removalBlocked) { await expect(page.getByText("Draft saved", { exact: true })).toHaveCount(0); await expect(page.getByText("Couldn’t save.", { exact: true })).toBeVisible(); }
+    await page.getByRole("link", { name: "Back", exact: true }).click(); await expect(field).toHaveValue("Check the lights and wiring upstairs."); await expect(page.getByRole("radio", { name: "Electrical", exact: true })).toBeChecked();
+    // A wrong-key marker cannot select server fields, and an explicit landing handoff still wins once.
+    if (removalBlocked) {
+      await page.goto(`${app}/jobs/new?savedDraft=${crypto.randomUUID()}`); await expect(field).toHaveValue(data.description);
+      await page.evaluate(() => { Reflect.set(window, "allowDraftStorage", true); sessionStorage.setItem("allowDraftStorage", "1"); });
+      await page.goto(`${app}/jobs/new?savedDraft=${key}&description=Move+a+sofa+upstairs&type=other&location=Bluff&step=photos`);
+      await expect(page.getByRole("heading", { name: "What needs doing?", exact: true })).toBeVisible();
+      await expect(page.getByRole("textbox", { name: "What do you need done?", exact: true })).toHaveValue("Move a sofa upstairs");
+      await expect(page.getByRole("radio", { name: "Other (anything)", exact: true })).toBeChecked();
+      await expect(page).toHaveURL(`${app}/jobs/new`);
+      const recovered = await page.evaluate(() => JSON.parse(localStorage.getItem("trade.job-draft.v1")!)); expect(recovered.locationHint).toEqual({ label: "Bluff", point: null }); expect(recovered.data.postKey).toBe(key);
+    }
+    await expectNoA11yViolations(page);
+  });
 });
