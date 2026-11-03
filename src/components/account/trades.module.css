@@ -1,0 +1,18 @@
+.rows { display: grid; gap: var(--trade-space-3); }
+.row { display: flex; flex-wrap: wrap; gap: var(--trade-space-3); align-items: center; }
+.row h2 { font-family: var(--trade-font-body); font-variation-settings: var(--trade-ui-axes); font-size: var(--trade-fs-body); font-weight: 700; }
+.tradeIcon { width: 44px; height: 44px; display: grid; place-items: center; flex: 0 0 auto; border-radius: var(--trade-radius-field); background: var(--trade-tint); color: var(--trade-text); }
+.details { flex: 1 1 180px; min-width: 0; overflow-wrap: anywhere; }
+.reason { margin: var(--trade-space-2) 0 0; color: var(--trade-danger); font-size: var(--trade-fs-small); }
+.rowActions { display: flex; align-items: center; gap: var(--trade-space-3); }
+.documentLink { color: var(--trade-link); min-height: var(--trade-tap); display: inline-flex; align-items: center; font-weight: 600; }
+.warning { display: flex; align-items: start; gap: var(--trade-space-3); padding: var(--trade-space-4); border: 1px solid var(--trade-amber); background: color-mix(in srgb, var(--trade-amber) 16%, var(--trade-surface)); border-radius: var(--trade-radius-card); }
+.warning p { margin: 0; font-size: var(--trade-fs-small); line-height: var(--trade-lh-body); }
+.fileInput { width: 100%; min-height: var(--trade-tap); color: var(--trade-text); font: inherit; border: 1px solid var(--trade-field-stroke); border-radius: var(--trade-radius-field); padding: var(--trade-space-3); background: var(--trade-surface); }
+.fileInput::file-selector-button { color: var(--trade-text); background: var(--trade-tint); border: 1px solid var(--trade-line); border-radius: var(--trade-radius-field); padding: var(--trade-space-2); margin-right: var(--trade-space-3); font: inherit; cursor: pointer; }
+.actions { display: flex; flex-wrap: wrap; gap: var(--trade-space-3); align-items: center; }
+.skeleton { margin-top: var(--trade-space-3); }
+@media (max-width: 599px) { .rowActions { flex: 1 0 100%; justify-content: flex-end; } .actions { align-items: stretch; flex-direction: column; } }
+
+.status { max-width: 100%; min-width: 0; vertical-align: middle; }
+.status > * { min-width: 0; }

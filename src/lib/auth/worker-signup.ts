@@ -10,6 +10,16 @@ export const SIGNUP_TRADES = [
 ] as const;
 export type SignupTrade = (typeof SIGNUP_TRADES)[number]["value"];
 export type RestrictedSignupTrade = Exclude<SignupTrade, "OTHER">;
+/** Shared with Trades & licences: formatting is only a first check; the office verifies every licence. */
+export function parseLicenceNumber(tradeValue: RestrictedSignupTrade, input: string): { ok: true; number: string } | { ok: false; message: string } {
+  const trade = SIGNUP_TRADES.find(item => item.value === tradeValue)!;
+  if (!trade.licence) return { ok: false, message: "Pick a trade from the list." };
+  const number = input.trim().replace(/\s+/g, " ").toUpperCase();
+  if (!number) return { ok: false, message: `Enter your number, for example ${trade.licence.example}.` };
+  if (number.length > 64) return { ok: false, message: "That licence number is too long." };
+  if (!trade.licence.pattern.test(number.replace(/\s+/g, ""))) return { ok: false, message: `Use a number like ${trade.licence.example}. The office checks the licence before restricted work.` };
+  return { ok: true, number };
+}
 export type WorkerSignupField = "trades" | "baseSuburb" | "radiusKm" | `licence_${RestrictedSignupTrade}`;
 export type WorkerSignupInput = {
   trades: string[];
@@ -52,10 +62,9 @@ export function parseWorkerSignup(input: unknown): { ok: true; details: WorkerSi
   const licences: WorkerSignupDetails["licences"] = {};
   for (const trade of SIGNUP_TRADES) {
     if (!trade.licence || !data.trades.includes(trade.value)) continue;
-    const number = data.licences[trade.value]?.trim().replace(/\s+/g, " ").toUpperCase() ?? "";
-    if (!number) errors[`licence_${trade.value}`] = `Enter your number, for example ${trade.licence.example}.`;
-    else if (!trade.licence.pattern.test(number.replace(/\s+/g, ""))) errors[`licence_${trade.value}`] = `Use a number like ${trade.licence.example}. The office checks the licence before restricted work.`;
-    else licences[trade.value] = number;
+    const checked = parseLicenceNumber(trade.value, data.licences[trade.value] ?? "");
+    if (!checked.ok) errors[`licence_${trade.value}`] = checked.message;
+    else licences[trade.value] = checked.number;
   }
   if (Object.keys(errors).length) return { ok: false, errors };
   return { ok: true, details: { ...data, trades: [...new Set(data.trades)], licences } };

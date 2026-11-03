@@ -34,6 +34,7 @@ const COPY: Readonly<Record<string, readonly [string, string]>> = {
   "crew.invited": ["Crew invitation", "group_add"],
   "licence.verified": ["Licence checked", "verified"],
   "licence.rejected": ["Check your licence", "badge"],
+  "licence.expiring": ["Licence expiring", "badge"],
   "message.received": ["New message", "chat_bubble"],
 };
 

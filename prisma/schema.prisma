@@ -93,6 +93,7 @@ model Profile {
 
   workerProfile    WorkerProfile?
   workerTrades     WorkerTrade[]
+  licenceUploads   LicenceUploadStage[]
   licences         Licence[]          @relation("LicenceHolder")
   licencesChecked  Licence[]          @relation("LicenceChecker")
   workersVerified  WorkerProfile[]    @relation("WorkerVerifier")
@@ -188,6 +189,7 @@ model Licence {
   // Required when VERIFIED or REJECTED.
   checkedAt       DateTime?     @map("checked_at") @db.Timestamptz
   expiresOn       DateTime?     @map("expires_on") @db.Date
+  expiryRemindedAt DateTime?    @map("expiry_reminded_at") @db.Timestamptz
   // Path of the uploaded licence in the private Storage bucket.
   documentPath    String?       @map("document_path")
   createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz
@@ -242,6 +244,22 @@ model PayrollDetails {
   updatedAt            DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   @@map("payroll_details")
+}
+
+// Server-only quarantine records remain after finalization until the signed upload token has expired. Raw
+// objects are removed immediately after checking and once more by the scheduler, including abandoned uploads.
+model LicenceUploadStage {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId      String?   @map("user_id") @db.Uuid
+  user        Profile?  @relation(fields: [userId], references: [id], onDelete: SetNull)
+  path        String    @unique
+  expiresAt   DateTime  @map("expires_at") @db.Timestamptz
+  finalizedAt DateTime? @map("finalized_at") @db.Timestamptz
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([userId, expiresAt])
+  @@index([expiresAt])
+  @@map("licence_upload_stages")
 }
 
 // ---------------------------------------------------------------- Schema 2 (#87): jobs

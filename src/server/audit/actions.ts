@@ -83,6 +83,8 @@ export const AUDIT_ACTIONS = {
   "office_user.added": { record: "profiles" },
   "office_user.removed": { record: "profiles" },
   "licence.verified": { record: "licences" },
+  "licence.submitted": { record: "licences" },
+  "worker.trade_added": { record: "worker_profiles" },
   "licence.rejected": { record: "licences", reason: "required" },
   "licence.expired": { record: "licences" },
   "worker.paused": { record: "worker_profiles", reason: "required" },

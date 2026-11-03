@@ -119,13 +119,14 @@ describe("the runner", () => {
     error.mockRestore();
   });
 
-  it("has the five rules from the issue", () => {
+  it("has the job rules and the once-only licence reminder", () => {
     expect(SCHEDULER_RULES.map((rule) => rule.name)).toEqual([
       "auto-sign-off",
       "bounty-expiry",
       "price-slow-banner",
       "unclaimed-alert",
       "review-reminder",
+      "licence-expiry-reminder", "licence-upload-cleanup",
     ]);
   });
 });
