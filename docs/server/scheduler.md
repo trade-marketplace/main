@@ -26,6 +26,8 @@ pg_cron (every minute) → run_scheduled_jobs() → pg_net POST → /api/schedul
 | `unclaimed-alert` | `BOOKABLE` for 48h | marks `job.unclaimed`, notifies the office | `scheduled_job_marks` |
 | `review-reminder` | `COMPLETED` 24h to 7 days ago with no review | marks `review.reminded`, one `review.reminder` to the customer | `scheduled_job_marks` |
 | `support-photo-cleanup` | private support-photo cleanup intents at least 24h old, at most 10 per run | checks current message references under the upload/attachment path lock; removes unreferenced objects, retries failed removals | durable intent plus deletion tombstone; referenced photos stay private and retained |
+| `draft-photo-raw-cleanup` | private raw stages after their two-hour token expiry plus five minutes, at most 10 per run | removes raw objects again, including late signed uploads, then removes the stage record | failed removals retain the record for retry |
+| `draft-photo-cleanup` | processed photo intents due after 24h, at most 10 per run | keeps exact draft/job photo references under the same draft-owner lock; defers referenced checks another day | durable intent before put and a committed deletion tombstone; no cascading account FK |
 
 "Entered the status" is the latest `job_status_history` row for that status. Each marked rule writes its
 `scheduled_job_marks` row and its notification in **one transaction**, so a failure rolls both back and the job is due

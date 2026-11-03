@@ -13,11 +13,16 @@ import { Skeleton } from "@/components/feedback/Skeleton";
 import { ChipGroup } from "@/components/forms/ChoiceFields";
 import { TextAreaField } from "@/components/forms/TextFields";
 import { Banner } from "@/components/overlays/Banner";
+import { ToastProvider } from "@/components/overlays/Toast";
+import { PhotoThumbnail } from "@/components/media/PhotoPicker";
 import { DRAFT_STORAGE_KEY, type JobDraft } from "@/lib/job-draft";
 import { wentUp } from "@/lib/motion/helpers";
 import { useBump } from "@/lib/motion/hooks";
-import { applyLandingHandoff, canClearStaleDescribe, canonicalDraft, decodeWizardDraft, describeErrors, editDescription, encodeWizardDraft, initialWizardDraft, landingLocationHint, landingWizardDraft, localEnvelopeMatchesInput, recoverServerDescribe, JOB_TYPES, WIZARD_STEPS, type WizardDraft } from "@/lib/post-job-wizard";
-import type { saveDraftAction } from "@/server/jobs/actions";
+import { applyLandingHandoff, canClearStaleDescribe, canonicalDraft, decodeWizardDraft, describeErrors, editDescription, encodeWizardDraft, initialWizardDraft, landingLocationHint, landingWizardDraft, localEnvelopeMatchesInput, recoverServerDescribe, reconcileWizardPhotos, JOB_TYPES, WIZARD_STEPS, type WizardDraft } from "@/lib/post-job-wizard";
+import { loadDraftPhotosAction, type saveDraftAction } from "@/server/jobs/actions";
+import { canResumeSavedPhotos } from "@/lib/jobs/draft-photo-path";
+import { DraftPhotos } from "./DraftPhotos";
+import { useDraftPhotos } from "./useDraftPhotos";
 
 import styles from "./post-job.module.css";
 
@@ -46,8 +51,8 @@ function subscribeDraft(onChange: () => void) {
 }
 function snapshot() { try { return localStorage.getItem(DRAFT_STORAGE_KEY); } catch { return null; } }
 
-export function WizardFrame({ step = 0, saved, saveExit, children, summary, backHref, busy }: {
-  step?: number; saved?: boolean; saveExit?: () => void; children: ReactNode; summary?: WizardDraft; backHref?: string; busy?: boolean;
+export function WizardFrame({ step = 0, saved, saveExit, children, summary, backHref, busy, stepHrefs, photoPreviews }: {
+  step?: number; saved?: boolean; saveExit?: () => void; children: ReactNode; summary?: WizardDraft; backHref?: string; busy?: boolean; stepHrefs?: readonly string[]; photoPreviews?: readonly { src: string; name: string }[];
 }) {
   const run = useBump(step, wentUp);
   return <div className={styles.page} data-mode="customer">
@@ -64,7 +69,7 @@ export function WizardFrame({ step = 0, saved, saveExit, children, summary, back
         <ol className={styles.steps}>
           {WIZARD_STEPS.map((label, i) => <li key={label} data-state={i < step ? "done" : i === step ? "now" : "todo"} aria-current={i === step ? "step" : undefined}>
             <span key={i === step ? run : 0} className={`${styles.stepDot} ${i === step && run ? "tm-anim-step-dot" : ""}`} aria-hidden="true">{i < step ? <Icon name="check" size="sm" decorative /> : i + 1}</span>
-            {i < step && backHref ? <Link href={backHref}>{label}<span className={styles.srOnly}>: Done</span></Link> : <span>{label}<span className={styles.srOnly}>: {i === step ? "Now" : "To do"}</span></span>}
+            {i < step && (stepHrefs?.[i] ?? backHref) ? <Link href={stepHrefs?.[i] ?? backHref!}>{label}<span className={styles.srOnly}>: Done</span></Link> : <span>{label}<span className={styles.srOnly}>: {i === step ? "Now" : "To do"}</span></span>}
           </li>)}
         </ol>
       </nav>
@@ -75,19 +80,24 @@ export function WizardFrame({ step = 0, saved, saveExit, children, summary, back
       </main>
       <aside className={`${styles.summary} ${styles.card}`} aria-label="Your job">
         <h2 className={styles.eyebrow}>Your job</h2>
+        {Boolean(photoPreviews?.length) && <div className={styles.summaryPhotos}>{photoPreviews!.slice(0, 3).map((photo, index) => <span className={styles.summaryPhoto} key={`${photo.src}-${index}`}><PhotoThumbnail photo={photo} index={index} /></span>)}</div>}
         {summary?.data.category && <span className={styles.category}>{JOB_TYPES.find((item) => item.value === summary.data.category)?.label}</span>}
         {summary?.description && <p className={styles.summaryText}>{summary.description}</p>}
-        <Banner tone="brand" icon="lock">Free to post. You only pay if you accept the price.</Banner>
+        <Banner tone="brand" icon="lock" className={styles.summaryTrust}>Free to post. You only pay if you accept the price.</Banner>
       </aside>
     </div>
   </div>;
 }
 
 export function PostJobWizard({ ownerId = null, initialDraft = {}, initialManualCategory, hasServerDraft = false, loadFailed = false, save, previewState }: Props) {
+  return <ToastProvider><PostJobWizardForm {...{ ownerId, initialDraft, initialManualCategory, hasServerDraft, loadFailed, save, previewState }} /></ToastProvider>;
+}
+
+function PostJobWizardForm({ ownerId = null, initialDraft = {}, initialManualCategory, hasServerDraft = false, loadFailed = false, save, previewState }: Props) {
   const router = useRouter(); const path = usePathname(); const params = useSearchParams();
   const raw = useSyncExternalStore(subscribeDraft, snapshot, () => null);
   const recover = Boolean(ownerId && hasServerDraft && initialDraft.postKey && params.get(SERVER_DRAFT_PARAM) === initialDraft.postKey);
-  const local = previewState ? null : decodeWizardDraft(raw, ownerId);
+  const local = previewState ? null : reconcileWizardPhotos(decodeWizardDraft(raw, ownerId), initialDraft, Boolean(ownerId && hasServerDraft));
   const restored = recover ? recoverServerDescribe(local, initialDraft, initialManualCategory) : local;
   const [edited, setEdited] = useState<WizardDraft>();
   const queryString = params.toString();
@@ -95,11 +105,13 @@ export function PostJobWizard({ ownerId = null, initialDraft = {}, initialManual
   const queryHint = previewState ? undefined : landingLocationHint(Object.fromEntries(params));
   const handoffKey = handoff.description || handoff.category ? JSON.stringify(handoff) : null;
   const appliedHandoff = useRef<string | null>(null); const [consumedHandoff, setConsumedHandoff] = useState<string | null>(null);
-  const memory = recover && edited?.data.postKey !== initialDraft.postKey ? undefined : edited;
+  const memory = reconcileWizardPhotos(edited ?? null, initialDraft, Boolean(ownerId && hasServerDraft));
   const baseDraft = memory ?? restored ?? initialWizardDraft(initialDraft, hasServerDraft || previewState === "photos", initialManualCategory);
-  const recoveryPending = Boolean(recover && !memory && local && (!localEnvelopeMatchesInput(baseDraft, local) || local.completedDescribe !== baseDraft.completedDescribe));
   const describedDraft = handoffKey && handoffKey !== consumedHandoff ? applyLandingHandoff(baseDraft, handoff) : baseDraft;
   const draft = queryHint ? { ...describedDraft, locationHint: queryHint } : describedDraft;
+  const serverPaths = ownerId && hasServerDraft && initialDraft.postKey === draft.data.postKey ? initialDraft.photoPaths ?? [] : draft.data.photoPaths ?? [];
+  const photoAuthority = Boolean(ownerId && hasServerDraft && initialDraft.postKey === draft.data.postKey);
+  const photos = useDraftPhotos({ ownerId, postKey: draft.data.postKey, serverPaths, authoritative: photoAuthority, preview: Boolean(previewState) });
   const [saved, setSaved] = useState<boolean>();
   const [error, setError] = useState(previewState === "save-error");
   const [fields, setFields] = useState<Record<string, string>>(previewState === "invalid" ? { description: "Describe the job", category: "Type of job" } : {});
@@ -108,12 +120,17 @@ export function PostJobWizard({ ownerId = null, initialDraft = {}, initialManual
   const session = useOptionalSessionExpired(); const online = useOnlineStatus();
   const offline = !online || previewState === "offline";
   const describeValid = !Object.keys(describeErrors(draft)).length;
-  const step = (params.get("step") === "photos" || (!params.has("step") && previewState === "photos")) && draft.completedDescribe && describeValid ? 1 : 0;
-  const query = new URLSearchParams(params.toString()); query.delete("step");
-  if (previewState === "photos") query.set("step", "describe");
-  const backHref = `${path}${query.size ? `?${query}` : ""}`;
-  const nextQuery = new URLSearchParams(query); nextQuery.set("step", "photos");
-  const nextHref = `${path}?${nextQuery}`;
+  const requestedStep = params.get("step") ?? (previewState === "photos" ? "photos" : "describe");
+  const described = draft.completedDescribe && describeValid && Boolean(draft.data.postKey);
+  const recoveryPaths = Array.isArray(initialDraft.photoPaths) ? photos.manager.confirmedPaths() : initialDraft.photoPaths;
+  const recoveredPhotos = recover && canResumeSavedPhotos(ownerId, draft.data.postKey, recoveryPaths, photos.state);
+  const recoveryPending = Boolean(recover && !memory && local && (!localEnvelopeMatchesInput(baseDraft, local) || local.completedDescribe !== baseDraft.completedDescribe || recoveredPhotos && !local.completedPhotos));
+  const step = described && requestedStep === "where-when" && (recover ? recoveredPhotos : draft.completedPhotos) ? 2 : described && (requestedStep === "photos" || requestedStep === "where-when") ? 1 : 0;
+  const stepHref = (value: string) => { const query = new URLSearchParams(params.toString()); query.set("step", value); return `${path}?${query}`; };
+  const stepHrefs = [stepHref("describe"), stepHref("photos"), stepHref("where-when")];
+  const backHref = step === 2 ? stepHrefs[1] : stepHrefs[0];
+  const nextHref = step === 0 ? stepHrefs[1] : stepHrefs[2];
+  const effectiveDraft = { ...draft, data: { ...draft.data, ...(photos.active && !photos.state.restoring ? { photoPaths: photos.manager.paths() } : {}) } };
   const restoredNotice = previewState === "restored" || Boolean(!edited && (restored || hasServerDraft));
   const previousStep = useRef(step);
   useEffect(() => {
@@ -174,50 +191,75 @@ export function PostJobWizard({ ownerId = null, initialDraft = {}, initialManual
         return;
       }
     }
-    const kept = keep(draft); let durable = kept.persisted; let envelopePersisted = kept.persisted; let savedToServer = false;
-    if (offline && !exit) return;
-    if (ownerId && !offline) {
-      pending.current = true; setBusy(true);
-      try {
+    pending.current = true; setBusy(true);
+    try {
+      const commandKey = draft.data.postKey ?? crypto.randomUUID();
+      let photoVersion: { absent: true } | { postKey: string; paths: string[] } | undefined;
+      if (photos.active) {
+        await photos.manager.waitForRestore();
+        if (exit) await photos.manager.prepareExit();
+        else if (step === 1) {
+          const state = photos.manager.getSnapshot();
+          if (state.photos.some(photo => photo.status !== "done") || offline) return;
+          await photos.manager.flush();
+        }
+      }
+      if (ownerId && !offline) {
+        const current = await loadDraftPhotosAction(ownerId, commandKey);
+        if (session?.check(current, { resend: () => advance(exit) })) return;
+        if (!("status" in current) || current.status !== "loaded" && current.status !== "empty") { setError(true); router.refresh(); return; }
+        if (current.status === "empty") { if (photos.active) await photos.manager.confirmAbsent(); photoVersion = { absent: true }; }
+        else photos.manager.reconcile(current.photoPaths);
+        await photos.manager.flush();
+        if (current.status === "loaded") photoVersion = { postKey: commandKey, paths: photos.manager.confirmedPaths() };
+        if (!exit && step === 1 && photos.manager.getSnapshot().photos.some(photo => photo.status !== "done")) return;
+      }
+      const kept = keep({ ...effectiveDraft, data: { ...effectiveDraft.data, postKey: commandKey, ...(photos.active ? { photoPaths: photos.manager.paths() } : {}) } });
+      let durable = kept.persisted; let envelopePersisted = kept.persisted; let savedToServer = false;
+      if (offline && !exit) return;
+      if (ownerId && !offline) {
         const canonical = canonicalDraft(kept.draft);
-        const result = await save(canonical, ownerId, kept.draft.manualCategory);
+        const result = await save(canonical, ownerId, photoVersion, kept.draft.manualCategory);
         if (session?.check(result, { resend: () => advance(exit) })) return;
+        if ("status" in result && result.status === "photos-changed") { photos.manager.reconcile(result.photoPaths, true); await photos.manager.flush(); setError(true); return; }
+        if ("status" in result && result.status === "draft-changed") { setError(true); router.refresh(); return; }
         if (!("status" in result) || result.status !== "saved") {
           if ("status" in result && result.status === "invalid") setFields(result.fields);
           setError(true); return;
         }
+        await photos.manager.confirmSaved(kept.draft.data.photoPaths ?? []);
         savedToServer = true;
-        // Unfinished text that the shared schema omits still needs local persistence before leaving.
         durable ||= typeof canonical.description === "string" && canonical.description === kept.draft.description.trim() && localEnvelopeMatchesInput(kept.draft, decodeWizardDraft(snapshot(), ownerId));
-      } catch { setError(true); return; }
-      finally { pending.current = false; setBusy(false); }
-    } else if (previewState === "save-error") { setError(true); return; }
-    // Local edits require Next; complete, validated owned server drafts can resume without a local marker.
-    if (exit && !durable) { setError(true); return; }
-    if (!exit) {
-      const completed = keep({ ...kept.draft, completedDescribe: true });
-      envelopePersisted ||= completed.persisted;
-      durable = completed.persisted;
-      if (savedToServer && !durable && canClearStaleDescribe(completed.draft, decodeWizardDraft(snapshot(), ownerId))) {
-        try { localStorage.removeItem(DRAFT_STORAGE_KEY); durable = localStorage.getItem(DRAFT_STORAGE_KEY) === null; } catch { /* Keep memory and use the key-bound server fallback below. */ }
+      } else if (previewState === "save-error") { setError(true); return; }
+      if (exit && !durable) { setError(true); return; }
+      if (!exit) {
+        const completed = keep({ ...kept.draft, completedDescribe: true, completedPhotos: step === 1 ? true : kept.draft.completedPhotos });
+        envelopePersisted ||= completed.persisted;
+        durable = completed.persisted;
+        // Photos may still hold local-only raw files and completion state; use its owned server fallback.
+        if (step === 0 && savedToServer && !durable && canClearStaleDescribe(completed.draft, decodeWizardDraft(snapshot(), ownerId))) {
+          try { localStorage.removeItem(DRAFT_STORAGE_KEY); durable = localStorage.getItem(DRAFT_STORAGE_KEY) === null; } catch { /* Keep memory and use the key-bound server fallback below. */ }
+        }
       }
-    }
-    if (durable) { setSaved(true); setError(false); }
-    const destination = new URL(envelopePersisted || durable ? withoutLandingFallback(nextHref) : nextHref, window.location.origin);
-    if (!exit && savedToServer) for (const name of HANDOFF_PARAMS) destination.searchParams.delete(name);
-    if (!exit && savedToServer && !durable) destination.searchParams.set(SERVER_DRAFT_PARAM, kept.draft.data.postKey!);
-    router.push(exit ? "/" : `${destination.pathname}${destination.search}`);
+      if (durable) { setSaved(true); setError(false); }
+      const destination = new URL(envelopePersisted || durable ? withoutLandingFallback(nextHref) : nextHref, window.location.origin);
+      if (!exit && savedToServer) for (const name of HANDOFF_PARAMS) destination.searchParams.delete(name);
+      if (!exit && savedToServer && !durable) destination.searchParams.set(SERVER_DRAFT_PARAM, kept.draft.data.postKey!);
+      router.push(exit ? "/" : `${destination.pathname}${destination.search}`);
+    } catch { setError(true); }
+    finally { pending.current = false; setBusy(false); }
   }
 
   function submit(event: FormEvent) { event.preventDefault(); void advance(); }
   const category = draft.data.category;
   const label = JOB_TYPES.find((item) => item.value === category)?.label;
-  return <WizardFrame step={step} saved={!recoveryPending && (saved ?? Boolean(restored || hasServerDraft || previewState === "restored"))} summary={draft} backHref={backHref} saveExit={() => void advance(true)} busy={busy}>
+  const photosSaved = !photos.active || !photos.state.storageError && !photos.state.saving && !photos.state.restoring && photos.state.photos.every(photo => photo.status === "done");
+  return <WizardFrame step={step} saved={photosSaved && !recoveryPending && (saved ?? Boolean(restored || hasServerDraft || previewState === "restored"))} summary={effectiveDraft} photoPreviews={photos.state.photos} backHref={backHref} stepHrefs={stepHrefs} saveExit={() => void advance(true)} busy={busy}>
     <OfflineBanner online={previewState === "offline" ? false : undefined} sticky={false} />
     {restoredNotice && <Banner tone="good" title="Draft restored" className={styles.notice} />}
     {loadFailed && <Banner tone="alert" title="Couldn’t load your draft." className={styles.notice} action={<Button variant="tertiary" onClick={() => router.refresh()}>Try again</Button>} />}
     {(error || recoveryPending) && <Banner tone="alert" title="Couldn’t save." className={styles.notice} live />}
-    <h1 ref={headingRef} tabIndex={-1} className={styles.title}>{step === 0 ? "What needs doing?" : "Photos"}</h1>
+    <h1 ref={headingRef} tabIndex={-1} className={styles.title}>{step === 0 ? "What needs doing?" : step === 1 ? "Add some photos" : "Where & when"}</h1>
     {step === 0 ? <form className={styles.form} onSubmit={submit} noValidate aria-label="Describe the job">
       <div>
         <TextAreaField ref={descriptionRef} label={category === "OTHER" ? "What do you need done?" : "Describe the job"} id="job-description" name="description" value={draft.description} maxLength={1000} rows={5} required
@@ -234,7 +276,7 @@ export function PostJobWizard({ ownerId = null, initialDraft = {}, initialManual
         <Button variant="tertiary" size="sm" className={styles.notSure} disabled={busy} onClick={() => { keep({ ...draft, data: { ...draft.data, category: "OTHER" }, manualCategory: true, completedDescribe: false }); setFields({}); }}>Not sure</Button>
       </div>
       <div className={styles.actions}><Button type="submit" loading={busy || previewState === "saving"} disabled={offline} width="full-on-phone">Next</Button></div>
-    </form> : <div className={styles.actions}><Button href={backHref} variant="secondary" width="auto">Back</Button></div>}
+    </form> : step === 1 ? <DraftPhotos state={photos.state} controls={photos.manager} category={category} offline={offline} busy={busy} onNext={() => void advance()} backHref={backHref} /> : <div className={styles.actions}><Button href={backHref} variant="secondary" width="auto">Back</Button></div>}
   </WizardFrame>;
 }
 

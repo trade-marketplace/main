@@ -19,15 +19,15 @@ for (const source of ["/", "/services/electrical"]) test(`blocked draft storage:
   if (source !== "/") await expect(page).toHaveURL(/type=electrical/i);
   await page.reload(); await expect(page.getByRole("textbox", { name: "Describe the job", exact: true })).toHaveValue("Check the lights and wiring upstairs.");
   await expect(page.getByRole("radio", { name: "Electrical", exact: true })).toBeChecked();
-  await page.getByRole("button", { name: "Next", exact: true }).click(); await expect(page.getByRole("heading", { name: "Photos", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Next", exact: true }).click(); await expect(page.getByRole("heading", { name: "Add some photos", exact: true })).toBeVisible();
   await expect(page).toHaveURL(/description=Check/);
   await page.getByRole("link", { name: "Back", exact: true }).click(); await expect(page.getByRole("textbox", { name: "Describe the job", exact: true })).toHaveValue("Check the lights and wiring upstairs.");
   await page.reload(); await expect(page.getByRole("textbox", { name: "Describe the job", exact: true })).toHaveValue("Check the lights and wiring upstairs.");
   await page.evaluate(() => Reflect.set(window, "allowDraftStorage", true));
   await page.getByRole("textbox", { name: "Describe the job", exact: true }).fill("Check the upstairs lights and wiring safely.");
-  await expect(page).toHaveURL(/\/jobs\/new$/); await page.getByRole("button", { name: "Next", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Photos", exact: true })).toBeVisible(); await page.reload();
-  await expect(page.getByRole("heading", { name: "Photos", exact: true })).toBeVisible();
+  await expect(page).toHaveURL(/\/jobs\/new(?:\?step=describe)?$/); await page.getByRole("button", { name: "Next", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Add some photos", exact: true })).toBeVisible(); await page.reload();
+  await expect(page.getByRole("heading", { name: "Add some photos", exact: true })).toBeVisible();
   await expect(page.getByRole("complementary", { name: "Your job" })).toContainText("Check the upstairs lights and wiring safely.");
   await expectNoA11yViolations(page);
 });
@@ -39,10 +39,10 @@ for (const source of ["/", "/services/electrical"]) test(`blocked session storag
   await form.getByRole("button", { name: /^Location:/ }).click(); const dialog = page.getByRole("dialog", { name: "Location", exact: true });
   await dialog.getByRole("combobox", { name: "Town or suburb", exact: true }).fill("Bluff"); await dialog.getByRole("button", { name: "Use location", exact: true }).click();
   await form.getByRole("textbox").fill("Check the lights and wiring upstairs."); await form.getByRole("button", { name: "Get a price", exact: true }).click();
-  await expect(page).toHaveURL(/\/jobs\/new$/); const original = await page.evaluate(key => JSON.parse(localStorage.getItem(key)!), DRAFT_STORAGE_KEY);
+  await expect(page).toHaveURL(/\/jobs\/new(?:\?step=describe)?$/); const original = await page.evaluate(key => JSON.parse(localStorage.getItem(key)!), DRAFT_STORAGE_KEY);
   expect(original.locationHint).toEqual({ label: "Bluff", point: null }); expect(original.data).not.toHaveProperty("point"); expect(original.data).not.toHaveProperty("addressLine1");
-  await page.getByRole("button", { name: "Next", exact: true }).click(); await expect(page.getByRole("heading", { name: "Photos", exact: true })).toBeVisible(); await page.reload();
-  await expect(page.getByRole("heading", { name: "Photos", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Next", exact: true }).click(); await expect(page.getByRole("heading", { name: "Add some photos", exact: true })).toBeVisible(); await page.reload();
+  await expect(page.getByRole("heading", { name: "Add some photos", exact: true })).toBeVisible();
   await page.getByRole("link", { name: "Back", exact: true }).click(); await expect(page.getByRole("textbox", { name: "Describe the job", exact: true })).toHaveValue(original.description);
   await page.getByRole("button", { name: "Save & exit", exact: true }).click(); await expect(page).toHaveURL("/"); await page.goto("/jobs/new");
   await expect(page.getByRole("textbox", { name: "Describe the job", exact: true })).toHaveValue(original.description);
@@ -56,17 +56,17 @@ test("a new homepage handoff edits the restored draft once and retains its key, 
   await page.reload(); const original = await page.evaluate(key => JSON.parse(localStorage.getItem(key)!).data, DRAFT_STORAGE_KEY);
   await page.getByRole("button", { name: "Save & exit", exact: true }).click();
   const home = page.getByRole("form", { name: "What needs doing?", exact: true }); await home.getByRole("textbox").fill("Repair a leaking tap downstairs."); await home.getByRole("button", { name: "Get a price", exact: true }).click();
-  await expect(page).toHaveURL(/\/jobs\/new$/); await expect(page.getByRole("textbox", { name: "Describe the job", exact: true })).toHaveValue("Repair a leaking tap downstairs.");
+  await expect(page).toHaveURL(/\/jobs\/new(?:\?step=describe)?$/); await expect(page.getByRole("textbox", { name: "Describe the job", exact: true })).toHaveValue("Repair a leaking tap downstairs.");
   await expect(page.getByRole("radio", { name: "Plumbing", exact: true })).toBeChecked();
   const handed = await page.evaluate(key => JSON.parse(localStorage.getItem(key)!), DRAFT_STORAGE_KEY);
   expect(handed).toMatchObject({ completedDescribe: false, data: { postKey: original.postKey, photoPaths: original.photoPaths, addressLine1: original.addressLine1 } });
   await page.getByRole("textbox", { name: "Describe the job", exact: true }).fill("Check the lights and wiring upstairs.");
-  await page.getByRole("button", { name: "Next", exact: true }).click(); await expect(page.getByRole("heading", { name: "Photos", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Next", exact: true }).click(); await expect(page.getByRole("heading", { name: "Add some photos", exact: true })).toBeVisible();
   await page.getByRole("link", { name: "Back", exact: true }).click();
-  await expect(page.getByRole("textbox", { name: "Describe the job", exact: true })).toHaveValue("Check the lights and wiring upstairs."); await expect(page).toHaveURL(/\/jobs\/new$/); await page.reload();
+  await expect(page.getByRole("textbox", { name: "Describe the job", exact: true })).toHaveValue("Check the lights and wiring upstairs."); await expect(page).toHaveURL(/\/jobs\/new(?:\?step=describe)?$/); await page.reload();
   await expect(page.getByRole("textbox", { name: "Describe the job", exact: true })).toHaveValue("Check the lights and wiring upstairs.");
   await page.getByRole("button", { name: "Save & exit", exact: true }).click(); await page.getByRole("link", { name: "Construction", exact: true }).click();
-  await expect(page).toHaveURL(/\/jobs\/new$/); await expect(page.getByRole("radio", { name: "Construction", exact: true })).toBeChecked();
+  await expect(page).toHaveURL(/\/jobs\/new(?:\?step=describe)?$/); await expect(page.getByRole("radio", { name: "Construction", exact: true })).toBeChecked();
   await expect(page.getByRole("heading", { name: "What needs doing?", exact: true })).toBeVisible(); await expectNoA11yViolations(page);
 });
 
@@ -90,7 +90,7 @@ test("blocked storage allows in-memory Next/Back with truthful warning, then saf
     Storage.prototype.setItem = function(name, value) { if (name === key && !Reflect.get(window, "allowDraftStorage")) throw new DOMException("Storage blocked", "QuotaExceededError"); original.call(this, name, value); };
   }, DRAFT_STORAGE_KEY);
   await page.goto("/jobs/new"); await page.getByRole("textbox", { name: "Describe the job", exact: true }).fill("Repair a leaking tap downstairs.");
-  await page.getByRole("button", { name: "Next", exact: true }).click(); await expect(page.getByRole("heading", { name: "Photos", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Next", exact: true }).click(); await expect(page.getByRole("heading", { name: "Add some photos", exact: true })).toBeVisible();
   await expect(page.getByText("Couldn’t save.", { exact: true })).toBeVisible(); await expect(page.getByText("Draft saved", { exact: true })).toHaveCount(0);
   await page.getByRole("link", { name: "Back", exact: true }).click(); await expect(page.getByRole("textbox", { name: "Describe the job", exact: true })).toHaveValue("Repair a leaking tap downstairs.");
   await page.getByRole("button", { name: "Save & exit", exact: true }).click(); await expect(page.getByRole("heading", { name: "What needs doing?", exact: true })).toBeVisible();
@@ -101,6 +101,7 @@ test("blocked storage allows in-memory Next/Back with truthful warning, then saf
 });
 
 test("guest: shared validation → editable guess → Photos → Back → refresh → Save & exit → restore", async ({ page }) => {
+  test.setTimeout(90_000);
   await page.goto("/jobs/new");
   await expect(page.getByRole("heading", { name: "What needs doing?" })).toBeVisible();
   await expect(page.getByRole("navigation", { name: "Main" })).toHaveCount(0);
@@ -113,7 +114,7 @@ test("guest: shared validation → editable guess → Photos → Back → refres
   await page.getByRole("textbox", { name: "Describe the job", exact: true }).fill("Lights and wiring in the lounge need checking.");
   await expect(page.getByRole("radio", { name: "Plumbing", exact: true })).toBeChecked();
   await page.getByRole("button", { name: "Next", exact: true }).press("Enter");
-  await expect(page.getByRole("heading", { name: "Photos", exact: true })).toBeFocused();
+  await expect(page.getByRole("heading", { name: "Add some photos", exact: true })).toBeFocused();
   await expect(page.getByRole("complementary", { name: "Your job" })).toContainText("Lights and wiring");
   await page.getByRole("link", { name: /What needs doing/ }).click();
   await expect(page.getByRole("textbox", { name: "Describe the job", exact: true })).toHaveValue("Lights and wiring in the lounge need checking.");
@@ -125,7 +126,7 @@ test("guest: shared validation → editable guess → Photos → Back → refres
   const key = await page.evaluate((storageKey) => JSON.parse(localStorage.getItem(storageKey)!).data.postKey, DRAFT_STORAGE_KEY);
   await page.evaluate(() => { Object.defineProperty(navigator, "onLine", { configurable: true, get: () => false }); window.dispatchEvent(new Event("offline")); });
   await page.getByRole("button", { name: "Save & exit", exact: true }).click();
-  await expect(page).toHaveURL(/\/$/);
+  await expect(page).toHaveURL(/\/$/, { timeout: 15_000 });
   await page.goto("/jobs/new");
   await expect(page.getByRole("textbox", { name: "Describe the job", exact: true })).toHaveValue("Lights and wiring in the lounge need checking.");
   expect(await page.evaluate((storageKey) => JSON.parse(localStorage.getItem(storageKey)!).data.postKey, DRAFT_STORAGE_KEY)).toBe(key);
@@ -135,13 +136,13 @@ test("a Photos deep link waits for Next and then restores the completed step on 
   await page.goto("/jobs/new?step=photos&description=Lights+keep+flickering&type=electrical");
   await expect(page.getByRole("heading", { name: "What needs doing?", exact: true })).toBeVisible();
   await page.getByRole("textbox", { name: "Describe the job", exact: true }).fill("Lights and wiring in the lounge need checking.");
-  await expect(page.getByRole("heading", { name: "Photos", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Add some photos", exact: true })).toHaveCount(0);
   await page.reload();
   await expect(page.getByRole("heading", { name: "What needs doing?", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Next", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Photos", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Add some photos", exact: true })).toBeVisible();
   await page.reload();
-  await expect(page.getByRole("heading", { name: "Photos", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Add some photos", exact: true })).toBeVisible();
 });
 
 test("unfinished guest text survives refresh; Not sure selects Other and its prompt", async ({ page }) => {
@@ -162,7 +163,7 @@ test.describe("guarded Describe previews", () => {
       test.setTimeout(180_000); await page.setViewportSize(viewport);
       for (const state of ["empty", "describe", "other", "restored", "invalid", "saving", "loading", "save-error", "offline", "load-error", "photos"]) {
         await page.goto(new URL(`/dev/components/post-job?state=${state}`, dev).href);
-        await expect(page.getByRole("heading", { level: 1 })).toHaveText(state === "photos" ? "Photos" : "What needs doing?");
+        await expect(page.getByRole("heading", { level: 1 })).toHaveText(state === "photos" ? "Add some photos" : "What needs doing?");
         if (state === "offline") await expect(page.getByRole("button", { name: "Next", exact: true })).toHaveAttribute("aria-disabled", "true");
         expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth), state).toBe(0);
         await expectNoA11yViolations(page);

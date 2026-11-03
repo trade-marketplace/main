@@ -9,7 +9,7 @@ export const JOB_TYPES = [
   { value: "OTHER", label: "Other (anything)" },
 ] as const;
 export type JobType = (typeof JOB_TYPES)[number]["value"];
-export type WizardDraft = { data: JobDraft; description: string; manualCategory: boolean; completedDescribe: boolean; locationHint?: LandingLocation };
+export type WizardDraft = { data: JobDraft; description: string; manualCategory: boolean; completedDescribe: boolean; completedPhotos: boolean; locationHint?: LandingLocation };
 export const describeJobSchema = jobDraftSchema.pick({ description: true, category: true }).required();
 const boundedHintPoint = jobDraftSchema.shape.point.nonoptional();
 const locationHintSchema = z.object({ label: z.string().trim().min(1).max(LANDING_LOCATION_MAX).regex(/^[^\u0000-\u001f]*$/), point: boundedHintPoint.nullable() }).strict();
@@ -42,7 +42,7 @@ export function guessJobType(description: string): JobType | undefined {
 
 export function initialWizardDraft(data: JobDraft = {}, completedDescribe = false, manualCategory?: boolean | null): WizardDraft {
   return { data: { ...data, category: data.category ?? guessJobType(data.description ?? "") }, description: data.description ?? "", manualCategory: manualCategory ?? Boolean(data.category),
-    completedDescribe: completedDescribe && describeJobSchema.safeParse({ description: data.description, category: data.category }).success };
+    completedDescribe: completedDescribe && describeJobSchema.safeParse({ description: data.description, category: data.category }).success, completedPhotos: false };
 }
 
 export function editDescription(draft: WizardDraft, description: string): WizardDraft {
@@ -77,7 +77,7 @@ export function describeErrors(draft: WizardDraft) {
 }
 
 export function encodeWizardDraft(draft: WizardDraft, ownerId: string | null): string {
-  return JSON.stringify({ version: 1, ownerId, data: canonicalDraft(draft), description: draft.description.slice(0, 1000), manualCategory: draft.manualCategory, completedDescribe: draft.completedDescribe, ...(draft.locationHint ? { locationHint: locationHintSchema.parse(draft.locationHint) } : {}) });
+  return JSON.stringify({ version: 1, ownerId, data: canonicalDraft(draft), description: draft.description.slice(0, 1000), manualCategory: draft.manualCategory, completedDescribe: draft.completedDescribe, completedPhotos: draft.completedPhotos, ...(draft.locationHint ? { locationHint: locationHintSchema.parse(draft.locationHint) } : {}) });
 }
 
 export function decodeWizardDraft(raw: string | null, ownerId: string | null): WizardDraft | null {
@@ -87,8 +87,15 @@ export function decodeWizardDraft(raw: string | null, ownerId: string | null): W
     const hint = stored.locationHint === undefined ? undefined : locationHintSchema.safeParse(stored.locationHint);
     if (hint && !hint.success) return null;
     const data = jobDraftSchema.safeParse(stored.data);
-    return data.success ? { data: data.data, description: stored.description, manualCategory: stored.manualCategory === true, completedDescribe: stored.completedDescribe === true, ...(hint?.success ? { locationHint: hint.data } : {}) } : null;
+    return data.success ? { data: data.data, description: stored.description, manualCategory: stored.manualCategory === true, completedDescribe: stored.completedDescribe === true, completedPhotos: stored.completedPhotos === true, ...(hint?.success ? { locationHint: hint.data } : {}) } : null;
   } catch { return null; }
+}
+
+/** Local text may be unfinished; authenticated uploaded-photo references/order come from the current draft. */
+export function reconcileWizardPhotos(local: WizardDraft | null, server: JobDraft, authoritative: boolean): WizardDraft | null {
+  if (!local || !authoritative) return local;
+  if (!server.postKey || local.data.postKey !== server.postKey) return null;
+  return { ...local, data: { ...local.data, photoPaths: server.photoPaths ?? [] } };
 }
 
 /** Landing-page values are hints. Later steps still validate the complete draft on the server. */

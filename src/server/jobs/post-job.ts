@@ -79,6 +79,7 @@ export async function postJob(db: PrismaClient, viewer: Viewer | null, input: un
       : { status: "invalid", fields: { point: "Address" } };
 
     if (data.photoPaths.some((path) => !ownsDraftPhoto(viewer.userId, postKey, path))) return { status: "photos-pending" };
+    if (data.photoPaths.length && await tx.draftPhotoCleanup.count({ where: { path: { in: data.photoPaths }, deleting: true } })) return { status: "photos-pending" };
     const exists = deps.photoExists ?? ((path: string) => createSupabaseFileStore().exists(PHOTO_BUCKET, path));
     try {
       if (!(await Promise.all(data.photoPaths.map(exists))).every(Boolean)) return { status: "photos-pending" };

@@ -7,6 +7,7 @@ import { createNotify } from "@/server/notifications/notify";
 import { schedulerDeps } from "./deps";
 import { licenceDocumentCleanup } from "./licence-document-cleanup";
 import { licenceUploadCleanup } from "./licence-upload-cleanup";
+import { draftPhotoCleanup, draftPhotoRawCleanup } from "@/server/jobs/photo-cleanup";
 import { licenceExpiryReminder } from "./licence-reminders";
 import { supportPhotoCleanup } from "@/server/messages/photo-cleanup";
 
@@ -247,4 +248,4 @@ export const reviewReminder: SchedulerRule = {
 };
 
 /** In the order they run. Money-relevant (sign-off) first. */
-export const SCHEDULER_RULES: readonly SchedulerRule[] = [autoSignOff, bountyExpiry, priceSlowBanner, unclaimedAlert, reviewReminder, licenceExpiryReminder, licenceUploadCleanup(), licenceDocumentCleanup(), supportPhotoCleanup()];
+export const SCHEDULER_RULES: readonly SchedulerRule[] = [autoSignOff, bountyExpiry, priceSlowBanner, unclaimedAlert, reviewReminder, licenceExpiryReminder, licenceUploadCleanup(), licenceDocumentCleanup(), supportPhotoCleanup(), draftPhotoRawCleanup(), draftPhotoCleanup()];
