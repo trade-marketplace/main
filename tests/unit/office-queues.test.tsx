@@ -67,7 +67,7 @@ describe("office queue access and predicates", () => {
       { minutes: 120, materialsCents: 1234, needsSiteVisit: false, madeBeforeEdit: false },
       { minutes: 600, materialsCents: 99999, needsSiteVisit: false, madeBeforeEdit: true },
     ] } as never);
-    expect(visible).toMatchObject({ estimates: "1", spread: "2.0–2.0 h · $12.34–12.34" });
+    expect(visible).toMatchObject({ estimates: "1", spread: "2.0 h · $12.34" });
     expect(JSON.stringify(visible)).not.toMatch(/private@example|211234567|99999|email|phone|addressLine|margin/);
     expect(officeQueueJobView({ userId: "x", role: "TRADIE" }, job() as never)).toBeNull();
   });

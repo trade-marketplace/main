@@ -19,5 +19,18 @@ export function officeQueueJobView(viewer: JobViewer, source: QueueJobSource) {
     customer: shortName(job.customer) ?? "—", tradie: shortName(job.worker), suburb: job.suburb,
     estimates: `${current.length}${current.some(row => row.needsSiteVisit) ? " · site visit asked" : ""}`,
     estimateCount: current.length,
-    spread: ranged.length ? `${hours(Math.min(...ranged.map(row => row.minutes)))}–${hours(Math.max(...ranged.map(row => row.minutes)))} h · $${dollars(Math.min(...ranged.map(row => row.materialsCents)))}–${dollars(Math.max(...ranged.map(row => row.materialsCents)))}` : "—" };
+    spread: ranged.length ? spreadLabel(ranged.map(row => row.minutes), ranged.map(row => row.materialsCents)) : "—" };
+}
+
+/** "3.0–4.5 h · $60–110" (mockup w-o-queues). Equal ends collapse ("3.0 h · $120"); no materials reads "no materials". */
+function spreadLabel(minutes: number[], materialsCents: number[]): string {
+  const hours = (value: number) => (value / 60).toFixed(1);
+  const dollars = (cents: number) => new Intl.NumberFormat("en-NZ", { maximumFractionDigits: 2 }).format(cents / 100);
+  const range = (values: number[], format: (value: number) => string) => {
+    const low = Math.min(...values);
+    const high = Math.max(...values);
+    return low === high ? format(low) : `${format(low)}–${format(high)}`;
+  };
+  const materials = Math.max(...materialsCents) === 0 ? "no materials" : `$${range(materialsCents, dollars)}`;
+  return `${range(minutes, hours)} h · ${materials}`;
 }
