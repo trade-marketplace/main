@@ -170,7 +170,7 @@ jobs:
       group: screenshots-publish-${{ github.event.pull_request.number }}
       cancel-in-progress: true
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     permissions:
       contents: write # push to the pr-screenshots branch only
       pull-requests: write # the one comment
