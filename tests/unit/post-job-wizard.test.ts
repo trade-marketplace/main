@@ -1,8 +1,34 @@
 import { describe, expect, it } from "vitest";
 import { jobDraftSchema } from "@/lib/job-draft";
-import { applyLandingHandoff, canonicalDraft, decodeWizardDraft, describeErrors, editDescription, encodeWizardDraft, guessJobType, initialWizardDraft, landingWizardDraft } from "@/lib/post-job-wizard";
+import { applyLandingHandoff, canonicalDraft, decodeWizardDraft, describeErrors, editDescription, encodeWizardDraft, guessJobType, initialWizardDraft, landingLocationHint, landingWizardDraft, localEnvelopeMatchesInput } from "@/lib/post-job-wizard";
 
 describe("Describe step", () => {
+  it("refuses server-only exit when a readable local envelope would restore older input", () => {
+    const draft = initialWizardDraft({ postKey: "9b58063b-12c2-4b46-9c45-38353f41173e", description: "Check the lights upstairs", category: "ELECTRICAL" });
+    expect(localEnvelopeMatchesInput(draft, null)).toBe(true); expect(localEnvelopeMatchesInput(draft, draft)).toBe(true);
+    for (const stored of [{ ...draft, description: "Old description" }, { ...draft, manualCategory: !draft.manualCategory }, { ...draft, data: { ...draft.data, category: "PLUMBING" as const } }, { ...draft, data: { ...draft.data, postKey: undefined } }, { ...draft, locationHint: { label: "Bluff", point: null } }]) expect(localEnvelopeMatchesInput(draft, stored)).toBe(false);
+    expect(localEnvelopeMatchesInput({ ...draft, locationHint: { label: "Bluff", point: null } }, null)).toBe(false);
+    // Current server photo reconciliation handles redundant cached paths independently of entered text.
+    expect(localEnvelopeMatchesInput(draft, { ...draft, data: { ...draft.data, photoPaths: ["older-cache"] } })).toBe(true);
+  });
+  it("keeps bounded landing location hints outside the canonical address and across owner-bound restoration", () => {
+    const hint = landingLocationHint({ location: "Bluff", lat: "-46.599", lng: "168.345" });
+    const draft = { ...initialWizardDraft({ postKey: "9b58063b-12c2-4b46-9c45-38353f41173e", description: "Repair a leaking tap", category: "PLUMBING" }, true), locationHint: hint };
+    expect(hint).toEqual({ label: "Bluff", point: { lat: -46.599, lng: 168.345 } });
+    expect(canonicalDraft(draft)).not.toHaveProperty("point"); expect(canonicalDraft(draft)).not.toHaveProperty("locationHint");
+    const stored = decodeWizardDraft(encodeWizardDraft(draft, "owner"), "owner")!;
+    expect(stored).toMatchObject({ locationHint: hint, completedDescribe: true }); expect(localEnvelopeMatchesInput(draft, stored)).toBe(true);
+    expect(localEnvelopeMatchesInput(draft, null)).toBe(false); expect(localEnvelopeMatchesInput(draft, { ...stored, data: {} })).toBe(false);
+    expect(decodeWizardDraft(encodeWizardDraft(draft, "owner"), "another")).toBeNull();
+  });
+  it("bounds location labels and rejects invalid coordinates without turning a hint into an address", () => {
+    expect(landingLocationHint({ location: "x".repeat(1000) })?.label).toHaveLength(80);
+    for (const lat of ["91", "NaN", "Infinity", ""]) expect(landingLocationHint({ location: "Bluff", lat, lng: "168.345" })?.point).toBeNull();
+    expect(landingLocationHint({ location: ["Bluff"] })).toBeUndefined(); expect(landingLocationHint({ location: " " })).toBeUndefined();
+    const draft = initialWizardDraft(); const raw = JSON.parse(encodeWizardDraft(draft, null)); raw.locationHint = { label: "Bluff", point: { lat: 999, lng: 0 } };
+    expect(decodeWizardDraft(JSON.stringify(raw), null)).toBeNull();
+    raw.locationHint = { label: "Bluff" }; expect(decodeWizardDraft(JSON.stringify(raw), null)).toBeNull();
+  });
   it("applies a new landing description/type over an existing draft without resetting its private later fields", () => {
     const original = initialWizardDraft({ postKey: "9b58063b-12c2-4b46-9c45-38353f41173e", description: "Fix the fence", category: "CONSTRUCTION", photoPaths: ["private/photo.webp"], addressLine1: "1 Example St", suburb: "Gladstone", city: "Invercargill" }, true);
     const inferred = applyLandingHandoff(original, landingWizardDraft({ description: "Repair a leaking tap" }));

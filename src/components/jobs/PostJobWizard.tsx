@@ -16,7 +16,7 @@ import { Banner } from "@/components/overlays/Banner";
 import { DRAFT_STORAGE_KEY, type JobDraft } from "@/lib/job-draft";
 import { wentUp } from "@/lib/motion/helpers";
 import { useBump } from "@/lib/motion/hooks";
-import { applyLandingHandoff, canonicalDraft, decodeWizardDraft, describeErrors, editDescription, encodeWizardDraft, initialWizardDraft, landingWizardDraft, JOB_TYPES, WIZARD_STEPS, type WizardDraft } from "@/lib/post-job-wizard";
+import { applyLandingHandoff, canonicalDraft, decodeWizardDraft, describeErrors, editDescription, encodeWizardDraft, initialWizardDraft, landingLocationHint, landingWizardDraft, localEnvelopeMatchesInput, JOB_TYPES, WIZARD_STEPS, type WizardDraft } from "@/lib/post-job-wizard";
 import type { saveDraftAction } from "@/server/jobs/actions";
 
 import styles from "./post-job.module.css";
@@ -30,7 +30,8 @@ type Props = {
   /** Only the guarded component preview passes this. */
   previewState?: string;
 };
-const HANDOFF_PARAMS = ["description", "type", "location", "lat", "lng"] as const;
+const HANDOFF_PARAMS = ["description", "type"] as const;
+const LOCATION_PARAMS = ["location", "lat", "lng"] as const;
 function subscribeDraft(onChange: () => void) {
   window.addEventListener("storage", onChange);
   return () => window.removeEventListener("storage", onChange);
@@ -81,10 +82,12 @@ export function PostJobWizard({ ownerId = null, initialDraft = {}, hasServerDraf
   const [edited, setEdited] = useState<WizardDraft>();
   const queryString = params.toString();
   const handoff = previewState ? {} : landingWizardDraft(Object.fromEntries(params));
+  const queryHint = previewState ? undefined : landingLocationHint(Object.fromEntries(params));
   const handoffKey = handoff.description || handoff.category ? JSON.stringify(handoff) : null;
   const appliedHandoff = useRef<string | null>(null); const [consumedHandoff, setConsumedHandoff] = useState<string | null>(null);
   const baseDraft = edited ?? restored ?? initialWizardDraft(initialDraft, hasServerDraft || previewState === "photos");
-  const draft = handoffKey && handoffKey !== consumedHandoff ? applyLandingHandoff(baseDraft, handoff) : baseDraft;
+  const describedDraft = handoffKey && handoffKey !== consumedHandoff ? applyLandingHandoff(baseDraft, handoff) : baseDraft;
+  const draft = queryHint ? { ...describedDraft, locationHint: queryHint } : describedDraft;
   const [saved, setSaved] = useState<boolean>();
   const [error, setError] = useState(previewState === "save-error");
   const [fields, setFields] = useState<Record<string, string>>(previewState === "invalid" ? { description: "Describe the job", category: "Type of job" } : {});
@@ -117,19 +120,24 @@ export function PostJobWizard({ ownerId = null, initialDraft = {}, hasServerDraf
   }, [ownerId, previewState]);
 
   const consumeHandoff = useEffectEvent((key: string | null, incomingQuery: string) => {
-    if (!key) { appliedHandoff.current = null; if (consumedHandoff !== null) setConsumedHandoff(null); return; }
-    if (appliedHandoff.current === key) return;
-    appliedHandoff.current = key;
+    const query = new URLSearchParams(incomingQuery); const hint = landingLocationHint(Object.fromEntries(query));
+    if (!key) { appliedHandoff.current = null; if (consumedHandoff !== null) setConsumedHandoff(null); }
+    const describe = Boolean(key && appliedHandoff.current !== key);
+    if (!describe && !hint) return;
     // Read the device snapshot here too: useSyncExternalStore hydrates after its empty server snapshot.
     let current = edited ?? decodeWizardDraft(snapshot(), ownerId) ?? initialWizardDraft(initialDraft, hasServerDraft);
     if (ownerId && hasServerDraft && current.data.postKey !== initialDraft.postKey) current = initialWizardDraft(initialDraft, true);
     if (ownerId && hasServerDraft) current = { ...current, data: { ...current.data, photoPaths: initialDraft.photoPaths } };
-    keep(applyLandingHandoff(current, landingWizardDraft(Object.fromEntries(new URLSearchParams(incomingQuery)))));
-    setConsumedHandoff(key);
+    if (hint) current = { ...current, locationHint: hint };
+    if (describe) appliedHandoff.current = key;
+    const next = describe ? applyLandingHandoff(current, landingWizardDraft(Object.fromEntries(query))) : current;
+    const persisted = keep(next).persisted;
+    if (describe) setConsumedHandoff(key);
     const clean = new URLSearchParams(incomingQuery);
-    for (const name of [...HANDOFF_PARAMS, "step"]) clean.delete(name);
+    if (describe) for (const name of [...HANDOFF_PARAMS, "step"]) clean.delete(name);
+    if (hint && persisted) for (const name of LOCATION_PARAMS) clean.delete(name);
     // Next copies its router state itself; forwarding __NA would bypass its search-param update.
-    window.history.replaceState(null, "", `${path}${clean.size ? `?${clean}` : ""}`);
+    if (clean.toString() !== incomingQuery) window.history.replaceState(null, "", `${path}${clean.size ? `?${clean}` : ""}`);
   });
   // Settle hydration's device snapshot first; a superseded navigation must never consume an old handoff.
   useEffect(() => {
@@ -161,7 +169,7 @@ export function PostJobWizard({ ownerId = null, initialDraft = {}, hasServerDraf
           setError(true); return;
         }
         // Unfinished text that the shared schema omits still needs local persistence before leaving.
-        durable ||= typeof canonical.description === "string" && canonical.description === kept.draft.description.trim();
+        durable ||= typeof canonical.description === "string" && canonical.description === kept.draft.description.trim() && localEnvelopeMatchesInput(kept.draft, decodeWizardDraft(snapshot(), ownerId));
       } catch { setError(true); return; }
       finally { pending.current = false; setBusy(false); }
     } else if (previewState === "save-error") { setError(true); return; }

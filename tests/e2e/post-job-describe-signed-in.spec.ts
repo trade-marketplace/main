@@ -94,4 +94,47 @@ test.describe("customer Describe draft through the real server action", () => {
     await page.getByRole("link", { name: "Back", exact: true }).click(); await page.getByRole("form", { name: "Describe the job", exact: true }).getByRole("textbox").fill("Assemble the new garden bench."); await page.reload();
     await expect(page.getByRole("form", { name: "Describe the job", exact: true }).getByRole("textbox")).toHaveValue("Assemble the new garden bench.");
   });
+  test("an unpersisted location hint retains its URL fallback and prevents unsafe server-only exit", async ({ page }) => {
+    test.setTimeout(90_000); const key = crypto.randomUUID(); const data = { postKey: key, description: "Check the lights and wiring upstairs.", category: "ELECTRICAL", photoPaths: [] };
+    await db.query("INSERT INTO job_drafts(profile_id,data,updated_at) VALUES($1,$2,now()) ON CONFLICT(profile_id) DO UPDATE SET data=EXCLUDED.data", [SECURITY_USER.id, data]);
+    await page.addInitScript(() => {
+      Object.defineProperty(window, "sessionStorage", { configurable: true, get() { throw new Error("Storage blocked"); } });
+      const original = Storage.prototype.setItem; Storage.prototype.setItem = function(key, value) { if (key === "trade.job-draft.v1" && !Reflect.get(window, "allowDraftStorage")) throw new DOMException("Storage full", "QuotaExceededError"); original.call(this, key, value); };
+    });
+    const next = "/jobs/new?location=Bluff&lat=-46.599&lng=168.345";
+    await page.goto(`${app}/login?next=${encodeURIComponent(next)}`); await page.getByLabel("Email", { exact: true }).fill(SECURITY_USER.email); await page.getByLabel("Password", { exact: true }).fill(SECURITY_PASSWORD); await page.getByRole("button", { name: "Log in", exact: true }).click();
+    await expect(page.getByRole("textbox", { name: "Describe the job", exact: true })).toHaveValue(data.description); await expect(page.getByText("Couldn’t save.", { exact: true })).toBeVisible();
+    const response = page.waitForResponse(response => response.request().method() === "POST" && response.url().includes("/jobs/new"));
+    await page.getByRole("button", { name: "Save & exit", exact: true }).click(); await response;
+    await expect(page.getByRole("button", { name: "Save & exit", exact: true })).not.toHaveAttribute("aria-busy", "true");
+    expect(new URL(page.url()).pathname).toBe("/jobs/new"); expect(new URL(page.url()).searchParams.get("location")).toBe("Bluff"); await expect(page.getByText("Draft saved", { exact: true })).toHaveCount(0);
+    await page.getByRole("button", { name: "Next", exact: true }).click(); await expect(page.getByRole("heading", { name: "Photos", exact: true })).toBeVisible();
+    await page.reload(); await expect(page.getByRole("heading", { name: "Photos", exact: true })).toBeVisible();
+    const url = new URL(page.url()); expect(url.searchParams.get("step")).toBe("photos"); expect(url.searchParams.get("lat")).toBe("-46.599"); expect(url.searchParams.get("lng")).toBe("168.345");
+    await page.getByRole("link", { name: "Back", exact: true }).click(); await expect(page.getByRole("textbox", { name: "Describe the job", exact: true })).toHaveValue(data.description);
+    await page.evaluate(() => Reflect.set(window, "allowDraftStorage", true)); await page.getByRole("button", { name: "Save & exit", exact: true }).click(); await expect(page).toHaveURL(`${app}/`);
+    await page.goto(`${app}/jobs/new`); const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("trade.job-draft.v1")!));
+    expect(saved.locationHint).toEqual({ label: "Bluff", point: { lat: -46.599, lng: 168.345 } }); expect(saved.data.postKey).toBe(key);
+    expect((await db.query("SELECT data FROM job_drafts WHERE profile_id=$1", [SECURITY_USER.id])).rows[0].data).toEqual(data);
+  });
+  test("a readable old envelope cannot restore stale input after a server-only save", async ({ page }) => {
+    test.setTimeout(90_000); const key = crypto.randomUUID(); const data = { postKey: key, description: "Check the lights and wiring upstairs.", category: "ELECTRICAL", photoPaths: [] };
+    await db.query("INSERT INTO job_drafts(profile_id,data,updated_at) VALUES($1,$2,now()) ON CONFLICT(profile_id) DO UPDATE SET data=EXCLUDED.data", [SECURITY_USER.id, data]);
+    await page.addInitScript(({ owner, data }) => {
+      const original = Storage.prototype.setItem; if (!localStorage.getItem("trade.job-draft.v1")) original.call(localStorage, "trade.job-draft.v1", JSON.stringify({ version: 1, ownerId: owner, data, description: data.description, manualCategory: false, completedDescribe: false }));
+      Storage.prototype.setItem = function(key, value) { if (key === "trade.job-draft.v1" && !Reflect.get(window, "allowDraftStorage")) throw new DOMException("Storage full", "QuotaExceededError"); original.call(this, key, value); };
+    }, { owner: SECURITY_USER.id, data });
+    await page.goto(`${app}/login?next=%2Fjobs%2Fnew`); await page.getByLabel("Email", { exact: true }).fill(SECURITY_USER.email); await page.getByLabel("Password", { exact: true }).fill(SECURITY_PASSWORD); await page.getByRole("button", { name: "Log in", exact: true }).click();
+    await expect(page).toHaveURL(`${app}/jobs/new`); const field = page.getByRole("textbox", { name: "Describe the job", exact: true });
+    await field.fill("Check the outside lights and wiring.");
+    await page.getByRole("button", { name: "Save & exit", exact: true }).click();
+    await expect.poll(async () => (await db.query("SELECT data->>'description' AS description FROM job_drafts WHERE profile_id=$1", [SECURITY_USER.id])).rows[0].description).toBe("Check the outside lights and wiring.");
+    await expect(field).toHaveValue("Check the outside lights and wiring."); await expect(page.getByText("Couldn’t save.", { exact: true })).toBeVisible();
+    await field.fill(data.description); await page.getByRole("radio", { name: "Plumbing", exact: true }).check(); await page.getByRole("radio", { name: "Electrical", exact: true }).check();
+    const response = page.waitForResponse(response => response.request().method() === "POST" && response.url().includes("/jobs/new")); await page.getByRole("button", { name: "Save & exit", exact: true }).click(); await response;
+    await expect(page.getByRole("button", { name: "Save & exit", exact: true })).not.toHaveAttribute("aria-busy", "true"); await expect(field).toBeVisible(); await expect(page.getByText("Draft saved", { exact: true })).toHaveCount(0);
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem("trade.job-draft.v1")!).manualCategory)).toBe(false);
+    await page.evaluate(() => Reflect.set(window, "allowDraftStorage", true)); await page.getByRole("button", { name: "Save & exit", exact: true }).click(); await expect(page).toHaveURL(`${app}/`);
+    await page.goto(`${app}/jobs/new`); await expect(page.getByText(/We guessed Electrical/)).toHaveCount(0); await expect(field).toHaveValue(data.description);
+  });
 });

@@ -6,6 +6,24 @@ import { VIEWPORTS } from "./support/viewports";
 const dev = process.env.E2E_DEV_BASE_URL;
 test.use({ reducedMotion: "reduce" });
 
+for (const source of ["/", "/services/electrical"]) test(`blocked session storage: ${source} location survives wizard navigation, refresh and exit`, async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.addInitScript(() => { Object.defineProperty(window, "sessionStorage", { configurable: true, get() { throw new Error("Storage blocked"); } }); });
+  await page.goto(source); const form = page.getByRole("form", { name: "What needs doing?", exact: true });
+  await form.getByRole("button", { name: /^Location:/ }).click(); const dialog = page.getByRole("dialog", { name: "Location", exact: true });
+  await dialog.getByRole("combobox", { name: "Town or suburb", exact: true }).fill("Bluff"); await dialog.getByRole("button", { name: "Use location", exact: true }).click();
+  await form.getByRole("textbox").fill("Check the lights and wiring upstairs."); await form.getByRole("button", { name: "Get a price", exact: true }).click();
+  await expect(page).toHaveURL(/\/jobs\/new$/); const original = await page.evaluate(key => JSON.parse(localStorage.getItem(key)!), DRAFT_STORAGE_KEY);
+  expect(original.locationHint).toEqual({ label: "Bluff", point: null }); expect(original.data).not.toHaveProperty("point"); expect(original.data).not.toHaveProperty("addressLine1");
+  await page.getByRole("button", { name: "Next", exact: true }).click(); await expect(page.getByRole("heading", { name: "Photos", exact: true })).toBeVisible(); await page.reload();
+  await expect(page.getByRole("heading", { name: "Photos", exact: true })).toBeVisible();
+  await page.getByRole("link", { name: "Back", exact: true }).click(); await expect(page.getByRole("textbox", { name: "Describe the job", exact: true })).toHaveValue(original.description);
+  await page.getByRole("button", { name: "Save & exit", exact: true }).click(); await expect(page).toHaveURL("/"); await page.goto("/jobs/new");
+  await expect(page.getByRole("textbox", { name: "Describe the job", exact: true })).toHaveValue(original.description);
+  const restored = await page.evaluate(key => JSON.parse(localStorage.getItem(key)!), DRAFT_STORAGE_KEY);
+  expect(restored.locationHint).toEqual(original.locationHint); expect(restored.data.postKey).toBe(original.data.postKey);
+});
+
 test("a new homepage handoff edits the restored draft once and retains its key, photos and address", async ({ page }) => {
   await page.goto("/jobs/new"); await page.getByRole("textbox", { name: "Describe the job", exact: true }).fill("Fix the fence beside the garage.");
   await page.evaluate(key => { const draft = JSON.parse(localStorage.getItem(key)!); draft.data.photoPaths = ["private/retained.webp"]; draft.data.addressLine1 = "1 Example Street"; localStorage.setItem(key, JSON.stringify(draft)); }, DRAFT_STORAGE_KEY);

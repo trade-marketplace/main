@@ -1,4 +1,6 @@
 import { draftFieldErrors, jobDraftSchema, type JobDraft } from "./job-draft";
+import { z } from "zod";
+import { LANDING_LOCATION_MAX, type LandingLocation } from "./landing";
 
 export const WIZARD_STEPS = ["What needs doing", "Photos", "Where & when", "Check & post"] as const;
 export const JOB_TYPES = [
@@ -7,8 +9,27 @@ export const JOB_TYPES = [
   { value: "OTHER", label: "Other (anything)" },
 ] as const;
 export type JobType = (typeof JOB_TYPES)[number]["value"];
-export type WizardDraft = { data: JobDraft; description: string; manualCategory: boolean; completedDescribe: boolean };
+export type WizardDraft = { data: JobDraft; description: string; manualCategory: boolean; completedDescribe: boolean; locationHint?: LandingLocation };
 export const describeJobSchema = jobDraftSchema.pick({ description: true, category: true }).required();
+const boundedHintPoint = jobDraftSchema.shape.point.nonoptional();
+const locationHintSchema = z.object({ label: z.string().trim().min(1).max(LANDING_LOCATION_MAX).regex(/^[^\u0000-\u001f]*$/), point: boundedHintPoint.nullable() }).strict();
+
+/** An editable place hint, never a structured address or coverage authorization. */
+export function landingLocationHint(params: Record<string, string | string[] | undefined>): LandingLocation | undefined {
+  if (typeof params.location !== "string") return;
+  const label = params.location.replace(/[\u0000-\u001f]/g, "").trim().slice(0, LANDING_LOCATION_MAX);
+  if (!label) return;
+  const point = typeof params.lat === "string" && params.lat.trim() && typeof params.lng === "string" && params.lng.trim()
+    ? boundedHintPoint.safeParse({ lat: Number(params.lat), lng: Number(params.lng) }) : null;
+  return { label, point: point?.success ? point.data : null };
+}
+/** A readable stale envelope wins on restoration; server-only exit must not expose its older input. */
+export function localEnvelopeMatchesInput(draft: WizardDraft, stored: WizardDraft | null) {
+  if (!stored) return !draft.locationHint;
+  return stored.data.postKey === draft.data.postKey && stored.description === draft.description
+    && stored.data.category === draft.data.category && stored.manualCategory === draft.manualCategory
+    && JSON.stringify(stored.locationHint) === JSON.stringify(draft.locationHint);
+}
 
 /** A small editable hint, never a restriction on the category a customer chooses. */
 export function guessJobType(description: string): JobType | undefined {
@@ -42,15 +63,17 @@ export function describeErrors(draft: WizardDraft) {
 }
 
 export function encodeWizardDraft(draft: WizardDraft, ownerId: string | null): string {
-  return JSON.stringify({ version: 1, ownerId, data: canonicalDraft(draft), description: draft.description.slice(0, 1000), manualCategory: draft.manualCategory, completedDescribe: draft.completedDescribe });
+  return JSON.stringify({ version: 1, ownerId, data: canonicalDraft(draft), description: draft.description.slice(0, 1000), manualCategory: draft.manualCategory, completedDescribe: draft.completedDescribe, ...(draft.locationHint ? { locationHint: locationHintSchema.parse(draft.locationHint) } : {}) });
 }
 
 export function decodeWizardDraft(raw: string | null, ownerId: string | null): WizardDraft | null {
   try {
     const stored = JSON.parse(raw ?? "null");
     if (!stored || stored.version !== 1 || stored.ownerId !== ownerId || typeof stored.description !== "string" || stored.description.length > 1000) return null;
+    const hint = stored.locationHint === undefined ? undefined : locationHintSchema.safeParse(stored.locationHint);
+    if (hint && !hint.success) return null;
     const data = jobDraftSchema.safeParse(stored.data);
-    return data.success ? { data: data.data, description: stored.description, manualCategory: stored.manualCategory === true, completedDescribe: stored.completedDescribe === true } : null;
+    return data.success ? { data: data.data, description: stored.description, manualCategory: stored.manualCategory === true, completedDescribe: stored.completedDescribe === true, ...(hint?.success ? { locationHint: hint.data } : {}) } : null;
   } catch { return null; }
 }
 
