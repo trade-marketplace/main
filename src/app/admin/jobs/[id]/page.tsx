@@ -14,9 +14,10 @@ export const metadata: Metadata = { title: "Job" };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export default async function JobAdminPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function JobAdminPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const { id } = await params;
-  const viewer = await requireRole(["ADMIN"], { next: `${OFFICE_JOB_PATH}/${encodeURIComponent(id)}` });
+  const price = (await searchParams)?.dialog === "price";
+  const viewer = await requireRole(["ADMIN"], { next: `${OFFICE_JOB_PATH}/${encodeURIComponent(id)}${price ? "?dialog=price" : ""}` });
   // An address that isn't a job id is a 404, not a database error.
   if (!UUID.test(id)) notFound();
   let job: OfficeJobView | null = null;
@@ -29,5 +30,5 @@ export default async function JobAdminPage({ params }: { params: Promise<{ id: s
     return <JobAdminClient job={null} />;
   }
   if (!job) notFound();
-  return <JobAdminClient job={job} />;
+  return <JobAdminClient job={job} initialDialog={price && ["REVIEW", "QUOTE_BOUNTY"].includes(job.status) ? "price" : null} />;
 }

@@ -369,6 +369,19 @@ describe("the job admin page", () => {
     expect(element.props.job?.number).toBe("TM-1005");
   });
 
+  it("opens only the existing price dialog for an unpriced queue handoff, preserves login return, and ignores arbitrary dialogs", async () => {
+    vi.mocked(requireRole).mockResolvedValue(OFFICE as never);
+    vi.mocked(getOfficeJob).mockResolvedValue({ ...previewJob("default"), status: "REVIEW" });
+    const opened = await JobAdminPage({ params: Promise.resolve({ id: ID }), searchParams: Promise.resolve({ dialog: "price" }) });
+    expect(opened.props.initialDialog).toBe("price");
+    expect(requireRole).toHaveBeenLastCalledWith(["ADMIN"], { next: `/admin/jobs/${ID}?dialog=price` });
+    const ignored = await JobAdminPage({ params: Promise.resolve({ id: ID }), searchParams: Promise.resolve({ dialog: "refund" }) });
+    expect(ignored.props.initialDialog).toBeNull();
+    vi.mocked(getOfficeJob).mockResolvedValue({ ...previewJob("default"), status: "BOOKABLE" });
+    const paid = await JobAdminPage({ params: Promise.resolve({ id: ID }), searchParams: Promise.resolve({ dialog: "price" }) });
+    expect(paid.props.initialDialog).toBeNull();
+  });
+
   it("shows 'Can't load this job' when the database can't be read", async () => {
     vi.mocked(requireRole).mockResolvedValue(OFFICE as never);
     const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
