@@ -100,7 +100,7 @@ test.describe("signed-in office settings", () => {
   test.use({ reducedMotion: "reduce" });
   let auth: Awaited<ReturnType<typeof startSecurityAuthStub>>, db: pg.Client;
   test.beforeAll(async () => {
-    if (new URL(database!).hostname !== "127.0.0.1" || !/issue177|local_settings/.test(new URL(database!).pathname) || new URL(app!).hostname !== "127.0.0.1") throw new Error("Settings e2e requires a disposable localhost app and database.");
+    if (new URL(database!).hostname !== "127.0.0.1" || !/issue177|local_settings/.test(new URL(database!).pathname) || !["127.0.0.1", "localhost"].includes(new URL(app!).hostname)) throw new Error("Settings e2e requires a disposable localhost app and database.");
     auth = await startSecurityAuthStub(Number(process.env.SETTINGS_E2E_AUTH_PORT ?? 54377));
     db = new pg.Client({ connectionString: database }); await db.connect();
     for (const [person, role] of [[SECURITY_TRADIE, "ADMIN"], [SECURITY_USER, "CUSTOMER"]] as const) {
@@ -112,6 +112,10 @@ test.describe("signed-in office settings", () => {
   test.afterAll(async () => { await auth?.close(); await db?.end(); });
   test("login → real settings → live server example → confirmed audited save → persisted reload → Team", async ({ page }) => {
     await page.goto(`${app}/login?next=%2Fadmin%2Fsettings`);
+    await expect(async () => {
+      await page.getByRole("button", { name: /^(Show|Hide) password$/ }).click();
+      await expect(page.getByLabel("Password", { exact: true })).toHaveAttribute("type", "text", { timeout: 500 });
+    }).toPass();
     await page.getByLabel("Email", { exact: true }).fill(SECURITY_TRADIE.email);
     await page.getByLabel("Password", { exact: true }).fill(SECURITY_PASSWORD);
     await page.getByRole("button", { name: "Log in", exact: true }).click();

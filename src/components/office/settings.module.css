@@ -17,7 +17,7 @@ fieldset.card { padding-top: var(--trade-space-3); }
 .team li > div { min-width: 0; overflow-wrap: anywhere; }
 .changes li { display: grid; gap: var(--trade-space-1); padding-block: var(--trade-space-3); border-bottom: 1px solid var(--trade-line); overflow-wrap: anywhere; }
 .map { position: relative; height: 280px; min-width: 0; margin-top: var(--trade-space-5); border-radius: var(--trade-radius-card); overflow: hidden; }
-.fallbackCircle { width: 190px; height: 190px; border-radius: 50%; border: 2px solid var(--trade-action); background: var(--trade-tint); display: grid; place-items: center; font-weight: 800; margin: 45px auto; }
+.fallbackCircle { width: 190px; height: 190px; border-radius: 50%; border: 2px solid var(--trade-action); background: var(--trade-tint); display: grid; place-items: center; font-weight: 800; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); }
 .circleOverlay { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
 .circleOverlay polygon { fill: var(--trade-tint); fill-opacity: .45; stroke: var(--trade-action); stroke-width: .7; }
 .skeleton { width: 100%; height: 72px; margin-block: var(--trade-space-3); background: var(--trade-line); border-radius: var(--trade-radius-field); }

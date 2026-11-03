@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { unstable_rethrow } from "next/navigation";
 import { OfficeSettings } from "@/components/office/OfficeSettings";
+import { ToastProvider } from "@/components/overlays/Toast";
 import { SETTINGS_TABS, type SettingsTab } from "@/lib/office-settings";
 import { requireRole } from "@/server/auth/guard";
 import { getDb } from "@/server/db";
@@ -15,5 +16,5 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
   let data = null;
   try { data = await readOfficeSettings(getDb(), viewer); }
   catch (error) { unstable_rethrow(error); console.error("Office settings are unavailable."); }
-  return <OfficeSettings data={data} initialTab={initialTab} mapToken={publicMapboxToken()} />;
+  return <ToastProvider><OfficeSettings data={data} initialTab={initialTab} mapToken={publicMapboxToken()} /></ToastProvider>;
 }
