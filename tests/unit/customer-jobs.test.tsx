@@ -56,6 +56,18 @@ describe("customer jobs query and states", () => {
     const html = renderToStaticMarkup(<CustomerJobs query={{ tab, q: "", page: 1 }} data={{ rows: [], counts: { active: 0, done: 0, cancelled: 0 }, total: 0, page: 1 }} />);
     expect(html).toContain(title); expect(html).not.toMatch(/estimate|margin|workerGross|earnCents/i);
   });
+  it("retains the active search and disables both responsive Reset controls only while offline", () => {
+    for (const offline of [true, false]) {
+      const html = renderToStaticMarkup(<CustomerJobs query={{ tab: "active", q: "not-found", page: 1 }} data={{ rows: [], counts: { active: 0, done: 0, cancelled: 0 }, total: 0, page: 1 }} previewOffline={offline} />);
+      expect(html).toContain('value="not-found"');
+      const controls = (html.match(/<button\b[^>]*>[\s\S]*?<\/button>/g) ?? []).filter(button => button.includes(">Reset filters<"));
+      expect(controls).toHaveLength(2);
+      for (const control of controls) {
+        if (offline) { expect(control).toContain('aria-disabled="true"'); expect(control).toContain('aria-describedby='); }
+        else expect(control).not.toContain('aria-disabled="true"');
+      }
+    }
+  });
   it("separates a failed read, loading and a search with no matches", () => {
     expect(renderToStaticMarkup(<CustomerJobs query={{ tab: "active", q: "", page: 1 }} data={null} />)).toContain("Can’t load your jobs");
     const loading = renderToStaticMarkup(<CustomerJobs query={{ tab: "active", q: "", page: 1 }} data={null} loading />);

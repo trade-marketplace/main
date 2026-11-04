@@ -35,6 +35,31 @@ test.describe("customer jobs guarded previews", () => {
     await page.getByRole("button", { name: "Reset filters", exact: true }).click();
     await expect(page.getByRole("table", { name: "My jobs", exact: true })).toContainText("Example job 1");
   });
+  test("offline Reset retains the filter until reconnecting updates the URL, field and results together", async ({ page, context }) => {
+    const filtered = `${preview}/dev/components/customer-jobs?state=pages&q=not-found`;
+    const response = await page.goto(filtered); expect(response?.status()).toBe(200);
+    const search = page.getByRole("searchbox", { name: "Search my jobs", exact: true });
+    const reset = page.getByRole("button", { name: "Reset filters", exact: true });
+    await expect(page.getByRole("heading", { name: "No jobs match that.", exact: true })).toBeVisible();
+    await expect(reset).toBeEnabled();
+    await context.setOffline(true);
+    for (const width of [320, 390, 768, 1024, 1440]) {
+      await page.setViewportSize({ width, height: 900 });
+      await expect(reset).toHaveAttribute("aria-disabled", "true");
+      await expect(reset).toHaveAccessibleDescription("You’re offline");
+      // The kit keeps a disabled control focusable to explain its reason; people can still click or press Enter.
+      await reset.focus(); await page.keyboard.press("Enter"); await reset.click({ force: true });
+      await expect(page).toHaveURL(filtered); await expect(search).toHaveValue("not-found");
+      await expect(page.getByRole("heading", { name: "No jobs match that.", exact: true })).toBeVisible();
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+      await expectNoA11yViolations(page);
+    }
+    await context.setOffline(false); await expect(reset).toBeEnabled(); await reset.click();
+    await expect(page).toHaveURL(`${preview}/dev/components/customer-jobs?state=pages`);
+    await expect(search).toHaveValue("");
+    await expect(page.getByRole("table", { name: "My jobs", exact: true })).toContainText("Example job 1");
+    await expect(page.getByRole("status").filter({ hasText: "Showing" })).toContainText("1–20 of 45");
+  });
   test("the production server continues to reject guarded previews", async ({ request }) => {
     const response = await request.get("/dev/components/customer-jobs"); expect(response.status()).toBe(404);
   });
