@@ -61,7 +61,7 @@ test.describe("/dev/components/status on the dev server", () => {
   test("shows each mode's own labels", async ({ page }) => {
     await page.goto(url("trade"));
     const table = page.getByRole("table", { name: "Tradie pill for each job status" });
-    await expect(table.getByText("Needs an estimate", { exact: true })).toBeVisible();
+    await expect(table.getByText("Needs a quote", { exact: true })).toBeVisible();
     await expect(table.getByText("Quote bounty", { exact: true })).toBeVisible();
     await page.goto(url("office"));
     await expect(page.getByRole("table", { name: "Office pill for each job status" }).getByText("To price", { exact: true })).toBeVisible();

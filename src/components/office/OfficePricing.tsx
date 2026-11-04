@@ -101,7 +101,7 @@ export function OfficePricing({ data, preview, publish, requestPhotos, loading =
             {data.canPrice && <Button variant="secondary" size="sm" width="auto" disabled={!online ? "You’re offline" : false} onClick={() => open("photos")}>Ask for more photos</Button>}
           </section>
           <section className={styles.estimates} aria-labelledby="estimates-title"><h2 id="estimates-title">Blind estimates ({data.estimates.length})</h2>
-            <DataTable caption="Blind estimates" columns={columns} rows={data.estimates} rowId={row => row.id} rowLabel={row => row.name} empty={<EmptyState icon="pending" title="No estimates yet" message={data.noEstimatesAfterDay ? "It’s been over 24 hours. The office can price this from the photos." : "The office can price this from the photos."} />} />
+            <DataTable caption="Blind quotes" columns={columns} rows={data.estimates} rowId={row => row.id} rowLabel={row => row.name} empty={<EmptyState icon="pending" title="No quotes yet" message={data.noEstimatesAfterDay ? "It’s been over 24 hours. The office can price this from the photos." : "The office can price this from the photos."} />} />
             {data.suggestion && <div className={styles.stats}><Icon name="analytics" decorative /><div><p><strong>{data.trimmed ? <><span className={styles.desktopWords}>Trimmed average (drop highest + lowest):</span><span className={styles.phoneWords}>Trimmed average (drop high + low):</span></> : "Average:"}</strong> {data.suggestion}</p><p><strong>Spread:</strong> {data.spread}</p><p>Review the spread. If photos aren’t enough, consider a quick look.</p></div></div>}
             {data.siteVisitRequested && <Banner tone="info" icon="visibility">Needs a site visit</Banner>}
           </section>

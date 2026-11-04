@@ -55,7 +55,7 @@ export function OfficeQueues({ query, data, loading = false, offline = false, ba
     { key: "job", header: "Job", primary: true, cell: row => <TableItem title={row.title} meta={`${row.trade} · ${row.number}`} href={online ? row.href : undefined} /> },
     { key: "customer", header: "Customer", cell: row => <TableItem title={row.customer} meta={row.suburb} /> },
     ...(query.q ? [{ key: "status", header: "Status", cell: (row: QueueRow) => <StatusPill status={row.status} audience="office" /> }, { key: "tradie", header: "Tradie", cell: (row: QueueRow) => row.tradie ?? "—" }]
-      : query.tab === "price" ? [{ key: "estimates", header: "Estimates", cell: (row: QueueRow) => row.estimates }, { key: "spread", header: "Spread", cell: (row: QueueRow) => row.spread }]
+      : query.tab === "price" ? [{ key: "estimates", header: "Quotes", cell: (row: QueueRow) => row.estimates }, { key: "spread", header: "Spread", cell: (row: QueueRow) => row.spread }]
       : query.tab === "extra" ? [{ key: "tradie", header: "Tradie", cell: (row: QueueRow) => row.tradie ?? "—" }, { key: "context", header: "Extra work", cell: (row: QueueRow) => row.context }]
       : query.tab === "cancel" ? [{ key: "tradie", header: "Tradie", cell: (row: QueueRow) => row.tradie ?? "—" }, { key: "context", header: "Reason", cell: (row: QueueRow) => row.context }]
       : query.tab === "signoff" ? [{ key: "tradie", header: "Tradie", cell: (row: QueueRow) => row.tradie ?? "—" }, { key: "context", header: "Auto-release", cell: (row: QueueRow) => row.context }] : []),

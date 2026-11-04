@@ -8,10 +8,12 @@ vi.mock("@/server/db", () => ({ getDb: () => ({ job: { findUnique: deps.find } }
 vi.mock("next/navigation", () => ({ notFound: () => { throw Error("not-found"); } }));
 vi.mock("@/components/jobs/WorkerClaim", () => ({ WorkerClaimLoading: () => null, WorkerClaimLoadError: () => null }));
 vi.mock("@/components/jobs/WorkerClaimPage", () => ({ WorkerClaimPage: () => null }));
+vi.mock("@/components/jobs/WorkerEstimatePage", () => ({ WorkerEstimatePage: () => null }));
+vi.mock("@/components/jobs/WorkerJobBoundary", () => ({ WorkerJobLoading: () => null, WorkerJobLoadError: () => null }));
 vi.mock("@/components/jobs/PostedJob", () => ({ PostedJob: () => null, CustomerJobSummary: () => null }));
 const { default: JobPage } = await import("@/app/(app)/jobs/[id]/page");
 const { WorkerClaimPage } = await import("@/components/jobs/WorkerClaimPage");
-const { WorkerJobBoundary } = await import("@/components/jobs/WorkerJobBoundary");
+const { WorkerEstimatePage } = await import("@/components/jobs/WorkerEstimatePage");
 async function page(source: JobSource | null) {
   deps.find.mockResolvedValue(source);
   return JobPage({ params: Promise.resolve({ id: exampleJob().id }), searchParams: Promise.resolve({ from: "/jobs?kind=ready" }) });
@@ -26,8 +28,9 @@ describe("owned claim result routing", () => {
   });
   it("preserves the readable legacy assigned summary when frozen pricing is absent", async () => {
     const result = await page(exampleJob({ pricing: null }));
-    expect(result.type).toBe(WorkerJobBoundary);
-    expect(result.props.job).toMatchObject({ title: "Sub wiring", assignedToYou: true, earnCents: null });
+    expect(result.type).toBe(Suspense);
+    expect(result.props.children.type).toBe(WorkerEstimatePage);
+    expect(result.props.children.props).toMatchObject({ viewer: VIEWERS.worker, id: exampleJob().id, back: "/jobs?kind=ready" });
   });
   it("rejects a foreign assignment before rendering or streaming a result", async () => {
     await expect(page(exampleJob({ workerId: "00000000-0000-4000-8000-000000000088" }))).rejects.toThrow("not-found");

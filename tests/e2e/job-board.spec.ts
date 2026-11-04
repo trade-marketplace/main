@@ -32,7 +32,7 @@ test.describe("guarded job board states", () => {
     await expect(page).toHaveURL(/kind=ready/);
     const ready = page.getByRole("tab", { name: /^Ready to claim/ }); await ready.press("ArrowRight");
     await expect(page).toHaveURL(/kind=estimate/);
-    await expect(page.getByRole("tab", { name: /^Needs an estimate/ })).toBeFocused();
+    await expect(page.getByRole("tab", { name: /^Needs a quote/ })).toBeFocused();
     await page.getByLabel("Sort by", { exact: true }).selectOption("earn"); await expect(page).toHaveURL(/sort=earn/);
     await page.getByRole("tab", { name: "Map", exact: true }).press("Enter"); await expect(page.getByRole("heading", { name: "Map", exact: true })).toBeVisible();
     await page.getByRole("link", { name: "Back to jobs", exact: true }).press("Enter");
@@ -43,7 +43,7 @@ test.describe("guarded job board states", () => {
     await page.getByRole("tab", { name: /^Quote bounty/ }).click();
     await expect(page.locator('#board-cards [data-kind="bounty"]')).toHaveCount(5);
     await expect(page.locator('#board-cards [data-kind="estimated"]')).toHaveCount(0);
-    await page.getByRole("tab", { name: /^Needs an estimate/ }).click();
+    await page.getByRole("tab", { name: /^Needs a quote/ }).click();
     await expect(page.locator("#board-cards article")).toHaveCount(6);
     await expect(page.locator('#board-cards [data-kind="bounty"]')).toHaveCount(0);
     await expectNoA11yViolations(page);

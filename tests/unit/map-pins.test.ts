@@ -67,7 +67,7 @@ describe("pin text", () => {
   });
 
   it("labels estimate and visit pins", () => {
-    expect(pinText(estimate, null)).toBe("Estimate");
+    expect(pinText(estimate, null)).toBe("Quote");
     expect(pinText(visit, null)).toBe("Visit");
   });
 
@@ -94,13 +94,13 @@ describe("pin names (what a screen reader hears)", () => {
   });
 
   it("names estimate and visit pins", () => {
-    expect(pinName(estimate, null)).toBe("Needs an estimate: Hot water cylinder, Gladstone");
+    expect(pinName(estimate, null)).toBe("Needs a quote: Hot water cylinder, Gladstone");
     expect(pinName(visit, null)).toBe("Needs a site visit: Hot water cylinder, Gladstone");
   });
 
   it("keeps a very long title and suburb whole in the name (only the visible row is cut)", () => {
     const long = { ...estimate, title: "Replace all the guttering ".repeat(5).trim(), suburb: "Invercargill Central Business District" };
-    expect(pinName(long, null)).toBe(`Needs an estimate: ${long.title}, Invercargill Central Business District`);
+    expect(pinName(long, null)).toBe(`Needs a quote: ${long.title}, Invercargill Central Business District`);
   });
 });
 
