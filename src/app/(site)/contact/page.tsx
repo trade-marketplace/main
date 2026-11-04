@@ -6,6 +6,7 @@ import { headerActions } from "@/components/site/site-links";
 import { getViewer } from "@/server/auth/viewer";
 import { getDb } from "@/server/db";
 import { problemContactHref } from "@/server/messages/contact";
+import { boardReturn } from "@/lib/job-board";
 
 import { sendContactMessage } from "./actions";
 
@@ -35,5 +36,6 @@ async function signedIn(jobId?: string) {
 
 export default async function ContactPage({ searchParams = Promise.resolve({}) }: { searchParams?: Promise<Record<string, string | string[] | undefined>> } = {}) {
   const params = await searchParams;
-  return <Contact submit={sendContactMessage} {...await signedIn(typeof params.job === "string" ? params.job : undefined)} />;
+  const next = typeof params.next === "string" ? params.next : null;
+  return <Contact submit={sendContactMessage} boardReturnHref={next?.startsWith("/jobs") ? boardReturn(next) : undefined} {...await signedIn(typeof params.job === "string" ? params.job : undefined)} />;
 }

@@ -1,0 +1,20 @@
+.page { min-height: 100dvh; padding: var(--trade-space-6) var(--trade-space-4); display: grid; align-content: start; gap: var(--trade-space-5); color: var(--trade-text); background: var(--trade-paper); }
+.page > * { width: 100%; max-width: 60rem; margin-inline: auto; }
+.page h1 { font-family: var(--trade-font-heading); font-size: clamp(1.75rem, 5vw, 2.5rem); line-height: 1.15; margin: var(--trade-space-2) 0 0; }
+.page h2 { font-size: 1.5rem; line-height: 1.25; margin: 0; }
+.page p { line-height: 1.5; }
+.eyebrow { color: var(--trade-text-2); font-size: .875rem; margin: 0 0 var(--trade-space-2); }
+.states { display: flex; flex-wrap: wrap; gap: var(--trade-space-2); }
+.states a { color: var(--trade-forest); background: var(--trade-surface); border: 1px solid var(--trade-field-stroke); border-radius: var(--trade-radius-field); padding: var(--trade-space-2) var(--trade-space-3); font-size: .875rem; text-decoration: none; }
+.states a[aria-current] { background: var(--trade-signature); border-color: var(--trade-forest); }
+.card { padding: var(--trade-space-5); background: var(--trade-surface); border: 1px solid var(--trade-field-stroke); border-radius: var(--trade-radius-card); min-width: 0; }
+.fields { margin: var(--trade-space-5) 0 0; display: grid; gap: var(--trade-space-4); }
+.fields > div { display: grid; grid-template-columns: minmax(5rem, 1fr) minmax(0, 3fr); gap: var(--trade-space-3); }
+.fields dt { color: var(--trade-text-2); }
+.fields dd { margin: 0; overflow-wrap: anywhere; }
+.card summary { cursor: pointer; font-weight: 600; }
+.card pre { font-family: inherit; white-space: pre-wrap; overflow-wrap: anywhere; font-size: .875rem; line-height: 1.5; }
+.action { display: inline-flex; padding: var(--trade-space-3) var(--trade-space-5); border-radius: var(--trade-radius-field); color: var(--trade-forest); background: var(--trade-signature); text-decoration: none; font-weight: 600; }
+.skeleton { height: 1.5rem; background: var(--trade-field-stroke); margin-bottom: var(--trade-space-4); border-radius: var(--trade-radius-field); }
+.skeleton:nth-child(2) { width: 70%; }
+.skeleton:nth-child(3) { width: 50%; margin-bottom: 0; }

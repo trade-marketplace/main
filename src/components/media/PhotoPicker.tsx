@@ -9,6 +9,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 
 import { Icon } from "@/components/Icon";
+import { Menu, MenuItem } from "@/components/overlays/Menu";
 import { MAX_PHOTOS, PHOTO_ACCEPT, photoCountLine } from "@/lib/media";
 
 import { ProgressRing, type UploadStatus } from "./ProgressRing";
@@ -38,7 +39,24 @@ export type PhotoPickerProps = {
   /** The group's name for screen readers. */
   label?: string;
   className?: string;
+  /** The listing wizard's cover/order controls; existing read-only pickers keep their current layout. */
+  onReorder?: (id: string, position: number) => void;
+  cover?: boolean;
+  addLabel?: string;
+  accept?: string;
+  /** A restore conflict can show saved photos plus failed local files without calling the excess accepted. */
+  acceptedCount?: number;
+  retryDisabled?: boolean;
 };
+
+export function PhotoThumbnail({ photo, index }: { photo: Pick<PickedPhoto, "src" | "name">; index: number }) {
+  const [broken, setBroken] = useState(false); const [source, setSource] = useState(photo.src);
+  if (source !== photo.src) { setSource(photo.src); setBroken(false); }
+  const label = `Photo ${index + 1}: ${photo.name}`;
+  // Some browsers cannot decode HEIC previews; retain the real file and show its name until server conversion.
+  return broken || !photo.src ? <span role="img" aria-label={label} className={styles.photoFallback}><Icon name="image" decorative /><span>{photo.name}</span></span>
+    : <img src={photo.src} alt={label} className={styles.tileImg} draggable={false} onError={() => setBroken(true)} />; // eslint-disable-line @next/next/no-img-element -- immediate local object URL
+}
 
 /** How long the done tick stays after an upload finishes (M18: "a tick pops when done"). */
 export const DONE_TICK_MS = 1200;
@@ -74,29 +92,47 @@ export function PhotoPicker({
   addTile = true,
   label = "Photos",
   className,
+  onReorder,
+  cover = false,
+  addLabel = "Add photo",
+  accept = PHOTO_ACCEPT,
+  acceptedCount,
+  retryDisabled = false,
 }: PhotoPickerProps) {
   const input = useRef<HTMLInputElement>(null);
   const countId = useId();
   const problemsId = useId();
   const full = photos.length >= max;
   return (
-    <div className={[styles.picker, className].filter(Boolean).join(" ")}>
+    <div className={[styles.picker, className].filter(Boolean).join(" ")} data-empty={photos.length === 0}>
       <ul className={styles.grid} aria-label={label} aria-describedby={countId}>
         {photos.map((photo, index) => (
-          <li key={photo.id} className={`${styles.tile} tm-anim-thumb`} data-status={photo.status}>
-            {/* eslint-disable-next-line @next/next/no-img-element -- local previews (object URLs) */}
-            <img src={photo.src} alt={`Photo ${index + 1}: ${photo.name}`} className={styles.tileImg} />
+          <li key={photo.id} className={`${styles.tile} tm-anim-thumb`} data-status={photo.status} data-reorder={Boolean(onReorder)} data-photo-id={photo.id}
+            draggable={Boolean(onReorder)} onDragStart={event => { if (onReorder) { event.dataTransfer.setData("application/x-trade-photo", photo.id); event.dataTransfer.effectAllowed = "move"; } }}
+            onDragOver={event => { if (onReorder && Array.from(event.dataTransfer.types).includes("application/x-trade-photo")) event.preventDefault(); }}
+            onDrop={event => { const id = event.dataTransfer.getData("application/x-trade-photo"); if (id && onReorder) { event.preventDefault(); onReorder(id, index); } }}>
+            <PhotoThumbnail photo={photo} index={index} />
             <UploadOverlay photo={photo} />
+            {cover && index === 0 && <span className={styles.coverBadge}>Cover</span>}
+            {onReorder && <Menu className={styles.photoMenu} align="start" label={`Photo options ${photo.name}`} trigger={props => <button {...props} type="button" className={styles.photoOptions} aria-label={`Photo options ${photo.name}`}><span className={styles.removeDot}><Icon name="more_horiz" size="sm" decorative /></span></button>}>
+              <MenuItem icon="photo" disabled={index === 0} onSelect={() => onReorder(photo.id, 0)}>Make cover</MenuItem>
+              <MenuItem icon="arrow_back" disabled={index === 0} onSelect={() => onReorder(photo.id, index - 1)}>Move left</MenuItem>
+              <MenuItem icon="arrow_forward" disabled={index === photos.length - 1} onSelect={() => onReorder(photo.id, index + 1)}>Move right</MenuItem>
+            </Menu>}
             {photo.status === "failed" && (
               <span className={styles.failed}>
                 <span>Failed ·</span>
-                <button type="button" className={styles.retry} onClick={() => onRetry(photo.id)}>
+                <button type="button" className={styles.retry} disabled={retryDisabled} aria-describedby={retryDisabled && problems.length ? problemsId : undefined} onClick={() => onRetry(photo.id)}>
                   Retry<span className={styles.visuallyHidden}> {photo.name}</span>
                 </button>
               </span>
             )}
             {/* A 44px target around the mockup's 26px dark circle. */}
-            <button type="button" className={styles.remove} aria-label={`Remove ${photo.name}`} onClick={() => onRemove(photo.id)}>
+            <button type="button" className={styles.remove} aria-label={`Remove ${photo.name}`} onClick={event => {
+              const picker = event.currentTarget.closest(`.${styles.picker}`); const wasFocused = document.activeElement === event.currentTarget;
+              onRemove(photo.id);
+              if (wasFocused) requestAnimationFrame(() => (picker?.querySelectorAll<HTMLButtonElement>(`button.${styles.remove}`)[Math.min(index, photos.length - 2)] ?? picker?.querySelector<HTMLButtonElement>(`button.${styles.addTile}`))?.focus());
+            }}>
               <span className={styles.removeDot}>
                 <Icon name="close" size="sm" decorative />
               </span>
@@ -104,31 +140,31 @@ export function PhotoPicker({
           </li>
         ))}
         {addTile && !full && (
-          <li className={styles.tile}>
+          <li className={styles.tile} data-photo-add>
             <button type="button" className={styles.addTile} onClick={() => input.current?.click()} aria-describedby={countId}>
               <Icon name="photo_camera" decorative className={styles.addIcon} />
-              Add photo
+              {addLabel}
             </button>
           </li>
         )}
       </ul>
       <p id={countId} className={styles.count}>
-        {photoCountLine(photos.length, max)}
+        {photoCountLine(acceptedCount ?? photos.length, max)}
       </p>
       {problems.length > 0 && (
-        <ul id={problemsId} className={styles.problems} role="alert">
+        <div role="alert"><ul id={problemsId} className={styles.problems}>
           {problems.map((problem) => (
             <li key={problem}>
               <Icon name="error" size="sm" decorative />
               {problem}
             </li>
           ))}
-        </ul>
+        </ul></div>
       )}
       <input
         ref={input}
         type="file"
-        accept={PHOTO_ACCEPT}
+        accept={accept}
         multiple
         hidden
         tabIndex={-1}

@@ -50,6 +50,7 @@ const unhash = (text: string) => text.replace(/\b_([A-Za-z-]+)_[0-9a-f]{6}\b/g, 
 const render = (node: Parameters<typeof renderHtml>[0]) => unhash(renderHtml(node));
 const text = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").replace(/ : /g, ": ").trim();
 
+const OFFICE = { userId: "office", role: "ADMIN" as const };
 const NOW = new Date("2026-11-01T12:00:00Z");
 const minutesAgo = (minutes: number) => new Date(NOW.getTime() - minutes * 60_000);
 
@@ -63,10 +64,10 @@ function dbJob(overrides: Record<string, unknown> = {}) {
     status: "ASSIGNED",
     priceCents: 37200,
     suburb: "Windsor",
-    city: "Invercargill",
+    city: "Invercargill", customerId: "c1", workerId: "w1", asap: false, createdAt: NOW,
     updatedAt: minutesAgo(46),
-    customer: { firstName: "Sarah", lastName: "Thompson" },
-    worker: { firstName: "Jack", lastName: "Wilson" },
+    customer: { id: "c1", firstName: "Sarah", lastName: "Thompson" },
+    worker: { id: "w1", firstName: "Jack", lastName: "Wilson" },
     ...overrides,
   };
 }
@@ -92,7 +93,15 @@ const ROW: OfficeJobRow = {
   updatedAt: minutesAgo(46).toISOString(),
 };
 
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => { vi.clearAllMocks(); vi.mocked(requireRole).mockResolvedValue(OFFICE as never); });
+
+it("refuses list and export for a non-office reader before querying", async () => {
+  const { db, findMany, count } = fakeDb();
+  const viewer = { userId: "customer", role: "CUSTOMER" as const };
+  await expect(listOfficeJobs(viewer, parseOfficeJobsQuery({}), { db })).rejects.toMatchObject({ digest: expect.stringContaining("404") });
+  await expect(exportOfficeJobs(viewer, parseOfficeJobsQuery({}), { db })).rejects.toMatchObject({ digest: expect.stringContaining("404") });
+  expect(findMany).not.toHaveBeenCalled(); expect(count).not.toHaveBeenCalled();
+});
 
 describe("the list's state in the URL", () => {
   it("defaults to every job, newest change first, page 1", () => {
@@ -171,7 +180,7 @@ describe("the database filter and order", () => {
 describe("a page of jobs", () => {
   it("reads one page of 25 with the count and the cities, and shapes each row", async () => {
     const { db, findMany, count } = fakeDb({ total: 60, cities: ["Invercargill", " Gore ", "invercargill"] });
-    const page = await listOfficeJobs(parseOfficeJobsQuery({ page: "2" }), { db, now: NOW });
+    const page = await listOfficeJobs(OFFICE, parseOfficeJobsQuery({ page: "2" }), { db, now: NOW });
     expect(count).toHaveBeenCalledWith({ where: {} });
     const read = findMany.mock.calls.map(([args]) => args).find((args) => !("distinct" in args)) as { skip: number; take: number };
     expect(read).toMatchObject({ skip: 25, take: 25 });
@@ -181,7 +190,7 @@ describe("a page of jobs", () => {
 
   it("what if the page is past the end? The last page shows", async () => {
     const { db, findMany } = fakeDb({ total: 30 });
-    const page = await listOfficeJobs(parseOfficeJobsQuery({ page: "9" }), { db, now: NOW });
+    const page = await listOfficeJobs(OFFICE, parseOfficeJobsQuery({ page: "9" }), { db, now: NOW });
     expect(page.page).toBe(2);
     const read = findMany.mock.calls.map(([args]) => args).find((args) => !("distinct" in args)) as { skip: number };
     expect(read.skip).toBe(25);
@@ -206,30 +215,30 @@ describe("a page of jobs", () => {
 
     for (const direction of ["asc", "desc"]) {
       it(`${direction}: the claimed jobs, then the rest`, async () => {
-        const page = await listOfficeJobs(parseOfficeJobsQuery({ sort: `tradie.${direction}` }), { db: tradieDb(2, 1), now: NOW });
+        const page = await listOfficeJobs(OFFICE, parseOfficeJobsQuery({ sort: `tradie.${direction}` }), { db: tradieDb(2, 1), now: NOW });
         expect(ids(page.rows)).toEqual(["c0", "c1", "u0"]);
       });
     }
 
     it("a page that starts in the claimed jobs and ends in the rest", async () => {
-      const page = await listOfficeJobs(parseOfficeJobsQuery({ sort: "tradie.desc", page: "2" }), { db: tradieDb(30, 10), now: NOW });
+      const page = await listOfficeJobs(OFFICE, parseOfficeJobsQuery({ sort: "tradie.desc", page: "2" }), { db: tradieDb(30, 10), now: NOW });
       expect(ids(page.rows)).toEqual([...["c25", "c26", "c27", "c28", "c29"], ...Array.from({ length: 10 }, (_, i) => `u${i}`)]);
     });
 
     it("a page past every claimed job skips what the earlier pages showed", async () => {
-      const page = await listOfficeJobs(parseOfficeJobsQuery({ sort: "tradie.desc", page: "2" }), { db: tradieDb(10, 40), now: NOW });
+      const page = await listOfficeJobs(OFFICE, parseOfficeJobsQuery({ sort: "tradie.desc", page: "2" }), { db: tradieDb(10, 40), now: NOW });
       expect(ids(page.rows)).toEqual(Array.from({ length: 25 }, (_, i) => `u${i + 15}`));
     });
 
     it("the export keeps the same order", async () => {
-      const { rows } = await exportOfficeJobs(parseOfficeJobsQuery({ sort: "tradie.desc" }), { db: tradieDb(2, 2), now: NOW });
+      const { rows } = await exportOfficeJobs(OFFICE, parseOfficeJobsQuery({ sort: "tradie.desc" }), { db: tradieDb(2, 2), now: NOW });
       expect(ids(rows)).toEqual(["c0", "c1", "u0", "u1"]);
     });
   });
 
   it("nobody claimed it yet: no tradie; not priced yet: no price", async () => {
     const { db } = fakeDb({ jobs: [dbJob({ worker: null, priceCents: null, status: "REVIEW" })] });
-    const [row] = (await listOfficeJobs(parseOfficeJobsQuery({}), { db, now: NOW })).rows;
+    const [row] = (await listOfficeJobs(OFFICE, parseOfficeJobsQuery({}), { db, now: NOW })).rows;
     expect(row).toMatchObject({ tradie: null, priceCents: null, status: "REVIEW" });
   });
 
@@ -249,7 +258,7 @@ describe("a page of jobs", () => {
 describe("Export CSV", () => {
   it("exports every matching job (no paging), and says when there were more than one file holds", async () => {
     const { db, findMany } = fakeDb({ jobs: Array.from({ length: OFFICE_JOBS_EXPORT_LIMIT + 1 }, (_, i) => dbJob({ id: `job-${i}`, jobNumber: 1001 + i })) });
-    const result = await exportOfficeJobs(parseOfficeJobsQuery({ trade: "ELECTRICAL" }), { db, now: NOW });
+    const result = await exportOfficeJobs(OFFICE, parseOfficeJobsQuery({ trade: "ELECTRICAL" }), { db, now: NOW });
     expect(findMany.mock.calls[0][0]).toMatchObject({ take: OFFICE_JOBS_EXPORT_LIMIT + 1, where: { AND: [{ category: "ELECTRICAL" }] } });
     expect(result.rows).toHaveLength(OFFICE_JOBS_EXPORT_LIMIT);
     expect(result.truncated).toBe(true);
@@ -276,7 +285,7 @@ describe("Export CSV", () => {
   it("the route sends the filtered list as a download, and says so when it was cut short", async () => {
     vi.mocked(exportOfficeJobs).mockResolvedValueOnce({ rows: [ROW], truncated: true });
     const response = await exportJobs(new Request("http://localhost/admin/jobs/export?trade=ELECTRICAL&page=4"), undefined as never);
-    expect(vi.mocked(exportOfficeJobs).mock.calls[0][0]).toMatchObject({ trade: "ELECTRICAL" });
+    expect(vi.mocked(exportOfficeJobs).mock.calls[0][1]).toMatchObject({ trade: "ELECTRICAL" });
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toBe("text/csv; charset=utf-8");
     expect(response.headers.get("content-disposition")).toMatch(/^attachment; filename="jobs-\d{4}-\d{2}-\d{2}\.csv"$/);

@@ -2,18 +2,14 @@ import "server-only";
 
 import { createHash } from "node:crypto";
 import { POST_KEY_SCHEMA } from "@/lib/job-draft";
+import { ownsDraftPhoto } from "@/lib/jobs/draft-photo-path";
 import type { Viewer } from "@/server/auth/viewer";
 import { checkUpload, PHOTO_MAX_EDGE, toWebp } from "@/server/files/images";
 import { MESSAGES, UploadError } from "@/server/files/errors";
 import { PHOTO_BUCKET, SIGNED_URL_SECONDS, type FileStore } from "@/server/files/storage";
 import { consumeForUser, type RateLimitDecision } from "@/server/rate-limit";
 
-export function ownsDraftPhoto(userId: string, postKey: string, path: string): boolean {
-  const key = POST_KEY_SCHEMA.safeParse(postKey);
-  if (!key.success) return false;
-  const prefix = `drafts/${userId}/${key.data}/`;
-  return path.startsWith(prefix) && /^[0-9a-f]{32}\.webp$/.test(path.slice(prefix.length));
-}
+export { ownsDraftPhoto } from "@/lib/jobs/draft-photo-path";
 
 /** Browser-local photos are uploaded after sign-in, before posting. No unprocessed or anonymous bytes in Storage. */
 export async function uploadDraftPhoto(store: FileStore, viewer: Viewer, postKey: string, input: Uint8Array, rateLimit = (id: string): Promise<RateLimitDecision> => consumeForUser("upload", id)) {

@@ -10,10 +10,10 @@ import { randomBytes } from "node:crypto";
 import path from "node:path";
 import { promisify } from "node:util";
 
-import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll } from "vitest";
 
-import { PrismaClient } from "@/generated/prisma/client";
+import type { PrismaClient } from "@/generated/prisma/client";
+import { createDatabaseClient } from "@/server/database-client";
 
 const run = promisify(execFile);
 
@@ -75,7 +75,7 @@ export function useTestSchema(testFile: string): TestSchema {
 }
 
 function client(url: string, schema?: string): PrismaClient {
-  return new PrismaClient({ adapter: new PrismaPg({ connectionString: url }, schema ? { schema } : undefined) });
+  return createDatabaseClient(url, schema);
 }
 
 /** e.g. `test_schema_users_3_a1b2c3`: the file, the Vitest worker and a random part, so parallel runs never meet. */

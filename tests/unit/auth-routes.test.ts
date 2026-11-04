@@ -40,6 +40,12 @@ describe("decideRoute: signed out", () => {
     expect(decideRoute("/", null)).toEqual({ action: "allow" });
   });
 
+  it("lets a guest start the posting wizard without opening other customer pages", () => {
+    expect(decideRoute("/jobs/new", null)).toEqual({ action: "allow" });
+    expect(decideRoute("/jobs/job-id", null).action).toBe("redirect");
+    expect(decideRoute("/pay/job-id", null).action).toBe("redirect");
+  });
+
   it("sends app pages to log in, remembering the page and its query", () => {
     expect(decideRoute("/dashboard", null)).toEqual({ action: "redirect", to: "/login?next=%2Fdashboard" });
     expect(decideRoute("/jobs", null, "/jobs?view=map")).toEqual({
@@ -60,7 +66,7 @@ describe("decideRoute: signed out", () => {
 
 describe("decideRoute: wrong role", () => {
   it("redirects a tradie who opens a customer-only page to their home", () => {
-    for (const path of ["/jobs/new", "/pay/p1", "/receipts/j1", "/profile/payments", "/jobs/j1/problem"]) {
+    for (const path of ["/jobs/new", "/pay/p1", "/receipts/j1", "/profile/payments", "/jobs/j1/problem", "/jobs/j1/windows"]) {
       expect(decideRoute(path, tradie), path).toEqual({ action: "redirect", to: "/jobs" });
     }
   });

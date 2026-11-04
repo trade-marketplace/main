@@ -193,6 +193,7 @@ describe("the words", () => {
 
 // ---------------------------------------------------------------- The read
 
+const OFFICE = { userId: "o1", role: "ADMIN" as const };
 const at = (iso: string) => new Date(iso);
 
 function fakeDb(overrides: { job?: Record<string, unknown> | null; audit?: unknown[]; estimates?: unknown[]; messages?: unknown[]; profiles?: unknown[] } = {}) {
@@ -223,7 +224,7 @@ function dbJob(overrides: Record<string, unknown> = {}) {
     title: "Sub wiring",
     category: "ELECTRICAL",
     status: "ASSIGNED",
-    suburb: "Windsor",
+    suburb: "Windsor", city: "Invercargill", asap: false, createdAt: NOW, updatedAt: NOW,
     priceCents: 37200,
     customerId: "c1",
     workerId: "w1",
@@ -250,12 +251,18 @@ function dbJob(overrides: Record<string, unknown> = {}) {
 }
 
 describe("getOfficeJob", () => {
+  it("refuses a non-office reader before querying the job", async () => {
+    const { db, mocks } = fakeDb();
+    expect(await getOfficeJob(db, { userId: "c1", role: "CUSTOMER" }, ID, NOW)).toBeNull();
+    expect(mocks.job.findUnique).not.toHaveBeenCalled();
+  });
+
   it("is null for a job that doesn't exist", async () => {
-    expect(await getOfficeJob(fakeDb({ job: null }).db, ID, NOW)).toBeNull();
+    expect(await getOfficeJob(fakeDb({ job: null }).db, OFFICE, ID, NOW)).toBeNull();
   });
 
   it("reads the money: what was paid, extra work, refunds, what the tradie earns and where payroll is", async () => {
-    const view = await getOfficeJob(fakeDb().db, ID, NOW);
+    const view = await getOfficeJob(fakeDb().db, OFFICE, ID, NOW);
     expect(view?.number).toBe("TM-1005");
     expect(view?.money).toEqual({
       paidCents: 37200,
@@ -270,7 +277,7 @@ describe("getOfficeJob", () => {
   });
 
   it("lists only payments with something left to give back", async () => {
-    const view = await getOfficeJob(fakeDb().db, ID, NOW);
+    const view = await getOfficeJob(fakeDb().db, OFFICE, ID, NOW);
     expect(view?.payments).toEqual([
       { id: "p1", label: "Job", amountCents: 37200, refundableCents: 37200 },
       { id: "p2", label: "Extra work", amountCents: 14800, refundableCents: 10000 },
@@ -285,7 +292,7 @@ describe("getOfficeJob", () => {
       ],
       estimates: [{ updatedAt: at("2026-10-26T22:00:00Z") }, { updatedAt: at("2026-10-26T21:00:00Z") }],
     });
-    const view = await getOfficeJob(db, ID, NOW);
+    const view = await getOfficeJob(db, OFFICE, ID, NOW);
     expect(view?.timeline.map((row) => row.title)).toEqual([
       "Refunded $48.00",
       "Claimed by Jack Wilson",
@@ -302,19 +309,19 @@ describe("getOfficeJob", () => {
   });
 
   it("keeps a status change that has no audit entry of its own (older jobs, the database's own history)", async () => {
-    const view = await getOfficeJob(fakeDb().db, ID, NOW);
+    const view = await getOfficeJob(fakeDb().db, OFFICE, ID, NOW);
     expect(view?.timeline.map((row) => row.title)).toEqual(["Claimed", "Paid", "Posted"]);
   });
 
   it("only loads reassignment choices when there is a tradie to swap, and never the customer or the current tradie", async () => {
     const assigned = fakeDb();
-    const view = await getOfficeJob(assigned.db, ID, NOW);
+    const view = await getOfficeJob(assigned.db, OFFICE, ID, NOW);
     expect(view?.reassignOptions).toEqual([{ id: "w2", name: "Aroha Ngata" }]);
     const where = assigned.mocks.profile.findMany.mock.calls.find(([args]) => args.where.role)?.[0].where as unknown as { id: { notIn: string[] } };
     expect(where.id.notIn).toEqual(["c1", "w1"]);
 
     const unclaimed = fakeDb({ job: dbJob({ status: "BOOKABLE", workerId: null, worker: null, payouts: [] }) });
-    expect((await getOfficeJob(unclaimed.db, ID, NOW))?.reassignOptions).toEqual([]);
+    expect((await getOfficeJob(unclaimed.db, OFFICE, ID, NOW))?.reassignOptions).toEqual([]);
     expect(unclaimed.mocks.profile.findMany.mock.calls.some(([args]) => args.where.role)).toBe(false);
   });
 
@@ -325,7 +332,7 @@ describe("getOfficeJob", () => {
         { id: "m1", body: "Thursday 8am suit?", fromOffice: false, createdAt: at("2026-11-02T00:40:00Z"), author: { firstName: "Sarah", lastName: "Thompson" } },
       ],
     });
-    const view = await getOfficeJob(db, ID, NOW);
+    const view = await getOfficeJob(db, OFFICE, ID, NOW);
     expect(view?.messages.map((message) => [message.from, message.fromOffice])).toEqual([
       ["Sarah Thompson", false],
       ["Office", true],
@@ -349,21 +356,34 @@ describe("the job admin page", () => {
   });
 
   it("is a 404 for an address that isn't a job id, and for a job that doesn't exist", async () => {
-    vi.mocked(requireRole).mockResolvedValue({} as never);
+    vi.mocked(requireRole).mockResolvedValue(OFFICE as never);
     await expect(JobAdminPage({ params: Promise.resolve({ id: "1005" }) })).rejects.toMatchObject({ digest: expect.stringContaining("404") });
     vi.mocked(getOfficeJob).mockResolvedValue(null);
     await expect(JobAdminPage({ params: Promise.resolve({ id: ID }) })).rejects.toMatchObject({ digest: expect.stringContaining("404") });
   });
 
   it("shows the job", async () => {
-    vi.mocked(requireRole).mockResolvedValue({} as never);
+    vi.mocked(requireRole).mockResolvedValue(OFFICE as never);
     vi.mocked(getOfficeJob).mockResolvedValue(previewJob("default"));
     const element = (await JobAdminPage({ params: Promise.resolve({ id: ID }) })) as { props: { job: OfficeJobView | null } };
     expect(element.props.job?.number).toBe("TM-1005");
   });
 
+  it("opens only the existing price dialog for an unpriced queue handoff, preserves login return, and ignores arbitrary dialogs", async () => {
+    vi.mocked(requireRole).mockResolvedValue(OFFICE as never);
+    vi.mocked(getOfficeJob).mockResolvedValue({ ...previewJob("default"), status: "REVIEW" });
+    const opened = await JobAdminPage({ params: Promise.resolve({ id: ID }), searchParams: Promise.resolve({ dialog: "price" }) });
+    expect(opened.props.initialDialog).toBe("price");
+    expect(requireRole).toHaveBeenLastCalledWith(["ADMIN"], { next: `/admin/jobs/${ID}?dialog=price` });
+    const ignored = await JobAdminPage({ params: Promise.resolve({ id: ID }), searchParams: Promise.resolve({ dialog: "refund" }) });
+    expect(ignored.props.initialDialog).toBeNull();
+    vi.mocked(getOfficeJob).mockResolvedValue({ ...previewJob("default"), status: "BOOKABLE" });
+    const paid = await JobAdminPage({ params: Promise.resolve({ id: ID }), searchParams: Promise.resolve({ dialog: "price" }) });
+    expect(paid.props.initialDialog).toBeNull();
+  });
+
   it("shows 'Can't load this job' when the database can't be read", async () => {
-    vi.mocked(requireRole).mockResolvedValue({} as never);
+    vi.mocked(requireRole).mockResolvedValue(OFFICE as never);
     const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
     vi.mocked(getOfficeJob).mockRejectedValue(new Error("connection reset"));
     const element = (await JobAdminPage({ params: Promise.resolve({ id: ID }) })) as { props: { job: OfficeJobView | null } };

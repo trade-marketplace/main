@@ -9,6 +9,8 @@ import { OfficeShellView, type OfficeShellViewer } from "@/components/office/Off
 import { currentOfficeLink, officeCountLabel, officeHref, OFFICE_NAV, type OfficeCounts } from "@/components/office/office-links";
 import { requireRole } from "@/server/auth/guard";
 import { getOfficeShellViewer } from "@/server/office-shell";
+import { getOfficeQueueStats } from "@/server/office/queues";
+import { DatabaseNotConfiguredError } from "@/server/db";
 
 // Rendering the form must never perform a real sign-out.
 vi.mock("@/server/auth/actions", () => ({ logInAgainAction: vi.fn(), logOutAction: vi.fn() }));
@@ -20,6 +22,7 @@ vi.mock("next/navigation", async (importOriginal) => ({
 }));
 vi.mock("@/server/auth/guard", () => ({ requireRole: vi.fn() }));
 vi.mock("@/server/office-shell", () => ({ getOfficeShellViewer: vi.fn() }));
+vi.mock("@/server/office/queues", () => ({ getOfficeQueueStats: vi.fn() }));
 
 const root = new URL("../../", import.meta.url);
 const read = (file: string) => readFileSync(new URL(file, root), "utf8");
@@ -53,6 +56,7 @@ const currentAnchors = (html: string) => html.match(/<a\b(?=[^>]*aria-current="p
 beforeEach(() => {
   vi.mocked(requireRole).mockReset();
   vi.mocked(getOfficeShellViewer).mockReset();
+  vi.mocked(getOfficeQueueStats).mockReset().mockRejectedValue(new DatabaseNotConfiguredError());
 });
 
 describe("office navigation", () => {
@@ -283,12 +287,22 @@ describe("OfficeShell and the /admin layout", () => {
     expect(html).toContain('aria-label="Support, 2 waiting"');
   });
 
-  it("leaves badges empty when the page has not supplied queue counts", async () => {
+  it("leaves badges hidden when the actual count read is unavailable", async () => {
     vi.mocked(requireRole).mockResolvedValueOnce({ userId: "office-1", role: "ADMIN", firstName: "Matt", email: "office@example.test", emailVerified: true });
     vi.mocked(getOfficeShellViewer).mockResolvedValueOnce(OFFICE);
     const html = renderToString(await OfficeShell({ children: <h1>Private content</h1> }));
     expect(html).toContain("Private content");
     expect(html).not.toContain("waiting");
+  });
+
+  it("reads actual queue counts for the verified viewer when no explicit preview counts are supplied", async () => {
+    const viewer = { userId: "office-1", role: "ADMIN" as const, firstName: "Matt", email: "office@example.test", emailVerified: true };
+    vi.mocked(requireRole).mockResolvedValueOnce(viewer);
+    vi.mocked(getOfficeShellViewer).mockResolvedValueOnce(OFFICE);
+    vi.mocked(getOfficeQueueStats).mockResolvedValueOnce({ counts: someCounts } as never);
+    const html = renderToString(await OfficeShell({ children: <h1>Private content</h1> }));
+    expect(getOfficeQueueStats).toHaveBeenCalledWith(viewer);
+    expect(html).toContain('aria-label="Queues, 9 waiting"');
   });
 
   it("never renders children when the loader supplies no authorized viewer", async () => {

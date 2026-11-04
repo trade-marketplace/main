@@ -34,13 +34,14 @@ test.describe("public homepage", () => {
     });
   }
 
-  test("Enter carries text and location through the existing login return path and saves the same draft", async ({ page }) => {
+  test("Enter carries text and location into the guest wizard and saves the same landing draft", async ({ page }) => {
     await open(page); const query = "Fix the gate & fence";
     await firstForm(page).getByRole("textbox", { name: "What needs doing?" }).fill(query);
     await firstForm(page).getByRole("textbox").press("Enter");
-    await expect(page).toHaveURL(/\/login\?next=/);
-    const next = new URL(new URL(page.url()).searchParams.get("next")!, "https://example.test");
-    expect(next.pathname).toBe("/jobs/new"); expect(next.searchParams.get("description")).toBe(query); expect(next.searchParams.get("location")).toBe("Invercargill");
+    await expect(page).toHaveURL(/\/jobs\/new$/);
+    const next = new URL(page.url());
+    expect(next.pathname).toBe("/jobs/new"); expect(next.search).toBe("");
+    await expect(page.getByRole("textbox")).toHaveValue(query);
     expect(await page.evaluate((key) => JSON.parse(sessionStorage.getItem(key)!), LANDING_DRAFT_KEY)).toMatchObject({ description: query, location: { label: "Invercargill" } });
   });
 
@@ -55,16 +56,17 @@ test.describe("public homepage", () => {
   test("a category carries its type and the entered query", async ({ page }) => {
     await open(page); await firstForm(page).getByRole("textbox").fill("Add a socket");
     await page.getByRole("link", { name: "Electrical", exact: true }).click();
-    await expect(page).toHaveURL(/\/login\?next=/);
-    const next = new URL(new URL(page.url()).searchParams.get("next")!, "https://example.test");
-    expect(next.searchParams.get("type")).toBe("electrical"); expect(next.searchParams.get("description")).toBe("Add a socket");
+    await expect(page).toHaveURL(/\/jobs\/new$/);
+    const next = new URL(page.url());
+    expect(next.search).toBe(""); await expect(page.getByRole("textbox")).toHaveValue("Add a socket");
+    await expect(page.getByRole("radio", { name: "Electrical", exact: true })).toBeChecked();
   });
 
-  test("storage denied still retains text in the return URL", async ({ page }) => {
+  test("storage denied still carries text into the guest wizard", async ({ page }) => {
     await page.addInitScript(() => { Object.defineProperty(window, "sessionStorage", { get() { throw new Error("blocked storage"); } }); });
     await open(page); await firstForm(page).getByRole("textbox").fill("Move a couch"); await firstForm(page).getByRole("button", { name: "Get a price" }).click();
-    await expect(page).toHaveURL(/\/login\?next=/);
-    expect(new URL(new URL(page.url()).searchParams.get("next")!, "https://example.test").searchParams.get("description")).toBe("Move a couch");
+    await expect(page).toHaveURL(/\/jobs\/new$/);
+    await expect(page.getByRole("textbox")).toHaveValue("Move a couch");
   });
 
   test("geolocation is requested once and updates coverage even with development effect replay", async ({ page }) => {

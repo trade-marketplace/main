@@ -1,0 +1,22 @@
+:global(main):has(> .surface) { display: flex; flex-direction: column; }
+.surface { flex: 1; min-width: 0; background: color-mix(in srgb, var(--trade-forest) 3.8%, var(--trade-surface)); }
+.page { max-width: var(--trade-content-max); margin: 0 auto; padding: var(--trade-space-6); min-width: 0; }
+.page h1 { margin: 0; font-family: var(--trade-font-heading); font-variation-settings: var(--trade-display-axes); font-size: var(--trade-fs-title); line-height: var(--trade-lh-title); font-weight: 900; }
+.page h2 { margin: 0; font-size: var(--trade-fs-section); line-height: var(--trade-lh-section); }
+.note { margin-block: var(--trade-space-3) var(--trade-space-5); color: var(--trade-text-2); }
+.states { display: flex; flex-wrap: wrap; gap: var(--trade-space-3); margin-block: var(--trade-space-5) var(--trade-space-6); }
+.states a { display: inline-flex; align-items: center; min-height: var(--trade-tap); border: 1px solid var(--trade-line); border-radius: var(--trade-radius-field); background: var(--trade-surface); color: var(--trade-text-2); padding-inline: var(--trade-space-3); text-decoration: none; text-transform: capitalize; }
+.states a[aria-current] { color: var(--trade-text); border-color: var(--trade-action); }
+.states a:hover { background: var(--trade-tint); }
+.summary, .card { min-width: 0; padding: var(--trade-space-5); border: 1px solid var(--trade-line); border-radius: var(--trade-radius-card); background: var(--trade-surface); }
+.summary { margin-bottom: var(--trade-space-6); }
+.summary h2 span { color: var(--trade-text-2); font-weight: 400; }
+.summary ul { display: flex; flex-wrap: wrap; gap: var(--trade-space-3) var(--trade-space-6); margin-bottom: 0; padding-left: var(--trade-space-5); }
+.summary a { color: var(--trade-text); }
+.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--trade-space-5); }
+.card { scroll-margin-block: var(--trade-space-6); }
+.card dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--trade-space-4); margin: var(--trade-space-5) 0 0; }
+.card dt { color: var(--trade-text-2); font-size: var(--trade-fs-small); }
+.card dd { margin: var(--trade-space-2) 0 0; font-weight: 700; }
+.reason { display: block; margin-top: var(--trade-space-4); font-family: var(--trade-font-body); font-size: var(--trade-fs-small); color: var(--trade-text-2); overflow-wrap: anywhere; }
+@media (max-width: 767.98px) { .grid { grid-template-columns: minmax(0, 1fr); } .page { padding: var(--trade-space-4); } }

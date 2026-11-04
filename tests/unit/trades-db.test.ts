@@ -1,3 +1,5 @@
+import { PrismaPg } from "@prisma/adapter-pg";
+import { PrismaClient } from "@/generated/prisma/client";
 import { randomUUID } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
 import type { Role, Trade } from "@/generated/prisma/client";
@@ -5,10 +7,10 @@ import { beginLicenceStage, claimLicenceStage, MAX_PENDING_LICENCE_UPLOADS, SIGN
 import { licenceDocumentCleanup } from "@/server/scheduler/licence-document-cleanup";
 import { licenceUploadCleanup } from "@/server/scheduler/licence-upload-cleanup";
 import { tradesRoute } from "@/server/account/trades-route";
-import { createLicenceDocumentUploader } from "@/server/account/licence-documents";
+import { createLicenceDocumentUploader, lockLicenceDocuments } from "@/server/account/licence-documents";
 import type { FileStore } from "@/server/files/storage";
 import { loadTrades, saveTrade } from "@/server/account/trades";
-import { transitionJob, TransitionPreconditionError, type StatusMachineDeps } from "@/server/jobs/status-machine";
+import { transitionJob, type StatusMachineDeps } from "@/server/jobs/status-machine";
 import { licenceExpiryReminder } from "@/server/scheduler/licence-reminders";
 import { testDatabaseUrl, useTestSchema } from "../support/test-db";
 
@@ -110,10 +112,13 @@ describe.skipIf(!testDatabaseUrl)("trades, licences and expiry reminders (Postgr
   });
   it("blocks restricted work after expiry at New Zealand midnight, while Other stays licence-free", async () => {
     const worker = await person(); await reviewed(worker, "2026-11-03");
+    await schema.db.workerProfile.update({ where: { userId: worker }, data: { identityCheckedAt: now, identityCheckedById: await person("ADMIN"),
+      baseSuburb: "Invercargill", areaLat: -46.4132, areaLng: 168.3538, areaRadiusKm: 25 } });
     const customer = await person("CUSTOMER");
-    const job = (category: Trade) => schema.db.job.create({ data: { customerId: customer, category, title: "A test job", description: "A test job requiring work", addressLine1: "1 Test St", suburb: "Windsor", city: "Invercargill", status: "BOOKABLE", priceCents: 10000 } });
+    const job = (category: Trade) => schema.db.job.create({ data: { customerId: customer, category, title: "A test job", description: "A test job requiring work", addressLine1: "1 Test St", suburb: "Windsor", city: "Invercargill", status: "BOOKABLE", priceCents: 10000,
+      lat: -46.4132, lng: 168.3538, approxLat: -46.4117, approxLng: 168.3538 } });
     const deps: StatusMachineDeps = { audit: async () => {}, notify: async () => {} };
-    await expect(transitionJob(schema.db, deps, { jobId: (await job("ELECTRICAL")).id, transition: "claim", actor: { role: "TRADIE", userId: worker }, now })).rejects.toBeInstanceOf(TransitionPreconditionError);
+    await expect(transitionJob(schema.db, deps, { jobId: (await job("ELECTRICAL")).id, transition: "claim", actor: { role: "TRADIE", userId: worker }, now })).rejects.toMatchObject({ failure: "licence-required" });
     expect((await transitionJob(schema.db, deps, { jobId: (await job("OTHER")).id, transition: "claim", actor: { role: "TRADIE", userId: worker }, now })).to).toBe("ASSIGNED");
     await schema.db.licence.update({ where: { userId_trade: { userId: worker, trade: "ELECTRICAL" } }, data: { expiresOn: new Date("2026-11-04") } });
     expect((await transitionJob(schema.db, deps, { jobId: (await job("ELECTRICAL")).id, transition: "claim", actor: { role: "TRADIE", userId: worker }, now })).to).toBe("ASSIGNED");
@@ -138,7 +143,7 @@ describe.skipIf(!testDatabaseUrl)("trades, licences and expiry reminders (Postgr
     const files = new Map<string, Uint8Array>();
     const staging: LicenceStaging = { sign: vi.fn(async () => "https://files.test/signed-write"), read: async path => files.get(path)!, remove: vi.fn(async path => { files.delete(path); }) };
     const store: FileStore = { put: vi.fn(), signedUrl: vi.fn(), remove: vi.fn() };
-    const upload = createLicenceDocumentUploader(schema.db, store);
+    const upload = createLicenceDocumentUploader(schema.db, store, schema.db);
     const viewer = { userId: id, role: "TRADIE" as const, firstName: "Test", email: "test@example.test", emailVerified: true };
     const send = async (bytes: Uint8Array) => {
       const stage = (await beginLicenceStage(schema.db, id, staging, instant))!; files.set(stage.path, bytes);
@@ -210,7 +215,7 @@ describe.skipIf(!testDatabaseUrl)("trades, licences and expiry reminders (Postgr
       put: vi.fn(async (_bucket, path, bytes) => { expect(await schema.db.licenceDocumentCleanup.findUnique({ where: { path } })).toMatchObject({ userId: id }); files.set(path, bytes); }),
       remove: vi.fn(async (_bucket, paths) => { for (const path of paths) files.delete(path); }),
     };
-    const upload = createLicenceDocumentUploader(schema.db, store);
+    const upload = createLicenceDocumentUploader(schema.db, store, schema.db);
     const viewer = { userId: id, role: "TRADIE" as const };
     await schema.db.$executeRawUnsafe(`CREATE FUNCTION "${schema.name}".reject_licence_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.action = 'licence.submitted' THEN RAISE EXCEPTION 'test audit failure'; END IF; RETURN NEW; END $$`);
     await schema.db.$executeRawUnsafe(`CREATE TRIGGER reject_licence_audit BEFORE INSERT ON "${schema.name}".audit_log FOR EACH ROW EXECUTE FUNCTION "${schema.name}".reject_licence_audit()`);
@@ -228,7 +233,7 @@ describe.skipIf(!testDatabaseUrl)("trades, licences and expiry reminders (Postgr
     const store: FileStore = { signedUrl: vi.fn(), put: vi.fn(async (_bucket, path, bytes) => { files.set(path, bytes); }),
       remove: vi.fn(async (_bucket, paths) => { for (const path of paths) files.delete(path); if (failDelete) { failDelete = false; throw new Error("response lost after removal"); } }),
     };
-    const upload = createLicenceDocumentUploader(schema.db, store); const viewer = { userId: id, role: "TRADIE" as const }; const pdf = Buffer.from("%PDF-1.7\nsame licence");
+    const upload = createLicenceDocumentUploader(schema.db, store, schema.db); const viewer = { userId: id, role: "TRADIE" as const }; const pdf = Buffer.from("%PDF-1.7\nsame licence");
     const send = async (trade = "ELECTRICAL") => { await saveTrade(schema.db, id, details(trade), async () => (await upload(viewer, pdf)).path, now); return (await schema.db.licence.findUniqueOrThrow({ where: { userId_trade: { userId: id, trade: trade as "ELECTRICAL" | "GAS" } } })).documentPath!; };
     const old = await send(); const replacement = await send(); expect(replacement).not.toBe(old);
     const rule = licenceDocumentCleanup(() => store); const log = vi.spyOn(console, "error").mockImplementation(() => {});
@@ -238,5 +243,63 @@ describe.skipIf(!testDatabaseUrl)("trades, licences and expiry reminders (Postgr
     // The original removal arrives after its retry and the later uploads. It still names only the old key.
     files.delete(old); expect(files.has(replacement)).toBe(true); expect(files.has(sharedTrade)).toBe(true);
   });
+
+  it("uploads through a max1 primary pool using a separate max1 intent writer without a nested checkout", async () => {
+    const primary = new PrismaClient({ adapter: new PrismaPg({ connectionString: testDatabaseUrl, max: 1 }, { schema: schema.name }) });
+    const writer = new PrismaClient({ adapter: new PrismaPg({ connectionString: testDatabaseUrl, max: 1 }, { schema: schema.name }) });
+    try {
+      const first = await person(); const second = await person(); const store: FileStore = { signedUrl: vi.fn(), remove: vi.fn(), put: vi.fn() };
+      const upload = createLicenceDocumentUploader(primary, store, writer);
+      const send = (id: string) => saveTrade(primary, id, details(), async () => (await upload({ userId: id, role: "TRADIE" }, Buffer.from("%PDF-1.7\nlicensed"))).path, now);
+      expect((await Promise.all([send(first), send(second)])).every(result => result.ok)).toBe(true);
+      expect(store.put).toHaveBeenCalledTimes(2);
+      const intents = await writer.licenceDocumentCleanup.findMany({ where: { userId: { in: [first, second] } } }); expect(intents).toHaveLength(2);
+    } finally { await primary.$disconnect(); await writer.$disconnect(); }
+  });
+  it("queues final documents after direct, worker-trade and Auth/profile cascade deletion, preserving shared references", async () => {
+    await schema.db.licenceDocumentCleanup.deleteMany();
+    const id = await person(); const path = document(id); const store = { remove: vi.fn(async () => {}) }; const rule = licenceDocumentCleanup(() => store);
+    await save(id); await saveTrade(schema.db, id, details("PLUMBING"), async () => path, now);
+    await schema.db.licenceDocumentCleanup.upsert({ where: { path }, create: { path, userId: id }, update: {} });
+    await rule.run({ db: schema.db, now, limit: 1 }); expect(await schema.db.licenceDocumentCleanup.findUnique({ where: { path } })).toBeNull();
+    await schema.db.licence.delete({ where: { userId_trade: { userId: id, trade: "ELECTRICAL" } } });
+    expect(await schema.db.licenceDocumentCleanup.findUnique({ where: { path } })).not.toBeNull();
+    expect((await rule.run({ db: schema.db, now, limit: 1 })).skipped).toBe(1); expect(store.remove).not.toHaveBeenCalled();
+    await schema.db.workerTrade.delete({ where: { userId_trade: { userId: id, trade: "PLUMBING" } } });
+    expect((await rule.run({ db: schema.db, now, limit: 1 })).done).toBe(1); expect(store.remove).toHaveBeenCalledWith("documents", [path]);
+    const deletedUser = await person(); const deletedPath = document(deletedUser); await save(deletedUser);
+    await schema.db.licenceDocumentCleanup.upsert({ where: { path: deletedPath }, create: { path: deletedPath, userId: deletedUser }, update: {} });
+    await rule.run({ db: schema.db, now, limit: 1 }); expect(await schema.db.licenceDocumentCleanup.findUnique({ where: { path: deletedPath } })).toBeNull();
+    await schema.db.$executeRaw`DELETE FROM auth.users WHERE id = ${deletedUser}::uuid`;
+    expect(await schema.db.profile.findUnique({ where: { id: deletedUser } })).toBeNull();
+    expect(await schema.db.licenceDocumentCleanup.findUnique({ where: { path: deletedPath } })).toMatchObject({ userId: deletedUser });
+    expect((await rule.run({ db: schema.db, now, limit: 1 })).done).toBe(1); expect(store.remove).toHaveBeenLastCalledWith("documents", [deletedPath]);
+  });
+
+  it("retains the deletion intent when cleanup has already observed the still-visible licence", async () => {
+    await schema.db.licenceDocumentCleanup.deleteMany(); const id = await person(); const path = document(id); await save(id);
+    await schema.db.licenceDocumentCleanup.create({ data: { path, userId: id } });
+    let observed!: () => void; const referenceRead = new Promise<void>(resolve => { observed = resolve; }); let release!: () => void; const proceed = new Promise<void>(resolve => { release = resolve; });
+    // Hold cleanup at the boundary between its reference check and removal of the live document's queue entry.
+    const cleaning = schema.db.$transaction(async tx => {
+      await lockLicenceDocuments(tx, id); expect(await tx.licence.count({ where: { documentPath: path } })).toBe(1); observed();
+      await proceed; await tx.licenceDocumentCleanup.delete({ where: { path } });
+    }, { timeout: 10_000 });
+    await referenceRead; let deleted = false;
+    const deletion = schema.db.licence.delete({ where: { userId_trade: { userId: id, trade: "ELECTRICAL" } } }).then(() => { deleted = true; });
+    try {
+      let waiting = false;
+      for (let attempt = 0; attempt < 100; attempt++) {
+        const locks = await schema.db.$queryRaw<{ waiting: boolean }[]>`SELECT EXISTS (SELECT 1 FROM pg_locks l JOIN pg_stat_activity a ON a.pid = l.pid WHERE l.locktype = 'advisory' AND NOT l.granted AND position(${schema.name} in a.query) > 0) AS waiting`;
+        if (locks[0].waiting) { waiting = true; break; }
+        await new Promise(resolve => setTimeout(resolve, 10));
+      }
+      expect(waiting).toBe(true); expect(deleted).toBe(false);
+    } finally { release(); }
+    await cleaning; await deletion;
+    expect(await schema.db.licenceDocumentCleanup.findUnique({ where: { path } })).toMatchObject({ userId: id });
+    const store = { remove: vi.fn(async () => {}) }; expect((await licenceDocumentCleanup(() => store).run({ db: schema.db, now, limit: 1 })).done).toBe(1);
+    expect(store.remove).toHaveBeenCalledWith("documents", [path]);
+  }, 15_000);
 
 });

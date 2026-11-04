@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
 import type { Role } from "@/generated/prisma/client";
 import type { Viewer } from "@/server/auth/viewer";
-import { loadDraft, saveDraft } from "@/server/jobs/drafts";
+import { loadDraft, loadWizardDraft, saveDraft } from "@/server/jobs/drafts";
 import { postJob, postingDateRange, type PostJobDeps } from "@/server/jobs/post-job";
 import { testDatabaseUrl, useTestSchema } from "../support/test-db";
 
@@ -33,6 +33,98 @@ describe.skipIf(!testDatabaseUrl)("drafts and posting a job (database)", () => {
     await saveDraft(schema.db, customer, { description: "Move two sofas upstairs" });
     expect(await loadDraft(schema.db, customer)).toMatchObject({ anyTime: true, timeWindows: [{ date: "2026-11-03", timeOfDay: "MORNING" }] });
     expect(await saveDraft(schema.db, null, {})).toEqual({ status: "needs-account" });
+  });
+
+  it("commits only each wizard step's fields and returns the actual merged snapshot", async () => {
+    const customer = await person(); const key = randomUUID();
+    const stale = { ...input(customer, key), postcode: "9810", addressLine2: "Unit 1", accessNotes: "Side entrance", asap: false, anyTime: false };
+    expect(await saveDraft(schema.db, customer, stale, { wizardStep: "describe", expectedDraftAbsent: true, manualCategory: false }))
+      .toEqual({ status: "saved", draft: stale, manualCategory: false });
+    const version = { expectedPostKey: key, expectedPhotoPaths: stale.photoPaths };
+    const where = { ...stale, addressLine1: "2 New Street", postcode: "9812", addressLine2: "Unit 2", accessNotes: "New entrance", asap: true };
+    const savedWhere = await saveDraft(schema.db, customer, where, { ...version, wizardStep: "where", manualCategory: true });
+    expect(savedWhere).toEqual({ status: "saved", draft: where, manualCategory: false });
+
+    // Both tabs still have the same postKey and photo list, so photo CAS alone cannot detect this stale Where.
+    const described = { ...where, description: "Move two sofas upstairs", category: "CONSTRUCTION" };
+    expect(await saveDraft(schema.db, customer, { ...stale, description: described.description, category: described.category }, { ...version, wizardStep: "describe", manualCategory: true }))
+      .toEqual({ status: "saved", draft: described, manualCategory: true });
+    const paths = [`drafts/${customer.userId}/${key}/${"b".repeat(32)}.webp`];
+    const photographed = { ...described, photoPaths: paths };
+    const validatePhotos = vi.fn(async () => true);
+    expect(await saveDraft(schema.db, customer, { ...stale, photoPaths: paths }, { ...version, wizardStep: "photos", manualCategory: false, validatePhotos }))
+      .toEqual({ status: "saved", draft: photographed, manualCategory: true });
+    expect(validatePhotos).toHaveBeenCalledWith(expect.anything(), key, paths);
+    expect(await saveDraft(schema.db, customer, stale, { expectedPostKey: key, expectedPhotoPaths: paths, wizardStep: "review", manualCategory: false }))
+      .toEqual({ status: "saved", draft: photographed, manualCategory: true });
+    expect(await loadWizardDraft(schema.db, customer)).toEqual({ draft: photographed, manualCategory: true });
+  });
+
+  it("replaces omitted Where fields while preserving newer description, photos and category origin", async () => {
+    const customer = await person(); const key = randomUUID();
+    const current = { ...input(customer, key), postcode: "9810", addressLine2: "Unit 1", accessNotes: "Side entrance", asap: true, anyTime: false };
+    await saveDraft(schema.db, customer, current, { manualCategory: true });
+    const validatePhotos = vi.fn(async () => true);
+    const edited = { postKey: key, description: "Stale different description", category: "ELECTRICAL", photoPaths: [], addressLine1: "3 Example Street", suburb: "Gladstone", city: "Invercargill", locationSource: "TYPED", anyTime: true, timeWindows: [] };
+    const expected = { postKey: key, description: current.description, category: current.category, photoPaths: current.photoPaths, addressLine1: edited.addressLine1, suburb: edited.suburb, city: edited.city, locationSource: "TYPED", asap: true, anyTime: true, timeWindows: [] };
+    expect(await saveDraft(schema.db, customer, edited, { expectedPostKey: key, expectedPhotoPaths: current.photoPaths, wizardStep: "where", manualCategory: false, validatePhotos }))
+      .toEqual({ status: "saved", draft: expected, manualCategory: true });
+    expect(await loadDraft(schema.db, customer)).toEqual(expected);
+    expect(validatePhotos).not.toHaveBeenCalled();
+  });
+
+  it("retains valid required checkpoints when unfinished raw step input is absent from canonical fields", async () => {
+    const customer = await person(); const key = randomUUID();
+    const current = { ...input(customer, key), postcode: "9810", addressLine2: "Unit 1", accessNotes: "Side entrance", asap: true, anyTime: true };
+    await saveDraft(schema.db, customer, current, { manualCategory: true });
+    const version = { expectedPostKey: key, expectedPhotoPaths: current.photoPaths };
+    // canonicalDraft omits whitespace/invalid raw description. It must not erase the valid server checkpoint.
+    expect(await saveDraft(schema.db, customer, { postKey: key, category: current.category }, { ...version, wizardStep: "describe", manualCategory: false }))
+      .toEqual({ status: "saved", draft: current, manualCategory: true });
+    expect(await saveDraft(schema.db, customer, { postKey: key }, { ...version, wizardStep: "describe" }))
+      .toEqual({ status: "saved", draft: current, manualCategory: true });
+    const required = Object.fromEntries(Object.entries(current).filter(([field]) => !["postcode", "addressLine2", "accessNotes", "point"].includes(field)));
+    expect(await saveDraft(schema.db, customer, { postKey: key }, { ...version, wizardStep: "where", manualCategory: false }))
+      .toEqual({ status: "saved", draft: required, manualCategory: true });
+    // Explicit values still replace: false and an empty selection are not mistaken for omitted input.
+    expect(await saveDraft(schema.db, customer, { postKey: key, asap: false, anyTime: false, timeWindows: [] }, { ...version, wizardStep: "where" }))
+      .toEqual({ status: "saved", draft: { ...required, asap: false, anyTime: false, timeWindows: [] }, manualCategory: true });
+  });
+
+  it("retains first-creation, key and photo-order CAS for step-owned saves", async () => {
+    const customer = await person(); const key = randomUUID(); const original = input(customer, key);
+    expect(await saveDraft(schema.db, customer, original, { wizardStep: "photos", expectedDraftAbsent: true, manualCategory: false }))
+      .toEqual({ status: "saved", draft: original, manualCategory: false });
+    expect(await saveDraft(schema.db, customer, { ...original, description: "Overwritten on stale absence" }, { wizardStep: "describe", expectedDraftAbsent: true }))
+      .toEqual({ status: "draft-changed" });
+    expect(await saveDraft(schema.db, customer, original, { wizardStep: "describe", expectedPostKey: randomUUID(), expectedPhotoPaths: original.photoPaths }))
+      .toEqual({ status: "forbidden" });
+    expect(await saveDraft(schema.db, customer, { ...original, postKey: randomUUID() }, { wizardStep: "where", expectedPostKey: key, expectedPhotoPaths: original.photoPaths }))
+      .toEqual({ status: "forbidden" });
+    expect(await saveDraft(schema.db, customer, original, { wizardStep: "review", expectedPostKey: key, expectedPhotoPaths: [] }))
+      .toEqual({ status: "photos-changed", photoPaths: original.photoPaths });
+    expect(await loadWizardDraft(schema.db, customer)).toEqual({ draft: original, manualCategory: false });
+  });
+
+  it("restores category origin outside canonical fields and does not carry it onto changed legacy drafts", async () => {
+    const customer = await person(); const other = await person(); const key = randomUUID();
+    const data = { postKey: key, description: "Repair a leaking tap downstairs", category: "PLUMBING" as const };
+    expect(await saveDraft(schema.db, customer, data, { manualCategory: false })).toEqual({ status: "saved" });
+    expect(await loadWizardDraft(schema.db, customer)).toEqual({ draft: data, manualCategory: false });
+    expect(await loadDraft(schema.db, customer)).toEqual(data); expect(await loadWizardDraft(schema.db, other)).toBeNull();
+    await saveDraft(schema.db, customer, { photoPaths: [] });
+    expect((await loadWizardDraft(schema.db, customer))?.manualCategory).toBe(false);
+    // Choosing the same type as the keyword guess is still an explicit choice.
+    await saveDraft(schema.db, customer, data, { manualCategory: true });
+    expect((await loadWizardDraft(schema.db, customer))?.manualCategory).toBe(true);
+    await saveDraft(schema.db, customer, { description: "Move a sofa upstairs" });
+    expect((await loadWizardDraft(schema.db, customer))?.manualCategory).toBeNull();
+    await saveDraft(schema.db, customer, data, { manualCategory: false });
+    await saveDraft(schema.db, customer, { postKey: randomUUID() });
+    expect((await loadWizardDraft(schema.db, customer))?.manualCategory).toBeNull();
+    await schema.db.profile.update({ where: { id: customer.userId }, data: { role: "TRADIE" } });
+    expect(await loadWizardDraft(schema.db, customer)).toBeNull();
+    expect(await saveDraft(schema.db, customer, data, { manualCategory: false })).toEqual({ status: "forbidden" });
   });
 
   it("posts REVIEW with the job number, actor history, photos, windows and audit, then deletes the draft", async () => {
@@ -146,18 +238,18 @@ describe.skipIf(!testDatabaseUrl)("drafts and posting a job (database)", () => {
     expect(await schema.db.job.count({ where: { postKey: key } })).toBe(1);
   });
 
-  it("notifies only available workers with the matching trade inside their area, without leaking address", async () => {
-    const customer = await person(); const key = randomUUID();
+  it("notifies only available identity-checked workers inside their area, without leaking address", async () => {
+    const customer = await person(); const office = await person("ADMIN"); const key = randomUUID();
     const workers = await Promise.all([person("TRADIE"), person("TRADIE"), person("TRADIE")]);
     for (let i = 0; i < workers.length; i++) {
       await schema.db.workerTrade.create({ data: { userId: workers[i].userId, trade: "OTHER" } });
-      await schema.db.workerProfile.create({ data: { userId: workers[i].userId, available: i !== 2, areaLat: i === 1 ? -36.85 : -46.4132, areaLng: 168.3538, areaRadiusKm: 10 } });
+      await schema.db.workerProfile.create({ data: { userId: workers[i].userId, available: i !== 2, baseSuburb: "Invercargill", identityCheckedAt: now, identityCheckedById: office.userId, areaLat: i === 1 ? -36.85 : -46.4132, areaLng: 168.3538, areaRadiusKm: 10 } });
     }
     const result = await postJob(schema.db, customer, input(customer, key), key, { now: () => now, photoExists: async () => true, rateLimit: async () => ({ allowed: true }) });
     expect(result.status).toBe("posted"); if (result.status !== "posted") return;
     const rows = await schema.db.notification.findMany({ where: { type: "job.posted", payload: { path: ["jobId"], equals: result.jobId } } });
     expect(rows.map((r) => r.userId)).toEqual([workers[0].userId]);
-    expect(rows[0].payload).toEqual({ jobId: result.jobId, jobNumber: result.jobNumber });
+    expect(rows[0].payload).toEqual({ jobId: result.jobId, jobNumber: result.jobNumber, asap: false });
     // A later retry must not alert a newly available worker about a job that has already closed.
     await schema.db.job.update({ where: { id: result.jobId }, data: { status: "CANCELLED" } });
     await schema.db.workerProfile.update({ where: { userId: workers[2].userId }, data: { available: true } });
@@ -170,8 +262,8 @@ describe.skipIf(!testDatabaseUrl)("drafts and posting a job (database)", () => {
     const workers = await Promise.all([person("TRADIE"), person("TRADIE"), person("TRADIE")]);
     for (let i = 0; i < workers.length; i++) {
       await schema.db.workerTrade.create({ data: { userId: workers[i].userId, trade: "ELECTRICAL" } });
-      await schema.db.workerProfile.create({ data: { userId: workers[i].userId, available: true, areaLat: -46.4132, areaLng: 168.3538, areaRadiusKm: 25 } });
-      await schema.db.licence.create({ data: { userId: workers[i].userId, trade: "ELECTRICAL", number: `EW${i}TEST`, status: i === 1 ? "PENDING" : "VERIFIED", checkedAt: i === 1 ? null : now, checkedById: i === 1 ? null : office.userId, expiresOn: i === 2 ? new Date("2026-11-02") : null } });
+      await schema.db.workerProfile.create({ data: { userId: workers[i].userId, available: true, baseSuburb: "Invercargill", identityCheckedAt: now, identityCheckedById: office.userId, areaLat: -46.4132, areaLng: 168.3538, areaRadiusKm: 25 } });
+      await schema.db.licence.create({ data: { userId: workers[i].userId, trade: "ELECTRICAL", number: `EW${i}TEST`, status: i === 1 ? "PENDING" : "VERIFIED", checkedAt: i === 1 ? null : now, checkedById: i === 1 ? null : office.userId, expiresOn: i === 2 ? new Date("2026-11-02") : new Date("2027-11-03") } });
     }
     const key = randomUUID(); const data = { ...input(customer, key), category: "ELECTRICAL" };
     const result = await postJob(schema.db, customer, data, key, { now: () => now, photoExists: async () => true, rateLimit: async () => ({ allowed: true }) });

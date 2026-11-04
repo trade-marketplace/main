@@ -9,6 +9,7 @@ import { addDays, type EarningsView, buildEarnings, nzDay, type PayoutRecord, ty
 import { jobNumberLabel } from "@/lib/office-jobs";
 import { calculatePayout } from "@/server/payouts/calculate";
 import { checkPayrollDetails, type PayrollDetailsCheck } from "@/server/payouts/queue-payout";
+import { workerPayoutView, workerWaitingJobView } from "@/server/views/earnings";
 
 /** Just the parts of Prisma this read uses, so tests pass a fake and nothing connects to a database. */
 export type EarningsDatabase = { payout: Pick<PrismaClient["payout"], "findMany" | "count">; job: Pick<PrismaClient["job"], "findMany">; payrollDetails: Pick<PrismaClient["payrollDetails"], "findUnique"> };
@@ -29,6 +30,7 @@ export async function loadEarnings(db: EarningsDatabase, workerId: string, now: 
       orderBy: [{ createdAt: "desc" }, { id: "asc" }],
       select: {
         id: true,
+        workerId: true,
         minutes: true,
         rateCents: true,
         grossCents: true,
@@ -45,6 +47,7 @@ export async function loadEarnings(db: EarningsDatabase, workerId: string, now: 
       orderBy: [{ jobNumber: "asc" }],
       select: {
         id: true,
+        workerId: true,
         jobNumber: true,
         title: true,
         status: true,
@@ -58,19 +61,14 @@ export async function loadEarnings(db: EarningsDatabase, workerId: string, now: 
     }),
   ]);
 
-  const records: PayoutRecord[] = payouts.map((payout) => ({
-    id: payout.id,
-    jobNumber: jobNumberLabel(payout.job.jobNumber),
-    title: payout.job.title,
-    minutes: payout.minutes,
-    rateCents: payout.rateCents,
-    grossCents: payout.grossCents,
-    holidayPayCents: payout.holidayPayCents,
-    status: payout.status,
-    createdAt: payout.createdAt.toISOString(),
-    exportedAt: payout.exportedAt?.toISOString() ?? null,
-    paidAt: payout.paidAt?.toISOString() ?? null,
-  }));
+  const viewer = { userId: workerId, role: "TRADIE" } as const;
+  const records: PayoutRecord[] = payouts.flatMap(payout => {
+    const visible = workerPayoutView(viewer, payout);
+    return visible ? [{ id: visible.id, jobNumber: jobNumberLabel(visible.job.jobNumber), title: visible.job.title,
+      minutes: visible.minutes, rateCents: visible.rateCents, grossCents: visible.grossCents,
+      holidayPayCents: visible.holidayPayCents, status: visible.status, createdAt: visible.createdAt,
+      exportedAt: visible.exportedAt, paidAt: visible.paidAt }] : [];
+  });
 
   const waiting: WaitingJob[] = [];
   for (const job of jobs) {
@@ -82,13 +80,8 @@ export async function loadEarnings(db: EarningsDatabase, workerId: string, now: 
         workerRateCents: job.pricing.workerRateCents,
         holidayPayBps: job.pricing.holidayPayBps,
       });
-      waiting.push({
-        id: job.id,
-        jobNumber: jobNumberLabel(job.jobNumber),
-        title: job.title,
-        totalCents: amounts.totalCents,
-        submitted: job.status === "SUBMITTED",
-      });
+      const visible = workerWaitingJobView(viewer, job, amounts.totalCents);
+      if (visible) waiting.push({ ...visible, jobNumber: jobNumberLabel(visible.jobNumber) });
     } catch (error) {
       // One job with figures the maths refuses must not hide the rest of the page.
       console.error(`Earnings: couldn't work out what ${jobNumberLabel(job.jobNumber)} will pay.`, error);

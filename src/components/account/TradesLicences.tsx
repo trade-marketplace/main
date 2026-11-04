@@ -12,7 +12,7 @@ import { useSwap } from "@/lib/motion/hooks";
 import type { PillKind } from "@/lib/job-status";
 import { Pill } from "@/components/status/Pill";
 import { DOCUMENT_ACCEPT, licenceState, parseTradeInput, readTradeForm, tradeLabel, type TradeErrors, type TradeSave, type TradeSnapshot } from "@/lib/account/trades";
-import { saveTrades } from "@/lib/account/trades-upload";
+import { createTradesSaver } from "@/lib/account/trades-upload";
 import { SIGNUP_TRADES, type SignupTrade } from "@/lib/auth/worker-signup";
 import account from "./account.module.css";
 import styles from "./trades.module.css";
@@ -30,8 +30,9 @@ export function TradesLicences(props: { initial: TradeSnapshot | null; save?: Tr
   return <ToastProvider><TradesContent key={props.initial ? "loaded" : "unavailable"} {...props} /></ToastProvider>;
 }
 
-function TradesContent({ initial, save = saveTrades, preview }: { initial: TradeSnapshot | null; save?: TradeSave; preview?: TradesPreview }) {
+function TradesContent({ initial, save, preview }: { initial: TradeSnapshot | null; save?: TradeSave; preview?: TradesPreview }) {
   const router = useRouter(); const toast = useToast();
+  const [formSave] = useState(() => createTradesSaver());
   const [snapshot, setSnapshot] = useState(initial);
   const [editing, setEditing] = useState<SignupTrade | "new" | null>(preview === "save-error" ? "PLUMBING" : preview === "add" ? "new" : null);
   const [trade, setTrade] = useState<SignupTrade | "">(preview === "save-error" ? "PLUMBING" : "");
@@ -93,7 +94,7 @@ function TradesContent({ initial, save = saveTrades, preview }: { initial: Trade
           if (Object.keys(fields).length) { setErrors(fields); requestAnimationFrame(() => formRef.current?.querySelector<HTMLElement>("[aria-invalid=true]")?.focus()); return; }
           setBusy(true); setErrors({}); setFailure(null);
           try {
-            const result = await save(form);
+            const result = await (save ?? formSave)(form);
             if (result.ok) { setSnapshot(result.snapshot); close(); toast.show({ message: "Saved." }); }
             else if (result.error === "invalid") { setErrors(result.fields); requestAnimationFrame(() => formRef.current?.querySelector<HTMLElement>("[aria-invalid=true]")?.focus()); }
             else setFailure(result.error === "forbidden" || result.error === "session-expired" ? "Log in to save." : result.message ?? "Couldn’t save.");

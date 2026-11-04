@@ -45,3 +45,6 @@ export const payDonePath = (paymentId: string) => `/pay/${paymentId}/done`;
 /** The pay form and the Pay button (which sits in the order summary, C10) are joined by these ids. */
 export const PAY_FORM_ID = "pay-form";
 export const PAY_ACTION_ID = "pay-action";
+
+/** The existing completion route distinguishes receiving money from approving extra work. */
+export type PaymentCompletion = { jobId: string; outcome: "booked" | "variation-approved" | "variation-checking" | "variation-review" };

@@ -86,6 +86,9 @@ model Profile {
   lastName        String?   @map("last_name")
   // NZ mobile in E.164 (+6421…). Hidden from the other side until a job is claimed (DECISIONS.md 11).
   phone           String?
+  // Trusted confirmation is bound to this exact E.164 phone, never inferred from entering it.
+  phoneVerifiedAt DateTime? @map("phone_verified_at") @db.Timestamptz
+  phoneVerifiedFor String? @map("phone_verified_for")
   // Path in the private Supabase Storage bucket, never a public URL.
   avatarPath      String?   @map("avatar_path")
   createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
@@ -97,6 +100,8 @@ model Profile {
   licences         Licence[]          @relation("LicenceHolder")
   licencesChecked  Licence[]          @relation("LicenceChecker")
   workersVerified  WorkerProfile[]    @relation("WorkerVerifier")
+  identitiesChecked WorkerProfile[]   @relation("WorkerIdentityChecker")
+  workersPaused WorkerProfile[]       @relation("WorkerPauser")
   addresses        Address[]
   payrollDetails   PayrollDetails?
   jobsPosted       Job[]              @relation("JobCustomer")
@@ -144,6 +149,14 @@ model WorkerProfile {
   verifiedAt   DateTime? @map("verified_at") @db.Timestamptz
   verifiedById String?   @map("verified_by_id") @db.Uuid
   verifiedBy   Profile?  @relation("WorkerVerifier", fields: [verifiedById], references: [id], onDelete: SetNull)
+  // Explicit office ID check. The legacy generic verifiedAt flag is not evidence of this check.
+  identityCheckedAt DateTime? @map("identity_checked_at") @db.Timestamptz
+  identityCheckedById String? @map("identity_checked_by_id") @db.Uuid
+  identityCheckedBy Profile? @relation("WorkerIdentityChecker", fields: [identityCheckedById], references: [id], onDelete: SetNull)
+  // Office pause is separate from the worker's own available switch and remains set if its actor is deleted.
+  pausedAt DateTime? @map("paused_at") @db.Timestamptz
+  pausedById String? @map("paused_by_id") @db.Uuid
+  pausedBy Profile? @relation("WorkerPauser", fields: [pausedById], references: [id], onDelete: SetNull)
   // Verified quoters arrive in milestone 5 (#258). Invite only.
   isQuoter     Boolean   @default(false) @map("is_quoter")
   createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
@@ -334,9 +347,41 @@ model JobDraft {
   profileId String @id @map("profile_id") @db.Uuid
   profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
   data Json
+  // Wizard category origin is UI metadata, outside the shared canonical job fields. Null is legacy/unknown.
+  manualCategory Boolean? @map("manual_category")
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   @@map("job_drafts")
+}
+
+// Signed raw uploads remain tracked through token expiry, including after account removal.
+model DraftPhotoStage {
+  path        String    @id
+  userId      String    @map("user_id") @db.Uuid
+  postKey     String    @map("post_key") @db.Uuid
+  size        Int
+  expiresAt   DateTime  @map("expires_at") @db.Timestamptz
+  claimedAt   DateTime? @map("claimed_at") @db.Timestamptz
+  finalizedAt DateTime? @map("finalized_at") @db.Timestamptz
+  finalPath   String    @unique @map("final_path")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([userId, expiresAt])
+  @@index([expiresAt])
+  @@map("draft_photo_stages")
+}
+
+// No cascading FK: the intent commits before Storage put and survives failed saves or account deletion.
+model DraftPhotoCleanup {
+  path       String   @id
+  userId     String   @map("user_id") @db.Uuid
+  postKey    String   @map("post_key") @db.Uuid
+  deleting   Boolean  @default(false)
+  checkAfter DateTime @map("check_after") @db.Timestamptz
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([checkAfter])
+  @@map("draft_photo_cleanup")
 }
 
 model Job {
@@ -583,6 +628,7 @@ model Payment {
   kind               PaymentKind
   // The extra work being paid for: set for VARIATION, and only then. Must be extra work on the same job.
   variationId        String?       @map("variation_id") @db.Uuid
+  variationRevision  Int?          @map("variation_revision")
   variation          Variation?    @relation(fields: [variationId], references: [id], onDelete: Restrict)
   // What the customer is charged, incl GST.
   amountCents        Int           @map("amount_cents")
@@ -620,6 +666,8 @@ model Payment {
 // Data API policy: who sees which part arrives with who-sees-what (#95). Hours are minutes, as in Schema 2.
 model Variation {
   id                      String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  requestKey              String?         @unique @map("request_key") @db.Uuid
+  revision                Int             @default(0)
   jobId                   String          @map("job_id") @db.Uuid
   job                     Job             @relation(fields: [jobId], references: [id], onDelete: Cascade)
   // The worker who asked.
@@ -650,11 +698,45 @@ model Variation {
   updatedAt               DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   payments Payment[]
+  photos VariationPhoto[]
 
   @@index([jobId, createdAt])
   // Office queue: extra work waiting to be priced.
   @@index([status, createdAt])
   @@map("variations")
+}
+
+// Private processed uploads. An upload is recorded before Storage is called; unattached rows remain available
+// to bounded cleanup, including after a job/variation is deleted. No browser Data API access.
+model VariationPhoto {
+  path String @id
+  jobId String @map("job_id") @db.Uuid
+  uploadedById String @map("uploaded_by_id") @db.Uuid
+  requestKey String @map("request_key") @db.Uuid
+  variationId String? @map("variation_id") @db.Uuid
+  variation Variation? @relation(fields: [variationId], references: [id], onDelete: SetNull)
+  position Int @default(0)
+  ready Boolean @default(false)
+  deleting Boolean @default(false)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  @@index([variationId, position])
+  @@index([createdAt])
+  @@map("variation_photos")
+}
+
+// Private raw-upload grants: small server actions exchange IDs, large bytes go directly to quarantine Storage.
+model VariationUploadStage {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  path String @unique
+  userId String @map("user_id") @db.Uuid
+  jobId String @map("job_id") @db.Uuid
+  requestKey String @map("request_key") @db.Uuid
+  expiresAt DateTime @map("expires_at") @db.Timestamptz
+  finalizedAt DateTime? @map("finalized_at") @db.Timestamptz
+  photoPath String? @map("photo_path")
+  @@index([userId, expiresAt])
+  @@index([expiresAt])
+  @@map("variation_upload_stages")
 }
 
 // What a worker is owed for a job, for payroll: one per worker per job, so a crew (milestone 4) gets one each.

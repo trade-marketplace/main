@@ -35,6 +35,7 @@ type ActionRule = { readonly record: AuditRecordType; readonly reason?: "require
 export const AUDIT_ACTIONS = {
   // Jobs. The status machine (#93) names the transition when there is one; `job.status_changed` is for the rest.
   "job.posted": { record: "jobs" },
+  "job.windows_updated": { record: "jobs" },
   "job.priced": { record: "jobs" },
   "job.sent_to_bounty": { record: "jobs" },
   "job.price_sent": { record: "jobs" },
@@ -61,6 +62,8 @@ export const AUDIT_ACTIONS = {
   "payment.partially_refunded": { record: "payments", reason: "required" },
 
   // Extra work.
+  "variation.requested": { record: "variations" },
+  "variation.payment_started": { record: "variations" },
   "variation.priced": { record: "variations" },
   "variation.approved": { record: "variations" },
   "variation.declined": { record: "variations" },
@@ -84,6 +87,8 @@ export const AUDIT_ACTIONS = {
   "office_user.removed": { record: "profiles" },
   "licence.verified": { record: "licences" },
   "licence.submitted": { record: "licences" },
+  "worker.phone_confirmed": { record: "profiles" },
+  "worker.identity_checked": { record: "worker_profiles" },
   "worker.trade_added": { record: "worker_profiles" },
   "licence.rejected": { record: "licences", reason: "required" },
   "licence.expired": { record: "licences" },

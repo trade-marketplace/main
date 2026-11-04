@@ -4,7 +4,9 @@ import type { CoverageCheck, LocationSource, PrismaClient } from "@/generated/pr
 import { type Coverage, checkCoverage } from "@/lib/geo/coverage";
 import { haversineKm, isInNewZealand, isPoint, type Point, roundKm } from "@/lib/geo/distance";
 
-import { approximatePin, type Random, secureRandom } from "./approximate";
+import { workerHasPrivateAccess } from "@/server/views/access";
+
+import { approximatePin, APPROX_MIN_METRES, APPROX_MAX_METRES, type Random, secureRandom } from "./approximate";
 
 // Where a job is (#97): the coverage decision when it's posted, the office's check, the approximate pin and
 // how far it is from a worker. Posting a job (C04) calls resolveJobLocation() and, when it's ok, saves the
@@ -149,15 +151,24 @@ type JobPoints = {
   approxLat: number | null;
   approxLng: number | null;
   workerId: string | null;
+  status: string;
 };
 
 /** Where a job goes on a worker's map: the approximate pin until they've claimed it. Never the address before. */
 export function jobPinFor(job: JobPoints, viewerId: string): Point | null {
-  return job.workerId !== null && job.workerId === viewerId
+  return workerHasPrivateAccess({ userId: viewerId, role: "TRADIE" }, job)
     ? pointOf(job.lat, job.lng)
-    : pointOf(job.approxLat, job.approxLng);
+    : jobApproximatePin(job);
 }
 
-function pointOf(lat: number | null, lng: number | null): Point | null {
-  return lat === null || lng === null ? null : { lat, lng };
+/** Reuse the saved cryptographically random pin; fail closed if legacy/corrupt coordinates expose the address. */
+export function jobApproximatePin(job: { lat?: number | null; lng?: number | null; approxLat?: number | null; approxLng?: number | null }): Point | null {
+  const exact = pointOf(job.lat, job.lng), approx = pointOf(job.approxLat, job.approxLng);
+  if (!exact || !approx) return null;
+  const metres = haversineKm(exact, approx) * 1000;
+  return metres >= APPROX_MIN_METRES - 0.000001 && metres <= APPROX_MAX_METRES + 0.000001 ? approx : null;
+}
+
+function pointOf(lat: number | null | undefined, lng: number | null | undefined): Point | null {
+  return typeof lat === "number" && typeof lng === "number" && isPoint({ lat, lng }) ? { lat, lng } : null;
 }
