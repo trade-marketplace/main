@@ -53,3 +53,11 @@
 .picks label > span:last-child { width: 100%; justify-content: center; padding-inline: 0; white-space: nowrap; }
 .stepper input { min-height: 64px; font-size: var(--trade-fs-title); }
 .stepper > span > button { width: 56px; height: 56px; }
+
+/* Inline quote: the form sits on the job page. On wide screens it stays in view while the photos scroll. */
+@media (min-width: 900px) { .card { position: sticky; top: var(--trade-space-6); } }
+.send { display: grid; gap: var(--trade-space-3); padding-top: var(--trade-space-5); border-top: 1px solid var(--trade-line); }
+.earn { display: flex; align-items: baseline; justify-content: space-between; gap: var(--trade-space-3); margin: 0; color: var(--trade-text-2); }
+.earn b { color: var(--trade-text); font-family: var(--trade-font-heading); font-size: var(--trade-fs-title); font-weight: 900; font-variation-settings: var(--trade-display-axes); line-height: 1; font-variant-numeric: tabular-nums; }
+.earn > span { display: grid; gap: 2px; }
+.earn small { font-size: var(--trade-fs-small); color: var(--trade-text-2); }
