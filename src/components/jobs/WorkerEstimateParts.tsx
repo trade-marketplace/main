@@ -4,14 +4,12 @@ import { Icon } from "@/components/Icon";
 import { ChipGroup, SwitchField } from "@/components/forms/ChoiceFields";
 import { MoneyField, TextAreaField, TextField } from "@/components/forms/TextFields";
 import { Banner } from "@/components/overlays/Banner";
-import { formatCents } from "@/components/status/PriceBlock";
 import { QUOTE_POINTS } from "@/lib/points";
 import { ESTIMATE_ELIGIBILITY_MESSAGES, type EstimateFields, type OwnEstimate } from "@/lib/worker-estimate";
 import type { EligibilityFailure } from "@/server/workers/eligibility";
 import styles from "./worker-estimate.module.css";
 
 const money = new Intl.NumberFormat("en-NZ", { style: "currency", currency: "NZD", maximumFractionDigits: 2 });
-const wholeDollars = new Intl.NumberFormat("en-NZ", { style: "currency", currency: "NZD", maximumFractionDigits: 0 });
 const HOUR_PICKS = ["0.5", "1", "2", "4", "6", "8"];
 const MATERIAL_PICKS = ["0", "50", "100", "250", "500"];
 
@@ -25,9 +23,6 @@ export function PointsChip({ points = QUOTE_POINTS, earned = false }: { points?:
 
 export function WorkerEstimateNotice({ failure }: { failure: EligibilityFailure }) {
   return <Banner tone="alert">{ESTIMATE_ELIGIBILITY_MESSAGES[failure]}</Banner>;
-}
-export function WorkerEstimateEarnings({ cents, forecast = false }: { cents: number; forecast?: boolean }) {
-  return <p className={styles.earn}><span>You’d earn</span><b>{forecast ? wholeDollars.format(cents / 100) : formatCents(cents)}</b></p>;
 }
 
 export function WorkerEstimateSummary({ own, canEdit = true }: { own: OwnEstimate; canEdit?: boolean }) {
