@@ -82,4 +82,17 @@ describe("owned customer page read", () => {
     expect(await loadCustomerJobPhotos(customerJobView(VIEWERS.customer, row)!, VIEWERS.customer, sign)).toMatchObject({ photos: [], photosFailed: false });
     expect(sign).not.toHaveBeenCalled();
   });
+  it("renews near the signer's actual TTL, accounting for elapsed signing time and a new batch", async () => {
+    const row = exampleJob(), job = customerJobView(VIEWERS.customer, row)!;
+    for (const [expiresInSeconds, expected] of [[300, 266_000], [60, 26_000], [10, 1_000]]) {
+      const now = vi.fn().mockReturnValueOnce(1_000).mockReturnValueOnce(5_000);
+      const sign = async () => [{ id: row.photos[0].id, position: 0, url: "https://signed.example.test/photo", expiresInSeconds }];
+      const first = await loadCustomerJobPhotos(job, VIEWERS.customer, sign, now);
+      expect(first.photoLease?.renewAfterMs).toBe(expected);
+      const next = await loadCustomerJobPhotos(job, VIEWERS.customer, sign, () => 5_000);
+      expect(next.photoLease?.batchId).not.toBe(first.photoLease?.batchId);
+    }
+    const empty = await loadCustomerJobPhotos(customerJobView(VIEWERS.customer, exampleJob({ photos: [] }))!, VIEWERS.customer);
+    expect(empty.photoLease).toBeNull();
+  });
 });

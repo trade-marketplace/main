@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/Button";
 import { Icon } from "@/components/Icon";
@@ -19,18 +19,20 @@ import { jobTracker } from "@/lib/job-tracker";
 import type { CustomerJobView } from "@/server/views";
 import styles from "./customer-job.module.css";
 
-type Props = { job: CustomerJobView; photos?: readonly ViewerPhoto[]; photosFailed?: boolean; back?: string; preview?: "offline" | "static" };
+type Props = { job: CustomerJobView; photos?: readonly ViewerPhoto[]; photosFailed?: boolean; photoLease?: { batchId: string; renewAfterMs: number } | null; back?: string; preview?: "offline" | "static" };
 const trades = { ELECTRICAL: "Electrical", PLUMBING: "Plumbing", GAS: "Gas", CONSTRUCTION: "Construction", OTHER: "Other" } as const;
 const date = new Intl.DateTimeFormat("en-NZ", { timeZone: "UTC", weekday: "short", day: "numeric", month: "short" });
 const postedDate = new Intl.DateTimeFormat("en-NZ", { timeZone: "Pacific/Auckland", weekday: "short", day: "numeric", month: "short" });
 const time = { MORNING: "Morning", AFTERNOON: "Afternoon", EVENING: "Evening" } as const;
 
-export function CustomerJob({ job, photos = [], photosFailed = false, back = "/", preview }: Props) {
+export function CustomerJob({ job, photos = [], photosFailed = false, photoLease, back = "/", preview }: Props) {
   const router = useRouter();
   const browserOnline = useOnlineStatus();
   const online = browserOnline && preview !== "offline";
   const [refreshing, startRefresh] = useTransition();
   const [failedGallery, setFailedGallery] = useState<string | null>(null);
+  const renewAt = useRef<number | null>(null);
+  const photoBatch = photoLease?.batchId, photoRenewAfterMs = photoLease?.renewAfterMs;
   const photoKey = photos.map(photo => photo.src).join("\n");
   const photoError = photosFailed || failedGallery === photoKey;
   const panel = CUSTOMER_JOB_PANELS[job.status];
@@ -41,16 +43,37 @@ export function CustomerJob({ job, photos = [], photosFailed = false, back = "/"
   const refresh = () => { if (online) startRefresh(() => router.refresh()); };
   const retryPhotos = () => { setFailedGallery(null); refresh(); };
 
+  // Anchor the server-provided remaining lifetime to this browser's clock, once per signed response.
+  useEffect(() => { renewAt.current = photoRenewAfterMs === undefined ? null : Date.now() + photoRenewAfterMs; }, [photoBatch, photoRenewAfterMs]);
+
   useEffect(() => {
     if (preview) return;
-    function update() {
-      if (!refreshing && !document.querySelector("dialog[open]") && customerJobShouldRefresh(job.status, navigator.onLine, document.visibilityState)) startRefresh(() => router.refresh());
+    const abort = new AbortController();
+    let checking = false, refreshRequested = false;
+    const canUpdate = () => !abort.signal.aborted && !refreshing && !refreshRequested && navigator.onLine && document.visibilityState === "visible" && !document.querySelector("dialog[open]");
+    const refreshFrame = () => { refreshRequested = true; startRefresh(() => router.refresh()); };
+    async function update() {
+      if (!canUpdate() || checking) return;
+      if (renewAt.current !== null && Date.now() >= renewAt.current) { refreshFrame(); return; }
+      if (!customerJobShouldRefresh(job.status, true, "visible")) return;
+      checking = true;
+      try {
+        const response = await fetch(`/api/jobs/${job.id}/revision`, { cache: "no-store", credentials: "same-origin", signal: abort.signal });
+        if (!canUpdate()) return;
+        if ([401, 403, 404].includes(response.status)) { refreshFrame(); return; }
+        if (!response.ok) return;
+        const latest: unknown = await response.json();
+        if (canUpdate() && latest && typeof latest === "object" && "revision" in latest && typeof latest.revision === "string" && "status" in latest && typeof latest.status === "string" && (latest.revision !== job.updatedAt || latest.status !== job.status)) refreshFrame();
+      } catch { /* A failed check leaves the current frame intact; the next interval or explicit retry can recover. */ }
+      finally { checking = false; }
     }
     const timer = setInterval(update, CUSTOMER_JOB_POLL_MS);
+    const remaining = renewAt.current === null ? null : renewAt.current - Date.now();
+    const renewal = remaining === null ? undefined : setTimeout(update, remaining > 0 ? remaining : CUSTOMER_JOB_POLL_MS);
     window.addEventListener("online", update);
     document.addEventListener("visibilitychange", update);
-    return () => { clearInterval(timer); window.removeEventListener("online", update); document.removeEventListener("visibilitychange", update); };
-  }, [job.status, preview, refreshing, router]);
+    return () => { abort.abort(); clearInterval(timer); clearTimeout(renewal); window.removeEventListener("online", update); document.removeEventListener("visibilitychange", update); };
+  }, [job.id, job.status, job.updatedAt, photoBatch, photoRenewAfterMs, preview, refreshing, router]);
 
   const windows = job.bookedDate && job.bookedTime ? [{ date: job.bookedDate, timeOfDay: job.bookedTime }] : job.timeWindows;
   return <section className={styles.page} data-mode="customer" aria-labelledby={`${titleId} ${statusId}`}>

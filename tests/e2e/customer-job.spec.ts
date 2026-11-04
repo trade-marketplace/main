@@ -110,6 +110,82 @@ test.describe("real owned customer job route", () => {
     for (const candidate of [id, randomUUID()]) {
       const response = await page.goto(`${app}/jobs/${candidate}?from=%2F`);
       expect(response?.status()).toBe(404); expect(await response!.text()).not.toMatch(/Move the couch|1 Example Street|priceCents|marginCents/);
+      const revision = await page.request.get(`${app}/api/jobs/${candidate}/revision`);
+      expect(revision.status()).toBe(404); expect(await revision.json()).toEqual({ error: "not-found" });
+      expect(revision.headers()["cache-control"]).toBe("private, no-store");
     }
+    await db.query("UPDATE profiles SET role='TRADIE' WHERE id=$1", [SECURITY_TRADIE.id]);
+    const forbidden = await page.request.get(`${app}/api/jobs/${id}/revision`);
+    expect(forbidden.status()).toBe(403); expect(await forbidden.json()).toEqual({ error: "forbidden" });
+  });
+  test("unchanged revision polls keep photo URLs, changed status refreshes, and TTL renewal is bounded", async ({ page, context, request }) => {
+    test.setTimeout(90_000);
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.clock.install({ time: new Date() });
+    const id = await fixture(), path = `/api/jobs/${id}/revision`;
+    const anonymous = await request.get(`${app}${path}`);
+    expect(anonymous.status()).toBe(401);
+    expect(anonymous.headers()["cache-control"]).toBe("private, no-store");
+    let imageGets = 0, polls = 0;
+    page.on("request", request => { if (request.method() === "GET" && request.url().includes(`/object/sign/photos/jobs/${id}/`)) imageGets++; });
+    page.on("response", response => { if (new URL(response.url()).pathname === path) polls++; });
+    const signs = () => storage.events.filter(event => event.method === "POST" && event.path.includes(`/object/sign/photos/jobs/${id}/`)).length;
+    await login(page, `/jobs/${id}`);
+    await expect(page.getByRole("heading", { name: "Move the couch", exact: true })).toBeVisible();
+    const image = page.locator('main ul img').first();
+    await expect(image).toHaveJSProperty("complete", true);
+    expect(await image.evaluate(image => (image as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
+    await page.clock.pauseAt(new Date(Date.now() + 1_000));
+    async function poll(ms = 15_000) {
+      const response = page.waitForResponse(response => new URL(response.url()).pathname === path);
+      await page.clock.runFor(ms);
+      const result = await response;
+      expect(result.status()).toBe(200);
+      expect(Object.keys(await result.json()).sort()).toEqual(["revision", "status"]);
+    }
+    const original = await image.getAttribute("src"), initialSigns = signs(), initialGets = imageGets;
+    for (let index = 0; index < 3; index++) await poll();
+    expect(signs()).toBe(initialSigns); expect(imageGets).toBe(initialGets);
+    await expect(image).toHaveAttribute("src", original!);
+
+    await page.getByRole("button", { name: "Open photo 1 of 1: Move the couch · 1", exact: true }).click();
+    await expect(page.getByRole("dialog", { name: "Photos of Move the couch", exact: true })).toBeVisible();
+    const paused = polls; await page.clock.runFor(15_000); expect(polls).toBe(paused); expect(signs()).toBe(initialSigns);
+    await page.keyboard.press("Escape");
+    await page.evaluate(() => Object.defineProperty(document, "visibilityState", { configurable: true, value: "hidden" }));
+    await page.clock.runFor(15_000); expect(polls).toBe(paused);
+    await page.evaluate(() => Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" }));
+    await context.setOffline(true); await page.clock.runFor(15_000); expect(polls).toBe(paused);
+    const resumed = page.waitForResponse(response => new URL(response.url()).pathname === path);
+    await context.setOffline(false); await resumed;
+    // The shared connection banner deliberately retries the page after reconnecting.
+    await expect(image).not.toHaveAttribute("src", original!);
+    await expect(image).toHaveJSProperty("complete", true);
+    const recoveredSigns = signs(), recovered = await image.getAttribute("src");
+
+    await db.query("UPDATE jobs SET status='PRICED',price_cents=17777 WHERE id=$1", [id]);
+    await poll(); await expect(page.locator('[data-status="PRICED"]')).toBeVisible();
+    await expect.poll(signs).toBe(recoveredSigns + 1);
+    await expect(image).not.toHaveAttribute("src", recovered!);
+    await expect(image).toHaveJSProperty("complete", true);
+    await page.clock.runFor(1);
+    const priced = await image.getAttribute("src"), pricedGets = imageGets;
+    // The real signer reports 300 seconds. Check once near its conservative 270-second renewal boundary.
+    let response = page.waitForResponse(response => new URL(response.url()).pathname === path);
+    await page.clock.fastForward(240_000); await response;
+    response = page.waitForResponse(response => new URL(response.url()).pathname === path);
+    await page.clock.fastForward(25_000); await response;
+    expect(signs()).toBe(recoveredSigns + 1); expect(imageGets).toBe(pricedGets);
+    await page.clock.fastForward(6_000);
+    await expect.poll(signs).toBe(recoveredSigns + 2);
+    await expect(image).not.toHaveAttribute("src", priced!);
+    await expect(image).toHaveJSProperty("complete", true);
+    const renewedGets = imageGets;
+    await poll(); expect(signs()).toBe(recoveredSigns + 2); expect(imageGets).toBe(renewedGets);
+
+    await db.query("UPDATE jobs SET status='CANCELLED' WHERE id=$1", [id]);
+    await poll(); await expect(page.getByText("This job was cancelled.", { exact: true })).toBeVisible();
+    const terminalPolls = polls; await page.clock.fastForward(45_000);
+    expect(polls).toBe(terminalPolls);
   });
 });
