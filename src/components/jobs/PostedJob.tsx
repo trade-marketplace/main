@@ -1,9 +1,11 @@
 "use client";
+import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/Button";
 import { BoltFlash } from "@/components/motion/BoltFlash";
 import { Tracker } from "@/components/status/Tracker";
 import { StatusPill } from "@/components/status/StatusPill";
 import { jobTracker } from "@/lib/job-tracker";
+import { customerJobsReturn } from "@/lib/customer-jobs";
 import type { FirebaseWebConfig, PushCardState } from "@/lib/browser-push";
 import type { CustomerJobView } from "@/server/views";
 import { PushOptIn } from "./PushOptIn";
@@ -29,6 +31,7 @@ export function PostedJob({ job, ownerId, push, previewState }: { job: CustomerJ
 
 /** The existing #95 allowlist powers the real View-my-job destination; C07 controls remain a separate issue. */
 export function CustomerJobSummary({ job }: { job: CustomerJobView }) {
+  const back = customerJobsReturn(useSearchParams()?.get("from"));
   const tracker = jobTracker(job.status, "customer", { tradieName: job.worker?.firstName });
   const date = new Intl.DateTimeFormat("en-NZ", { timeZone: "UTC", weekday: "short", day: "numeric", month: "short" });
   const windows = job.bookedDate && job.bookedTime ? [{ date: job.bookedDate, timeOfDay: job.bookedTime }] : job.timeWindows;
@@ -39,6 +42,6 @@ export function CustomerJobSummary({ job }: { job: CustomerJobView }) {
     {job.address?.accessNotes && <p className={styles.description}>{job.address.accessNotes}</p>}
     <h2>Where &amp; when</h2>{job.asap && <p>ASAP</p>}{!job.bookedDate && job.anyTime ? <p>Any time</p> : windows.length ? <ul className={styles.windows}>{windows.map(window => <li key={`${window.date}/${window.timeOfDay}`}>{date.format(new Date(`${window.date}T00:00:00Z`))} · {window.timeOfDay === "MORNING" ? "Morning" : window.timeOfDay === "AFTERNOON" ? "Afternoon" : "Evening"}</li>)}</ul> : <p>Time to be arranged</p>}
     {job.priceCents !== null && <div className={styles.price}><span>Total incl GST</span><strong>{new Intl.NumberFormat("en-NZ", { style: "currency", currency: "NZD" }).format(job.priceCents / 100)}</strong></div>}
-    {tracker && <Tracker {...tracker} />}<Button href="/" variant="secondary">Home</Button>
+    {tracker && <Tracker {...tracker} />}<Button href={back} variant="secondary">{back === "/" ? "Home" : "My jobs"}</Button>
   </div></section>;
 }
