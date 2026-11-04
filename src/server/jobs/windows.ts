@@ -4,7 +4,7 @@ import { z } from "zod";
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { draftFieldErrors, jobScheduleSchema } from "@/lib/job-draft";
 import { currentSchedule, timeWindowsInRange } from "@/lib/job-time-windows";
-import type { JobWindowsSnapshot, SaveJobWindowsResult } from "@/lib/job-windows";
+import { canEditJobWindows, type JobWindowsSnapshot, type SaveJobWindowsResult } from "@/lib/job-windows";
 import type { Viewer } from "@/server/auth/viewer";
 import { createAudit } from "@/server/audit/audit";
 import { lockJobWindows } from "./window-lock";
@@ -17,7 +17,7 @@ export function windowsRevision(schedule: { anyTime: boolean; asap: boolean; tim
 }
 function snapshot(job: Row): JobWindowsSnapshot {
   const schedule = { asap: job.asap, anyTime: job.anyTime, timeWindows: job.timeWindows.map(window => ({ date: window.date.toISOString().slice(0, 10), timeOfDay: window.timeOfDay })) };
-  return { id: job.id, jobNumber: job.jobNumber, title: job.title, editable: job.status === "BOOKABLE" && job.workerId === null, revision: windowsRevision(schedule), schedule };
+  return { id: job.id, jobNumber: job.jobNumber, title: job.title, editable: canEditJobWindows(job), revision: windowsRevision(schedule), schedule };
 }
 export async function loadJobWindows(db: PrismaClient, viewer: Viewer, id: string) {
   if (viewer.role !== "CUSTOMER" || !z.uuid().safeParse(id).success) return null;
