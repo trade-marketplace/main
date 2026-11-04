@@ -66,7 +66,11 @@ function shortPerson(person: Person | null | undefined, phone: boolean) {
 export function customerJobListView(viewer: JobViewer | null, job: JobSummarySource) {
   if (viewer?.role !== "CUSTOMER" || !canReadJob(viewer, job)) return null;
   const published = !["REVIEW", "QUOTE_BOUNTY"].includes(job.status);
-  return { ...summary(job), priceCents: published ? job.priceCents ?? null : null, gstCents: published ? job.pricing?.gstCents ?? null : null };
+  const person = isClaimedJob(job) ? shortPerson(job.worker, false) : null;
+  // List screens need the assigned tradie's short name, never their contact details or internal identifier.
+  const worker = person ? { firstName: person.firstName, lastInitial: person.lastInitial } : null;
+  return { ...summary(job), priceCents: published ? job.priceCents ?? null : null, gstCents: published ? job.pricing?.gstCents ?? null : null,
+    ...(worker ? { worker } : {}) };
 }
 
 export function workerJobListView(viewer: JobViewer | null, job: JobSummarySource) {
