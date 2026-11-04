@@ -5,6 +5,7 @@ import { CustomerJob, CustomerJobLoading, CustomerJobLoadError } from "@/compone
 import { JobWindows, JobWindowsLoadError } from "@/components/jobs/JobWindows";
 import { CUSTOMER_JOB_PANELS, customerJobHref, customerJobReturn, customerJobShouldRefresh, customerJobWindowsReturn } from "@/lib/customer-job";
 import { JOB_STATUSES } from "@/lib/job-status";
+import { canEditJobWindows } from "@/lib/job-windows";
 import { loadCustomerJobPage, loadCustomerJobPhotos } from "@/server/jobs/customer-page";
 import { customerJobView } from "@/server/views";
 import { exampleJob, VIEWERS } from "@/app/dev/components/job-views/preview-data";
@@ -62,6 +63,22 @@ describe("customer job frame", () => {
 });
 
 describe("owned customer page read", () => {
+  it("offers window editing only for unclaimed BOOKABLE owner rows, across every status and claim state", async () => {
+    for (const status of JOB_STATUSES) for (const workerId of [null, VIEWERS.worker.userId]) {
+      // A missing/redacted worker DTO is never evidence that the original row is unclaimed.
+      const row = exampleJob({ status, workerId, worker: null, anyTime: true, bookedDate: null, bookedTime: null });
+      const expected = status === "BOOKABLE" && workerId === null;
+      expect(canEditJobWindows(row)).toBe(expected);
+      const result = await loadCustomerJobPage(database(row), VIEWERS.customer, row.id);
+      expect(result.state).toBe("ready");
+      if (result.state !== "ready") throw new Error("Owned fixture must load");
+      expect(result.job.worker).toBeNull();
+      expect(result.canEditWindows).toBe(expected);
+      const html = renderToStaticMarkup(<CustomerJob job={result.job} canEditWindows={result.canEditWindows} />);
+      expect(html.includes(">Time windows</a>")).toBe(expected);
+      expect(html).toContain("Any time");
+    }
+  });
   it("returns the same not-found result for missing and foreign jobs", async () => {
     expect(await loadCustomerJobPage(database(null), VIEWERS.customer, "missing")).toEqual({ state: "not-found" });
     expect(await loadCustomerJobPage(database(exampleJob()), { ...VIEWERS.customer, userId: "foreign" }, "guessed")).toEqual({ state: "not-found" });

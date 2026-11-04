@@ -2,6 +2,7 @@ import "server-only";
 
 import { randomUUID } from "node:crypto";
 import type { PrismaClient } from "@/generated/prisma/client";
+import { canEditJobWindows } from "@/lib/job-windows";
 import { getUploadService, type SignedPhoto } from "@/server/files/service";
 import { JOB_DETAIL_SELECT, customerJobView, type CustomerJobView, type JobViewer } from "@/server/views";
 
@@ -13,7 +14,7 @@ export async function loadCustomerJobPage(db: Pick<PrismaClient, "job">, viewer:
   if (!row) return { state: "not-found" as const };
   const job = customerJobView(viewer, row);
   if (!job) return { state: "not-found" as const };
-  return { state: "ready" as const, job };
+  return { state: "ready" as const, job, canEditWindows: canEditJobWindows(row) };
 }
 
 export async function loadCustomerJobPhotos(job: CustomerJobView, viewer: JobViewer,

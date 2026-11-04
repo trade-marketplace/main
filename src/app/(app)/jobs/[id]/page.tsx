@@ -27,7 +27,7 @@ export default async function JobPage({ params, searchParams }: { params: Promis
     catch { return <CustomerJobLoadError />; }
     if (result.state === "not-found") notFound();
     if (result.state === "error") return <CustomerJobLoadError />;
-    return <CustomerJobPage job={result.job} viewer={viewer} posted={search.posted === "1"} back={customerBack} />;
+    return <CustomerJobPage job={result.job} viewer={viewer} posted={search.posted === "1"} back={customerBack} canEditWindows={result.canEditWindows} />;
   }
   const db = getDb(), job = await db.job.findUnique({ where: { id }, select: JOB_DETAIL_SELECT });
   if (!job) notFound();

@@ -19,13 +19,13 @@ import { jobTracker } from "@/lib/job-tracker";
 import type { CustomerJobView } from "@/server/views";
 import styles from "./customer-job.module.css";
 
-type Props = { job: CustomerJobView; photos?: readonly ViewerPhoto[]; photosFailed?: boolean; photoLease?: { batchId: string; renewAfterMs: number } | null; back?: string; preview?: "offline" | "static" };
+type Props = { job: CustomerJobView; photos?: readonly ViewerPhoto[]; photosFailed?: boolean; photoLease?: { batchId: string; renewAfterMs: number } | null; back?: string; canEditWindows?: boolean; preview?: "offline" | "static" };
 const trades = { ELECTRICAL: "Electrical", PLUMBING: "Plumbing", GAS: "Gas", CONSTRUCTION: "Construction", OTHER: "Other" } as const;
 const date = new Intl.DateTimeFormat("en-NZ", { timeZone: "UTC", weekday: "short", day: "numeric", month: "short" });
 const postedDate = new Intl.DateTimeFormat("en-NZ", { timeZone: "Pacific/Auckland", weekday: "short", day: "numeric", month: "short" });
 const time = { MORNING: "Morning", AFTERNOON: "Afternoon", EVENING: "Evening" } as const;
 
-export function CustomerJob({ job, photos = [], photosFailed = false, photoLease, back = "/", preview }: Props) {
+export function CustomerJob({ job, photos = [], photosFailed = false, photoLease, back = "/", canEditWindows = false, preview }: Props) {
   const router = useRouter();
   const browserOnline = useOnlineStatus();
   const online = browserOnline && preview !== "offline";
@@ -90,7 +90,7 @@ export function CustomerJob({ job, photos = [], photosFailed = false, photoLease
           </div>
           <dl className={styles.info}>
               <div><dt>Where</dt><dd>{[job.address.line2, job.address.line1, job.suburb, job.city, job.address.postcode].filter(Boolean).join(", ")}</dd></div>
-              <div><dt>When</dt><dd>{job.asap && <p>ASAP</p>}{!job.bookedDate && job.anyTime ? <p>Any time</p> : windows.length ? <ul>{windows.map(window => <li key={`${window.date}/${window.timeOfDay}`}>{date.format(new Date(`${window.date}T00:00:00Z`))} · {time[window.timeOfDay]}</li>)}</ul> : <p>Time to be arranged</p>}{panel.windows && <TextLink href={`/jobs/${job.id}/windows?from=${encodeURIComponent(customerJobHref(job.id, returnTo))}`}>Time windows</TextLink>}</dd></div>
+              <div><dt>When</dt><dd>{job.asap && <p>ASAP</p>}{!job.bookedDate && job.anyTime ? <p>Any time</p> : windows.length ? <ul>{windows.map(window => <li key={`${window.date}/${window.timeOfDay}`}>{date.format(new Date(`${window.date}T00:00:00Z`))} · {time[window.timeOfDay]}</li>)}</ul> : <p>Time to be arranged</p>}{canEditWindows && <TextLink href={`/jobs/${job.id}/windows?from=${encodeURIComponent(customerJobHref(job.id, returnTo))}`}>Time windows</TextLink>}</dd></div>
               <div><dt>Access</dt><dd className={styles.description}>{job.address.accessNotes || "—"}</dd></div>
           </dl>
         </div>

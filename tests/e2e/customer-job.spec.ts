@@ -28,6 +28,7 @@ for (const viewport of VIEWPORTS) test(`customer job panels and recovery states 
     if (state === "empty") { await expect(page.getByText("No photos yet.", { exact: true })).toBeVisible(); await expect(page.getByText("Time to be arranged", { exact: true })).toBeVisible(); }
     if (state === "offline") await expect(page.getByText("You’re offline.", { exact: true })).toBeVisible();
     if (state === "photos-error") await expect(page.getByText("Can’t load photos.", { exact: true })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Time windows", exact: true })).toHaveCount(["booked", "status-gallery"].includes(state) ? 1 : 0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await expectNoA11yViolations(page);
     if ([390, 1440].includes(viewport.width) && ["ready", "empty", "cancelled", "loading", "error", "offline", "photos-error", "status-gallery"].includes(state)) await page.screenshot({ path: `/tmp/122-${state}-${viewport.width}.png`, fullPage: true });
@@ -76,7 +77,7 @@ test.describe("real owned customer job route", () => {
     await page.getByLabel("Email", { exact: true }).fill(email); await page.getByLabel("Password", { exact: true }).fill(SECURITY_PASSWORD);
     await page.getByRole("button", { name: "Log in", exact: true }).click();
   }
-  test("Posted → current job → gallery → time windows → Back, then real status polling and read-only cancellation", async ({ page }) => {
+  test("Posted → read-only REVIEW → PRICED → editable BOOKABLE windows → Back → read-only cancellation", async ({ page }) => {
     test.setTimeout(90_000); await page.setViewportSize({ width: 390, height: 844 });
     const id = await fixture();
     await login(page, `/jobs/${id}?posted=1`);
@@ -84,18 +85,28 @@ test.describe("real owned customer job route", () => {
     await page.getByRole("link", { name: "View my job", exact: true }).press("Enter");
     await expect(page.getByRole("heading", { name: "Move the couch", exact: true })).toBeVisible();
     await expect(page.getByText("1 Example Street, Gladstone, Invercargill", { exact: true })).toBeVisible();
+    await expect(page.getByText("Any time", { exact: true })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Time windows", exact: true })).toHaveCount(0);
     await page.getByRole("button", { name: "Open photo 1 of 1: Move the couch · 1", exact: true }).click();
     await expect(page.getByRole("dialog", { name: "Photos of Move the couch", exact: true })).toBeVisible();
     await page.keyboard.press("Escape");
+    await db.query("UPDATE jobs SET status='PRICED',price_cents=17777 WHERE id=$1", [id]);
+    await expect(page.locator('[data-status="PRICED"]')).toBeVisible({ timeout: 25_000 });
+    await expect(page.getByText("$177.77", { exact: true }).and(page.locator('[aria-hidden="true"]'))).toBeVisible();
+    await expect(page.getByRole("link", { name: "Time windows", exact: true })).toHaveCount(0);
+    await db.query("UPDATE jobs SET status='BOOKABLE' WHERE id=$1", [id]);
+    await expect(page.locator('[data-status="BOOKABLE"]')).toBeVisible({ timeout: 25_000 });
     await page.getByRole("link", { name: "Time windows", exact: true }).press("Enter");
     await expect(page.getByRole("heading", { name: "When do you need it?", exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "Any time", exact: true })).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByRole("button", { name: "Save changes", exact: true })).toBeEnabled();
+    await page.getByRole("checkbox", { name: "ASAP: today if possible", exact: true }).check();
+    await page.getByRole("button", { name: "Save changes", exact: true }).press("Enter");
+    await expect.poll(async () => (await db.query("SELECT asap FROM jobs WHERE id=$1", [id])).rows[0].asap).toBe(true);
     await page.getByRole("link", { name: "Back", exact: true }).press("Enter");
     await expect(page).toHaveURL(`${app}/jobs/${id}?from=%2F`);
     await expect(page.getByRole("heading", { name: "Move the couch", exact: true })).toBeVisible();
-    await db.query("UPDATE jobs SET status='PRICED',price_cents=17777,updated_at=now() WHERE id=$1", [id]);
-    await expect(page.locator('[data-status="PRICED"]')).toBeVisible({ timeout: 25_000 });
-    await expect(page.getByText("$177.77", { exact: true }).and(page.locator('[aria-hidden="true"]'))).toBeVisible();
+    await expect(page.getByText("ASAP", { exact: true })).toBeVisible();
     await db.query("UPDATE jobs SET status='CANCELLED',updated_at=now() WHERE id=$1", [id]);
     await expect(page.getByText("This job was cancelled.", { exact: true })).toBeVisible({ timeout: 25_000 });
     await expect(page.getByRole("link", { name: "Time windows", exact: true })).toHaveCount(0);

@@ -2,16 +2,16 @@ import type { JobStatus } from "@/generated/prisma/enums";
 
 /** One place chooses the customer panel. Follow-up issues fill these panel slots without replacing the frame. */
 export const CUSTOMER_JOB_PANELS = {
-  REVIEW: { kind: "getting-price", heading: "We’re on it.", message: "Your price is usually ready the same day. We’ll message you.", price: false, windows: true },
-  QUOTE_BOUNTY: { kind: "quick-look", heading: "Needs a quick look", message: null, price: false, windows: true },
-  PRICED: { kind: "price-ready", heading: "Price ready", message: null, price: true, windows: false },
-  BOOKABLE: { kind: "booked", heading: "We’re finding someone", message: "Finding someone local", price: true, windows: true },
-  ASSIGNED: { kind: "confirmed", heading: "Tradie confirmed", message: null, price: true, windows: true },
-  SUBMITTED: { kind: "please-check", heading: "Please check", message: null, price: true, windows: false },
-  COMPLETED: { kind: "completed", heading: "Sorted.", message: null, price: true, windows: false },
-  CANCEL_REVIEW: { kind: "cancel-review", heading: "Cancel requested", message: null, price: true, windows: false },
-  CANCELLED: { kind: "cancelled", heading: "Cancelled", message: "This job was cancelled.", price: true, windows: false },
-} as const satisfies Record<JobStatus, { kind: string; heading: string; message: string | null; price: boolean; windows: boolean }>;
+  REVIEW: { kind: "getting-price", heading: "We’re on it.", message: "Your price is usually ready the same day. We’ll message you.", price: false },
+  QUOTE_BOUNTY: { kind: "quick-look", heading: "Needs a quick look", message: null, price: false },
+  PRICED: { kind: "price-ready", heading: "Price ready", message: null, price: true },
+  BOOKABLE: { kind: "booked", heading: "We’re finding someone", message: "Finding someone local", price: true },
+  ASSIGNED: { kind: "confirmed", heading: "Tradie confirmed", message: null, price: true },
+  SUBMITTED: { kind: "please-check", heading: "Please check", message: null, price: true },
+  COMPLETED: { kind: "completed", heading: "Sorted.", message: null, price: true },
+  CANCEL_REVIEW: { kind: "cancel-review", heading: "Cancel requested", message: null, price: true },
+  CANCELLED: { kind: "cancelled", heading: "Cancelled", message: "This job was cancelled.", price: true },
+} as const satisfies Record<JobStatus, { kind: string; heading: string; message: string | null; price: boolean }>;
 
 /** Customer home/list return paths never enter the worker board's separate return-path policy. */
 export function customerJobReturn(value: unknown): string {
