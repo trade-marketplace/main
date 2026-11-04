@@ -157,6 +157,11 @@
 .offline .bannerText { flex: 0 1 auto; }
 .offline .bannerAction { margin-left: 0; }
 .sticky { position: sticky; top: 0; z-index: var(--trade-z-sticky); }
+/* Not at the top of the page (sticky={false}: inside a card or page section): a normal rounded banner, left-aligned,
+   with room before what follows, like every other banner. */
+.offline.inline { justify-content: flex-start; border-radius: var(--trade-radius-card); padding: var(--trade-space-3) var(--trade-space-4); margin-bottom: var(--trade-space-5); }
+.offline.inline .bannerText { flex: 1 1 auto; }
+.offline.inline .bannerAction { margin-left: auto; }
 
 .visuallyHidden {
   position: absolute;

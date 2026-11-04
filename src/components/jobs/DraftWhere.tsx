@@ -60,6 +60,6 @@ export function DraftWhere({ draft, onChange, onNext, onOutside, backHref, now, 
     </div>}
     <ScheduleFields now={now} value={draft.data} disabled={busy} error={fields.timeWindows} onChange={schedule => { const next = editWhere(draft, {}); onChange({ ...next, data: { ...next.data, ...schedule }, completedWhere: false }); }} />
     <TextAreaField id="job-access" name="accessNotes" label="Anything else? (optional)" rows={3} value={values.accessNotes} maxLength={1000} readOnly={busy} error={fields.accessNotes} onChange={event => onChange(editWhere(draft, { accessNotes: event.target.value }))} />
-    <div className={`${styles.actions} ${styles.photoActions}`}><Button href={backHref} variant="tertiary" width="auto">Back</Button><Button type="submit" loading={busy} disabled={offline} width="full-on-phone">Next</Button></div>
+    <div className={`${styles.actions} ${styles.photoActions}`}><Button href={backHref} variant="secondary" width="auto">Back</Button><Button type="submit" loading={busy} disabled={offline} width="full-on-phone">Next</Button></div>
   </form>;
 }
