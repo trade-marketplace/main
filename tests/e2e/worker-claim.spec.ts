@@ -50,9 +50,29 @@ test("claim return composite fits every width and exposes the existing Messages 
     expect((await page.goto(`${preview}/dev/components/worker-claim?state=eligibility-gallery`))?.status()).toBe(200);
     await expect(page.getByRole("main")).toHaveCount(1); await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
     await expect(page.getByRole("heading", { name: "Claim eligibility", exact: true })).toBeVisible();
+    const other = page.getByRole("region", { name: "Non-electrical claim", exact: true });
+    await expect(other.getByText("Materials budget", { exact: true })).toBeVisible();
+    await expect(other.getByText("Book one of the customer’s time windows", { exact: true })).toBeVisible();
+    await expect(other.getByText("Do the work, send completion evidence", { exact: true })).toBeVisible();
+    expect(await other.innerText()).not.toContain("Telfer");
     await expect(page.getByRole("region", { name: "Messages", exact: true }).getByRole("link", { name: "Back", exact: true })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true); await expectNoA11yViolations(page);
     if (process.env.CLAIM_SCREENSHOTS_DIR && [390, 1440].includes(width)) await page.screenshot({ path: `${process.env.CLAIM_SCREENSHOTS_DIR}/eligibility-gallery-${width}.png`, fullPage: true });
+  }
+});
+test("non-electrical confirmation and success keep the budget without an undecided supplier step", async ({ page }) => {
+  test.setTimeout(120_000);
+  for (const width of [320, 390, 768, 1024, 1440]) {
+    await page.setViewportSize({ width, height: 1000 });
+    for (const state of ["confirm", "success"]) {
+      expect((await page.goto(`${preview}/dev/components/worker-claim?state=${state}&trade=OTHER`))?.status()).toBe(200);
+      const dialog = page.getByRole(state === "confirm" ? "alertdialog" : "dialog");
+      await expect(dialog).toBeVisible(); expect(await page.locator("main").innerText()).not.toContain("Telfer");
+      if (state === "confirm") await expect(dialog.getByText("Materials budget", { exact: true })).toBeVisible();
+      else { await expect(dialog.getByText("Book one of the customer’s time windows", { exact: true })).toBeVisible(); await expect(dialog.getByText("Do the work, upload the CoC", { exact: true })).toBeVisible(); }
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true); await expectNoA11yViolations(page);
+      if (process.env.CLAIM_SCREENSHOTS_DIR && [390, 1440].includes(width)) await page.screenshot({ path: `${process.env.CLAIM_SCREENSHOTS_DIR}/other-${state}-${width}.png`, fullPage: true });
+    }
   }
 });
 test("keyboard claim confirmation can cancel, claim, open the unlocked job and follow Messages/Back", async ({ page }) => {
@@ -82,7 +102,7 @@ test.describe("real claim server action", () => {
   test.skip(!app || !database, "Requires the dedicated localhost issue144 app/database and fake Auth.");
   test.describe.configure({ mode: "serial", timeout: 120_000 }); test.use({ reducedMotion: "reduce" });
   let db: pg.Client, auth: Awaited<ReturnType<typeof startSecurityAuthStub>>;
-  const office = "14400000-0000-4000-8000-000000000099", other = "14400000-0000-4000-8000-000000000088", job = randomUUID();
+  const office = "14400000-0000-4000-8000-000000000099", other = "14400000-0000-4000-8000-000000000088", job = randomUUID(), thread = randomUUID();
   test.beforeAll(async () => {
     const url = new URL(database!); if (url.hostname !== "127.0.0.1" || url.pathname !== "/issue144" || url.search || url.hash || !["127.0.0.1", "localhost"].includes(new URL(app!).hostname)) throw Error("Claim fixture requires dedicated localhost issue144 app/database.");
     auth = await startSecurityAuthStub(Number(process.env.CLAIM_E2E_AUTH_PORT ?? 54330)); db = new pg.Client({ connectionString: database }); await db.connect();
@@ -97,6 +117,8 @@ test.describe("real claim server action", () => {
     await promisify(execFile)(process.execPath, ["--conditions=react-server", "--import", "tsx", "--input-type=module", "-e",
       `import { createDatabaseClient } from './src/server/database-client.ts'; import { priceJob } from './src/server/pricing/price-job.ts'; const db = createDatabaseClient(process.env.CLAIM_E2E_DATABASE_URL); try { await priceJob(db, { jobId: '${job}', minutes: 120, materialsCents: 8500, pricedById: '${office}' }); } finally { await db.$disconnect(); }`]);
     await db.query("UPDATE jobs SET status='BOOKABLE' WHERE id=$1", [job]);
+    await db.query("INSERT INTO support_threads(id,user_id,job_id,job_participants,subject) VALUES($1,$2,$3,true,'Claim conversation')", [thread, SECURITY_USER.id, job]);
+    await db.query("INSERT INTO support_messages(thread_id,author_id,body) VALUES($1,$2,'Existing claim conversation')", [thread, SECURITY_USER.id]);
   });
   test.afterAll(async () => { await auth?.close(); await db?.end(); });
   async function login(page: Page) {
@@ -123,7 +145,10 @@ test.describe("real claim server action", () => {
     await expect(page.getByText("$85.00", { exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "Claim job", exact: true })).toHaveCount(0);
     await page.getByRole("region", { name: "Customer contact", exact: true }).getByRole("link", { name: "Message Sarah", exact: true }).press("Enter");
-    await expect(page).toHaveURL(new RegExp(`/messages\\?job=${job}`)); await expect(page.getByRole("heading", { name: "Messages", exact: true })).toBeVisible();
+    await expect(page).toHaveURL(new RegExp(`/messages/${thread}\\?`)); await expect(page.getByRole("heading", { name: "Messages", exact: true })).toBeVisible();
+    await expect(page.getByRole("log", { name: "Conversation", exact: true }).getByText("Existing claim conversation", { exact: true })).toBeVisible();
+    await expect(page.getByRole("textbox", { name: "Subject", exact: true })).toHaveCount(0);
+    expect((await db.query("SELECT count(*)::int AS count FROM support_threads WHERE job_id=$1", [job])).rows[0].count).toBe(1);
     await page.getByRole("link", { name: "Back", exact: true }).click();
     await expect(page.getByRole("region", { name: "Customer contact", exact: true })).toContainText("144 Private Street");
     await expect(page.getByRole("button", { name: "Claim job", exact: true })).toHaveCount(0);

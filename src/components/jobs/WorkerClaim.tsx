@@ -37,7 +37,10 @@ function requirements(job: WorkerClaimView) {
 }
 export function ClaimNumbers({ job, reveal = false }: { job: WorkerClaimView; reveal?: boolean }) {
   return <><PriceBlock audience="tradie" earnCents={job.earn.cents} breakdown={{ minutes: job.earn.minutes, rateCents: job.earn.rateCents, holidayPay: job.earn.holidayPay }} revealId={reveal ? `worker-claim:${job.id}:${job.earn.cents}` : undefined} />
-    <dl className={styles.lines}><div><dt>Materials budget (Telfer)</dt><dd>{formatCents(job.budgetCents)}</dd></div><div><dt>Needs</dt><dd>{requirements(job)}</dd></div><div><dt>When</dt><dd>{timing(job)}</dd></div></dl></>;
+    <dl className={styles.lines}><div><dt>{job.category === "ELECTRICAL" ? "Materials budget (Telfer)" : "Materials budget"}</dt><dd>{formatCents(job.budgetCents)}</dd></div><div><dt>Needs</dt><dd>{requirements(job)}</dd></div><div><dt>When</dt><dd>{timing(job)}</dd></div></dl></>;
+}
+export function ClaimNextSteps({ job }: { job: WorkerClaimView }) {
+  return <ol className={styles.nextSteps}><li>Book one of the customer’s time windows</li>{job.category === "ELECTRICAL" && <li>Grab materials at Telfer: job no. <b>TM-{job.jobNumber}</b></li>}<li>{job.needs?.coc ? "Do the work, upload the CoC" : "Do the work, send completion evidence"}</li></ol>;
 }
 export function WorkerClaim({ job: initial, back, failure: initialFailure, photos = [], photosFailed, preview, contactHref: initialContactHref, claim = claimWorkerJobAction }: Props) {
   const router = useRouter(), session = useOptionalSessionExpired(), online = useOnlineStatus(), pending = useRef(false);
@@ -94,7 +97,7 @@ export function WorkerClaim({ job: initial, back, failure: initialFailure, photo
       </aside>
     </div>
     <Dialog open={confirm || success} onClose={() => { setConfirm(false); setSuccess(false); }} dismissible={!saving} role={success ? "dialog" : "alertdialog"} title={<span ref={dialogTitleRef}>{success ? "It’s yours." : "Take this job?"}</span>} eyebrow={success ? undefined : `${job.title} · TM-${job.jobNumber}`} size="sm" footer={success ? <><Button variant="secondary" onClick={openOwnedJob}>Open job</Button><Button href={messageHref}>Message {job.customerFirstName}</Button></> : <><Button variant="secondary" onClick={() => setConfirm(false)} disabled={saving}>Not now</Button><Button loading={saving} disabled={offline} onClick={() => void take()}>Yes, it’s mine</Button></>}>
-      {success ? <div className={styles.success}><BoltFlash eventId={`claimed:${job.id}`} mark="bolt" size={104} /><p>{job.customerFirstName}’s address is unlocked. Next up:</p><ol><li>Book one of the customer’s time windows</li><li>Grab materials at Telfer: job no. <b>TM-{job.jobNumber}</b></li><li>{job.needs?.coc ? "Do the work, upload the CoC" : "Do the work, send completion evidence"}</li></ol></div> : <div className={styles.dialogBody}><ClaimNumbers job={job} /><p>{job.suburb}, {job.city}</p><Banner tone="info">Once it’s yours, pick a customer time window. Their address unlocks after you claim.</Banner><OfflineBanner online={preview === "offline" ? false : undefined} sticky={false} />{error && <Banner tone="alert" live>Couldn’t claim this job. Try again.</Banner>}</div>}
+      {success ? <div className={styles.success}><BoltFlash eventId={`claimed:${job.id}`} mark="bolt" size={104} /><p>{job.customerFirstName}’s address is unlocked. Next up:</p><ClaimNextSteps job={job} /></div> : <div className={styles.dialogBody}><ClaimNumbers job={job} /><p>{job.suburb}, {job.city}</p><Banner tone="info">Once it’s yours, pick a customer time window. Their address unlocks after you claim.</Banner><OfflineBanner online={preview === "offline" ? false : undefined} sticky={false} />{error && <Banner tone="alert" live>Couldn’t claim this job. Try again.</Banner>}</div>}
     </Dialog>
   </div></section>;
 }
