@@ -7,6 +7,8 @@ export type DraftPhoto = PickedPhoto & StoredDraftPhoto & { prepared: boolean; g
 export type PhotoSnapshot = { photos: readonly DraftPhoto[]; problems: readonly string[]; restoring: boolean; saving: boolean; storageError: boolean };
 export type PhotoSaveResult = void | { status: "saved" } | { status: "photos-changed"; photoPaths: string[] };
 export type PhotoManagerDeps = {
+  /** Only explicit verified signup handoff may restore pending originals at their reviewed positions. */
+  restoreOrder?: readonly string[];
   read: (scope: PhotoDraftScope) => Promise<StoredDraftPhoto[] | null>;
   write: (scope: PhotoDraftScope, photos: readonly StoredDraftPhoto[]) => Promise<void>;
   prepare: (file: File) => Promise<File>;
@@ -141,7 +143,13 @@ export class DraftPhotoManager {
       // Uploaded paths removed on another device stay removed. Only genuinely unuploaded files can join
       // the authoritative server order, and their bytes survive an over-limit restore conflict.
       const pending = local?.filter(photo => photo.file && (!photo.path || photo.pendingAttach === true && !currentPaths.includes(photo.path))).slice(0, MAX_PHOTOS).map(photo => ({ ...photo, needsRetry: photo.needsRetry === true || Boolean(photo.path), path: undefined, pendingAttach: false })) ?? [];
-      const records: StoredDraftPhoto[] = this.scope.ownerId ? [...saved, ...pending] : (local ?? saved).slice(0, MAX_PHOTOS);
+      let records: StoredDraftPhoto[] = this.scope.ownerId ? [...saved, ...pending] : (local ?? saved).slice(0, MAX_PHOTOS);
+      const order = this.deps.restoreOrder;
+      if (order && new Set(order).size === order.length && records.length === order.length && records.every(photo => order.includes(photo.id))) {
+        const reviewed = order.map(id => records.find(photo => photo.id === id)!);
+        // Never let a local intent undo a remotely removed/reordered attached selection.
+        if (JSON.stringify(reviewed.flatMap(photo => photo.path ? [photo.path] : [])) === JSON.stringify(currentPaths)) records = reviewed;
+      }
       const conflict = records.length > MAX_PHOTOS;
       const photos = records.map(record => ({ ...record, prepared: record.prepared === true, generation: ++this.generation,
         src: record.file ? this.objectUrl(record.file) : "", status: record.needsRetry || conflict && !record.path ? "failed" as const : "uploading" as const, progress: 0 }));

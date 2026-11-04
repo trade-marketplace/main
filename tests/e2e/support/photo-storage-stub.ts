@@ -1,11 +1,11 @@
 import { createServer } from "node:http";
 import { randomUUID } from "node:crypto";
-import { startSecurityAuthStub } from "./security-auth-stub";
+import { startSecurityAuthStub, type SecurityAuthStubOptions } from "./security-auth-stub";
 
 export const PHOTO_STORAGE_TEST_KEY = "sb_secret_photo_test_only_not_a_real_key";
 /** Task-owned localhost Auth + private Storage stand-in. The app still uses its real guards, SDK and codecs. */
-export async function startPhotoStorageStub(port = 54318) {
-  const auth = await startSecurityAuthStub(port + 1);
+export async function startPhotoStorageStub(port = 54318, authOptions: SecurityAuthStubOptions = {}) {
+  const auth = await startSecurityAuthStub(port + 1, authOptions);
   const objects = new Map<string, Buffer>(); const uploadTokens = new Map<string, string>(); const viewTokens = new Map<string, string>();
   const events: { method: string; path: string; bytes: number }[] = [];
   let uploadGate: Promise<void> | undefined;

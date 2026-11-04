@@ -7,8 +7,9 @@ import path from "node:path";
 // share images drawn by next/og. Reading the tokens file keeps "no hex outside tokens.css" true
 // (tests/unit/no-hex.test.ts) and means a token change reaches these files on the next build.
 //
-// Only use this in code that runs at build time (manifest.ts, opengraph-image.tsx: both are prerendered).
-// The tokens file isn't shipped with request-time server code.
+// Build-time consumers remain the default (manifest.ts and opengraph-image.tsx). The G05 enqueue renderer also
+// reads this immutable file at request time; next.config.ts explicitly traces it into every server artifact.
+// Queue delivery sends the frozen rendered message and never rerenders it.
 
 export type TokenMode = "customer" | "trade" | "office";
 

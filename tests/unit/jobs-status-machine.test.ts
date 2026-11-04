@@ -788,11 +788,10 @@ describe("transitionJob without a database", () => {
       $queryRaw: async () => [],
       $executeRaw: async () => 0,
       job: {
-        findUnique: async ({ select }: { select?: { timeWindows?: unknown } } = {}) => select?.timeWindows
-          ? { anyTime: false, timeWindows: [] }
-          : ({ ...(++reads === 1
+        findUnique: async ({ select }: { select?: { timeWindows?: unknown; id?: unknown } }) =>
+          select?.timeWindows && !select.id ? { anyTime: false, timeWindows: [] } : ({ ...(++reads === 1
             ? snapshot("BOOKABLE", { id: "job-1" })
-            : snapshot("ASSIGNED", { id: "job-1", workerId: randomUUID() })), lat: -46.4132, lng: 168.3538, approxLat: -46.4117, approxLng: 168.3538 }),
+            : snapshot("ASSIGNED", { id: "job-1", workerId: randomUUID() })), anyTime: false, timeWindows: [], lat: -46.4132, lng: 168.3538, approxLat: -46.4117, approxLng: 168.3538 }),
         updateMany: async () => ({ count: 0 }),
       },
       licence: { count: async () => 1 },

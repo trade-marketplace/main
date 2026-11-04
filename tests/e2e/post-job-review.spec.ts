@@ -1,0 +1,337 @@
+import { randomUUID } from "node:crypto";
+import { expect, test, type Page } from "@playwright/test";
+import pg from "pg";
+import sharp from "sharp";
+import { DRAFT_STORAGE_KEY } from "../../src/lib/job-draft";
+import { encodeWizardDraft, initialWizardDraft } from "../../src/lib/post-job-wizard";
+import { startPhotoStorageStub } from "./support/photo-storage-stub";
+import { SECURITY_PASSWORD, SECURITY_USER, SECURITY_TRADIE } from "./support/security-auth-stub";
+import { expectNoA11yViolations } from "./support/a11y";
+import { VIEWPORTS } from "./support/viewports";
+
+const app = process.env.POST_REVIEW_E2E_APP_URL; const database = process.env.POST_REVIEW_E2E_DATABASE_URL;
+test.describe("review and verified posting through real services", () => {
+  test.skip(!app || !database, "requires the task-owned app, Auth/Storage double and disposable database");
+  test.describe.configure({ mode: "serial" }); test.use({ reducedMotion: "reduce" });
+  let storage: Awaited<ReturnType<typeof startPhotoStorageStub>>; let db: pg.Client;
+  test.beforeAll(async () => {
+    if (!["localhost", "127.0.0.1"].includes(new URL(app!).hostname) || new URL(database!).hostname !== "127.0.0.1" || !["/issue120", "/issue121"].includes(new URL(database!).pathname)) throw new Error("Task-owned localhost app and database required");
+    storage = await startPhotoStorageStub(54320, { signup: { databaseUrl: database! } }); db = new pg.Client({ connectionString: database }); await db.connect();
+    for (const user of [SECURITY_USER, SECURITY_TRADIE]) {
+      await db.query("INSERT INTO auth.users(id,email) VALUES($1,$2) ON CONFLICT(id) DO NOTHING", [user.id, user.email]);
+      await db.query("INSERT INTO profiles(id,email,role,first_name,email_verified_at,updated_at) VALUES($1,$2,'CUSTOMER','Review Demo',now(),now()) ON CONFLICT(id) DO UPDATE SET role='CUSTOMER',email_verified_at=now()", [user.id, user.email]);
+    }
+  });
+  test.afterAll(async () => { await storage?.close(); await db?.end(); });
+  test.beforeEach(async ({ page }) => {
+    // Each local browser fixture represents a separate connection; real signup throttles stay enabled.
+    const parts = randomUUID().split("-");
+    const address = `2001:db8:${parts[0].slice(0, 4)}:${parts[1]}:${parts[2]}::1`;
+    await page.route(`${app}/**`, route => route.continue({ headers: { ...route.request().headers(), "x-real-ip": address } }));
+  });
+  async function login(page: Page, email: string, next: string) {
+    await page.goto(`${app}/login?next=${encodeURIComponent(next)}`); await page.getByLabel("Email", { exact: true }).fill(email); await page.getByLabel("Password", { exact: true }).fill(SECURITY_PASSWORD); await page.getByRole("button", { name: "Log in", exact: true }).click();
+  }
+  async function guest(page: Page, photo = false, count = 1) {
+    const data = { postKey: randomUUID(), description: "Repair the leaking tap downstairs.", category: "PLUMBING" as const, photoPaths: [], addressLine1: "1 Example Street", suburb: "Gladstone", city: "Invercargill", postcode: "9810", locationSource: "TYPED" as const, anyTime: true, asap: false, timeWindows: [] };
+    await page.goto(`${app}/`); await page.evaluate(({ key, raw }) => localStorage.setItem(key, raw), { key: DRAFT_STORAGE_KEY, raw: encodeWizardDraft(initialWizardDraft(data, true), null) });
+    await page.goto(`${app}/jobs/new?step=${photo ? "photos" : "review"}`);
+    if (photo) {
+      const files = await Promise.all(Array.from({ length: count }, async (_, index) => ({ name: `guest-tap-${index + 1}.jpg`, mimeType: "image/jpeg", buffer: await sharp({ create: { width: 80, height: 60, channels: 3, background: index ? "red" : "blue" } }).jpeg().toBuffer() })));
+      await page.locator('input[type="file"]').last().setInputFiles(files);
+      await expect(page.getByRole("button", { name: "Next", exact: true })).not.toHaveAttribute("aria-disabled", "true");
+      await page.getByRole("button", { name: "Next", exact: true }).click(); await expect(page.getByRole("heading", { name: "Where and when?", exact: true })).toBeVisible();
+      await page.getByRole("button", { name: "Next", exact: true }).click();
+    }
+    await expect(page.getByRole("heading", { name: "All good?", exact: true })).toBeVisible(); return data;
+  }
+  async function register(page: Page, email: string) {
+    const dialog = page.getByRole("dialog", { name: "Create account", exact: true });
+    await dialog.getByLabel("Full name", { exact: true }).fill("Posting Demo"); await dialog.getByLabel("Email", { exact: true }).fill(email); await dialog.getByLabel("Mobile", { exact: true }).fill("021 555 0192");
+    await dialog.getByLabel("Password", { exact: true }).fill(SECURITY_PASSWORD); await dialog.getByRole("checkbox").check(); await dialog.getByRole("button", { name: "Create account", exact: true }).click();
+    await expect(page).toHaveURL(/\/verify\?/); const next = new URL(page.url()).searchParams.get("next")!;
+    await page.goto(storage.auth.confirmationUrl(email, app!, next));
+    await expect(page.getByRole("heading", { name: "You’re all set", exact: true })).toBeVisible();
+    await login(page, email, next); return next;
+  }
+  test("guest photo → signup → real verification/signout → fresh login → owned upload → same draft posted", async ({ page }) => {
+    test.setTimeout(90_000); const data = await guest(page, true);
+    await page.getByRole("button", { name: "Post it", exact: true }).press("Enter");
+    await expect(page.getByRole("dialog", { name: "Create account", exact: true })).toBeVisible(); await expectNoA11yViolations(page);
+    const email = `posted-${randomUUID()}@example.test`; await register(page, email);
+    await expect(page.getByRole("heading", { name: "Posted.", exact: true })).toBeVisible({ timeout: 30_000 });
+    const user = storage.auth.registeredUser(email)!;
+    const posted = (await db.query("SELECT id,customer_id,post_key,description FROM jobs WHERE post_key=$1", [data.postKey])).rows;
+    expect(posted).toHaveLength(1); expect(posted[0]).toMatchObject({ customer_id: user.id, description: data.description });
+    const photos = (await db.query("SELECT path FROM job_photos WHERE job_id=$1 ORDER BY position", [posted[0].id])).rows;
+    expect(photos).toHaveLength(1); expect(photos[0].path).toContain(`drafts/${user.id}/${data.postKey}/`);
+    expect((await db.query("SELECT email_verified_at FROM profiles WHERE id=$1", [user.id])).rows[0].email_verified_at).not.toBeNull();
+    await page.reload(); await expect(page.getByRole("heading", { name: "Posted.", exact: true })).toBeVisible();
+    await page.getByRole("link", { name: "View my job", exact: true }).click(); await expect(page).toHaveURL(`${app}/jobs/${posted[0].id}`);
+    await expect(page.getByRole("heading", { name: "Repair the leaking tap downstairs.", exact: true })).toBeVisible();
+    await page.getByRole("link", { name: "Home", exact: true }).click(); await expect(page).toHaveURL(`${app}/`);
+  });
+  for (const phase of ["inspect", "save"]) test(`guest handoff entry ${phase} expiry resumes the same explicit intent through shared login`, async ({ page }) => {
+    test.setTimeout(90_000); const data = await guest(page, true); await page.getByRole("button", { name: "Post it", exact: true }).click();
+    let expired = false;
+    await page.route("**/jobs/new**", async route => {
+      let args; try { args = JSON.parse(route.request().postData() ?? "null"); } catch { /* Ordinary navigation. */ }
+      const matches = Array.isArray(args) && (phase === "inspect" ? args.length === 4 && typeof args[0] === "string" && args[1] === data.postKey && args[3] === true : args.length === 5 && args[0]?.postKey === data.postKey && args[2]?.absent === true && args[4] === "review");
+      if (!expired && matches) { expired = true; await page.context().clearCookies(); await route.continue({ headers: { ...route.request().headers(), cookie: "" } }); }
+      else await route.continue();
+    });
+    const email = `entry-expiry-${randomUUID()}@example.test`; await register(page, email);
+    const dialog = page.getByRole("dialog", { name: "You’ve been logged out", exact: true }); await expect(dialog).toBeVisible(); expect(expired).toBe(true);
+    await expect(page.getByText("Couldn’t load your draft.", { exact: true })).toHaveCount(0);
+    expect((await db.query("SELECT count(*)::int AS count FROM jobs WHERE post_key=$1", [data.postKey])).rows[0].count).toBe(0);
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem("trade.job-post-intent.v1")!).postKey)).toBe(data.postKey);
+    await dialog.getByRole("button", { name: "Log in again", exact: true }).click(); await dialog.getByLabel("Password", { exact: true }).fill(SECURITY_PASSWORD); await dialog.getByRole("button", { name: "Log in", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "Posted.", exact: true })).toBeVisible({ timeout: 30_000 });
+    const posted = (await db.query("SELECT id,customer_id,description FROM jobs WHERE post_key=$1", [data.postKey])).rows; expect(posted).toHaveLength(1); expect(posted[0]).toMatchObject({ customer_id: storage.auth.registeredUser(email)!.id, description: data.description });
+    expect((await db.query("SELECT count(*)::int AS count FROM job_photos WHERE job_id=$1", [posted[0].id])).rows[0].count).toBe(1);
+  });
+  for (const phase of ["probe", "restart"]) test(`ordinary owned draft ${phase} expiry resumes without manufacturing a posting intent`, async ({ page }) => {
+    const data = await guest(page);
+    await db.query("INSERT INTO job_drafts(profile_id,data,manual_category,updated_at) VALUES($1,$2,true,now()) ON CONFLICT(profile_id) DO UPDATE SET data=EXCLUDED.data,manual_category=true", [SECURITY_USER.id, data]);
+    if (phase === "restart") await db.query("INSERT INTO jobs(customer_id,post_key,category,title,description,address_line1,suburb,city,status,updated_at) VALUES($1,$2,'PLUMBING','Repair the tap',$3,'1 Example Street','Gladstone','Invercargill','REVIEW',now())", [SECURITY_USER.id, data.postKey, data.description]);
+    let expired = false;
+    await page.route("**/jobs/new**", async route => {
+      let args; try { args = JSON.parse(route.request().postData() ?? "null"); } catch { /* Ordinary navigation. */ }
+      const matches = Array.isArray(args) && args[0] === SECURITY_USER.id && args[1] === data.postKey && (phase === "probe" ? args.length === 2 : args.length === 3 && args[2] === true);
+      if (!expired && matches) { expired = true; await page.context().clearCookies(); await route.continue({ headers: { ...route.request().headers(), cookie: "" } }); }
+      else await route.continue();
+    });
+    await login(page, SECURITY_USER.email, "/jobs/new?step=review"); const dialog = page.getByRole("dialog", { name: "You’ve been logged out", exact: true }); await expect(dialog).toBeVisible(); expect(expired).toBe(true);
+    await dialog.getByRole("button", { name: "Log in again", exact: true }).click(); await dialog.getByLabel("Password", { exact: true }).fill(SECURITY_PASSWORD); await dialog.getByRole("button", { name: "Log in", exact: true }).click();
+    if (phase === "probe") await expect(page.getByRole("heading", { name: "All good?", exact: true })).toBeVisible();
+    else await expect(page.getByRole("textbox", { name: "Describe the job", exact: true })).toHaveValue("");
+    expect(await page.evaluate(() => localStorage.getItem("trade.job-post-intent.v1"))).toBeNull(); await expect(page.getByRole("heading", { name: "Posted.", exact: true })).toHaveCount(0);
+    expect((await db.query("SELECT count(*)::int AS count FROM jobs WHERE post_key=$1", [data.postKey])).rows[0].count).toBe(phase === "probe" ? 0 : 1);
+  });
+  for (const blocked of [false, true]) test(`existing owned draft has a safe escape from guest login handoff${blocked ? " with blocked cleanup" : ""}`, async ({ page }) => {
+    const currentKey = randomUUID(); const path = `drafts/${SECURITY_USER.id}/${currentKey}/${randomUUID().replaceAll("-", "")}.webp`;
+    const current = { postKey: currentKey, description: "Keep the existing upstairs wiring job.", category: "ELECTRICAL", photoPaths: [path], addressLine1: "8 Existing Street", suburb: "Gladstone", city: "Invercargill", locationSource: "TYPED", anyTime: true, timeWindows: [] };
+    const data = await guest(page, true); storage.objects.set(`photos/${path}`, await sharp({ create: { width: 80, height: 60, channels: 3, background: "green" } }).webp().toBuffer());
+    await db.query("INSERT INTO job_drafts(profile_id,data,manual_category,updated_at) VALUES($1,$2,true,now()) ON CONFLICT(profile_id) DO UPDATE SET data=EXCLUDED.data,manual_category=true", [SECURITY_USER.id, current]);
+    await page.getByRole("button", { name: "Post it", exact: true }).click(); await page.getByRole("dialog").getByRole("link", { name: "Log in instead", exact: true }).click();
+    await expect(page).toHaveURL(/\/login\?/); await page.reload();
+    await page.getByLabel("Email", { exact: true }).fill(SECURITY_USER.email); await page.getByLabel("Password", { exact: true }).fill(SECURITY_PASSWORD); await page.getByRole("button", { name: "Log in", exact: true }).click();
+    await expect(page.getByText("You already have a saved draft.", { exact: true })).toBeVisible(); await expectNoA11yViolations(page);
+    if (blocked) await page.evaluate(() => { const remove = Storage.prototype.removeItem; Storage.prototype.removeItem = function(key) { if (key === "trade.job-post-intent.v1") throw new DOMException("Blocked", "SecurityError"); return remove.call(this, key); }; });
+    await page.getByRole("button", { name: "Use my saved draft", exact: true }).press("Enter"); await expect(page).toHaveURL(`${app}/jobs/new`);
+    await expect(page.getByRole("textbox", { name: "Describe the job", exact: true })).toHaveValue(current.description);
+    await page.reload(); await expect(page.getByRole("textbox", { name: "Describe the job", exact: true })).toHaveValue(current.description);
+    expect((await db.query("SELECT data FROM job_drafts WHERE profile_id=$1", [SECURITY_USER.id])).rows[0].data).toEqual(current);
+    expect((await db.query("SELECT count(*)::int AS count FROM jobs WHERE post_key=$1", [data.postKey])).rows[0].count).toBe(0);
+    const originals = await page.evaluate(key => new Promise<{ count: number; bytes: number }>((resolve, reject) => {
+      const request = indexedDB.open("trade.job-photos.v1", 1); request.onerror = () => reject(request.error); request.onsuccess = () => {
+        const database = request.result, read = database.transaction("drafts", "readonly").objectStore("drafts").get(`guest:${key}`);
+        read.onsuccess = () => { resolve({ count: read.result.length, bytes: read.result[0].file.size }); database.close(); }; read.onerror = () => reject(read.error);
+      };
+    }), data.postKey);
+    expect(originals.count).toBe(1); expect(originals.bytes).toBeGreaterThan(0);
+  });
+  test("generic handoff/account errors also allow a clean draft entry without deleting originals", async ({ page }) => {
+    const data = await guest(page, true); await page.getByRole("button", { name: "Post it", exact: true }).click();
+    await page.evaluate(() => { const key = "trade.job-post-intent.v1", intent = JSON.parse(localStorage.getItem(key)!); localStorage.setItem(key, JSON.stringify({ ...intent, ownerId: "22222222-2222-4222-8222-222222222113" })); });
+    await page.getByRole("dialog").getByRole("link", { name: "Log in instead", exact: true }).click();
+    await expect(page).toHaveURL(/\/login\?/); await page.reload();
+    await page.getByLabel("Email", { exact: true }).fill(SECURITY_USER.email); await page.getByLabel("Password", { exact: true }).fill(SECURITY_PASSWORD); await page.getByRole("button", { name: "Log in", exact: true }).click();
+    await expect(page.getByText("Couldn’t load your draft.", { exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Back to my draft", exact: true }).click(); await expect(page).toHaveURL(`${app}/jobs/new`);
+    await expect(page.getByRole("textbox", { name: "Describe the job", exact: true })).toBeVisible();
+    expect((await db.query("SELECT count(*)::int AS count FROM jobs WHERE post_key=$1", [data.postKey])).rows[0].count).toBe(0);
+  });
+  for (const held of [0, 1]) test(`partial refresh resumes reviewed order when selected photo ${held + 1} is still uploading`, async ({ page }) => {
+    test.setTimeout(90_000); const data = await guest(page, true, 2); await page.getByRole("button", { name: "Post it", exact: true }).click();
+    let release!: () => void; const gate = new Promise<void>(resolve => { release = resolve; });
+    await page.route("**/storage/v1/object/upload/sign/**", async route => {
+      if (route.request().method() === "PUT") {
+        const stats = await sharp(route.request().postDataBuffer()!).stats(); const blue = stats.channels[2].mean > stats.channels[0].mean;
+        if (blue === (held === 0)) await gate;
+      }
+      await route.continue().catch(() => {});
+    });
+    try {
+      await register(page, `partial-${randomUUID()}@example.test`);
+      await expect.poll(async () => (await db.query("SELECT jsonb_array_length(data->'photoPaths') AS count FROM job_drafts WHERE data->>'postKey'=$1", [data.postKey])).rows[0]?.count).toBe(1);
+      await page.reload(); await expect(page.getByRole("heading", { name: "All good?", exact: true })).toBeVisible();
+      release();
+      await expect(page.getByRole("heading", { name: "Posted.", exact: true })).toBeVisible({ timeout: 30_000 });
+      const photos = (await db.query("SELECT p.path FROM job_photos p JOIN jobs j ON j.id=p.job_id WHERE j.post_key=$1 ORDER BY p.position", [data.postKey])).rows;
+      expect(photos).toHaveLength(2);
+      const first = await sharp(storage.objects.get(`photos/${photos[0].path}`)!).stats(); expect(first.channels[2].mean).toBeGreaterThan(first.channels[0].mean);
+    } finally { release?.(); await page.unroute("**/storage/v1/object/upload/sign/**"); }
+  });
+  test("blocked posted cleanup cannot reuse the consumed key as a new job", async ({ page }) => {
+    const data = await guest(page);
+    await db.query("INSERT INTO job_drafts(profile_id,data,manual_category,updated_at) VALUES($1,$2,true,now()) ON CONFLICT(profile_id) DO UPDATE SET data=EXCLUDED.data,manual_category=true", [SECURITY_USER.id, data]);
+    await login(page, SECURITY_USER.email, "/jobs/new?step=review"); await expect(page.getByRole("heading", { name: "All good?", exact: true })).toBeVisible();
+    await page.evaluate(() => { const remove = Storage.prototype.removeItem; Storage.prototype.removeItem = function(key) { if (key === "trade.job-draft.v1") throw new DOMException("Blocked", "SecurityError"); remove.call(this, key); }; });
+    await page.getByRole("button", { name: "Post it", exact: true }).click(); await expect(page.getByRole("heading", { name: "Posted.", exact: true })).toBeVisible();
+    await page.getByRole("link", { name: "View my job", exact: true }).click(); await page.getByRole("link", { name: "Home", exact: true }).click(); await page.goto(`${app}/jobs/new`);
+    await expect(page.getByRole("textbox", { name: "Describe the job", exact: true })).toHaveValue("");
+    await page.getByRole("textbox", { name: "Describe the job", exact: true }).fill("Check the upstairs lights and wiring."); await page.getByRole("button", { name: "Next", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "Add some photos", exact: true })).toBeVisible();
+    expect((await db.query("SELECT data->>'postKey' AS key FROM job_drafts WHERE profile_id=$1", [SECURITY_USER.id])).rows[0].key).not.toBe(data.postKey);
+    expect((await db.query("SELECT count(*)::int AS count FROM jobs WHERE post_key=$1", [data.postKey])).rows[0].count).toBe(1);
+  });
+  test("rail edits during a slow verified upload require a new Post-it gesture", async ({ page }) => {
+    test.setTimeout(90_000); const data = await guest(page, true); await page.getByRole("button", { name: "Post it", exact: true }).click();
+    let release!: () => void; storage.holdUploads(new Promise<void>(resolve => { release = resolve; }));
+    try {
+      const email = `edited-${randomUUID()}@example.test`; await register(page, email);
+      await expect(page.getByRole("heading", { name: "All good?", exact: true })).toBeVisible(); await expect(page.getByText("Uploading…", { exact: true })).toBeVisible();
+      await page.getByRole("navigation", { name: "Post a job", exact: true }).getByRole("link", { name: /^What needs doing/ }).click();
+      await page.getByRole("textbox", { name: "Describe the job", exact: true }).fill("Repair the different leaking tap upstairs."); await page.getByRole("button", { name: "Next", exact: true }).click();
+      await expect(page.getByRole("heading", { name: "Add some photos", exact: true })).toBeVisible();
+      release(); storage.holdUploads();
+      await expect(page.getByRole("button", { name: "Next", exact: true })).not.toHaveAttribute("aria-disabled", "true", { timeout: 30_000 });
+      await page.getByRole("button", { name: "Next", exact: true }).click(); await expect(page.getByRole("heading", { name: "Where and when?", exact: true })).toBeVisible();
+      await page.getByRole("button", { name: "Next", exact: true }).click(); await expect(page.getByRole("heading", { name: "All good?", exact: true })).toBeVisible();
+      await expect(page.getByText("Couldn’t post.", { exact: true })).toHaveCount(0); expect((await db.query("SELECT count(*)::int AS count FROM jobs WHERE post_key=$1", [data.postKey])).rows[0].count).toBe(0);
+      await page.getByRole("button", { name: "Post it", exact: true }).click(); await expect(page.getByRole("heading", { name: "Posted.", exact: true })).toBeVisible();
+    } finally { release?.(); storage.holdUploads(); }
+  });
+  for (const navigation of ["edit-describe", "edit-photos", "edit-where", "back", "back-blocked", "rail-describe", "rail-photos", "rail-where", "save-exit"]) test(`unchanged verified handoff cancels automatic posting through ${navigation}`, async ({ page }) => {
+    test.setTimeout(90_000); const data = await guest(page, true); await page.getByRole("button", { name: "Post it", exact: true }).click();
+    let release!: () => void; storage.holdUploads(new Promise<void>(resolve => { release = resolve; }));
+    try {
+      await register(page, `cancel-${navigation}-${randomUUID()}@example.test`);
+      await expect(page.getByRole("heading", { name: "All good?", exact: true })).toBeVisible(); await expect(page.getByText("Uploading…", { exact: true })).toBeVisible();
+      for (const link of await page.getByRole("navigation", { name: "Post a job", exact: true }).getByRole("link").all()) expect(new URL((await link.getAttribute("href"))!, app).searchParams.has("postIntent")).toBe(false);
+      for (const link of await page.getByRole("link", { name: /^(Edit|Back)$/ }).all()) expect(new URL((await link.getAttribute("href"))!, app).searchParams.has("postIntent")).toBe(false);
+      if (navigation === "back-blocked") await page.evaluate(() => { const remove = Storage.prototype.removeItem; Storage.prototype.removeItem = function(key) { if (key === "trade.job-post-intent.v1") throw new DOMException("Blocked", "SecurityError"); return remove.call(this, key); }; });
+      if (navigation.startsWith("edit-")) {
+        const section = navigation === "edit-describe" ? "What needs doing" : navigation === "edit-photos" ? "Photos" : "Where and when";
+        await page.getByRole("region", { name: section, exact: true }).getByRole("link", { name: "Edit", exact: true }).press("Enter");
+      } else if (navigation.startsWith("rail-")) {
+        const label = navigation === "rail-describe" ? /^What needs doing/ : navigation === "rail-photos" ? /^Photos/ : /^Where & when/;
+        await page.getByRole("navigation", { name: "Post a job", exact: true }).getByRole("link", { name: label }).click();
+      } else if (navigation.startsWith("back")) await page.getByRole("link", { name: "Back", exact: true }).click();
+      else await page.getByRole("button", { name: "Save & exit", exact: true }).click();
+      await expect.poll(() => new URL(page.url()).searchParams.has("postIntent")).toBe(false);
+      if (navigation === "save-exit") await expect(page).toHaveURL(`${app}/`);
+      else await expect(page.getByRole("heading", { name: navigation.endsWith("describe") ? "What needs doing?" : navigation.endsWith("photos") ? "Add some photos" : "Where and when?", exact: true })).toBeVisible();
+      release(); storage.holdUploads();
+      if (navigation === "save-exit") { await page.goto(`${app}/jobs/new`); await expect(page.getByRole("textbox", { name: "Describe the job", exact: true })).toHaveValue(data.description); }
+      for (let step = 0; step < 3; step++) {
+        if (await page.getByRole("heading", { name: "All good?", exact: true }).count()) break;
+        const heading = await page.locator("h1").innerText();
+        await expect(page.getByRole("button", { name: "Next", exact: true })).not.toHaveAttribute("aria-disabled", "true", { timeout: 30_000 });
+        await page.getByRole("button", { name: "Next", exact: true }).click();
+        await expect(page.getByRole("heading", { name: heading === "What needs doing?" ? "Add some photos" : heading === "Add some photos" ? "Where and when?" : "All good?", exact: true })).toBeVisible();
+      }
+      await expect(page.getByRole("heading", { name: "All good?", exact: true })).toBeVisible();
+      await expect(page.getByRole("button", { name: "Post it", exact: true })).toBeEnabled();
+      expect((await db.query("SELECT count(*)::int AS count FROM jobs WHERE post_key=$1", [data.postKey])).rows[0].count).toBe(0);
+      await page.reload(); await expect(page.getByRole("heading", { name: "All good?", exact: true })).toBeVisible();
+      await expect(page.getByRole("button", { name: "Post it", exact: true })).toBeEnabled();
+      expect((await db.query("SELECT count(*)::int AS count FROM jobs WHERE post_key=$1", [data.postKey])).rows[0].count).toBe(0);
+      await page.getByRole("button", { name: "Post it", exact: true }).click(); await expect(page.getByRole("heading", { name: "Posted.", exact: true })).toBeVisible();
+      expect((await db.query("SELECT count(*)::int AS count FROM jobs WHERE post_key=$1", [data.postKey])).rows[0].count).toBe(1);
+    } finally { release?.(); storage.holdUploads(); }
+  });
+  test("Edit keeps every section and keyboard dialog dismissal returns focus; URL alone never posts", async ({ page }) => {
+    const data = await guest(page); await page.getByRole("region", { name: "Where and when", exact: true }).getByRole("link", { name: "Edit", exact: true }).press("Enter");
+    await expect(page.getByRole("combobox", { name: "Address", exact: true })).toHaveValue(data.addressLine1); await page.getByRole("button", { name: "Next", exact: true }).click();
+    await page.getByRole("button", { name: "Post it", exact: true }).press("Enter"); await page.getByRole("dialog").press("Escape");
+    await expect(page.getByRole("dialog")).toHaveCount(0); await expect(page.getByRole("button", { name: "Post it", exact: true })).toBeFocused();
+    await page.evaluate(() => localStorage.removeItem("trade.job-post-intent.v1")); await page.goto(`${app}/jobs/new?step=review&postIntent=${data.postKey}`);
+    await expect(page.getByRole("heading", { name: "All good?", exact: true })).toBeVisible(); expect((await db.query("SELECT count(*)::int AS count FROM jobs WHERE post_key=$1", [data.postKey])).rows[0].count).toBe(0);
+  });
+  test("browser Back out of the wizard keeps the actual Home destination", async ({ page }) => {
+    await login(page, SECURITY_USER.email, "/"); await expect(page).toHaveURL(`${app}/`);
+    await page.locator('form[aria-label="What needs doing?"]:visible').first().getByRole("button", { name: "Get a price", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "What needs doing?", exact: true })).toBeVisible();
+    await page.goBack(); await expect(page).toHaveURL(`${app}/`);
+    await page.reload(); await expect(page).toHaveURL(`${app}/`);
+  });
+  test("lost final response keeps the review; retry acknowledges exactly one job and cleans only its key", async ({ page }) => {
+    const data = await guest(page);
+    await db.query("INSERT INTO job_drafts(profile_id,data,manual_category,updated_at) VALUES($1,$2,true,now()) ON CONFLICT(profile_id) DO UPDATE SET data=EXCLUDED.data,manual_category=true", [SECURITY_USER.id, data]);
+    await login(page, SECURITY_USER.email, "/jobs/new?step=review"); await expect(page.getByRole("heading", { name: "All good?", exact: true })).toBeVisible();
+    let lost = false;
+    await page.route("**/jobs/new**", async route => {
+      let args; try { args = JSON.parse(route.request().postData() ?? "null"); } catch { /* A normal navigation has no action arguments. */ }
+      if (!lost && Array.isArray(args) && args[1] === data.postKey && args[2] === SECURITY_USER.id && args[3]?.postKey === data.postKey) {
+        lost = true; await route.fetch(); await route.abort("connectionfailed");
+      } else await route.continue();
+    });
+    await page.getByRole("button", { name: "Post it", exact: true }).click(); await expect(page.getByText("Couldn’t post.", { exact: true })).toBeVisible();
+    expect(lost).toBe(true); await expect(page.getByRole("region", { name: "What needs doing", exact: true })).toContainText(data.description);
+    expect(await page.evaluate(key => localStorage.getItem(key) !== null, DRAFT_STORAGE_KEY)).toBe(true);
+    await page.getByRole("button", { name: "Try again", exact: true }).click(); await expect(page.getByRole("heading", { name: "Posted.", exact: true })).toBeVisible();
+    expect((await db.query("SELECT count(*)::int AS count FROM jobs WHERE post_key=$1", [data.postKey])).rows[0].count).toBe(1);
+    expect(await page.evaluate(key => localStorage.getItem(key), DRAFT_STORAGE_KEY)).toBeNull();
+  });
+  for (const expireAt of ["inspect", "photos", "save", "post"]) test(`an expired Review ${expireAt} action preserves photos and resumes once through the shared login dialog`, async ({ page }) => {
+    const data = await guest(page);
+    await db.query("INSERT INTO job_drafts(profile_id,data,manual_category,updated_at) VALUES($1,$2,true,now()) ON CONFLICT(profile_id) DO UPDATE SET data=EXCLUDED.data,manual_category=true", [SECURITY_USER.id, data]);
+    await login(page, SECURITY_USER.email, "/jobs/new?step=photos"); await expect(page.getByRole("heading", { name: "Add some photos", exact: true })).toBeVisible();
+    const bytes = await sharp({ create: { width: 80, height: 60, channels: 3, background: "blue" } }).jpeg().toBuffer();
+    await page.locator('input[type="file"]').last().setInputFiles({ name: "kept-after-login.jpg", mimeType: "image/jpeg", buffer: bytes });
+    await expect(page.getByRole("button", { name: "Next", exact: true })).not.toHaveAttribute("aria-disabled", "true");
+    await page.getByRole("button", { name: "Next", exact: true }).click(); await expect(page.getByRole("heading", { name: "Where and when?", exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Next", exact: true }).click(); await expect(page.getByRole("heading", { name: "All good?", exact: true })).toBeVisible();
+    if (expireAt === "inspect") await page.context().clearCookies();
+    else {
+      let expired = false;
+      await page.route("**/jobs/new**", async route => {
+        let args; try { args = JSON.parse(route.request().postData() ?? "null"); } catch { /* Regular navigation. */ }
+        const matches = Array.isArray(args) && (expireAt === "photos" ? args.length === 2 && args[0] === SECURITY_USER.id && args[1] === data.postKey : expireAt === "post" ? args.length === 4 && args[1] === data.postKey && args[2] === SECURITY_USER.id : args.length === 5 && args[1] === SECURITY_USER.id && args[4] === "review");
+        if (!expired && matches) { expired = true; await page.context().clearCookies(); await route.continue({ headers: { ...route.request().headers(), cookie: "" } }); }
+        else await route.continue();
+      });
+    }
+    await page.getByRole("button", { name: "Post it", exact: true }).click();
+    const dialog = page.getByRole("dialog", { name: "You’ve been logged out", exact: true }); await expect(dialog).toBeVisible();
+    await expect(page.getByText("Couldn’t post.", { exact: true })).toHaveCount(0);
+    expect(await page.evaluate(key => JSON.parse(localStorage.getItem(key)!).data.postKey, DRAFT_STORAGE_KEY)).toBe(data.postKey);
+    await dialog.getByRole("button", { name: "Log in again", exact: true }).click(); await dialog.getByLabel("Password", { exact: true }).fill(SECURITY_PASSWORD); await dialog.getByRole("button", { name: "Log in", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "Posted.", exact: true })).toBeVisible();
+    const posted = (await db.query("SELECT id,description FROM jobs WHERE post_key=$1", [data.postKey])).rows; expect(posted).toHaveLength(1); expect(posted[0].description).toBe(data.description);
+    expect((await db.query("SELECT count(*)::int AS count FROM job_photos WHERE job_id=$1", [posted[0].id])).rows[0].count).toBe(1);
+  });
+  test("a newly unverified current account returns to verification with its same explicit draft intent", async ({ page }) => {
+    const data = await guest(page);
+    await db.query("INSERT INTO job_drafts(profile_id,data,manual_category,updated_at) VALUES($1,$2,true,now()) ON CONFLICT(profile_id) DO UPDATE SET data=EXCLUDED.data,manual_category=true", [SECURITY_USER.id, data]);
+    await login(page, SECURITY_USER.email, "/jobs/new?step=review"); await expect(page.getByRole("heading", { name: "All good?", exact: true })).toBeVisible();
+    await db.query("UPDATE profiles SET email_verified_at=NULL WHERE id=$1", [SECURITY_USER.id]);
+    try {
+      await page.getByRole("button", { name: "Post it", exact: true }).click(); await expect(page).toHaveURL(/\/verify\?/);
+      expect(new URL(new URL(page.url()).searchParams.get("next")!, app).searchParams.get("postIntent")).toBe(data.postKey);
+      expect(await page.evaluate(() => JSON.parse(localStorage.getItem("trade.job-post-intent.v1")!).postKey)).toBe(data.postKey);
+      expect((await db.query("SELECT count(*)::int AS count FROM jobs WHERE post_key=$1", [data.postKey])).rows[0].count).toBe(0);
+    } finally { await db.query("UPDATE profiles SET email_verified_at=now() WHERE id=$1", [SECURITY_USER.id]); }
+  });
+  test("review, all recovery states and account sheet fit five widths with keyboard-accessible controls", async ({ page }) => {
+    test.setTimeout(240_000);
+    const states = ["ready", "no-photos", "loading", "uploading", "photo-error", "posting", "error", "offline", "signup", "signup-pending", "signup-error", "signup-offline", "posted"];
+    for (const viewport of VIEWPORTS) {
+      await page.setViewportSize(viewport);
+      for (const state of states) {
+        await page.goto(`${app}/dev/components/post-job-review?state=${state}`); await expect(page.locator("h1").filter({ hasText: state === "posted" ? "Posted." : "All good?" })).toBeAttached();
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true); await expectNoA11yViolations(page);
+        if (viewport.width === 390 && state === "ready" || viewport.width === 1440 && state === "ready") await page.screenshot({ path: `/tmp/120-review-${viewport.width}.png`, fullPage: true });
+      }
+    }
+  });
+  test("combined account recovery visibly covers unavailable and offline states within the bot route cap", async ({ page }) => {
+    for (const viewport of VIEWPORTS) {
+      await page.setViewportSize(viewport); await page.goto(`${app}/dev/components/post-job-review?state=signup-recovery`);
+      const dialog = page.getByRole("dialog", { name: "Create account", exact: true }); await expect(dialog).toBeVisible();
+      await expect(dialog.getByText("You’re offline.", { exact: true })).toBeVisible(); await expect(dialog.getByText("We can’t create your account right now.", { exact: true })).toBeVisible();
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true); await expectNoA11yViolations(page);
+      if (viewport.width === 390 || viewport.width === 1440) await page.screenshot({ path: `/tmp/120-signup-recovery-${viewport.width}.png`, fullPage: true });
+    }
+  });
+  for (const viewport of VIEWPORTS) test(`draft conflict, generic escape and combined recovery at ${viewport.width}`, async ({ page }) => {
+    for (const state of ["draft-conflict", "entry-error", "error"]) {
+      await page.setViewportSize(viewport); await page.goto(`${app}/dev/components/post-job-review?state=${state}`);
+      await expect(page.getByRole("heading", { name: "All good?", exact: true })).toBeVisible();
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true); await expectNoA11yViolations(page);
+      if ((viewport.width === 390 || viewport.width === 1440) && state === "draft-conflict") await page.screenshot({ path: `/tmp/120-draft-conflict-${viewport.width}.png`, fullPage: true });
+    }
+  });
+});

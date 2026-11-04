@@ -15,20 +15,18 @@ describe.skipIf(!testDatabaseUrl)("owned time-window refresh and expiry (databas
   const fresh = { anyTime: false, asap: true, timeWindows: [{ date: "2026-11-04", timeOfDay: "MORNING" as const }] };
   async function person(role: Role = "CUSTOMER"): Promise<Viewer> {
     const id = randomUUID(); await schema.db.$executeRaw`INSERT INTO auth.users (id) VALUES (${id}::uuid)`;
-    await schema.db.profile.create({ data: { id, email: `${id}@example.nz`, firstName: "Test", role } });
+    await schema.db.profile.create({ data: { id, email: `${id}@example.nz`, firstName: "Test", role, emailVerifiedAt: now } });
+    if (role === "TRADIE") {
+      const office = await person("ADMIN");
+      await schema.db.workerProfile.create({ data: { userId: id, identityCheckedAt: now, identityCheckedById: office.userId,
+        baseSuburb: "Invercargill", areaLat: -46.4132, areaLng: 168.3538, areaRadiusKm: 25, available: true } });
+    }
     return { userId: id, email: `${id}@example.nz`, firstName: "Test", role, emailVerified: true };
-  }
-  // A tradie the claim rules (#136/#137) accept: confirmed email, office ID check, a work area covering the job.
-  async function eligibleTradie(): Promise<string> {
-    const tradie = await person("TRADIE"), office = await person("ADMIN");
-    await schema.db.profile.update({ where: { id: tradie.userId }, data: { emailVerifiedAt: now } });
-    await schema.db.workerProfile.create({ data: { userId: tradie.userId, identityCheckedAt: now, identityCheckedById: office.userId,
-      baseSuburb: "Invercargill", areaLat: -46.4132, areaLng: 168.3538, areaRadiusKm: 25, available: true } });
-    return tradie.userId;
   }
   async function job(dates = ["2026-11-03"], anyTime = false, status: JobStatus = "BOOKABLE") {
     const customer = await person();
-    const row = await schema.db.job.create({ data: { customerId: customer.userId, category: "OTHER", lat: -46.4132, lng: 168.3538, approxLat: -46.4117, approxLng: 168.3538, title: "Hang a door", description: "Interior door, frame is fine.", addressLine1: "1 Example St", suburb: "Gladstone", city: "Invercargill", status, priceCents: 12000, anyTime,
+    const row = await schema.db.job.create({ data: { customerId: customer.userId, category: "OTHER", title: "Hang a door", description: "Interior door, frame is fine.", addressLine1: "1 Example St", suburb: "Gladstone", city: "Invercargill", status, priceCents: 12000, anyTime,
+      lat: -46.4132, lng: 168.3538, approxLat: -46.4117, approxLng: 168.3538,
       timeWindows: { create: dates.map(date => ({ date: new Date(`${date}T00:00:00Z`), timeOfDay: "MORNING" as const })) } } });
     return { ...row, customer };
   }
@@ -36,7 +34,7 @@ describe.skipIf(!testDatabaseUrl)("owned time-window refresh and expiry (databas
   const run = () => windowExpiry.run({ db: schema.db, now, limit: 200 });
   const notices = (id: string) => schema.db.notification.findMany({ where: { type: "job.reschedule_requested", payload: { path: ["jobId"], equals: id } } });
   const updatedAt = async (id: string) => (await schema.db.job.findUniqueOrThrow({ where: { id } })).updatedAt;
-  const claim = async (id: string) => transitionJob(schema.db, { audit: async () => {}, notify: async () => {} }, { jobId: id, transition: "claim", actor: { role: "TRADIE", userId: await eligibleTradie() }, now });
+  const claim = async (id: string) => transitionJob(schema.db, { audit: async () => {}, notify: async () => {} }, { jobId: id, transition: "claim", actor: { role: "TRADIE", userId: (await person("TRADIE")).userId }, now });
 
   it("saves only schedule fields, preserving pricing, status, ownership and the quote snapshot", async () => {
     const row = await job(["2026-11-03"], false, "PRICED");

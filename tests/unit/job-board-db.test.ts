@@ -2,7 +2,11 @@ import { randomUUID } from "node:crypto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { JobStatus, Role, Trade } from "@/generated/prisma/client";
 import { DEFAULT_BOARD_QUERY, parseBoardQuery, type BoardPage, type BoardResult } from "@/lib/job-board";
+import { postingDateRange } from "@/lib/job-time-windows";
 import { loadJobBoard, newBoardJobs, type BoardDependencies } from "@/server/jobs/board";
+import { transitionJob } from "@/server/jobs/status-machine";
+import { loadJobWindows, saveJobWindows } from "@/server/jobs/windows";
+import { canClaim, JOB_ELIGIBILITY_SELECT, WORKER_ELIGIBILITY_SELECT } from "@/server/workers/eligibility";
 import { testDatabaseUrl, useTestSchema } from "../support/test-db";
 
 const NOW = new Date(Date.now() + 60_000), CENTRE = { lat: -46.4132, lng: 168.3538 };
@@ -151,7 +155,51 @@ describe.skipIf(!testDatabaseUrl)("eligible job board real PostgreSQL reader", (
     expect(filtered.cards.find(card => card.id === today.id)?.whenLabel).toMatch(/Mon.*9 Nov.*Morning/);
     const all = boardOf(await loadJobBoard(schema.db, actor, DEFAULT_BOARD_QUERY, {}, monday));
     expect(all.cards.find(card => card.id === current.id)?.whenLabel).toMatch(/Sat.*14 Nov.*Afternoon/);
-    expect(all.cards.find(card => card.id === expired.id)?.whenLabel).toBe("Time to be arranged");
+    expect(all.cards.map(card => card.id)).not.toContain(expired.id);
+  });
+
+  it("hides all-past BOOKABLE windows from the default board and claim until the customer reschedules", async () => {
+    const actor = await worker(), customer = await person();
+    const now = new Date(Date.now() + 2 * 24 * 60 * 60_000), today = postingDateRange(now).today;
+    const yesterday = new Date(`${today}T00:00:00Z`); yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+    const row = await job({ owner: customer.id, anyTime: false });
+    await schema.db.jobTimeWindow.create({ data: { jobId: row.id, date: yesterday, timeOfDay: "MORNING" } });
+    const proof = await schema.db.profile.findUniqueOrThrow({ where: { id: actor.userId }, select: WORKER_ELIGIBILITY_SELECT });
+    const facts = () => schema.db.job.findUniqueOrThrow({ where: { id: row.id }, select: JOB_ELIGIBILITY_SELECT });
+    const board = (at: Date) => loadJobBoard(schema.db, actor, DEFAULT_BOARD_QUERY, {}, { ...deps(), now: () => at });
+    expect(boardOf(await board(yesterday)).cards.map(card => card.id)).toEqual([row.id]);
+    expect(canClaim(proof, await facts(), { now: yesterday })).toBe(true);
+    expect(boardOf(await board(now))).toMatchObject({ total: 0, cards: [] });
+    expect(canClaim(proof, await facts(), { now })).toBe(false);
+    const request = { jobId: row.id, transition: "claim" as const, actor: { role: "TRADIE" as const, userId: actor.userId }, now };
+    const transitions = { audit: vi.fn(async () => {}), notify: vi.fn(async () => {}) };
+    await expect(transitionJob(schema.db, transitions, request)).rejects.toMatchObject({ failure: "time-windows-expired" });
+    const owner = { userId: customer.id, role: "CUSTOMER" as const, email: customer.email, firstName: customer.firstName, emailVerified: true };
+    const snapshot = (await loadJobWindows(schema.db, owner, row.id))!;
+    expect((await saveJobWindows(schema.db, owner, row.id, { asap: false, anyTime: false, timeWindows: [{ date: today, timeOfDay: "MORNING" }] }, snapshot.revision, now)).status).toBe("saved");
+    expect(boardOf(await board(now)).cards.map(card => card.id)).toEqual([row.id]);
+    expect(canClaim(proof, await facts(), { now })).toBe(true);
+    expect(await schema.db.job.findUnique({ where: { id: row.id } })).toMatchObject({ status: "BOOKABLE", priceCents: row.priceCents, customerId: customer.id, workerId: null });
+    expect((await transitionJob(schema.db, transitions, request)).to).toBe("ASSIGNED");
+    expect(boardOf(await board(now))).toMatchObject({ total: 0, cards: [] });
+  });
+
+  it("keeps all same-day parts, Any time and legacy empty schedules on the board and claimable", async () => {
+    const actor = await worker(), now = new Date(Date.now() + 2 * 24 * 60 * 60_000), today = postingDateRange(now).today;
+    const yesterday = new Date(`${today}T00:00:00Z`); yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+    const rows = [];
+    for (const timeOfDay of ["MORNING", "AFTERNOON", "EVENING"] as const) {
+      const row = await job({ anyTime: false }); rows.push(row);
+      await schema.db.jobTimeWindow.create({ data: { jobId: row.id, date: new Date(`${today}T00:00:00Z`), timeOfDay } });
+    }
+    const flexible = await job({ anyTime: true }); rows.push(flexible);
+    await schema.db.jobTimeWindow.create({ data: { jobId: flexible.id, date: yesterday, timeOfDay: "MORNING" } });
+    rows.push(await job({ anyTime: false }));
+    const board = boardOf(await loadJobBoard(schema.db, actor, DEFAULT_BOARD_QUERY, {}, { ...deps(), now: () => now }));
+    expect(board.total).toBe(5); expect(board.cards.map(card => card.id).sort()).toEqual(rows.map(row => row.id).sort());
+    for (const row of rows) {
+      expect((await transitionJob(schema.db, { audit: async () => {}, notify: async () => {} }, { jobId: row.id, transition: "claim", actor: { role: "TRADIE", userId: actor.userId }, now })).to).toBe("ASSIGNED");
+    }
   });
 
   it("does not manufacture an empty board for unknown filter values while preserving explicit none and valid mixed choices", async () => {

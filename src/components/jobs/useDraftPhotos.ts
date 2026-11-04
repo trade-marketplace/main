@@ -6,7 +6,7 @@ import { DraftPhotoManager } from "@/lib/jobs/draft-photo-manager";
 import { DraftPhotoUploadError, uploadDraftPhotoFile } from "@/lib/jobs/draft-photo-upload";
 import { draftPhotoUrlAction, saveDraftPhotosAction } from "@/server/jobs/actions";
 
-export function useDraftPhotos({ ownerId, postKey, serverPaths, preview, authoritative }: { ownerId: string | null; postKey?: string; serverPaths: readonly string[]; preview?: boolean; authoritative?: boolean }) {
+export function useDraftPhotos({ ownerId, postKey, serverPaths, preview, authoritative, restoreOrder }: { ownerId: string | null; postKey?: string; serverPaths: readonly string[]; preview?: boolean; authoritative?: boolean; restoreOrder?: readonly string[] }) {
   const session = useOptionalSessionExpired(); const serverPathsRef = useRef(serverPaths);
   useEffect(() => { serverPathsRef.current = serverPaths; });
   const manager = useMemo(() => {
@@ -14,6 +14,7 @@ export function useDraftPhotos({ ownerId, postKey, serverPaths, preview, authori
       for (const photo of instance.getSnapshot().photos) if (photo.status === "failed") instance.retry(photo.id);
     } });
     const instance: DraftPhotoManager = new DraftPhotoManager({ ownerId, postKey: postKey ?? "" }, {
+      restoreOrder,
       read: preview ? async () => null : loadPhotoDraft,
       write: preview ? async () => {} : savePhotoDraft,
       prepare: prepareDraftPhoto,
@@ -40,7 +41,7 @@ export function useDraftPhotos({ ownerId, postKey, serverPaths, preview, authori
       } : {}),
     });
     return instance;
-  }, [ownerId, postKey, preview, session]);
+  }, [ownerId, postKey, preview, session, restoreOrder]);
   useEffect(() => {
     if (!postKey) return;
     void manager.start(serverPathsRef.current);

@@ -12,6 +12,8 @@ export default defineConfig([
     "coverage/**",
     "next-env.d.ts",
     "src/generated/**",
+    // Generated vendor bundle; the worker entry point in src/service-worker remains linted.
+    "public/firebase-messaging-worker.js",
     // Playwright output (npm run e2e)
     "playwright-report/**",
     "test-results/**",

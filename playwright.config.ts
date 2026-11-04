@@ -5,6 +5,13 @@ import { defineConfig, devices } from "@playwright/test";
 
 const PORT = 3100; // Not 3000, so it never clashes with `npm run dev`.
 const baseURL = `http://127.0.0.1:${PORT}`;
+const postedPreviewURL = "http://127.0.0.1:3101";
+process.env.POSTED_PREVIEW_E2E_URL ||= postedPreviewURL;
+
+const isolatedEnv = {
+  DATABASE_URL: "", DIRECT_URL: "", NEXT_PUBLIC_SUPABASE_URL: "", NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "",
+  RESEND_API_KEY: "", CONTACT_INBOX_EMAIL: "", SCREENSHOT_DEV_PAGES: "",
+};
 
 // Only for machines with a browser installed somewhere else (e.g. a pre-installed Chromium).
 // Normally unset: CI and most laptops use the browser from `npx playwright install chromium`.
@@ -28,7 +35,7 @@ export default defineConfig({
       use: { ...devices["Desktop Chrome"], launchOptions: executablePath ? { executablePath } : {} },
     },
   ],
-  webServer: {
+  webServer: [{
     command: `npm run start -- --port ${PORT}`,
     url: baseURL,
     reuseExistingServer: false,
@@ -37,13 +44,17 @@ export default defineConfig({
     env: {
       // Keep end-to-end tests away from the real Supabase project (docs/SERVICES.md): the app runs with the
       // database and Supabase off. Empty values win over .env.local. Test databases: docs/TESTING.md.
-      DATABASE_URL: "",
-      DIRECT_URL: "",
-      NEXT_PUBLIC_SUPABASE_URL: "",
-      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "",
+      ...isolatedEnv,
       // And away from real email: the Contact form must fail here, never send (#215).
-      RESEND_API_KEY: "",
-      CONTACT_INBOX_EMAIL: "",
     },
-  },
+  }, {
+    // Explicit test-only previews. The main app above retains its production 404 guard, and the task-specific
+    // URL does not enable other suites that opt in through E2E_DEV_BASE_URL.
+    command: "npm run start -- --port 3101",
+    url: postedPreviewURL,
+    reuseExistingServer: false,
+    timeout: 120_000,
+    stdout: "pipe",
+    env: { ...isolatedEnv, SCREENSHOT_DEV_PAGES: "1" },
+  }],
 });

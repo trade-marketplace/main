@@ -1,0 +1,18 @@
+.page { min-height: 75dvh; padding: var(--trade-space-8) var(--trade-inset-browse) var(--trade-space-12); background: color-mix(in srgb, var(--trade-forest) 3.8%, var(--trade-surface)); }
+.card { max-width: 620px; margin-inline: auto; padding: var(--trade-space-8); display: grid; gap: var(--trade-space-5); border-radius: var(--trade-radius-card); background: var(--trade-surface); box-shadow: var(--trade-shadow-category); }
+.celebration { display: flex; justify-content: center; padding-block: var(--trade-space-2); }
+.title { margin: 0; text-align: center; font-family: var(--trade-font-heading); font-size: var(--trade-fs-display); font-weight: 900; font-variation-settings: var(--trade-display-axes); line-height: var(--trade-lh-display); }
+.lead { margin: 0; text-align: center; color: var(--trade-text-2); text-wrap: pretty; }
+.tracker { padding: var(--trade-space-3) var(--trade-space-5); }
+.optIn { padding: var(--trade-space-5); display: grid; gap: var(--trade-space-3); background: var(--trade-tint); border: 1px solid var(--trade-chip-line); border-radius: var(--trade-radius-card); }
+.optIn h2 { margin: 0; font-size: var(--trade-fs-body); font-weight: 800; display: flex; align-items: center; gap: var(--trade-space-2); }
+.optIn p { margin: 0; font-size: var(--trade-fs-small); color: var(--trade-text-2); text-wrap: pretty; }
+.optInActions { display: flex; flex-wrap: wrap; gap: var(--trade-space-2); align-items: center; }
+.detail h2 { margin: var(--trade-space-2) 0 0; font-size: var(--trade-fs-small); color: var(--trade-text-2); }
+.detail p { margin: 0; text-wrap: pretty; }
+.reference { font-size: var(--trade-fs-small); color: var(--trade-text-2); }
+.jobTitle { margin: 0; font-family: var(--trade-font-heading); font-size: var(--trade-fs-heading); line-height: var(--trade-lh-heading); overflow-wrap: anywhere; }
+.description { white-space: pre-wrap; overflow-wrap: anywhere; }
+.windows { margin: 0; padding-left: var(--trade-space-5); display: grid; gap: var(--trade-space-2); }
+.price { display: flex; align-items: center; justify-content: space-between; gap: var(--trade-space-3); padding: var(--trade-space-4); background: var(--trade-tint); border-radius: var(--trade-radius-field); }
+@media (max-width: 599px) { .page { padding-block: var(--trade-space-5) var(--trade-space-8); } .card { padding: var(--trade-space-5); } .tracker { padding-inline: 0; } }

@@ -124,6 +124,9 @@ model Profile {
   reviewsHidden    Review[]           @relation("ReviewHider")
   notifications    Notification[]
   notificationPreferences NotificationPreference[]
+  postConfirmations JobPostConfirmation[]
+  pushRegistrations BrowserPushRegistration[]
+  pushDeliveries PriceReadyPushDelivery[]
   problemsReported ProblemReport[]    @relation("ProblemReporter")
   problemsResolved ProblemReport[]    @relation("ProblemResolver")
   supportThreads   SupportThread[]
@@ -448,6 +451,8 @@ model Job {
   materials     JobMaterials?
   evidence      CompletionEvidence?
   review        Review?
+  postConfirmation JobPostConfirmation?
+  pushDeliveries PriceReadyPushDelivery[]
   problems      ProblemReport[]
   support       SupportThread[]
   scheduledMarks ScheduledJobMark[]
@@ -984,6 +989,7 @@ model Notification {
   // Where it was also sent, added as each one goes out.
   channelsSent NotificationChannel[] @default([]) @map("channels_sent")
   createdAt    DateTime              @default(now()) @map("created_at") @db.Timestamptz
+  pushDeliveries PriceReadyPushDelivery[]
 
   // The bell and the notifications page: newest first. Unread counts use a partial index (migration SQL).
   @@index([userId, createdAt])
@@ -1002,6 +1008,74 @@ model NotificationPreference {
 
   @@id([userId, event, channel])
   @@map("notification_preferences")
+}
+
+// G05: the real creation transaction freezes this message; provider delivery happens after commit (#121).
+model JobPostConfirmation {
+  jobId String @id @map("job_id") @db.Uuid
+  job Job @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  customerId String @map("customer_id") @db.Uuid
+  customer Profile @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  recipientEmail String @map("recipient_email")
+  jobNumber Int @map("job_number")
+  title String
+  message Json
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  dueAt DateTime @default(now()) @map("due_at") @db.Timestamptz
+  attempts Int @default(0)
+  firstAttemptAt DateTime? @map("first_attempt_at") @db.Timestamptz
+  leaseToken String? @map("lease_token") @db.Uuid
+  leasedUntil DateTime? @map("leased_until") @db.Timestamptz
+  deliveredAt DateTime? @map("delivered_at") @db.Timestamptz
+  failedAt DateTime? @map("failed_at") @db.Timestamptz
+
+  @@index([deliveredAt, failedAt, dueAt], map: "job_post_confirmations_due_idx")
+  @@index([customerId])
+  @@map("job_post_confirmations")
+}
+
+// Tokens and device proofs are server-only. A browser can manage only its proven current device.
+model BrowserPushRegistration {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  user Profile @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deviceHash String @unique @map("device_hash") @db.Char(64)
+  tokenHash String @unique @map("token_hash") @db.Char(64)
+  token String @db.Text
+  revokedAt DateTime? @map("revoked_at") @db.Timestamptz
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  deliveries PriceReadyPushDelivery[]
+
+  @@index([userId, revokedAt])
+  @@map("browser_push_registrations")
+}
+
+// One opaque delivery per recipient/device; provider acceptance and browser display are different facts.
+model PriceReadyPushDelivery {
+  notificationId String @map("notification_id") @db.Uuid
+  notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  registrationId String @map("registration_id") @db.Uuid
+  registration BrowserPushRegistration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  id String @unique @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  user Profile @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobId String @map("job_id") @db.Uuid
+  job Job @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  dueAt DateTime @default(now()) @map("due_at") @db.Timestamptz
+  attempts Int @default(0)
+  leaseToken String? @map("lease_token") @db.Uuid
+  leasedUntil DateTime? @map("leased_until") @db.Timestamptz
+  deliveredAt DateTime? @map("delivered_at") @db.Timestamptz
+  displayedAt DateTime? @map("displayed_at") @db.Timestamptz
+  failedAt DateTime? @map("failed_at") @db.Timestamptz
+
+  @@id([notificationId, registrationId])
+  @@index([deliveredAt, failedAt, dueAt], map: "price_ready_push_deliveries_due_idx")
+  @@index([userId])
+  @@index([jobId])
+  @@map("price_ready_push_deliveries")
 }
 
 // "Something's not right" (C16): the customer or the worker on a job reports a problem. While one is OPEN the
