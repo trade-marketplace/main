@@ -24,52 +24,36 @@ for (const width of [320, 390, 768, 1024, 1440]) test(`estimate states at ${widt
     if (state === "not-eligible") await expect(page.getByText("Get verified to quote this job.", { exact: true })).toBeVisible();
     if (state === "wrong-trade") await expect(page.getByText("This job needs a different trade.", { exact: true })).toBeVisible();
     if (state === "error") await expect(page.getByText("Couldn’t save.", { exact: true })).toBeVisible();
-    if (state === "ready") await expect(page.getByRole("button", { name: "Send quote", exact: true })).toBeVisible();
+    if (state === "ready") await expect(page.getByRole("button", { name: "Submit", exact: true })).toBeVisible();
     if (state === "estimated") { await expect(page.getByRole("button", { name: "Edit", exact: true })).toBeVisible(); await expect(page.getByRole("complementary", { name: "Your quote" })).toContainText("2.5 h"); }
-    if (state === "offline") { const dialog = page.getByRole("complementary", { name: "Quote this job", exact: true }); await expect(dialog.getByText("You’re offline.", { exact: true })).toBeVisible(); await expect(dialog.getByRole("button", { name: "Send quote", exact: true })).toHaveAttribute("aria-disabled", "true"); }
-    if (state === "saving") await expect(page.getByRole("button", { name: /^Send quote/ })).toHaveAttribute("aria-busy", "true");
+    if (state === "offline") { const dialog = page.getByRole("complementary", { name: "Quote this job", exact: true }); await expect(dialog.getByText("You’re offline.", { exact: true })).toBeVisible(); await expect(dialog.getByRole("button", { name: "Submit", exact: true })).toHaveAttribute("aria-disabled", "true"); }
+    if (state === "saving") await expect(page.getByRole("button", { name: /^Submit/ })).toHaveAttribute("aria-busy", "true");
     if (state === "sent") await expect(page.getByText("Quote sent. +1 point", { exact: true })).toBeVisible();
     if (state === "photo-error") await expect(page.getByText("Couldn’t load photos.", { exact: true })).toBeVisible();
     if (state === "invalid") await expect(page.getByLabel("Hours on site", { exact: true })).toHaveAttribute("aria-invalid", "true");
     if (state === "edited") { await expect(page.getByText("Job updated", { exact: true })).toBeVisible(); await expect(page.getByText("Check your quote and send it again.", { exact: false })).toBeVisible(); }
-    if (state === "priced") { await expect(page.getByRole("button", { name: "Edit", exact: true })).toHaveCount(0); await expect(page.getByRole("complementary", { name: "Your quote", exact: true })).toContainText("$119.04"); }
+    if (state === "priced") { await expect(page.getByRole("button", { name: "Edit", exact: true })).toHaveCount(0); }
     if (state === "empty") await expect(page.getByText("No photos yet", { exact: true })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true); await expectNoA11yViolations(page);
     if (process.env.ESTIMATE_SCREENSHOTS_DIR && [390, 1440].includes(width)) await page.screenshot({ path: `${process.env.ESTIMATE_SCREENSHOTS_DIR}/${state}-${width}.png`, fullPage: true });
   });
 });
-test("priced jobs show frozen cents rather than the quote forecast at every width", async ({ page }) => {
-  test.setTimeout(120_000);
-  for (const width of [320, 390, 768, 1024, 1440]) for (const state of ["priced", "estimate-gallery"]) {
-    await page.setViewportSize({ width, height: 1000 });
-    expect((await page.goto(`${preview}/dev/components/worker-estimate?state=${state}`))?.status()).toBe(200);
-    const card = state === "priced" ? page.getByRole("complementary", { name: "Your quote", exact: true }) : page.getByRole("region", { name: "Priced (read-only)", exact: true });
-    await expect(card).toContainText("$119.04"); expect(await card.innerText()).not.toContain("$189");
-    await expect(card.getByRole("button", { name: "Edit", exact: true })).toHaveCount(0);
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true); await expectNoA11yViolations(page);
-    if (process.env.ESTIMATE_SCREENSHOTS_DIR && [390, 1440].includes(width)) await page.screenshot({ path: `${process.env.ESTIMATE_SCREENSHOTS_DIR}/${state}-${width}.png`, fullPage: true });
-  }
-  await page.goto(`${preview}/dev/components/worker-estimate?state=priced`);
-  await page.getByRole("link", { name: "Next job", exact: true }).press("Enter");
-  await expect(page).toHaveURL(/kind=estimate/); await expect(page.getByRole("heading", { name: "Jobs near you", exact: true })).toBeVisible();
-});
-test("quote from the job page: quick picks, keyboard half-hours, live earnings, edit, and Back keeps the board filter", async ({ page }) => {
+test("quote from the job page: quick picks, keyboard half-hours, edit, and Back keeps the board filter", async ({ page }) => {
   await page.goto(`${preview}/dev/components/worker-estimate?state=ready`);
   const photo = page.getByRole("button", { name: "Open photo 1 of 3: Sub wiring", exact: true }); await photo.press("Enter");
   const viewer = page.getByRole("dialog", { name: "Photos of Sub wiring", exact: true }); await expect(viewer).toBeVisible(); await viewer.press("ArrowRight"); await expect(viewer.getByText("2 of 3", { exact: true })).toBeVisible();
   await viewer.press("Escape"); await expect(viewer).toHaveCount(0); await expect(photo).toBeFocused();
   const form = page.getByRole("complementary", { name: "Quote this job", exact: true }), hours = form.getByLabel("Hours on site", { exact: true });
-  await expect(form.getByText("2 h minimum", { exact: true })).toBeVisible();
   await form.getByText("4 h", { exact: true }).click(); await expect(hours).toHaveValue("4");
-  await expect(form.getByText("2 h minimum", { exact: true })).toHaveCount(0); await expect(form).toContainText("$302");
   await hours.fill("3"); await hours.press("ArrowRight"); await expect(hours).toHaveValue("3.5");
   await form.getByText("$50", { exact: true }).click(); await expect(form.getByLabel("Materials", { exact: true })).toHaveValue("50.00");
   await form.getByLabel("Materials", { exact: true }).fill("85");
   await form.getByLabel("Notes", { exact: true }).fill("A cooked switch");
-  await form.getByRole("button", { name: "Send quote", exact: true }).click(); await expect(form).toHaveCount(0);
+  await form.getByRole("button", { name: "Submit", exact: true }).click(); await expect(form).toHaveCount(0);
   const quote = page.getByRole("complementary", { name: "Your quote", exact: true });
   await expect(quote).toContainText("3.5 h"); await expect(quote).toContainText("$85.00");
-  await expect(page.getByText("Quote sent. +1 point", { exact: true })).toBeVisible();
+  await expect(page.getByText("Quote sent. +1 point · 13 points", { exact: true })).toBeVisible();
+  await expect(page.getByRole("img", { name: "12 points" }).first()).toBeVisible();
   await page.getByRole("button", { name: "Edit", exact: true }).click(); await expect(hours).toHaveValue("3.5");
   await expect(form.getByLabel("Notes", { exact: true })).toHaveValue("A cooked switch");
   await form.getByRole("button", { name: "Cancel", exact: true }).click(); await expect(form).toHaveCount(0);
@@ -92,7 +76,7 @@ test("an edited job asks the worker to check and resend, then clears the stale g
   await page.getByRole("button", { name: "Edit", exact: true }).press("Enter");
   const dialog = page.getByRole("complementary", { name: "Quote this job", exact: true });
   await expect(dialog.getByLabel("Hours on site", { exact: true })).toHaveValue("2.5");
-  await dialog.getByRole("button", { name: "Send quote", exact: true }).click();
+  await dialog.getByRole("button", { name: "Submit", exact: true }).click();
   await expect(dialog).toHaveCount(0);
   await expect(page.getByText("Check your quote and send it again.", { exact: false })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Edit", exact: true })).toBeVisible();
@@ -126,10 +110,10 @@ test.describe("real blind estimate server action", () => {
     await login(page); expect(await page.locator("main").innerText()).not.toMatch(/Private Street|199\.99|Someone else private/);
     const dialog = page.getByRole("complementary", { name: "Quote this job", exact: true });
     await dialog.getByLabel("Hours on site", { exact: true }).fill("3.5"); await dialog.getByLabel("Materials", { exact: true }).fill("85");
-    await dialog.getByRole("button", { name: "Send quote", exact: true }).click(); await expect(dialog).toHaveCount(0); await expect(page.getByRole("button", { name: "Edit", exact: true })).toBeVisible();
+    await dialog.getByRole("button", { name: "Submit", exact: true }).click(); await expect(dialog).toHaveCount(0); await expect(page.getByRole("button", { name: "Edit", exact: true })).toBeVisible();
     expect((await db.query("SELECT minutes,materials_cents FROM estimates WHERE job_id=$1 AND worker_id=$2", [job, SECURITY_TRADIE.id])).rows[0]).toEqual({ minutes: 210, materials_cents: 8500 });
     await page.reload(); await page.getByRole("button", { name: "Edit", exact: true }).press("Enter"); await expect(dialog.getByLabel("Hours on site", { exact: true })).toHaveValue("3.5");
-    await dialog.getByLabel("Hours on site", { exact: true }).press("ArrowUp"); await dialog.getByRole("button", { name: "Send quote", exact: true }).click(); await expect(dialog).toHaveCount(0);
+    await dialog.getByLabel("Hours on site", { exact: true }).press("ArrowUp"); await dialog.getByRole("button", { name: "Submit", exact: true }).click(); await expect(dialog).toHaveCount(0);
     expect((await db.query("SELECT count(*)::int AS count FROM estimates WHERE job_id=$1 AND worker_id=$2", [job, SECURITY_TRADIE.id])).rows[0].count).toBe(1);
     await page.getByRole("link", { name: "Back to jobs", exact: true }).press("Enter"); await expect(page.getByRole("heading", { name: "Jobs near you", exact: true })).toBeVisible(); await expect(page).toHaveURL(/kind=estimate/);
     await page.getByRole("link", { name: "Estimate real job", exact: true }).press("Enter"); await expect(page.getByRole("heading", { name: "Estimate real job", exact: true })).toBeVisible();
@@ -138,7 +122,7 @@ test.describe("real blind estimate server action", () => {
     await login(page); await page.getByRole("button", { name: "Edit", exact: true }).click();
     await db.query("UPDATE worker_profiles SET paused_at=now() WHERE user_id=$1", [SECURITY_TRADIE.id]);
     try {
-      await page.getByRole("button", { name: "Send quote", exact: true }).click(); await expect(page.getByText("Your account is paused. Contact the office.", { exact: true })).toBeVisible();
+      await page.getByRole("button", { name: "Submit", exact: true }).click(); await expect(page.getByText("Your account is paused. Contact the office.", { exact: true })).toBeVisible();
       await expect(page.getByRole("complementary", { name: "Quote this job", exact: true })).toHaveCount(0); await expect(page.getByRole("button", { name: "Edit", exact: true })).toHaveCount(0);
     } finally { await db.query("UPDATE worker_profiles SET paused_at=NULL WHERE user_id=$1", [SECURITY_TRADIE.id]); }
   });

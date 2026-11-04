@@ -338,6 +338,12 @@ async function postJob(db, job, ids, jobNumber, { daysAgo, dateIn }) {
         posted,
       ],
     );
+    // Each quote earned its tradie a point (#488), like the app does on the first quote.
+    await db.query(
+      `INSERT INTO point_entries (worker_id, job_id, delta, reason, created_at) VALUES ($1, $2, 1, 'QUOTE', $3)
+       ON CONFLICT (worker_id, job_id, reason) DO NOTHING`,
+      [ids[estimate.by], job.id, posted],
+    );
   }
 
   for (const [status, who] of job.steps) {

@@ -109,6 +109,7 @@ model Profile {
   jobsAssigned     Job[]              @relation("JobWorker")
   jobPhotos        JobPhoto[]
   estimates        Estimate[]
+  pointEntries     PointEntry[]
   jobsPriced       JobPricing[]
   statusChanges    JobStatusHistory[]
   extraWorkAsked   Variation[]        @relation("VariationRequester")
@@ -443,6 +444,7 @@ model Job {
   photos        JobPhoto[]
   timeWindows   JobTimeWindow[]
   estimates     Estimate[]
+  pointEntries  PointEntry[]
   pricing       JobPricing?
   statusHistory JobStatusHistory[]
   payments      Payment[]
@@ -1275,4 +1277,29 @@ model ScheduledJobMark {
   @@id([rule, jobId])
   @@index([jobId])
   @@map("scheduled_job_marks")
+}
+
+// Quote points (#488, Matt 4 Nov): the tradies' in-game currency. +1 the first time they quote a job, spent to claim
+// one (5, #145). The balance is the sum of the ledger; rows are never edited, only added. Rules still open on #279.
+enum PointReason {
+  QUOTE
+  CLAIM
+  OFFICE
+}
+
+model PointEntry {
+  id        String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workerId  String      @map("worker_id") @db.Uuid
+  worker    Profile     @relation(fields: [workerId], references: [id], onDelete: Cascade)
+  // The job it was earned or spent on. Kept as NULL if the job is deleted, so the balance never changes behind them.
+  jobId     String?     @map("job_id") @db.Uuid
+  job       Job?        @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  delta     Int
+  reason    PointReason
+  createdAt DateTime    @default(now()) @map("created_at") @db.Timestamptz
+
+  // One quote award (and one claim spend) per worker per job.
+  @@unique([workerId, jobId, reason])
+  @@index([workerId, createdAt])
+  @@map("point_entries")
 }

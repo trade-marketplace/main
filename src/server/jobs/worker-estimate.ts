@@ -22,8 +22,8 @@ export async function submitWorkerEstimate(db: PrismaClient, viewer: JobViewer, 
   }
   const data = { minutes: parsed.data.hours * 60, materialsCents: parsed.data.materials, note: parsed.data.note || null, needsSiteVisit: parsed.data.needsSiteVisit };
   try {
-    await saveEligibleEstimate(db, viewer, id, data);
-    return { status: "saved", estimate: { ...data, madeBeforeEdit: false } };
+    const saved = await saveEligibleEstimate(db, viewer, id, data);
+    return { status: "saved", estimate: { ...data, madeBeforeEdit: false }, pointsAwarded: saved.pointsAwarded, points: saved.points };
   } catch (error) {
     if (error instanceof WorkerEligibilityError) return { status: "ineligible", failure: error.failure };
     return { status: "unavailable" };
