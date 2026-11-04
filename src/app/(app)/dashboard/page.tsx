@@ -1,10 +1,12 @@
 import { notFound, unstable_rethrow } from "next/navigation";
+import { Suspense } from "react";
 import { CustomerJobs } from "@/components/jobs/CustomerJobs";
-import { customerJobsHref, parseCustomerJobsQuery, type CustomerJobsData } from "@/lib/customer-jobs";
+import { customerJobsHref, parseCustomerJobsQuery, type CustomerJobsData, type CustomerJobsQuery } from "@/lib/customer-jobs";
 import { privateMetadata } from "@/lib/metadata";
 import { requireRole } from "@/server/auth/guard";
 import { listCustomerJobs } from "@/server/customer-jobs";
 import { getDb } from "@/server/db";
+import type { JobViewer } from "@/server/views";
 
 export const metadata = { ...privateMetadata, title: "My jobs" };
 export default async function Dashboard({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
@@ -12,6 +14,10 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
   const viewer = await requireRole(["CUSTOMER", "TRADIE"], { next: customerJobsHref(query) });
   // /dashboard is shared with My work (#148). Until then, workers retain its existing404.
   if (viewer.role !== "CUSTOMER") notFound();
+  // Stream only after role validation: an unauthorized visitor must receive an actual 404 response.
+  return <Suspense fallback={<CustomerJobs query={query} data={null} loading />}><CustomerList viewer={viewer} query={query} /></Suspense>;
+}
+async function CustomerList({ viewer, query }: { viewer: JobViewer; query: CustomerJobsQuery }) {
   let data: CustomerJobsData | null = null;
   try { data = await listCustomerJobs(getDb(), viewer, query); }
   catch (error) { unstable_rethrow(error); console.error("My jobs could not load jobs."); }
