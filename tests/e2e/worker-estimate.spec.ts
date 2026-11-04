@@ -52,7 +52,8 @@ test("quote from the job page: quick picks, keyboard half-hours, edit, and Back 
   await form.getByRole("button", { name: "Submit", exact: true }).click(); await expect(form).toHaveCount(0);
   const quote = page.getByRole("complementary", { name: "Your quote", exact: true });
   await expect(quote).toContainText("3.5 h"); await expect(quote).toContainText("$85.00");
-  await expect(page.getByText("Quote sent. +1 point", { exact: true })).toBeVisible();
+  await expect(page.getByText("Quote sent. +1 point · 13 points", { exact: true })).toBeVisible();
+  await expect(page.getByRole("img", { name: "12 points" }).first()).toBeVisible();
   await page.getByRole("button", { name: "Edit", exact: true }).click(); await expect(hours).toHaveValue("3.5");
   await expect(form.getByLabel("Notes", { exact: true })).toHaveValue("A cooked switch");
   await form.getByRole("button", { name: "Cancel", exact: true }).click(); await expect(form).toHaveCount(0);

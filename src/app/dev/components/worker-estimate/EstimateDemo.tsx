@@ -9,6 +9,6 @@ export function EstimateDemo({ job, state }: { job: WorkerJobView; state: string
     save={async (_id, input) => {
       if (state === "error") return { status: "unavailable" };
       const parsed = workerEstimateSchema.parse(input);
-      return { status: "saved", estimate: { minutes: parsed.hours * 60, materialsCents: parsed.materials, note: parsed.note || null, needsSiteVisit: parsed.needsSiteVisit, madeBeforeEdit: false } };
+      return { status: "saved", estimate: { minutes: parsed.hours * 60, materialsCents: parsed.materials, note: parsed.note || null, needsSiteVisit: parsed.needsSiteVisit, madeBeforeEdit: false }, pointsAwarded: job.ownEstimate ? 0 : 1, points: job.ownEstimate ? 12 : 13 };
     }} />;
 }

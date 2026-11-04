@@ -28,7 +28,10 @@ type Props = {
   photos?: { src: string; alt: string }[]; photosFailed?: boolean; preview?: string;
   save?: (id: string, input: EstimateFields) => Promise<EstimateResult | AuthFailure>;
 };
-const SENT_TOAST = { message: `Quote sent. +${QUOTE_POINTS} ${QUOTE_POINTS === 1 ? "point" : "points"}`, icon: "toll" };
+const plural = (n: number) => `${n} ${n === 1 ? "point" : "points"}`;
+const sentToast = (earned: number, balance?: number) =>
+  ({ message: `Quote sent. +${plural(earned)}${balance === undefined ? "" : ` · ${plural(balance)}`}`, icon: "toll" });
+const SENT_TOAST = sentToast(QUOTE_POINTS);
 export function WorkerJobBoundary(props: Props) {
   return <ToastProvider initial={props.preview === "sent" ? SENT_TOAST : undefined}><WorkerJob {...props} /></ToastProvider>;
 }
@@ -65,7 +68,7 @@ function WorkerJob({ job, details, back, failure: initialFailure, photos = [], p
       const result = await save(details.id, value);
       if (session?.check(result)) return;
       if (!("status" in result)) { setError(true); return; }
-      if (result.status === "saved") { setOwn(result.estimate); setValue(estimateFields(result.estimate)); setSent(`estimate-sent:${details.id}:${Date.now()}`); setEditing(false); toast.show(SENT_TOAST); router.refresh(); }
+      if (result.status === "saved") { setOwn(result.estimate); setValue(estimateFields(result.estimate)); setSent(`estimate-sent:${details.id}:${Date.now()}`); setEditing(false); toast.show(result.pointsAwarded === 0 ? { message: "Quote updated.", icon: "check_circle" } : sentToast(result.pointsAwarded ?? QUOTE_POINTS, result.points)); router.refresh(); }
       else if (result.status === "invalid") { setFields(result.fields); setError(Object.keys(result.fields).length === 0); form.current?.querySelector<HTMLElement>(`[name="${Object.keys(result.fields)[0]}"]`)?.focus(); }
       else if (result.status === "ineligible") { setFailure(result.failure); setEditing(false); }
       else setError(true);

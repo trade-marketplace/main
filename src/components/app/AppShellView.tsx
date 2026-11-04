@@ -29,6 +29,8 @@ export type ShellViewer = {
   /** False until they confirm their email: a banner asks them to (#102). Posting and claiming check it too. */
   emailVerified?: boolean;
   counts: Readonly<Record<CountKey, number>>;
+  /** Tradies only: their quote points (#488), shown next to the bell. */
+  points?: number;
 };
 
 export type AppShellViewProps = {

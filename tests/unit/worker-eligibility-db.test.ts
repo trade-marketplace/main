@@ -35,13 +35,25 @@ describe.skipIf(!testDatabaseUrl)("worker eligibility at the real mutation bound
   const deps = () => ({ audit: vi.fn(async () => {}), notify: vi.fn(async () => {}) });
   const claim = (workerId: string, jobId: string) => transitionJob(schema.db, deps(), { transition: "claim", actor: { role: "TRADIE", userId: workerId }, jobId });
 
+  it("earns one quote point per job, never for an edit or a refused quote, and keeps the ledger server-only (#488)", async () => {
+    const tradie = await worker("OTHER"), first = await job("REVIEW", "OTHER"), second = await job("REVIEW", "OTHER"), priced = await job("BOOKABLE", "OTHER");
+    expect(await saveEligibleEstimate(schema.db, { userId: tradie.id }, first.id, { minutes: 60 })).toMatchObject({ pointsAwarded: 1, points: 1 });
+    expect(await saveEligibleEstimate(schema.db, { userId: tradie.id }, first.id, { minutes: 90 })).toMatchObject({ pointsAwarded: 0, points: 1 });
+    await expect(saveEligibleEstimate(schema.db, { userId: tradie.id }, priced.id, { minutes: 60 })).rejects.toMatchObject({ failure: "not-open" });
+    expect(await saveEligibleEstimate(schema.db, { userId: tradie.id }, second.id, { minutes: 60 })).toMatchObject({ pointsAwarded: 1, points: 2 });
+    expect(await schema.db.pointEntry.count({ where: { workerId: tradie.id } })).toBe(2);
+    await expect(schema.db.pointEntry.create({ data: { workerId: tradie.id, jobId: first.id, delta: -1, reason: "QUOTE" } })).rejects.toThrow();
+    const rls = await schema.db.$queryRawUnsafe<{ relrowsecurity: boolean; policies: bigint }[]>(`SELECT c.relrowsecurity, (SELECT count(*) FROM pg_policy p WHERE p.polrelid = c.oid) AS policies FROM pg_class c WHERE c.oid = '"${schema.name}".point_entries'::regclass`);
+    expect(rls).toEqual([{ relrowsecurity: true, policies: 0n }]);
+  });
+
   it("saves and edits only the authenticated worker’s blind estimate, refusing a price or eligibility change", async () => {
     const first = await worker("OTHER"), second = await worker("OTHER"), review = await job("REVIEW", "OTHER");
     const input = { hours: "3.5", materials: "85.00", note: "Office only", needsSiteVisit: true };
     const viewer = { userId: first.id, role: "TRADIE" as const };
     expect(await submitWorkerEstimate(schema.db, viewer, review.id, { ...input, workerId: second.id })).toMatchObject({ status: "invalid" });
     expect(await schema.db.estimate.count({ where: { jobId: review.id } })).toBe(0);
-    expect(await submitWorkerEstimate(schema.db, viewer, review.id, input)).toEqual({ status: "saved", estimate: { minutes: 210, materialsCents: 8500, note: "Office only", needsSiteVisit: true, madeBeforeEdit: false } });
+    expect(await submitWorkerEstimate(schema.db, viewer, review.id, input)).toEqual({ status: "saved", estimate: { minutes: 210, materialsCents: 8500, note: "Office only", needsSiteVisit: true, madeBeforeEdit: false }, pointsAwarded: 1, points: 1 });
     await saveEligibleEstimate(schema.db, { userId: second.id }, review.id, { minutes: 300, materialsCents: 19000, note: "Someone else" });
     await schema.db.estimate.updateMany({ where: { jobId: review.id, workerId: first.id }, data: { madeBeforeEdit: true } });
     expect(await submitWorkerEstimate(schema.db, viewer, review.id, { ...input, hours: "4" })).toMatchObject({ status: "saved", estimate: { minutes: 240, madeBeforeEdit: false } });
@@ -85,7 +97,7 @@ describe.skipIf(!testDatabaseUrl)("worker eligibility at the real mutation bound
     const historyBefore = await schema.db.jobStatusHistory.findMany({ where: { jobId: review.id } });
     const estimate = await saveEligibleEstimate(schema.db, { userId: tradie.id }, review.id, { minutes: 60 });
     expect(await schema.db.job.findUnique({ where: { id: review.id } })).toMatchObject({ updatedAt: before.updatedAt, editedAt: before.editedAt });
-    expect(await saveEligibleEstimate(schema.db, { userId: tradie.id }, review.id, { minutes: 120 })).toEqual(estimate);
+    expect(await saveEligibleEstimate(schema.db, { userId: tradie.id }, review.id, { minutes: 120 })).toEqual({ ...estimate, pointsAwarded: 0 });
     expect(await schema.db.job.findUnique({ where: { id: review.id } })).toMatchObject({ updatedAt: before.updatedAt, editedAt: before.editedAt });
     expect(await schema.db.jobStatusHistory.findMany({ where: { jobId: review.id } })).toEqual(historyBefore);
     const ready = await job("BOOKABLE", "OTHER", undefined, old);
