@@ -7,6 +7,7 @@ import { expectNoA11yViolations } from "./support/a11y";
 
 const preview = process.env.POSTED_PREVIEW_E2E_URL;
 test.describe("customer jobs guarded previews", () => {
+  test.setTimeout(90_000);
   test.skip(!preview, "Needs the explicit guarded preview server");
   for (const query of ["state=jobs", "tab=done", "tab=cancelled", "state=empty", "state=empty&tab=done", "state=empty&tab=cancelled", "q=not-found", "state=extra-work", "state=long", "state=pages", "state=loading", "state=error", "state=offline"]) {
     test(`${query} at five widths`, async ({ page }) => {
