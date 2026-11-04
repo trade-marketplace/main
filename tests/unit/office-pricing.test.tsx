@@ -93,7 +93,7 @@ describe("pricing workspace states", () => {
   it("renders real empty, failure, loading, frozen and future-visit states using the kit", () => {
     for (const state of ["ready", "no-estimates", "frozen"] as const) {
       const { data } = pricingExample(state), html = renderToStaticMarkup(<OfficePricing data={data} preview={preview} publish={submit} requestPhotos={submit} />);
-      expect(html).toContain(state === "no-estimates" ? "No estimates yet" : state === "frozen" ? "read-only" : "Blind estimates");
+      expect(html).toContain(state === "no-estimates" ? "No quotes yet" : state === "frozen" ? "read-only" : "Blind estimates");
     }
     expect(renderToStaticMarkup(<OfficePricing data={null} loading preview={preview} publish={submit} requestPhotos={submit} />)).toContain('aria-busy="true"');
     expect(renderToStaticMarkup(<OfficePricing data={null} preview={preview} publish={submit} requestPhotos={submit} />)).toContain("Can’t load this job");

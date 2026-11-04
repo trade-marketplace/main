@@ -118,6 +118,7 @@ export function workerJobView(viewer: JobViewer | null, job: JobSource) {
   const own = job.estimates.find(estimate => estimate.workerId === viewer!.userId);
   return { ...list, description: redactContactDetails(job.description, list.assignedToYou), address: list.assignedToYou ? address(job) : null,
     customer: list.assignedToYou ? shortPerson(job.customer, true) : null,
+    customerFirstName: redactContactDetails(job.customer.firstName, list.assignedToYou), estimateCount: job.estimates.length,
     anyTime: job.anyTime, timeWindows: windows(job), bookedDate: job.bookedDate?.toISOString().slice(0, 10) ?? null,
     bookedTime: job.bookedTime, photos: photos(job), ownEstimate: own ? { minutes: own.minutes, materialsCents: own.materialsCents, note: own.note, needsSiteVisit: own.needsSiteVisit, madeBeforeEdit: own.madeBeforeEdit } : null };
 }

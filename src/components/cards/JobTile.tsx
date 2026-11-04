@@ -22,9 +22,9 @@ import styles from "./cards.module.css";
 export type JobTileTag =
   /** What the tradie earns: "Earn $259" (the signature colour). */
   | { kind: "earn"; text: string }
-  /** No price yet: "Needs estimate". */
+  /** No price yet: "Needs a quote". */
   | { kind: "estimate"; text?: string }
-  /** They've already sent an estimate: "Estimated", with the bolt. */
+  /** They've already sent an estimate: "Quoted", with the bolt. */
   | { kind: "estimated"; text?: string }
   /** A quote bounty: "Bounty $30 · 17h". Gold (AGENTS.md: quote bounties are gold). */
   | { kind: "bounty"; text: string };
@@ -50,8 +50,8 @@ export type JobTileProps = {
 
 const TAG_TEXT: Record<JobTileTag["kind"], string> = {
   earn: "",
-  estimate: "Needs estimate",
-  estimated: "Estimated",
+  estimate: "Needs a quote",
+  estimated: "Quoted",
   bounty: "Quote bounty",
 };
 

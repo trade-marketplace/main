@@ -20,7 +20,7 @@ import { loadJobBoardAction, newBoardJobsAction } from "@/server/jobs/board-acti
 import styles from "./board.module.css";
 
 const LIVE_SOURCE: BoardSource = { load: loadJobBoardAction, updates: newBoardJobsAction };
-const kindItems: { value: BoardKind; label: string }[] = [{ value: "all", label: "All jobs" }, { value: "ready", label: "Ready to claim" }, { value: "estimate", label: "Needs an estimate" }, { value: "bounty", label: "Quote bounty" }];
+const kindItems: { value: BoardKind; label: string }[] = [{ value: "all", label: "All jobs" }, { value: "ready", label: "Ready to claim" }, { value: "estimate", label: "Needs a quote" }, { value: "bounty", label: "Quote bounty" }];
 const whenNames = { asap: "ASAP", week: "This week", flexible: "Flexible" };
 
 export function BoardSkeleton({ count = 8 }: { count?: number }) {
@@ -135,7 +135,7 @@ export function JobBoard({ initial, ownerId, source = LIVE_SOURCE, previewState,
     </div>
     <div className={styles.layout}>
       <aside className={styles.sidebar} aria-label="Job filters"><button className={styles.filterToggle} type="button" aria-expanded={filtersOpen} aria-controls="job-filters" onClick={() => setFiltersOpen(value => !value)}>Filters</button><div id="job-filters" className={styles.filters} data-open={filtersOpen}>
-        <fieldset><legend>Show</legend><CheckboxField label={`Already estimated${board ? ` (${board.counts.estimated})` : ""}`} checked={query.estimated} onChange={event => update({ estimated: event.target.checked })} />
+        <fieldset><legend>Show</legend><CheckboxField label={`Already quoted${board ? ` (${board.counts.estimated})` : ""}`} checked={query.estimated} onChange={event => update({ estimated: event.target.checked })} />
           <CheckboxField label={`Saved${board ? ` (${board.counts.saved})` : ""}`} checked={query.saved} onChange={event => update({ saved: event.target.checked })} /></fieldset>
         <fieldset><legend>Trade</legend>{(meta?.trades ?? []).map(trade => <CheckboxField key={trade.trade} label={`${trade.label}${trade.reason ? ` · ${trade.reason}` : ""}`} disabled={!trade.allowed}
           checked={trade.allowed && (query.trades === null || query.trades.includes(trade.trade))} onChange={event => {

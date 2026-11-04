@@ -571,7 +571,7 @@ export function QuickFilterDemo({ wrap = false }: { wrap?: boolean }) {
         wrap={wrap}
         items={[
           { value: "ready", label: "Ready to claim", count: 12 },
-          { value: "estimate", label: "Needs estimate", count: 9 },
+          { value: "estimate", label: "Needs a quote", count: 9 },
           { value: "bounty", label: "Bounties", count: 2, tone: "gold" },
           { value: "saved", label: "Saved", count: 4 },
           { value: "nearby", label: "Within 5 km", count: 6 },

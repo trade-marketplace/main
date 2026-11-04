@@ -55,7 +55,7 @@ const pill = (label: string, kind: PillKind): StatusPillLabel => ({ label, kind 
 const LABELS: Record<JobStatus, Labels> = {
   REVIEW: {
     customer: pill("Getting your price", "waiting"),
-    tradie: pill("Needs an estimate", "action"),
+    tradie: pill("Needs a quote", "action"),
     office: pill("To price", "action"),
   },
   QUOTE_BOUNTY: {

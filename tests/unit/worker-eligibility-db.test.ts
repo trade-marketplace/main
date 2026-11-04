@@ -5,6 +5,7 @@ import type { JobStatus, Role, Trade } from "@/generated/prisma/client";
 import { applyTransition, transitionJob } from "@/server/jobs/status-machine";
 import { canClaim, eligibleJobsFor, JOB_ELIGIBILITY_SELECT, WORKER_ELIGIBILITY_SELECT } from "@/server/workers/eligibility";
 import { lockEligibilityRows, saveEligibleEstimate } from "@/server/workers/eligibility-mutations";
+import { submitWorkerEstimate } from "@/server/jobs/worker-estimate";
 import { testDatabaseUrl, useTestSchema } from "../support/test-db";
 
 const NOW = new Date("2026-11-03T00:00:00Z");
@@ -33,6 +34,26 @@ describe.skipIf(!testDatabaseUrl)("worker eligibility at the real mutation bound
   }
   const deps = () => ({ audit: vi.fn(async () => {}), notify: vi.fn(async () => {}) });
   const claim = (workerId: string, jobId: string) => transitionJob(schema.db, deps(), { transition: "claim", actor: { role: "TRADIE", userId: workerId }, jobId });
+
+  it("saves and edits only the authenticated worker’s blind estimate, refusing a price or eligibility change", async () => {
+    const first = await worker("OTHER"), second = await worker("OTHER"), review = await job("REVIEW", "OTHER");
+    const input = { hours: "3.5", materials: "85.00", note: "Office only", needsSiteVisit: true };
+    const viewer = { userId: first.id, role: "TRADIE" as const };
+    expect(await submitWorkerEstimate(schema.db, viewer, review.id, { ...input, workerId: second.id })).toMatchObject({ status: "invalid" });
+    expect(await schema.db.estimate.count({ where: { jobId: review.id } })).toBe(0);
+    expect(await submitWorkerEstimate(schema.db, viewer, review.id, input)).toEqual({ status: "saved", estimate: { minutes: 210, materialsCents: 8500, note: "Office only", needsSiteVisit: true, madeBeforeEdit: false } });
+    await saveEligibleEstimate(schema.db, { userId: second.id }, review.id, { minutes: 300, materialsCents: 19000, note: "Someone else" });
+    await schema.db.estimate.updateMany({ where: { jobId: review.id, workerId: first.id }, data: { madeBeforeEdit: true } });
+    expect(await submitWorkerEstimate(schema.db, viewer, review.id, { ...input, hours: "4" })).toMatchObject({ status: "saved", estimate: { minutes: 240, madeBeforeEdit: false } });
+    expect(await schema.db.estimate.findUnique({ where: { jobId_workerId: { jobId: review.id, workerId: second.id } } })).toMatchObject({ minutes: 300, materialsCents: 19000, note: "Someone else" });
+    await schema.db.workerProfile.update({ where: { userId: first.id }, data: { pausedAt: NOW } });
+    expect(await submitWorkerEstimate(schema.db, viewer, review.id, input)).toEqual({ status: "ineligible", failure: "worker-paused" });
+    await schema.db.workerProfile.update({ where: { userId: first.id }, data: { pausedAt: null } });
+    await schema.db.job.update({ where: { id: review.id }, data: { status: "PRICED", priceCents: 12_000 } });
+    expect(await submitWorkerEstimate(schema.db, viewer, review.id, input)).toEqual({ status: "ineligible", failure: "not-open" });
+    expect(await schema.db.estimate.findUnique({ where: { jobId_workerId: { jobId: review.id, workerId: first.id } } })).toMatchObject({ minutes: 240 });
+    expect(await submitWorkerEstimate(schema.db, { ...viewer, role: "CUSTOMER" }, review.id, input)).toEqual({ status: "ineligible", failure: "worker-required" });
+  });
 
   it("uses the same private facts for ID discovery, claim and estimate, without a phone or Other selection gate", async () => {
     const tradie = await worker("OTHER"), ready = await job("BOOKABLE", "OTHER"), review = await job("REVIEW", "OTHER");

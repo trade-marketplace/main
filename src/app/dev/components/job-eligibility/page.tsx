@@ -26,7 +26,7 @@ export default async function JobEligibilityPreview({ searchParams }: { searchPa
         const reason = eligibilityFailure(worker, job, "discover", context);
         return <section key={job.id} id={`job-${job.id}`} className={styles.card} aria-label={job.title}>
           <h2>{job.title}</h2><p className={styles.note}>{job.category === "OTHER" ? "Other" : "Electrical"} · {job.suburb}</p>
-          <Pill kind={claim ? "action" : "waiting"}>{claim ? "Ready to claim" : estimate ? "Needs estimate" : "Not eligible"}</Pill>
+          <Pill kind={claim ? "action" : "waiting"}>{claim ? "Ready to claim" : estimate ? "Needs a quote" : "Not eligible"}</Pill>
           <dl><div><dt>Claim</dt><dd>{claim ? "Allowed" : "Not eligible"}</dd></div><div><dt>Estimate</dt><dd>{estimate ? "Allowed" : "Not eligible"}</dd></div></dl>
           {reason && <code className={styles.reason}>{reason}</code>}
         </section>;
