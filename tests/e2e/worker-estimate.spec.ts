@@ -12,26 +12,26 @@ for (const width of [320, 390, 768, 1024, 1440]) test(`estimate states at ${widt
   for (const state of states) await test.step(state, async () => {
     const response = await page.goto(`${preview}/dev/components/worker-estimate?state=${state}`); expect(response?.status()).toBe(200);
     if (state === "eligibility-gallery") {
-      await expect(page.getByRole("heading", { name: "Estimate eligibility", exact: true })).toBeVisible();
-      await expect(page.getByText("Get verified to estimate this job.", { exact: true })).toBeVisible(); await expect(page.getByText("This job needs a different trade.", { exact: true })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Quote eligibility", exact: true })).toBeVisible();
+      await expect(page.getByText("Get verified to quote this job.", { exact: true })).toBeVisible(); await expect(page.getByText("This job needs a different trade.", { exact: true })).toBeVisible();
     } else if (state === "estimate-gallery") {
-      await expect(page.getByRole("heading", { name: "Invalid estimate", exact: true })).toBeVisible();
-      for (const name of ["Already estimated", "Job edited", "Priced (read-only)"]) await expect(page.getByRole("region", { name, exact: true })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Invalid quote", exact: true })).toBeVisible();
+      for (const name of ["Already quoted", "Job edited", "Priced (read-only)"]) await expect(page.getByRole("region", { name, exact: true })).toBeVisible();
     } else if (state === "loading") await expect(page.getByRole("status", { name: "Loading job", exact: true })).toBeVisible();
     else if (state === "load-error") await expect(page.getByRole("heading", { name: "Couldn’t load this job", exact: true })).toBeVisible();
-    else if (["drawer", "error", "offline", "saving", "invalid"].includes(state)) await expect(page.getByRole("dialog", { name: "Your estimate", exact: true })).toBeVisible();
+    else if (["drawer", "error", "offline", "saving", "invalid"].includes(state)) await expect(page.getByRole("dialog", { name: "Your quote", exact: true })).toBeVisible();
     else await expect(page.getByRole("heading", { name: "Sub wiring", level: 1, exact: true })).toBeVisible();
-    if (state === "not-eligible") await expect(page.getByText("Get verified to estimate this job.", { exact: true })).toBeVisible();
+    if (state === "not-eligible") await expect(page.getByText("Get verified to quote this job.", { exact: true })).toBeVisible();
     if (state === "wrong-trade") await expect(page.getByText("This job needs a different trade.", { exact: true })).toBeVisible();
     if (state === "error") await expect(page.getByText("Couldn’t save.", { exact: true })).toBeVisible();
-    if (state === "ready") await expect(page.getByRole("button", { name: "Estimate now", exact: true })).toBeVisible();
-    if (state === "estimated") { await expect(page.getByRole("button", { name: "Edit", exact: true })).toBeVisible(); await expect(page.getByText(/Your estimate:/)).toBeVisible(); }
-    if (state === "offline") { const dialog = page.getByRole("dialog"); await expect(dialog.getByText("You’re offline.", { exact: true })).toBeVisible(); await expect(dialog.getByRole("button", { name: "Send estimate", exact: true })).toHaveAttribute("aria-disabled", "true"); }
-    if (state === "saving") await expect(page.getByRole("button", { name: /^Send estimate/ })).toHaveAttribute("aria-busy", "true");
-    if (state === "sent") await expect(page.getByText("Sent.", { exact: true })).toBeVisible();
+    if (state === "ready") await expect(page.getByRole("button", { name: "Quote now", exact: true })).toBeVisible();
+    if (state === "estimated") { await expect(page.getByRole("button", { name: "Edit", exact: true })).toBeVisible(); await expect(page.getByRole("complementary", { name: "Your quote" })).toContainText("2.5 h"); }
+    if (state === "offline") { const dialog = page.getByRole("dialog"); await expect(dialog.getByText("You’re offline.", { exact: true })).toBeVisible(); await expect(dialog.getByRole("button", { name: "Send quote", exact: true })).toHaveAttribute("aria-disabled", "true"); }
+    if (state === "saving") await expect(page.getByRole("button", { name: /^Send quote/ })).toHaveAttribute("aria-busy", "true");
+    if (state === "sent") await expect(page.getByText("Quote sent. +1 point", { exact: true })).toBeVisible();
     if (state === "photo-error") await expect(page.getByText("Couldn’t load photos.", { exact: true })).toBeVisible();
     if (state === "invalid") await expect(page.getByLabel("Hours on site", { exact: true })).toHaveAttribute("aria-invalid", "true");
-    if (state === "edited") { await expect(page.getByText("Job updated", { exact: true })).toBeVisible(); await expect(page.getByText("Check your estimate and send it again.", { exact: false })).toBeVisible(); }
+    if (state === "edited") { await expect(page.getByText("Job updated", { exact: true })).toBeVisible(); await expect(page.getByText("Check your quote and send it again.", { exact: false })).toBeVisible(); }
     if (state === "priced") await expect(page.getByRole("button", { name: "Edit", exact: true })).toHaveCount(0);
     if (state === "empty") await expect(page.getByText("No photos yet", { exact: true })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true); await expectNoA11yViolations(page);
@@ -43,17 +43,17 @@ test("estimate drawer keeps unsent values, uses keyboard half-hours and returns 
   const photo = page.getByRole("button", { name: "Open photo 1 of 3: Sub wiring", exact: true }); await photo.press("Enter");
   const viewer = page.getByRole("dialog", { name: "Photos of Sub wiring", exact: true }); await expect(viewer).toBeVisible(); await viewer.press("ArrowRight"); await expect(viewer.getByText("2 of 3", { exact: true })).toBeVisible();
   await viewer.press("Escape"); await expect(viewer).toHaveCount(0); await expect(photo).toBeFocused();
-  await page.getByRole("button", { name: "Estimate now", exact: true }).press("Enter");
-  const dialog = page.getByRole("dialog", { name: "Your estimate", exact: true });
+  await page.getByRole("button", { name: "Quote now", exact: true }).press("Enter");
+  const dialog = page.getByRole("dialog", { name: "Your quote", exact: true });
   await expect(dialog).toBeVisible(); await dialog.getByLabel("Hours on site", { exact: true }).fill("3"); await dialog.getByLabel("Hours on site", { exact: true }).press("ArrowRight");
   await expect(dialog.getByLabel("Hours on site", { exact: true })).toHaveValue("3.5");
-  await dialog.getByLabel("Materials (your cost, excl. GST)", { exact: true }).fill("85");
-  await dialog.getByLabel("Notes for the office (optional)", { exact: true }).fill("A cooked switch");
-  await dialog.press("Escape"); await expect(dialog).toHaveCount(0); await expect(page.getByRole("button", { name: "Estimate now", exact: true })).toBeFocused();
-  await page.getByRole("button", { name: "Estimate now", exact: true }).press("Enter");
-  await expect(dialog.getByLabel("Notes for the office (optional)", { exact: true })).toHaveValue("A cooked switch");
-  await dialog.getByRole("button", { name: "Send estimate", exact: true }).click(); await expect(dialog).toHaveCount(0);
-  await expect(page.getByText("Your estimate:", { exact: false })).toContainText("3.5 h · $85.00");
+  await dialog.getByLabel("Materials", { exact: true }).fill("85");
+  await dialog.getByLabel("Notes", { exact: true }).fill("A cooked switch");
+  await dialog.press("Escape"); await expect(dialog).toHaveCount(0); await expect(page.getByRole("button", { name: "Quote now", exact: true })).toBeFocused();
+  await page.getByRole("button", { name: "Quote now", exact: true }).press("Enter");
+  await expect(dialog.getByLabel("Notes", { exact: true })).toHaveValue("A cooked switch");
+  await dialog.getByRole("button", { name: "Send quote", exact: true }).click(); await expect(dialog).toHaveCount(0);
+  await expect(page.getByRole("complementary", { name: "Your quote" })).toContainText("3.5 h on site$85.00 materials");
   await page.getByRole("button", { name: "Edit", exact: true }).press("Enter"); await expect(dialog.getByLabel("Hours on site", { exact: true })).toHaveValue("3.5");
   await dialog.press("Escape"); await expect(dialog).toHaveCount(0); await expect(page.getByRole("button", { name: "Edit", exact: true })).toBeFocused();
   await page.getByRole("link", { name: "Back to jobs", exact: true }).press("Enter");
@@ -65,19 +65,19 @@ test("an edited job asks the worker to check and resend, then clears the stale g
   for (const width of [320, 390, 768, 1024, 1440]) for (const state of ["edited", "estimate-gallery"]) {
     await page.setViewportSize({ width, height: 1000 });
     expect((await page.goto(`${preview}/dev/components/worker-estimate?state=${state}`))?.status()).toBe(200);
-    await expect(page.getByText("Check your estimate and send it again.", { exact: false })).toBeVisible();
+    await expect(page.getByText("Check your quote and send it again.", { exact: false })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await expectNoA11yViolations(page);
     if (process.env.ESTIMATE_SCREENSHOTS_DIR && [390, 1440].includes(width)) await page.screenshot({ path: `${process.env.ESTIMATE_SCREENSHOTS_DIR}/${state}-${width}.png`, fullPage: true });
   }
   await page.goto(`${preview}/dev/components/worker-estimate?state=edited`);
-  await expect(page.getByText("Check your estimate and send it again.", { exact: false })).toBeVisible();
+  await expect(page.getByText("Check your quote and send it again.", { exact: false })).toBeVisible();
   await page.getByRole("button", { name: "Edit", exact: true }).press("Enter");
-  const dialog = page.getByRole("dialog", { name: "Your estimate", exact: true });
+  const dialog = page.getByRole("dialog", { name: "Your quote", exact: true });
   await expect(dialog.getByLabel("Hours on site", { exact: true })).toHaveValue("2.5");
-  await dialog.getByRole("button", { name: "Send estimate", exact: true }).click();
+  await dialog.getByRole("button", { name: "Send quote", exact: true }).click();
   await expect(dialog).toHaveCount(0);
-  await expect(page.getByText("Check your estimate and send it again.", { exact: false })).toHaveCount(0);
+  await expect(page.getByText("Check your quote and send it again.", { exact: false })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Edit", exact: true })).toBeVisible();
 });
 
@@ -107,12 +107,12 @@ test.describe("real blind estimate server action", () => {
   }
   test("verified worker saves, edits and sees only their own numbers; Back preserves the board filter", async ({ page }) => {
     await login(page); expect(await page.locator("main").innerText()).not.toMatch(/Private Street|199\.99|Someone else private/);
-    await page.getByRole("button", { name: "Estimate now", exact: true }).press("Enter"); const dialog = page.getByRole("dialog", { name: "Your estimate", exact: true });
-    await dialog.getByLabel("Hours on site", { exact: true }).fill("3.5"); await dialog.getByLabel("Materials (your cost, excl. GST)", { exact: true }).fill("85");
-    await dialog.getByRole("button", { name: "Send estimate", exact: true }).click(); await expect(dialog).toHaveCount(0); await expect(page.getByRole("button", { name: "Edit", exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Quote now", exact: true }).press("Enter"); const dialog = page.getByRole("dialog", { name: "Your quote", exact: true });
+    await dialog.getByLabel("Hours on site", { exact: true }).fill("3.5"); await dialog.getByLabel("Materials", { exact: true }).fill("85");
+    await dialog.getByRole("button", { name: "Send quote", exact: true }).click(); await expect(dialog).toHaveCount(0); await expect(page.getByRole("button", { name: "Edit", exact: true })).toBeVisible();
     expect((await db.query("SELECT minutes,materials_cents FROM estimates WHERE job_id=$1 AND worker_id=$2", [job, SECURITY_TRADIE.id])).rows[0]).toEqual({ minutes: 210, materials_cents: 8500 });
     await page.reload(); await page.getByRole("button", { name: "Edit", exact: true }).press("Enter"); await expect(dialog.getByLabel("Hours on site", { exact: true })).toHaveValue("3.5");
-    await dialog.getByLabel("Hours on site", { exact: true }).press("ArrowUp"); await dialog.getByRole("button", { name: "Send estimate", exact: true }).click(); await expect(dialog).toHaveCount(0);
+    await dialog.getByLabel("Hours on site", { exact: true }).press("ArrowUp"); await dialog.getByRole("button", { name: "Send quote", exact: true }).click(); await expect(dialog).toHaveCount(0);
     expect((await db.query("SELECT count(*)::int AS count FROM estimates WHERE job_id=$1 AND worker_id=$2", [job, SECURITY_TRADIE.id])).rows[0].count).toBe(1);
     await page.getByRole("link", { name: "Back to jobs", exact: true }).press("Enter"); await expect(page.getByRole("heading", { name: "Jobs near you", exact: true })).toBeVisible(); await expect(page).toHaveURL(/kind=estimate/);
     await page.getByRole("link", { name: "Estimate real job", exact: true }).press("Enter"); await expect(page.getByRole("heading", { name: "Estimate real job", exact: true })).toBeVisible();
@@ -121,7 +121,7 @@ test.describe("real blind estimate server action", () => {
     await login(page); await page.getByRole("button", { name: "Edit", exact: true }).click();
     await db.query("UPDATE worker_profiles SET paused_at=now() WHERE user_id=$1", [SECURITY_TRADIE.id]);
     try {
-      await page.getByRole("button", { name: "Send estimate", exact: true }).click(); await expect(page.getByText("Your account is paused. Contact the office.", { exact: true })).toBeVisible();
+      await page.getByRole("button", { name: "Send quote", exact: true }).click(); await expect(page.getByText("Your account is paused. Contact the office.", { exact: true })).toBeVisible();
       await expect(page.getByRole("dialog")).toHaveCount(0); await expect(page.getByRole("button", { name: "Edit", exact: true })).toHaveCount(0);
     } finally { await db.query("UPDATE worker_profiles SET paused_at=NULL WHERE user_id=$1", [SECURITY_TRADIE.id]); }
   });
@@ -130,7 +130,7 @@ test.describe("real blind estimate server action", () => {
     await db.query("UPDATE jobs SET status='ASSIGNED',worker_id=$2,price_cents=12000 WHERE id=$1", [job, other]);
     try {
       const response = await page.goto(`${app}/jobs/${job}`); expect(response?.status()).toBe(404);
-      expect(await page.locator("main").innerText()).not.toMatch(/Estimate real job|Private Street|Sarah|Your estimate/);
+      expect(await page.locator("main").innerText()).not.toMatch(/Estimate real job|Private Street|Sarah|Your quote/);
       expect((await page.goto(`${app}/jobs/14200000-0000-4000-8000-000000000404`))?.status()).toBe(404);
     } finally { await db.query("UPDATE jobs SET status='REVIEW',worker_id=NULL WHERE id=$1", [job]); }
   });

@@ -142,7 +142,7 @@ test.describe("/dev/components/map on the dev server", () => {
   test("long titles and suburbs are cut in the list with the whole text in a tooltip", async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 640 });
     await page.goto(url());
-    const row = page.getByRole("list", { name: /jobs in view/ }).getByRole("button", { name: /^Needs an estimate: Replace all the guttering/ });
+    const row = page.getByRole("list", { name: /jobs in view/ }).getByRole("button", { name: /^Needs a quote: Replace all the guttering/ });
     await expect(row).toHaveAttribute("title", /Replace all the guttering.*Invercargill Central Business District/);
     const box = await row.boundingBox();
     expect(box!.width).toBeLessThanOrEqual(320);

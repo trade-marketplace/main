@@ -12,12 +12,12 @@ export type OwnEstimate = NonNullable<WorkerJobView["ownEstimate"]>;
 export type EstimateResult = { status: "saved"; estimate: OwnEstimate } | { status: "invalid"; fields: Partial<Record<keyof EstimateFields, string>> }
   | { status: "ineligible"; failure: EligibilityFailure } | { status: "unavailable" };
 export const ESTIMATE_ELIGIBILITY_MESSAGES: Record<EligibilityFailure, string> = {
-  "worker-required": "Log in as a tradie to estimate this job.", "email-required": "Confirm your email to estimate this job.",
-  "identity-required": "Get verified to estimate this job.", "worker-paused": "Your account is paused. Contact the office.",
-  "own-job": "You can’t estimate your own job.", "not-open": "This job is no longer open for estimates.",
+  "worker-required": "Log in as a tradie to quote this job.", "email-required": "Confirm your email to quote this job.",
+  "identity-required": "Get verified to quote this job.", "worker-paused": "Your account is paused. Contact the office.",
+  "own-job": "You can’t quote your own job.", "not-open": "This job is no longer open for quotes.",
   "time-windows-expired": "The customer needs to add new time windows.", "trade-unavailable": "This trade is currently unavailable.",
   "trade-mismatch": "This job needs a different trade.", "licence-required": "You need a current, checked licence for this trade.",
-  "work-area-required": "Set your work area to estimate this job.", "location-unavailable": "This job’s location needs checking.",
+  "work-area-required": "Set your work area to quote this job.", "location-unavailable": "This job’s location needs checking.",
   "outside-work-area": "This job is outside your work area.",
 };
 export function estimateFields(estimate: OwnEstimate | null): EstimateFields {

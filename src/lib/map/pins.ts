@@ -50,7 +50,7 @@ export type MapJob = MapJobBase &
 /** What each kind is called, in the legend and at the start of a pin's name. */
 export const KIND_NAMES: Record<PinKind, string> = {
   claim: "Ready to claim",
-  estimate: "Needs an estimate",
+  estimate: "Needs a quote",
   visit: "Needs a site visit",
   bounty: "Bounty",
 };
@@ -88,13 +88,13 @@ export function formatCents(cents: number): string {
   return nzd.format(cents / 100);
 }
 
-/** The short text on the pin: "$259", "Estimate", "Visit", "$30 · 17h", "$30 · Expired". */
+/** The short text on the pin: "$259", "Quote", "Visit", "$30 · 17h", "$30 · Expired". */
 export function pinText(job: MapJob, remainingMs: number | null): string {
   switch (job.kind) {
     case "claim":
       return formatPinDollars(job.earnCents);
     case "estimate":
-      return "Estimate";
+      return "Quote";
     case "visit":
       return "Visit";
     case "bounty": {

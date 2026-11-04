@@ -78,8 +78,8 @@ describe("<JobTile>", () => {
   });
 
   it("words each kind of tag", () => {
-    expect(tile({ tag: { kind: "estimate" } })).toContain(">Needs estimate</span>");
-    expect(tile({ tag: { kind: "estimated" } })).toMatch(/>bolt<\/span>Estimated<\/span>/);
+    expect(tile({ tag: { kind: "estimate" } })).toContain(">Needs a quote</span>");
+    expect(tile({ tag: { kind: "estimated" } })).toMatch(/>bolt<\/span>Quoted<\/span>/);
     expect(tile({ tag: { kind: "bounty", text: "Bounty $30 · 17h" } })).toContain(">Bounty $30 · 17h</span>");
     expect(tile({ tag: undefined })).not.toContain("aria-describedby");
   });

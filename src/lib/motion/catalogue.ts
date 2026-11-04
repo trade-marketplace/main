@@ -91,7 +91,7 @@ export const MOTION: readonly MotionEntry[] = [
     name: "Bolt flash",
     what: "Signature circle pops (0.6→1.08→1, spring), the tick/bolt draws in, 8 sparks burst out 26px and fade, and a soft signature glow pulses behind. The brand’s celebration.",
     timing: "600ms",
-    where: "Posted, Paid, It’s yours, Sorted, Estimate sent. Big wins only.",
+    where: "Posted, Paid, It’s yours, Sorted, Quote sent. Big wins only.",
     uses: ["<BoltFlash>", ".tm-flash", "useCelebration()"],
   },
   {
@@ -107,7 +107,7 @@ export const MOTION: readonly MotionEntry[] = [
     name: "Drawer",
     what: "Slides in from the right, scrim fades to 50%. Out: 200ms. Focus moves to the drawer title.",
     timing: "320ms in · 200ms out",
-    where: "Estimate, extra work, filters on narrow screens",
+    where: "Quote, extra work, filters on narrow screens",
     uses: [".tm-anim-drawer", ".tm-anim-drawer-out", ".tm-anim-scrim", "usePresence()"],
   },
   {

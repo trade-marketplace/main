@@ -47,7 +47,7 @@ test.describe("office pricing preview states", () => {
       await send.focus(); await send.press("Enter");
       const confirm = page.getByRole("alertdialog", { name: "Send price to customer", exact: true }); await expect(confirm).toBeVisible();
       await expect(confirm.getByText("Fixed price (incl GST)", { exact: true })).toBeVisible();
-      for (const word of ["Margin", "Tradie earns", "Blind estimates", "Track record"]) await expect(confirm.getByText(word, { exact: true })).toHaveCount(0);
+      for (const word of ["Margin", "Tradie earns", "Blind quotes", "Track record"]) await expect(confirm.getByText(word, { exact: true })).toHaveCount(0);
       await page.keyboard.press("Escape"); await expect(confirm).not.toBeVisible(); await expect(send).toBeFocused();
       await page.getByRole("button", { name: "Needs a site visit", exact: true }).click();
       const visit = page.getByRole("dialog", { name: "Needs a site visit", exact: true }); await expect(visit).toContainText("Paid quick looks are coming soon.");

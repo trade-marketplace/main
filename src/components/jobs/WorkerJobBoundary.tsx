@@ -19,7 +19,8 @@ import { estimateFields, workerEstimateSchema, type EstimateFields, type Estimat
 import { saveWorkerEstimateAction } from "@/server/jobs/worker-estimate-actions";
 import type { WorkerJobView } from "@/server/views";
 import type { EligibilityFailure } from "@/server/workers/eligibility";
-import { WorkerEstimateFields, WorkerEstimateNotice, WorkerEstimateSummary } from "./WorkerEstimateParts";
+import { PointsChip, WorkerEstimateFields, WorkerEstimateNotice, WorkerEstimateSummary } from "./WorkerEstimateParts";
+import { QUOTE_POINTS } from "@/lib/points";
 import styles from "./worker-estimate.module.css";
 
 type Props = {
@@ -28,8 +29,9 @@ type Props = {
   photos?: { src: string; alt: string }[]; photosFailed?: boolean; preview?: string;
   save?: (id: string, input: EstimateFields) => Promise<EstimateResult | AuthFailure>;
 };
+const SENT_TOAST = { message: `Quote sent. +${QUOTE_POINTS} ${QUOTE_POINTS === 1 ? "point" : "points"}`, icon: "toll" };
 export function WorkerJobBoundary(props: Props) {
-  return <ToastProvider initial={props.preview === "sent" ? { message: "Sent.", icon: "bolt" } : undefined}><WorkerJob {...props} /></ToastProvider>;
+  return <ToastProvider initial={props.preview === "sent" ? SENT_TOAST : undefined}><WorkerJob {...props} /></ToastProvider>;
 }
 function WorkerJob({ job, details, back, failure: initialFailure, photos = [], photosFailed, preview, save = saveWorkerEstimateAction }: Props) {
   const router = useRouter(), toast = useToast(), session = useOptionalSessionExpired(), online = useOnlineStatus(), formId = useId();
@@ -62,7 +64,7 @@ function WorkerJob({ job, details, back, failure: initialFailure, photos = [], p
       const result = await save(details.id, value);
       if (session?.check(result)) return;
       if (!("status" in result)) { setError(true); return; }
-      if (result.status === "saved") { setOwn(result.estimate); setValue(estimateFields(result.estimate)); setSent(`estimate-sent:${details.id}:${Date.now()}`); setOpen(false); toast.show({ message: "Sent.", icon: "bolt" }); router.refresh(); }
+      if (result.status === "saved") { setOwn(result.estimate); setValue(estimateFields(result.estimate)); setSent(`estimate-sent:${details.id}:${Date.now()}`); setOpen(false); toast.show(SENT_TOAST); router.refresh(); }
       else if (result.status === "invalid") { setFields(result.fields); setError(Object.keys(result.fields).length === 0); form.current?.querySelector<HTMLElement>(`[name="${Object.keys(result.fields)[0]}"]`)?.focus(); }
       else if (result.status === "ineligible") { setFailure(result.failure); setOpen(false); }
       else setError(true);
@@ -77,16 +79,19 @@ function WorkerJob({ job, details, back, failure: initialFailure, photos = [], p
       <h1 className={styles.title}>{job.title}</h1>
       {details && <p className={styles.description}>{details.description}</p>}
       <div className={styles.person}>{details && <span className={styles.avatar} aria-hidden="true">{details.customerFirstName.charAt(0)}</span>}<div>{details && <b>{details.customerFirstName}</b>}<p>{job.suburb}, {job.city}{details?.asap ? " · wanted ASAP" : ""}</p></div></div>
-    </div>{details && (estimateOpen || own || failure) && <aside className={styles.card} aria-label="Your estimate">
+    </div>{details && (estimateOpen || own || failure) && <aside className={styles.card} aria-label={own ? "Your quote" : "Quote this job"}>
       <OfflineBanner online={preview === "offline" ? false : undefined} sticky={false} />
       {failure ? <WorkerEstimateNotice failure={failure} /> : null}
       {sent && <BoltFlash eventId={sent} mark="bolt" size={44} />}
+      {(own || (!failure && estimateOpen)) && <div className={styles.cardHead}>
+        <h2 className={styles.cardTitle}>{own ? "Your quote" : "Quote this job"}</h2><PointsChip earned={Boolean(own)} />
+      </div>}
       {own ? <WorkerEstimateSummary own={own} canEdit={estimateOpen && !failure} />
-      : !failure && estimateOpen ? <p className={styles.small}>{details.estimateCount} {details.estimateCount === 1 ? "estimate" : "estimates"} already sent</p> : null}
-      {!failure && estimateOpen && <Button variant={own ? "secondary" : "hero"} icon={own ? undefined : "edit_square"} onClick={() => setOpen(true)} width="full">{own ? "Edit" : "Estimate now"}</Button>}
+      : !failure && estimateOpen ? <p className={styles.small}>{details.estimateCount === 0 ? "No quotes yet" : `${details.estimateCount} ${details.estimateCount === 1 ? "quote" : "quotes"} in`}</p> : null}
+      {own && <Button href={back} icon="arrow_forward" width="full">Next job</Button>}
+      {!failure && estimateOpen && <Button variant={own ? "secondary" : "hero"} icon={own ? undefined : "bolt"} onClick={() => setOpen(true)} width="full">{own ? "Edit" : "Quote now"}</Button>}
     </aside>}</div>
-    {details && <Drawer open={open} onClose={() => setOpen(false)} dismissible={!saving} title="Your estimate" eyebrow={`${job.title} · TM-${details.jobNumber}`} footer={<><Button variant="secondary" onClick={() => setOpen(false)} disabled={saving}>Cancel</Button><Button type="submit" form={formId} loading={saving} disabled={offline || Boolean(failure)}>Send estimate</Button></>}>
-      <Banner tone="brand" icon="visibility_off" title="Private.">Nobody else sees your numbers. Price it like you’d do it.</Banner>
+    {details && <Drawer open={open} onClose={() => setOpen(false)} dismissible={!saving} title="Your quote" eyebrow={`${job.title} · TM-${details.jobNumber}`} footer={<><Button variant="secondary" onClick={() => setOpen(false)} disabled={saving}>Cancel</Button><Button type="submit" form={formId} loading={saving} disabled={offline || Boolean(failure)}>Send quote<span className={styles.sendPoints} aria-hidden="true">+{QUOTE_POINTS}</span></Button></>}>
       <OfflineBanner online={preview === "offline" ? false : undefined} sticky={false} />
       {error && <Banner tone="alert" title="Couldn’t save." live />}
       <form id={formId} ref={form} onSubmit={event => void submit(event)} className={styles.form} noValidate>

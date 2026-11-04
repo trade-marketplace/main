@@ -157,9 +157,9 @@ Copy: use the wording in the mockup and this spec. Don't add or remove text on y
 | M07 | Headline reveal | Hero headline lines rise 16px + fade, 70ms apart. Then sub-copy, then search bar. Runs once per visit. | 500ms · ease-out | Landing, For tradies hero |
 | M08 | Search suggestions | Dropdown fades in and scales .98→1 from the top edge. Results update as you type (debounce 150ms). | 160ms | Hero search, header search, address field |
 | M09 | Price reveal | Forest price block wipes in left→right (300ms), the number counts up from $0 (700ms, ease-out), then reassurance ticks appear one by one (60ms apart). Once per job. | ~1.1s total | Job · price ready (customer); Earn (tradie) |
-| M10 | Bolt flash | Signature circle pops (0.6→1.08→1, spring), the tick/bolt draws in, 8 sparks burst out 26px and fade, and a soft signature glow pulses behind. The brand’s celebration. | 600ms | Posted, Paid, It’s yours, Sorted, Estimate sent. Big wins only. |
+| M10 | Bolt flash | Signature circle pops (0.6→1.08→1, spring), the tick/bolt draws in, 8 sparks burst out 26px and fade, and a soft signature glow pulses behind. The brand’s celebration. | 600ms | Posted, Paid, It’s yours, Sorted, Quote sent. Big wins only. |
 | M11 | Tracker progress | Line fills down to the next step (400ms), then the new dot pops (200ms) and its label fades in. | 600ms | Job trackers when status changes |
-| M12 | Drawer | Slides in from the right, scrim fades to 50%. Out: 200ms. Focus moves to the drawer title. | 320ms in · 200ms out | Estimate, extra work, filters on narrow screens |
+| M12 | Drawer | Slides in from the right, scrim fades to 50%. Out: 200ms. Focus moves to the drawer title. | 320ms in · 200ms out | Quote, extra work, filters on narrow screens |
 | M13 | Dialog | Fades in and scales .96→1 from slightly below centre; scrim fades. Out: 150ms. | 200ms | Confirms, sign-up gate, decline, claim |
 | M14 | Toast | Rises 12px + fades in at bottom right; a signature hairline shrinks to show time left (4s). Pauses on hover/focus. | 200ms in · 4s · 200ms out | Saved, sent, copied, undo |
 | M15 | Skeleton → content | Skeletons shimmer (1.2s loop) after a 300ms delay; real content cross-fades in. | 150ms cross-fade | Any data list or card |

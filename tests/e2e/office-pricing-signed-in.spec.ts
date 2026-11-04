@@ -71,10 +71,10 @@ test.describe("office pricing through signed-in routes, SDK Storage and PostgreS
     await row.getByRole("link", { name: "Price it", exact: true }).click();
     await expect(page).toHaveURL(priceUrl(jobs[0])); await expect(page.getByRole("heading", { name: "Set the price", exact: true })).toBeVisible();
     const image = page.locator('ul[aria-label="Photos"] img').first(); await expect.poll(() => image.evaluate(node => (node as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
-    await expect(page.getByRole("table", { name: "Blind estimates", exact: true })).toContainText("Jack F");
+    await expect(page.getByRole("table", { name: "Blind quotes", exact: true })).toContainText("Jack F");
     await page.getByRole("button", { name: "Send price to customer", exact: true }).click();
     const confirm = page.getByRole("alertdialog", { name: "Send price to customer", exact: true }); await expect(confirm).toContainText("$141.23");
-    for (const label of ["Margin", "Tradie earns", "Blind estimates"]) await expect(confirm.getByText(label, { exact: true })).toHaveCount(0);
+    for (const label of ["Margin", "Tradie earns", "Blind quotes"]) await expect(confirm.getByText(label, { exact: true })).toHaveCount(0);
     await confirm.getByRole("button", { name: "Not now", exact: true }).click();
     expect((await db.query("SELECT status FROM jobs WHERE id=$1", [jobs[0]])).rows[0].status).toBe("REVIEW");
     expect((await db.query("SELECT count(*) FROM job_pricing WHERE job_id=$1", [jobs[0]])).rows[0].count).toBe("0");

@@ -34,3 +34,22 @@
 .stepper > div > p { grid-column: 1 / -1; grid-row: 3; }
 .stepper > span:first-child { grid-column: 1; grid-row: 2; }
 .stepper > span:last-child { grid-column: 3; grid-row: 2; }
+
+/* Quote card: title with the gold point, the worker's numbers, one action, then straight on to the next job. */
+.cardHead { display: flex; align-items: center; justify-content: space-between; gap: var(--trade-space-3); }
+.cardTitle { margin: 0; font-family: var(--trade-font-heading); font-size: var(--trade-fs-heading); font-weight: 900; font-variation-settings: var(--trade-display-axes); line-height: var(--trade-lh-title); }
+.points { display: inline-flex; align-items: center; gap: var(--trade-space-1); flex: none; padding: var(--trade-space-1) var(--trade-space-3) var(--trade-space-1) var(--trade-space-2); border-radius: var(--trade-radius-pill); background: var(--trade-gold); color: var(--trade-forest); font-weight: 800; font-size: var(--trade-fs-body); line-height: 1; }
+.points[data-earned] { background: color-mix(in srgb, var(--trade-gold) 30%, var(--trade-surface)); }
+.quoteValue { display: flex; flex-wrap: wrap; gap: var(--trade-space-2) var(--trade-space-5); color: var(--trade-text-2); }
+.quoteValue b { color: var(--trade-text); font-size: var(--trade-fs-heading); font-weight: 800; }
+.sendPoints { display: inline-flex; align-items: center; margin-left: var(--trade-space-2); padding: 2px var(--trade-space-2); border-radius: var(--trade-radius-pill); background: var(--trade-gold); color: var(--trade-forest); font-size: var(--trade-fs-small); font-weight: 800; line-height: 1.2; }
+
+/* Drawer: each answer is one block — the control, then quick picks under it. */
+.block { display: grid; gap: var(--trade-space-3); }
+.picks { margin: 0; }
+/* Quick picks share one even row at every width, so nothing wraps into an orphan chip at 320. */
+.picks > div:first-of-type { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: var(--trade-space-2); }
+.picks label { justify-content: stretch; }
+.picks label > span:last-child { width: 100%; justify-content: center; padding-inline: 0; white-space: nowrap; }
+.stepper input { min-height: 64px; font-size: var(--trade-fs-title); }
+.stepper > span > button { width: 56px; height: 56px; }
