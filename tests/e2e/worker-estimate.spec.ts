@@ -31,7 +31,7 @@ for (const width of [320, 390, 768, 1024, 1440]) test(`estimate states at ${widt
     if (state === "sent") await expect(page.getByText("Sent.", { exact: true })).toBeVisible();
     if (state === "photo-error") await expect(page.getByText("Couldn’t load photos.", { exact: true })).toBeVisible();
     if (state === "invalid") await expect(page.getByLabel("Hours on site", { exact: true })).toHaveAttribute("aria-invalid", "true");
-    if (state === "edited") await expect(page.getByText("Job updated", { exact: true })).toBeVisible();
+    if (state === "edited") { await expect(page.getByText("Job updated", { exact: true })).toBeVisible(); await expect(page.getByText("Check your estimate and send it again.", { exact: false })).toBeVisible(); }
     if (state === "priced") await expect(page.getByRole("button", { name: "Edit", exact: true })).toHaveCount(0);
     if (state === "empty") await expect(page.getByText("No photos yet", { exact: true })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true); await expectNoA11yViolations(page);
@@ -58,6 +58,27 @@ test("estimate drawer keeps unsent values, uses keyboard half-hours and returns 
   await dialog.press("Escape"); await expect(dialog).toHaveCount(0); await expect(page.getByRole("button", { name: "Edit", exact: true })).toBeFocused();
   await page.getByRole("link", { name: "Back to jobs", exact: true }).press("Enter");
   await expect(page.getByRole("heading", { name: "Jobs near you", exact: true })).toBeVisible(); await expect(page).toHaveURL(/kind=estimate/);
+});
+
+test("an edited job asks the worker to check and resend, then clears the stale guidance", async ({ page }) => {
+  test.setTimeout(120_000);
+  for (const width of [320, 390, 768, 1024, 1440]) for (const state of ["edited", "estimate-gallery"]) {
+    await page.setViewportSize({ width, height: 1000 });
+    expect((await page.goto(`${preview}/dev/components/worker-estimate?state=${state}`))?.status()).toBe(200);
+    await expect(page.getByText("Check your estimate and send it again.", { exact: false })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await expectNoA11yViolations(page);
+    if (process.env.ESTIMATE_SCREENSHOTS_DIR && [390, 1440].includes(width)) await page.screenshot({ path: `${process.env.ESTIMATE_SCREENSHOTS_DIR}/${state}-${width}.png`, fullPage: true });
+  }
+  await page.goto(`${preview}/dev/components/worker-estimate?state=edited`);
+  await expect(page.getByText("Check your estimate and send it again.", { exact: false })).toBeVisible();
+  await page.getByRole("button", { name: "Edit", exact: true }).press("Enter");
+  const dialog = page.getByRole("dialog", { name: "Your estimate", exact: true });
+  await expect(dialog.getByLabel("Hours on site", { exact: true })).toHaveValue("2.5");
+  await dialog.getByRole("button", { name: "Send estimate", exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(page.getByText("Check your estimate and send it again.", { exact: false })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Edit", exact: true })).toBeVisible();
 });
 
 test.describe("real blind estimate server action", () => {

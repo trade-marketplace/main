@@ -8,8 +8,8 @@ import type { EligibilityFailure } from "@/server/workers/eligibility";
 import styles from "./worker-estimate.module.css";
 
 export function WorkerEstimateNotice({ failure }: { failure: EligibilityFailure }) { return <Banner tone="alert">{ESTIMATE_ELIGIBILITY_MESSAGES[failure]}</Banner>; }
-export function WorkerEstimateSummary({ own }: { own: OwnEstimate }) {
-  return <><p className={styles.estimate}>Your estimate: <b>{own.minutes / 60} h · {new Intl.NumberFormat("en-NZ", { style: "currency", currency: "NZD", maximumFractionDigits: 2 }).format(own.materialsCents / 100)}</b></p>{own.madeBeforeEdit && <Banner tone="info" title="Job updated" />}</>;
+export function WorkerEstimateSummary({ own, canEdit = true }: { own: OwnEstimate; canEdit?: boolean }) {
+  return <><p className={styles.estimate}>Your estimate: <b>{own.minutes / 60} h · {new Intl.NumberFormat("en-NZ", { style: "currency", currency: "NZD", maximumFractionDigits: 2 }).format(own.materialsCents / 100)}</b></p>{own.madeBeforeEdit && <Banner tone="info" title="Job updated">{canEdit ? "Check your estimate and send it again." : undefined}</Banner>}</>;
 }
 export type EstimateControls = { value: EstimateFields; fields: Partial<Record<keyof EstimateFields, string>>; saving?: boolean;
   change: <K extends keyof EstimateFields>(key: K, next: EstimateFields[K]) => void; step: (delta: number) => void };

@@ -81,7 +81,7 @@ function WorkerJob({ job, details, back, failure: initialFailure, photos = [], p
       <OfflineBanner online={preview === "offline" ? false : undefined} sticky={false} />
       {failure ? <WorkerEstimateNotice failure={failure} /> : null}
       {sent && <BoltFlash eventId={sent} mark="bolt" size={44} />}
-      {own ? <WorkerEstimateSummary own={own} />
+      {own ? <WorkerEstimateSummary own={own} canEdit={estimateOpen && !failure} />
       : !failure && estimateOpen ? <p className={styles.small}>{details.estimateCount} {details.estimateCount === 1 ? "estimate" : "estimates"} already sent</p> : null}
       {!failure && estimateOpen && <Button variant={own ? "secondary" : "hero"} icon={own ? undefined : "edit_square"} onClick={() => setOpen(true)} width="full">{own ? "Edit" : "Estimate now"}</Button>}
     </aside>}</div>
