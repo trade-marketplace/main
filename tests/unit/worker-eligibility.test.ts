@@ -14,7 +14,7 @@ function worker(): EligibilityWorker {
 }
 function job(overrides: Partial<EligibilityJob> = {}): EligibilityJob {
   const pin = approximatePin(CENTRE, () => 0.5);
-  return { id: "job", customerId: "customer", workerId: null, status: "BOOKABLE", category: "ELECTRICAL", lat: CENTRE.lat, lng: CENTRE.lng, approxLat: pin.lat, approxLng: pin.lng, ...overrides };
+  return { id: "job", customerId: "customer", workerId: null, status: "BOOKABLE", category: "ELECTRICAL", lat: CENTRE.lat, lng: CENTRE.lng, approxLat: pin.lat, approxLng: pin.lng, anyTime: false, timeWindows: [], ...overrides };
 }
 const context = { now: NOW };
 
@@ -39,6 +39,30 @@ describe("shared worker eligibility", () => {
     }
     for (const status of ["PRICED", "ASSIGNED", "SUBMITTED", "COMPLETED", "CANCEL_REVIEW", "CANCELLED"] as const) {
       expect(eligibleJobsFor(person, [job({ status })], context)).toEqual([]);
+    }
+  });
+  it("stops offering BOOKABLE jobs at Auckland midnight when all dated windows have passed", () => {
+    const person = worker(), candidate = job({ timeWindows: [{ date: new Date("2026-11-03") }] });
+    const before = { now: new Date("2026-11-03T10:59:59Z") }, after = { now: new Date("2026-11-03T11:00:00Z") };
+    expect(eligibleJobsFor(person, [candidate], before)).toEqual([candidate.id]);
+    expect(canClaim(person, candidate, before)).toBe(true);
+    expect(eligibleJobsFor(person, [candidate], after)).toEqual([]);
+    expect(eligibilityFailure(person, candidate, "claim", after)).toBe("time-windows-expired");
+    for (const status of ["REVIEW", "QUOTE_BOUNTY"] as const) {
+      expect(canEstimate(person, { ...candidate, status }, after)).toBe(true);
+      expect(eligibleJobsFor(person, [{ ...candidate, status }], after)).toEqual([candidate.id]);
+    }
+  });
+  it("keeps same-day windows valid all day, Any time flexible and empty legacy schedules eligible", () => {
+    const person = worker(), now = new Date("2026-11-03T07:00:00Z"); // Auckland20:00; no day-part cutoff.
+    for (const schedule of [
+      { anyTime: false, timeWindows: [{ date: new Date("2026-11-03") }] },
+      { anyTime: true, timeWindows: [{ date: new Date("2026-11-02") }] },
+      { anyTime: false, timeWindows: [] },
+      { anyTime: false, timeWindows: [{ date: new Date("2026-11-02") }, { date: new Date("2026-11-04") }] },
+    ]) {
+      expect(canClaim(person, job(schedule), { now })).toBe(true);
+      expect(eligibleJobsFor(person, [job(schedule)], { now })).toEqual(["job"]);
     }
   });
 

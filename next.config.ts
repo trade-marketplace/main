@@ -17,6 +17,8 @@ const nextConfig: NextConfig = {
   // Next's invocation logger prints action arguments, including bank/IRD numbers and current passwords.
   // Keep request diagnostics, but never let the framework write private form values to the terminal.
   logging: { serverFunctions: false },
+  // The pure G05 renderer reads this immutable file when the actual creation transaction freezes its message.
+  outputFileTracingIncludes: { "/*": ["./src/styles/tokens.css", "./public/firebase-messaging-worker.js"] },
 };
 
 export default nextConfig;

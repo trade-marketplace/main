@@ -10,10 +10,11 @@ import { afterBoardCursor, BOARD_PAGE_SIZE, BOARD_TRADES, boardAvailabilityWindo
 import { canViewJobFiles } from "@/server/files/access";
 import { createSupabaseFileStore, PHOTO_BUCKET, SIGNED_URL_SECONDS } from "@/server/files/storage";
 import { JOB_DETAIL_SELECT, JOB_LIST_SELECT, workerJobListView, workerJobView, type JobViewer, type WorkerJobView } from "@/server/views";
-import { eligibleJobsFor, workerWorkArea, WORKER_ELIGIBILITY_SELECT, type EligibilityWorker } from "@/server/workers/eligibility";
+import { eligibleJobsFor, JOB_ELIGIBILITY_SELECT, workerWorkArea, WORKER_ELIGIBILITY_SELECT, type EligibilityWorker } from "@/server/workers/eligibility";
 import { hasCurrentTradeLicence, workerBasicProofFailure } from "@/server/workers/verification";
 
 const SCAN_PAGE_SIZE = 100;
+const BOARD_CANDIDATE_SELECT = { ...JOB_LIST_SELECT, ...JOB_ELIGIBILITY_SELECT } satisfies Prisma.JobSelect;
 type Candidate = SortableBoardJob & { view: NonNullable<ReturnType<typeof workerJobListView>> };
 export type BoardDependencies = { now?: () => Date; signPhoto?: (viewer: JobViewer, jobId: string, photoId: string) => Promise<string | null> };
 const zeroCounts = (): BoardCounts => ({ all: 0, ready: 0, estimate: 0, bounty: 0, saved: 0, estimated: 0 });
@@ -54,7 +55,7 @@ async function candidatesFor(db: PrismaClient, viewer: JobViewer, worker: Eligib
   for (;;) {
     const rows = await db.job.findMany({ where: { status: { in: ["REVIEW", "QUOTE_BOUNTY", "BOOKABLE"] }, workerId: null, customerId: { not: viewer.userId }, category: { in: allowed },
       updatedAt: { lte: before, ...(since ? { gt: since } : {}) }, approxLat: { gte: centre.lat - latitudeSpan, lte: centre.lat + latitudeSpan }, approxLng: { gte: centre.lng - longitudeSpan, lte: centre.lng + longitudeSpan },
-      ...(after ? { id: { gt: after } } : {}), ...whereWhen(query, now) }, select: JOB_LIST_SELECT, orderBy: { id: "asc" }, take: SCAN_PAGE_SIZE });
+      ...(after ? { id: { gt: after } } : {}), ...whereWhen(query, now) }, select: BOARD_CANDIDATE_SELECT, orderBy: { id: "asc" }, take: SCAN_PAGE_SIZE });
     if (!rows.length) break;
     const ids = new Set(eligibleJobsFor(worker, rows, { now, enabledTrades: enabled }));
     const own = ids.size ? await db.estimate.findMany({ where: { workerId: viewer.userId, jobId: { in: [...ids] } }, select: { jobId: true } }) : [];

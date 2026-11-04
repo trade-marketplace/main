@@ -13,6 +13,8 @@ import { draftPhotoCleanup, draftPhotoRawCleanup } from "@/server/jobs/photo-cle
 import { licenceExpiryReminder } from "./licence-reminders";
 import { supportPhotoCleanup } from "@/server/messages/photo-cleanup";
 import { windowExpiry } from "./window-expiry";
+import { postConfirmationEmail } from "@/server/notifications/post-confirmation";
+import { priceReadyPush } from "@/server/notifications/price-push";
 
 // The time-based rules (#99). Each one is a small function that finds the jobs that are due, oldest first, and does
 // its one thing to each, in that job's own transaction. They are safe to run twice, at once, or a day late:
@@ -26,6 +28,8 @@ export type SchedulerContext = {
   now: Date;
   /** The most jobs one rule handles in one run. */
   limit: number;
+  /** Physical invocation budget, independent of the injected business clock. */
+  deadlineAt?: Date;
 };
 
 export type RuleResult = {
@@ -251,4 +255,4 @@ export const reviewReminder: SchedulerRule = {
 };
 
 /** In the order they run. Money-relevant (sign-off) first. */
-export const SCHEDULER_RULES: readonly SchedulerRule[] = [autoSignOff, bountyExpiry, priceSlowBanner, unclaimedAlert, reviewReminder, licenceExpiryReminder, licenceUploadCleanup(), licenceDocumentCleanup(), supportPhotoCleanup(), draftPhotoRawCleanup(), draftPhotoCleanup(), windowExpiry, variationPhotoCleanup(), variationStageCleanup()];
+export const SCHEDULER_RULES: readonly SchedulerRule[] = [autoSignOff, bountyExpiry, priceSlowBanner, unclaimedAlert, reviewReminder, licenceExpiryReminder, licenceUploadCleanup(), licenceDocumentCleanup(), supportPhotoCleanup(), draftPhotoRawCleanup(), draftPhotoCleanup(), windowExpiry, variationPhotoCleanup(), variationStageCleanup(), postConfirmationEmail, priceReadyPush];

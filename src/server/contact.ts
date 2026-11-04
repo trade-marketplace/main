@@ -17,7 +17,7 @@ import { contactErrorField, contactInput, contactTopicLabel, type ContactInput, 
 export const CONTACT_SENDER = "Trade Marketplace <hello@trademarketplace.nz>";
 const RESEND_URL = "https://api.resend.com/emails";
 
-export type ContactEmail = { from: string; to: string; replyTo: string; subject: string; text: string };
+export type ContactEmail = { from: string; to: string; replyTo: string; subject: string; text: string; html?: string };
 /** Delivers one email. Resolves true only when the provider accepted it. */
 export type ContactMailer = (email: ContactEmail, idempotencyKey: string) => Promise<boolean>;
 
@@ -43,7 +43,7 @@ export function resendMailer(env: Record<string, string | undefined> = process.e
     const response = await fetcher(RESEND_URL, {
       method: "POST",
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
-      body: JSON.stringify({ from: email.from, to: [email.to], reply_to: email.replyTo, subject: email.subject, text: email.text }),
+      body: JSON.stringify({ from: email.from, to: [email.to], reply_to: email.replyTo, subject: email.subject, text: email.text, ...(email.html !== undefined ? { html: email.html } : {}) }),
       signal: AbortSignal.timeout(10_000),
     });
     return response.ok;

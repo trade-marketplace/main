@@ -23,7 +23,7 @@ import { WorkerSignupFields } from "./WorkerSignupFields";
 import { detailsHref, SignupRoleChoices, type SignupRole } from "./SignupChoice";
 import styles from "./auth.module.css";
 
-export type CustomerSignupProps = { next?: string; initialState?: SignUpState; previewPending?: boolean; previewOffline?: boolean };
+export type CustomerSignupProps = { next?: string; initialState?: SignUpState; previewPending?: boolean; previewOffline?: boolean; embedded?: boolean };
 
 export function CustomerSignup(props: CustomerSignupProps) {
   return <SignupDetails {...props} role="customer" />;
@@ -31,7 +31,7 @@ export function CustomerSignup(props: CustomerSignupProps) {
 
 export type SignupDetailsProps = CustomerSignupProps & { role: SignupRole; initialTradeStep?: boolean; previewAreaState?: "loading" | "unavailable"; previewAreaSuggestions?: SignupAreaSuggestion[] };
 
-export function SignupDetails({ role, next, initialState = null, previewPending = false, previewOffline = false, initialTradeStep = false, previewAreaState, previewAreaSuggestions }: SignupDetailsProps) {
+export function SignupDetails({ role, next, initialState = null, previewPending = false, previewOffline = false, initialTradeStep = false, previewAreaState, previewAreaSuggestions, embedded = false }: SignupDetailsProps) {
   const isTradie = role === "tradie";
   const [tradeStep, setTradeStep] = useState(initialTradeStep);
   const [stepErrors, setStepErrors] = useState<Partial<Record<SignUpField, string>>>({});
@@ -81,16 +81,10 @@ export function SignupDetails({ role, next, initialState = null, previewPending 
 
   const success = attempt.result?.ok && attempt.result.status === "check-email" ? attempt.result : null;
 
-  return (
-    <div data-mode={isTradie ? "trade" : "customer"} className={`${styles.modeSwap}${isTradie ? " tm-anim-rise" : ""}`}>
-      <AuthLayout title={isTradie && tradeStep ? "Your trade" : "Create account"} wideTitle art={isTradie ? "phone" : "mail"} detailsStep backHref={signupLink("/signup", next)}
-        onBack={isTradie && tradeStep ? () => setTradeStep(false) : undefined}
-        stepLabel={isTradie ? `Step ${tradeStep ? 3 : 2} of 3` : "Step 2 of 2"} eyebrow={isTradie && tradeStep ? "Step 2 of 2" : undefined}
-        brandTitle={isTradie ? "You do the work. We find the jobs." : undefined} brandText={isTradie ? "Browse local jobs and choose your work area." : undefined}
-        aside={<>Already have an account? <Link href={login}>Log in</Link></>}>
-        <div className={styles.detailsProgress} role="progressbar" aria-label="Sign-up progress" aria-valuemin={0} aria-valuemax={isTradie ? 3 : 2} aria-valuenow={isTradie && tradeStep ? 3 : 2} aria-valuetext={isTradie ? `Step ${tradeStep ? 3 : 2} of 3` : "Step 2 of 2"}>
+  const content = <>
+        {!embedded && <div className={styles.detailsProgress} role="progressbar" aria-label="Sign-up progress" aria-valuemin={0} aria-valuemax={isTradie ? 3 : 2} aria-valuenow={isTradie && tradeStep ? 3 : 2} aria-valuetext={isTradie ? `Step ${tradeStep ? 3 : 2} of 3` : "Step 2 of 2"}>
           {Array.from({ length: isTradie ? 3 : 2 }, (_, index) => <span key={index} data-active={index < (isTradie && tradeStep ? 3 : 2) || undefined} />)}
-        </div>
+        </div>}
         {success ? (
           <div className={styles.form}>
             <Banner tone="good" title="Confirm your email" live>Check {success.email} for your confirmation link. You can log in now; confirm your email before {isTradie ? "taking" : "posting"} a job.</Banner>
@@ -121,7 +115,7 @@ export function SignupDetails({ role, next, initialState = null, previewPending 
             if (!Object.keys(invalid).length) setTradeStep(true);
             else formRef.current?.querySelector<HTMLInputElement>(`input[name="${invalid.firstName ? "name" : invalid.email ? "email" : invalid.phone ? "phone" : "password"}"]`)?.focus();
           }}>
-            {!tradeStep && <div className={styles.desktopChoices}><SignupRoleChoices role={role} name="signupRole" onChange={(choice) => { if (choice !== role) router.push(detailsHref(choice, next)); }} /></div>}
+            {!embedded && !tradeStep && <div className={styles.desktopChoices}><SignupRoleChoices role={role} name="signupRole" onChange={(choice) => { if (choice !== role) router.push(detailsHref(choice, next)); }} /></div>}
             {!online && <Banner tone="alert" title="You’re offline." live>Your details are kept here. Connect to the internet to create your account.</Banner>}
             {problem?.error === "unavailable" && <Banner tone="alert" title="We can’t create your account right now." live>Your details are kept. Please try again.</Banner>}
             {problem?.error === "try-later" && <Banner tone="alert" title={problem.retryAfter ? "Too many tries." : "Please try again shortly."} live>{problem.retryAfter ? `${tryAgainText(problem.retryAfter)} Your details are kept.` : "Sign-up is busy right now. Your details are kept."}</Banner>}
@@ -129,17 +123,17 @@ export function SignupDetails({ role, next, initialState = null, previewPending 
             <input type="hidden" name="role" value={isTradie ? "TRADIE" : "CUSTOMER"} />
             {next && <input type="hidden" name="next" value={next} />}
             <div className={styles.accountFields} hidden={isTradie && tradeStep}>
-            <TextField name="name" label="Full name" placeholder="Full name" variant="underline" icon="person" autoComplete="name" required maxLength={161}
-              className={styles.quietLabel} value={name} onChange={(event) => setName(event.target.value)} error={errors.firstName || errors.lastName} />
-            <TextField name="email" label="Email" placeholder="Email" type="email" variant="underline" icon="mail" autoComplete="email" inputMode="email" spellCheck={false} required maxLength={254}
-              className={styles.quietLabel} value={email} onChange={(event) => setEmail(event.target.value)}
+            <TextField name="name" label="Full name" placeholder="Full name" variant={embedded ? "box" : "underline"} icon="person" autoComplete="name" required maxLength={161}
+              className={embedded ? undefined : styles.quietLabel} value={name} onChange={(event) => setName(event.target.value)} error={errors.firstName || errors.lastName} />
+            <TextField name="email" label="Email" placeholder="Email" type="email" variant={embedded ? "box" : "underline"} icon="mail" autoComplete="email" inputMode="email" spellCheck={false} required maxLength={254}
+              className={embedded ? undefined : styles.quietLabel} value={email} onChange={(event) => setEmail(event.target.value)}
               aria-describedby={problem?.error === "email-taken" ? "signup-email-options" : undefined}
               error={problem?.error === "email-taken" ? "That email is already in use." : errors.email} />
             {problem?.error === "email-taken" && <p id="signup-email-options" className={styles.passwordHint}><Link href={login}>Log in instead?</Link> Or <Link href={signupLink("/recovery", next)}>reset your password</Link>.</p>}
-            <TextField name="phone" label="Mobile" placeholder="Mobile" type="tel" variant="underline" icon="call" autoComplete="tel" inputMode="tel" required maxLength={24}
-              className={styles.quietLabel} value={phone} onChange={(event) => setPhone(event.target.value)} error={errors.phone} />
+            <TextField name="phone" label="Mobile" placeholder="Mobile" type="tel" variant={embedded ? "box" : "underline"} icon="call" autoComplete="tel" inputMode="tel" required maxLength={24}
+              className={embedded ? undefined : styles.quietLabel} value={phone} onChange={(event) => setPhone(event.target.value)} error={errors.phone} />
             <div className={styles.passwordGroup}>
-              <PasswordField name="password" label="Password" placeholder="Password" autoComplete="new-password" required className={styles.quietLabel}
+              <PasswordField name="password" label="Password" placeholder="Password" variant={embedded ? "box" : "underline"} autoComplete="new-password" required className={embedded ? undefined : styles.quietLabel}
                 value={password} onChange={(event) => setPassword(event.target.value)} error={errors.password} aria-describedby="signup-password-hint" />
               <div className={styles.strength} role="meter" aria-label="Password strength" aria-valuemin={0} aria-valuemax={4} aria-valuenow={strength.segments} aria-valuetext={strength.hint}>
                 {[0, 1, 2, 3].map((segment) => <span key={segment} data-active={segment < strength.segments || undefined} />)}
@@ -154,10 +148,15 @@ export function SignupDetails({ role, next, initialState = null, previewPending 
             </div>
             <Button type="submit" width="full" loading={pending} disabled={!online || (!isTradie || tradeStep) && !terms} className={styles.submit}>{isTradie ? tradeStep ? "Finish sign-up" : "Next" : "Create account"}</Button>
             {isTradie && tradeStep && <Button type="button" variant="tertiary" width="full" onClick={() => setTradeStep(false)}>Back to your details</Button>}
-            <p className={styles.phoneOnly}>Already have an account? <Link href={login}>Log in</Link></p>
+            {!embedded && <p className={styles.phoneOnly}>Already have an account? <Link href={login}>Log in</Link></p>}
           </form>
         )}
-      </AuthLayout>
-    </div>
-  );
+    </>;
+  return <div data-mode={isTradie ? "trade" : "customer"} className={`${styles.modeSwap}${isTradie ? " tm-anim-rise" : ""}`}>
+    {embedded ? content : <AuthLayout title={isTradie && tradeStep ? "Your trade" : "Create account"} wideTitle art={isTradie ? "phone" : "mail"} detailsStep backHref={signupLink("/signup", next)}
+      onBack={isTradie && tradeStep ? () => setTradeStep(false) : undefined}
+      stepLabel={isTradie ? `Step ${tradeStep ? 3 : 2} of 3` : "Step 2 of 2"} eyebrow={isTradie && tradeStep ? "Step 2 of 2" : undefined}
+      brandTitle={isTradie ? "You do the work. We find the jobs." : undefined} brandText={isTradie ? "Browse local jobs and choose your work area." : undefined}
+      aside={<>Already have an account? <Link href={login}>Log in</Link></>}>{content}</AuthLayout>}
+  </div>;
 }

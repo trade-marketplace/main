@@ -88,6 +88,16 @@ describe("Resend mailer", () => {
     const mailer = resendMailer({ RESEND_API_KEY: "re_test" }, (async () => new Response("no", { status: 422 })) as unknown as typeof fetch)!;
     expect(await mailer(contactEmail(contactInput.parse(valid), "o@e.test"), "k")).toBe(false);
   });
+  it("sends frozen HTML alongside plain text without changing existing contact delivery", async () => {
+    const fetcher = vi.fn(async () => new Response("{}", { status: 202 }));
+    const mailer = resendMailer({ RESEND_API_KEY: "re_test" }, fetcher as unknown as typeof fetch)!;
+    const email = { ...contactEmail(contactInput.parse(valid), "office@example.test"), html: "<p>Frozen email</p>" };
+    expect(await mailer(email, "posted:test:EMAIL")).toBe(true);
+    const [, init] = fetcher.mock.calls[0] as unknown as [string, RequestInit];
+    expect(JSON.parse(String(init.body))).toEqual({ from: email.from, to: [email.to], reply_to: email.replyTo, subject: email.subject, text: email.text, html: email.html });
+    expect(init.headers).toMatchObject({ "Idempotency-Key": "posted:test:EMAIL" });
+    expect(init.signal).toBeInstanceOf(AbortSignal);
+  });
 });
 
 describe("Contact page", () => {

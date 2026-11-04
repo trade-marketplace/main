@@ -3,7 +3,7 @@ import { BOARD_TRADES, DEFAULT_BOARD_QUERY, type BoardCard, type BoardPage } fro
 import { tradeLabel } from "@/lib/account/trades";
 import { haversineKm } from "@/lib/geo/distance";
 import { workerJobListView, type JobSummarySource } from "@/server/views/jobs";
-import { eligibleJobsFor } from "@/server/workers/eligibility";
+import { eligibleJobsFor, type EligibilityJob } from "@/server/workers/eligibility";
 import { eligibilityExample, PREVIEW_NOW } from "../job-eligibility/preview-data";
 
 export const BOARD_STATES = ["ready", "empty", "not-verified", "loading", "error", "offline", "saved", "no-photo", "pay-pending", "new-jobs", "loading-more", "storage-error", "detail"] as const;
@@ -12,9 +12,9 @@ export function previewBoard(state: string): BoardPage {
   worker.id = "22222222-2222-4222-8222-222222222138";
   const viewer = { userId: worker.id, role: "TRADIE" as const };
   const titles = ["Sub wiring", "Control panel", "Power point", "Switchboard", "Light switch", "Outdoor lights", "Hot water cylinder", "Move a couch + boxes"];
-  const raw: JobSummarySource[] = Array.from({ length: 24 }, (_, i) => ({ id: `13800000-0000-4000-8000-${String(i + 1).padStart(12, "0")}`, jobNumber: i + 1,
+  const raw: (JobSummarySource & Pick<EligibilityJob, "anyTime" | "timeWindows">)[] = Array.from({ length: 24 }, (_, i) => ({ id: `13800000-0000-4000-8000-${String(i + 1).padStart(12, "0")}`, jobNumber: i + 1,
     title: titles[i % titles.length], category: i % 4 === 3 ? "OTHER" : "ELECTRICAL", status: i % 5 === 2 ? "QUOTE_BOUNTY" : i % 3 === 1 ? "REVIEW" : "BOOKABLE",
-    customerId: "customer-example", workerId: null, suburb: ["Windsor", "Gladstone", "Rosedale"][i % 3], city: "Invercargill", asap: i % 4 === 1,
+    customerId: "customer-example", workerId: null, suburb: ["Windsor", "Gladstone", "Rosedale"][i % 3], city: "Invercargill", asap: i % 4 === 1, anyTime: true, timeWindows: [],
     createdAt: new Date(PREVIEW_NOW.getTime() - i * 60_000), updatedAt: PREVIEW_NOW, lat: -46.4132 + i * .001, lng: 168.3538,
     approxLat: -46.4117 + i * .001, approxLng: 168.3538, priceCents: 99_999,
     pricing: state === "pay-pending" || i === 3 ? null : { workerGrossCents: 20_000 + i * 500, holidayPayCents: 1600, gstCents: 9000 } }));

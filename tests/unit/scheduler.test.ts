@@ -129,7 +129,16 @@ describe("the runner", () => {
       "licence-expiry-reminder", "licence-upload-cleanup", "licence-document-cleanup",
       "support-photo-cleanup",
       "draft-photo-raw-cleanup", "draft-photo-cleanup", "window-expiry", "variation-photo-cleanup", "variation-stage-cleanup",
+      "post-confirmation-email", "price-ready-push",
     ]);
+  });
+  it("shares one physical deadline without treating the injected business clock as elapsed runtime", async () => {
+    const clock = vi.spyOn(Date, "now").mockReturnValue(2_000);
+    const deadlines: (Date | undefined)[] = [];
+    const rules: SchedulerRule[] = ["mail", "push"].map(name => ({ name, run: async context => { deadlines.push(context.deadlineAt); return result(name); } }));
+    await runScheduledRules(db, { now: new Date("2020-01-01"), rules });
+    expect(deadlines[0]?.getTime()).toBe(47_000); expect(deadlines[1]).toBe(deadlines[0]);
+    clock.mockRestore();
   });
 });
 

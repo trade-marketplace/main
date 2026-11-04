@@ -2,6 +2,7 @@ import "server-only";
 
 import type { JobStatus, Prisma, Trade } from "@/generated/prisma/client";
 import { haversineKm, isInNewZealand, isPoint, type Point } from "@/lib/geo/distance";
+import { timeWindowsExpired } from "@/lib/job-time-windows";
 import { jobApproximatePin } from "@/server/geo/job-location";
 import { hasCurrentTradeLicence, workerBasicProofFailure, WORKER_VERIFICATION_SELECT, type BasicProofFailure } from "./verification";
 
@@ -16,12 +17,13 @@ export type EligibilityWorker = Prisma.ProfileGetPayload<{ select: typeof WORKER
 export const JOB_ELIGIBILITY_SELECT = {
   id: true, customerId: true, workerId: true, status: true, category: true,
   lat: true, lng: true, approxLat: true, approxLng: true,
+  anyTime: true, timeWindows: { select: { date: true } },
 } satisfies Prisma.JobSelect;
 export type EligibilityJob = Prisma.JobGetPayload<{ select: typeof JOB_ELIGIBILITY_SELECT }>;
 export const DISCOVERY_STATUSES = ["REVIEW", "QUOTE_BOUNTY", "BOOKABLE"] as const satisfies readonly JobStatus[];
 export const LAUNCH_TRADES = ["ELECTRICAL", "PLUMBING", "GAS", "CONSTRUCTION", "OTHER"] as const satisfies readonly Trade[];
 export type EligibilityIntent = "discover" | "claim" | "estimate";
-export type EligibilityFailure = BasicProofFailure | "own-job" | "not-open" | "trade-unavailable" | "trade-mismatch" | "licence-required" | "work-area-required" | "location-unavailable" | "outside-work-area";
+export type EligibilityFailure = BasicProofFailure | "own-job" | "not-open" | "time-windows-expired" | "trade-unavailable" | "trade-mismatch" | "licence-required" | "work-area-required" | "location-unavailable" | "outside-work-area";
 export type EligibilityContext = { now?: Date; enabledTrades?: readonly Trade[] };
 
 /** Fixed preclaim pin; no exact fallback or new random point. Bounds match #97's persisted privacy ring. */
@@ -45,6 +47,8 @@ export function eligibilityFailure(worker: EligibilityWorker | null, job: Eligib
   const statuses: readonly JobStatus[] = intent === "claim" ? ["BOOKABLE"] : intent === "estimate" ? ["REVIEW", "QUOTE_BOUNTY"] : DISCOVERY_STATUSES;
   if (job.workerId !== null || !statuses.includes(job.status)) return "not-open";
   if (!(context.enabledTrades ?? LAUNCH_TRADES).includes(job.category)) return "trade-unavailable";
+  // Match #119's claim rule before offering paid work; estimating retains its existing open-status policy.
+  if (job.status === "BOOKABLE" && timeWindowsExpired(job.timeWindows.map(window => ({ date: window.date.toISOString().slice(0, 10) })), job.anyTime, now)) return "time-windows-expired";
   if (job.category !== "OTHER") {
     if (!worker.workerTrades.some(row => row.trade === job.category)) return "trade-mismatch";
     if (!hasCurrentTradeLicence(worker, job.category, now)) return "licence-required";
