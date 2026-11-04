@@ -75,96 +75,96 @@ enum LicenceStatus {
 // One row per person who can sign in. `id` is the Supabase Auth user id (auth.users.id): Supabase Auth owns
 // the password and sessions, this table holds what the app needs. Deleting the auth user deletes the profile.
 model Profile {
-  id               String    @id @db.Uuid
+  id              String    @id @db.Uuid
   // Lowercased and trimmed by a trigger on every insert and update, so `Sam@X.nz` and `sam@x.nz` are one person.
-  email            String    @unique
+  email           String    @unique
   // Copied from Supabase Auth when the person confirms their email (sign-in, #101).
-  emailVerifiedAt  DateTime? @map("email_verified_at") @db.Timestamptz
-  role             Role      @default(CUSTOMER)
+  emailVerifiedAt DateTime? @map("email_verified_at") @db.Timestamptz
+  role            Role      @default(CUSTOMER)
   // Public pages show the first name and last initial only.
-  firstName        String    @map("first_name")
-  lastName         String?   @map("last_name")
+  firstName       String    @map("first_name")
+  lastName        String?   @map("last_name")
   // NZ mobile in E.164 (+6421…). Hidden from the other side until a job is claimed (DECISIONS.md 11).
-  phone            String?
+  phone           String?
   // Trusted confirmation is bound to this exact E.164 phone, never inferred from entering it.
-  phoneVerifiedAt  DateTime? @map("phone_verified_at") @db.Timestamptz
-  phoneVerifiedFor String?   @map("phone_verified_for")
+  phoneVerifiedAt DateTime? @map("phone_verified_at") @db.Timestamptz
+  phoneVerifiedFor String? @map("phone_verified_for")
   // Path in the private Supabase Storage bucket, never a public URL.
-  avatarPath       String?   @map("avatar_path")
-  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt        DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  avatarPath      String?   @map("avatar_path")
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
-  workerProfile           WorkerProfile?
-  workerTrades            WorkerTrade[]
-  licenceUploads          LicenceUploadStage[]
-  licences                Licence[]                 @relation("LicenceHolder")
-  licencesChecked         Licence[]                 @relation("LicenceChecker")
-  workersVerified         WorkerProfile[]           @relation("WorkerVerifier")
-  identitiesChecked       WorkerProfile[]           @relation("WorkerIdentityChecker")
-  workersPaused           WorkerProfile[]           @relation("WorkerPauser")
-  addresses               Address[]
-  payrollDetails          PayrollDetails?
-  jobsPosted              Job[]                     @relation("JobCustomer")
-  jobDraft                JobDraft?
-  jobsAssigned            Job[]                     @relation("JobWorker")
-  jobPhotos               JobPhoto[]
-  estimates               Estimate[]
-  pointEntries            PointEntry[]
-  jobsPriced              JobPricing[]
-  statusChanges           JobStatusHistory[]
-  extraWorkAsked          Variation[]               @relation("VariationRequester")
-  extraWorkPriced         Variation[]               @relation("VariationPricer")
-  payouts                 Payout[]
-  settingsChanged         Settings[]
-  evidenceRules           TradeEvidenceRule[]
-  evidenceSent            CompletionEvidence[]      @relation("EvidenceWorker")
-  evidenceChecked         CompletionEvidence[]      @relation("EvidenceChecker")
-  reviewsWritten          Review[]                  @relation("ReviewAuthor")
-  reviewsReceived         Review[]                  @relation("ReviewWorker")
-  reviewsReported         Review[]                  @relation("ReviewReporter")
-  reviewsHidden           Review[]                  @relation("ReviewHider")
-  notifications           Notification[]
+  workerProfile    WorkerProfile?
+  workerTrades     WorkerTrade[]
+  licenceUploads   LicenceUploadStage[]
+  licences         Licence[]          @relation("LicenceHolder")
+  licencesChecked  Licence[]          @relation("LicenceChecker")
+  workersVerified  WorkerProfile[]    @relation("WorkerVerifier")
+  identitiesChecked WorkerProfile[]   @relation("WorkerIdentityChecker")
+  workersPaused WorkerProfile[]       @relation("WorkerPauser")
+  addresses        Address[]
+  payrollDetails   PayrollDetails?
+  jobsPosted       Job[]              @relation("JobCustomer")
+  jobDraft         JobDraft?
+  jobsAssigned     Job[]              @relation("JobWorker")
+  jobPhotos        JobPhoto[]
+  estimates        Estimate[]
+  pointEntries     PointEntry[]
+  jobsPriced       JobPricing[]
+  statusChanges    JobStatusHistory[]
+  extraWorkAsked   Variation[]        @relation("VariationRequester")
+  extraWorkPriced  Variation[]        @relation("VariationPricer")
+  payouts          Payout[]
+  settingsChanged  Settings[]
+  evidenceRules    TradeEvidenceRule[]
+  evidenceSent     CompletionEvidence[] @relation("EvidenceWorker")
+  evidenceChecked  CompletionEvidence[] @relation("EvidenceChecker")
+  reviewsWritten   Review[]           @relation("ReviewAuthor")
+  reviewsReceived  Review[]           @relation("ReviewWorker")
+  reviewsReported  Review[]           @relation("ReviewReporter")
+  reviewsHidden    Review[]           @relation("ReviewHider")
+  notifications    Notification[]
   notificationPreferences NotificationPreference[]
-  postConfirmations       JobPostConfirmation[]
-  pushRegistrations       BrowserPushRegistration[]
-  pushDeliveries          PriceReadyPushDelivery[]
-  problemsReported        ProblemReport[]           @relation("ProblemReporter")
-  problemsResolved        ProblemReport[]           @relation("ProblemResolver")
-  supportThreads          SupportThread[]
-  supportMessages         SupportMessage[]
-  supportReads            SupportThreadRead[]
+  postConfirmations JobPostConfirmation[]
+  pushRegistrations BrowserPushRegistration[]
+  pushDeliveries PriceReadyPushDelivery[]
+  problemsReported ProblemReport[]    @relation("ProblemReporter")
+  problemsResolved ProblemReport[]    @relation("ProblemResolver")
+  supportThreads   SupportThread[]
+  supportMessages  SupportMessage[]
+  supportReads     SupportThreadRead[]
 
   @@map("profiles")
 }
 
 // Tradie / worker details. Only TRADIE profiles have one (tradie sign-up, #105, creates it).
 model WorkerProfile {
-  userId              String    @id @map("user_id") @db.Uuid
-  user                Profile   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  bio                 String?
+  userId       String    @id @map("user_id") @db.Uuid
+  user         Profile   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bio          String?
   // Work area: a base suburb and a radius around its centre (10 / 25 / 50 km on the form).
-  baseSuburb          String?   @map("base_suburb")
-  areaLat             Float?    @map("area_lat")
-  areaLng             Float?    @map("area_lng")
-  areaRadiusKm        Int?      @map("area_radius_km")
+  baseSuburb   String?   @map("base_suburb")
+  areaLat      Float?    @map("area_lat")
+  areaLng      Float?    @map("area_lng")
+  areaRadiusKm Int?      @map("area_radius_km")
   // Off until the worker turns it on, so nobody is sent jobs before they've finished setting up.
-  available           Boolean   @default(false)
+  available    Boolean   @default(false)
   // Verified badge: set by the office when the worker has been checked (DECISIONS.md 1).
-  verifiedAt          DateTime? @map("verified_at") @db.Timestamptz
-  verifiedById        String?   @map("verified_by_id") @db.Uuid
-  verifiedBy          Profile?  @relation("WorkerVerifier", fields: [verifiedById], references: [id], onDelete: SetNull)
+  verifiedAt   DateTime? @map("verified_at") @db.Timestamptz
+  verifiedById String?   @map("verified_by_id") @db.Uuid
+  verifiedBy   Profile?  @relation("WorkerVerifier", fields: [verifiedById], references: [id], onDelete: SetNull)
   // Explicit office ID check. The legacy generic verifiedAt flag is not evidence of this check.
-  identityCheckedAt   DateTime? @map("identity_checked_at") @db.Timestamptz
-  identityCheckedById String?   @map("identity_checked_by_id") @db.Uuid
-  identityCheckedBy   Profile?  @relation("WorkerIdentityChecker", fields: [identityCheckedById], references: [id], onDelete: SetNull)
+  identityCheckedAt DateTime? @map("identity_checked_at") @db.Timestamptz
+  identityCheckedById String? @map("identity_checked_by_id") @db.Uuid
+  identityCheckedBy Profile? @relation("WorkerIdentityChecker", fields: [identityCheckedById], references: [id], onDelete: SetNull)
   // Office pause is separate from the worker's own available switch and remains set if its actor is deleted.
-  pausedAt            DateTime? @map("paused_at") @db.Timestamptz
-  pausedById          String?   @map("paused_by_id") @db.Uuid
-  pausedBy            Profile?  @relation("WorkerPauser", fields: [pausedById], references: [id], onDelete: SetNull)
+  pausedAt DateTime? @map("paused_at") @db.Timestamptz
+  pausedById String? @map("paused_by_id") @db.Uuid
+  pausedBy Profile? @relation("WorkerPauser", fields: [pausedById], references: [id], onDelete: SetNull)
   // Verified quoters arrive in milestone 5 (#258). Invite only.
-  isQuoter            Boolean   @default(false) @map("is_quoter")
-  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt           DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  isQuoter     Boolean   @default(false) @map("is_quoter")
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   // Finding available workers near a job: a bounding box on lat/lng, then the exact distance in code (#97).
   @@index([available, areaLat, areaLng])
@@ -173,10 +173,10 @@ model WorkerProfile {
 
 // The trades a worker does. A worker can do several.
 model WorkerTrade {
-  userId    String   @map("user_id") @db.Uuid
-  user      Profile  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String    @map("user_id") @db.Uuid
+  user      Profile   @relation(fields: [userId], references: [id], onDelete: Cascade)
   trade     Trade
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
   licence   Licence?
 
   @@id([userId, trade])
@@ -190,28 +190,28 @@ model WorkerTrade {
 // the audit log (#100) keeps the history. OTHER never has a licence (checked by the database).
 // How licences are checked is still being decided (#64), so `type` is free text for now.
 model Licence {
-  id               String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId           String        @map("user_id") @db.Uuid
-  user             Profile       @relation("LicenceHolder", fields: [userId], references: [id], onDelete: Cascade)
-  trade            Trade
+  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId          String        @map("user_id") @db.Uuid
+  user            Profile       @relation("LicenceHolder", fields: [userId], references: [id], onDelete: Cascade)
+  trade           Trade
   // Removing a trade from a worker removes its licence.
-  workerTrade      WorkerTrade   @relation(fields: [userId, trade], references: [userId, trade], onDelete: Cascade)
-  number           String
+  workerTrade     WorkerTrade   @relation(fields: [userId, trade], references: [userId, trade], onDelete: Cascade)
+  number          String
   // e.g. "Registered electrician", "Certifying plumber".
-  type             String?
-  status           LicenceStatus @default(PENDING)
+  type            String?
+  status          LicenceStatus @default(PENDING)
   // Required when REJECTED; shown to the worker with "Try again".
-  rejectionReason  String?       @map("rejection_reason")
-  checkedById      String?       @map("checked_by_id") @db.Uuid
-  checkedBy        Profile?      @relation("LicenceChecker", fields: [checkedById], references: [id], onDelete: SetNull)
+  rejectionReason String?       @map("rejection_reason")
+  checkedById     String?       @map("checked_by_id") @db.Uuid
+  checkedBy       Profile?      @relation("LicenceChecker", fields: [checkedById], references: [id], onDelete: SetNull)
   // Required when VERIFIED or REJECTED.
-  checkedAt        DateTime?     @map("checked_at") @db.Timestamptz
-  expiresOn        DateTime?     @map("expires_on") @db.Date
-  expiryRemindedAt DateTime?     @map("expiry_reminded_at") @db.Timestamptz
+  checkedAt       DateTime?     @map("checked_at") @db.Timestamptz
+  expiresOn       DateTime?     @map("expires_on") @db.Date
+  expiryRemindedAt DateTime?    @map("expiry_reminded_at") @db.Timestamptz
   // Path of the uploaded licence in the private Storage bucket.
-  documentPath     String?       @map("document_path")
-  createdAt        DateTime      @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt        DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  documentPath    String?       @map("document_path")
+  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   @@unique([userId, trade])
   // Office queue: licences waiting to be checked, oldest first.
@@ -348,12 +348,12 @@ enum TimeOfDay {
 // What the worker earns and how the price was built are in `job_pricing`, which customers never see.
 // One private server draft per customer. Signed-out clients use the same shared JSON schema locally.
 model JobDraft {
-  profileId      String   @id @map("profile_id") @db.Uuid
-  profile        Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  data           Json
+  profileId String @id @map("profile_id") @db.Uuid
+  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  data Json
   // Wizard category origin is UI metadata, outside the shared canonical job fields. Null is legacy/unknown.
   manualCategory Boolean? @map("manual_category")
-  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   @@map("job_drafts")
 }
@@ -441,23 +441,23 @@ model Job {
   createdAt          DateTime        @default(now()) @map("created_at") @db.Timestamptz
   updatedAt          DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
-  photos           JobPhoto[]
-  timeWindows      JobTimeWindow[]
-  estimates        Estimate[]
-  pointEntries     PointEntry[]
-  pricing          JobPricing?
-  statusHistory    JobStatusHistory[]
-  payments         Payment[]
-  variations       Variation[]
-  payouts          Payout[]
-  materials        JobMaterials?
-  evidence         CompletionEvidence?
-  review           Review?
+  photos        JobPhoto[]
+  timeWindows   JobTimeWindow[]
+  estimates     Estimate[]
+  pointEntries  PointEntry[]
+  pricing       JobPricing?
+  statusHistory JobStatusHistory[]
+  payments      Payment[]
+  variations    Variation[]
+  payouts       Payout[]
+  materials     JobMaterials?
+  evidence      CompletionEvidence?
+  review        Review?
   postConfirmation JobPostConfirmation?
-  pushDeliveries   PriceReadyPushDelivery[]
-  problems         ProblemReport[]
-  support          SupportThread[]
-  scheduledMarks   ScheduledJobMark[]
+  pushDeliveries PriceReadyPushDelivery[]
+  problems      ProblemReport[]
+  support       SupportThread[]
+  scheduledMarks ScheduledJobMark[]
 
   // Job board and office queues by status and trade; the map by status and location.
   @@index([status, category])
@@ -482,9 +482,9 @@ model JobPhoto {
   uploadedBy   Profile? @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
 
+  @@index([jobId, position])
   // Upload service (#96): the same picture sent twice (a retry) is one row.
   @@unique([jobId, path])
-  @@index([jobId, position])
   @@map("job_photos")
 }
 
@@ -705,7 +705,7 @@ model Variation {
   updatedAt               DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   payments Payment[]
-  photos   VariationPhoto[]
+  photos VariationPhoto[]
 
   @@index([jobId, createdAt])
   // Office queue: extra work waiting to be priced.
@@ -716,17 +716,16 @@ model Variation {
 // Private processed uploads. An upload is recorded before Storage is called; unattached rows remain available
 // to bounded cleanup, including after a job/variation is deleted. No browser Data API access.
 model VariationPhoto {
-  path         String     @id
-  jobId        String     @map("job_id") @db.Uuid
-  uploadedById String     @map("uploaded_by_id") @db.Uuid
-  requestKey   String     @map("request_key") @db.Uuid
-  variationId  String?    @map("variation_id") @db.Uuid
-  variation    Variation? @relation(fields: [variationId], references: [id], onDelete: SetNull)
-  position     Int        @default(0)
-  ready        Boolean    @default(false)
-  deleting     Boolean    @default(false)
-  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz
-
+  path String @id
+  jobId String @map("job_id") @db.Uuid
+  uploadedById String @map("uploaded_by_id") @db.Uuid
+  requestKey String @map("request_key") @db.Uuid
+  variationId String? @map("variation_id") @db.Uuid
+  variation Variation? @relation(fields: [variationId], references: [id], onDelete: SetNull)
+  position Int @default(0)
+  ready Boolean @default(false)
+  deleting Boolean @default(false)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
   @@index([variationId, position])
   @@index([createdAt])
   @@map("variation_photos")
@@ -734,15 +733,14 @@ model VariationPhoto {
 
 // Private raw-upload grants: small server actions exchange IDs, large bytes go directly to quarantine Storage.
 model VariationUploadStage {
-  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  path        String    @unique
-  userId      String    @map("user_id") @db.Uuid
-  jobId       String    @map("job_id") @db.Uuid
-  requestKey  String    @map("request_key") @db.Uuid
-  expiresAt   DateTime  @map("expires_at") @db.Timestamptz
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  path String @unique
+  userId String @map("user_id") @db.Uuid
+  jobId String @map("job_id") @db.Uuid
+  requestKey String @map("request_key") @db.Uuid
+  expiresAt DateTime @map("expires_at") @db.Timestamptz
   finalizedAt DateTime? @map("finalized_at") @db.Timestamptz
-  photoPath   String?   @map("photo_path")
-
+  photoPath String? @map("photo_path")
   @@index([userId, expiresAt])
   @@index([expiresAt])
   @@map("variation_upload_stages")
@@ -786,16 +784,16 @@ model Payout {
 // by the app. Materials at cost would show customers the margin, so there's no Data API policy; the worker's
 // view of the budget arrives with who-sees-what (#95).
 model JobMaterials {
-  jobId       String    @id @map("job_id") @db.Uuid
-  job         Job       @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  budgetCents Int       @map("budget_cents")
+  jobId        String    @id @map("job_id") @db.Uuid
+  job          Job       @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  budgetCents  Int       @map("budget_cents")
   // Empty until the worker reports it at finish.
-  spentCents  Int?      @map("spent_cents")
+  spentCents   Int?      @map("spent_cents")
   // Path of the receipt or supplier slip in the private Storage bucket.
-  receiptPath String?   @map("receipt_path")
-  spentAt     DateTime? @map("spent_at") @db.Timestamptz
-  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  receiptPath  String?   @map("receipt_path")
+  spentAt      DateTime? @map("spent_at") @db.Timestamptz
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   @@map("job_materials")
 }
@@ -805,39 +803,39 @@ model JobMaterials {
 // `job_pricing`, so a change here never changes an agreed price or payout. Only the server reads this table:
 // no Data API policy. Money is cents, percentages basis points (20% = 2000), time minutes or hours as named.
 model Settings {
-  id                  Int      @id @default(1)
-  revision            Int      @default(0)
+  id                   Int      @id @default(1)
+  revision             Int      @default(0)
   // The worker's hourly rate for every licensed trade (ELECTRICAL, PLUMBING, GAS, CONSTRUCTION) and for OTHER.
   // Per-trade rates may come later (DECISIONS.md 9).
-  sharedRateCents     Int      @default(7000) @map("shared_rate_cents")
-  otherRateCents      Int      @default(3800) @map("other_rate_cents")
+  sharedRateCents      Int      @default(7000) @map("shared_rate_cents")
+  otherRateCents       Int      @default(3800) @map("other_rate_cents")
   // Minimum billed time per job: 2 hours licensed, 1 hour Other.
-  sharedMinMinutes    Int      @default(120) @map("shared_min_minutes")
-  otherMinMinutes     Int      @default(60) @map("other_min_minutes")
+  sharedMinMinutes     Int      @default(120) @map("shared_min_minutes")
+  otherMinMinutes      Int      @default(60) @map("other_min_minutes")
   // Holiday pay on the worker's gross (8%), employer on-costs: KiwiSaver, ACC (12.5%), TM margin, GST.
-  holidayPayBps       Int      @default(800) @map("holiday_pay_bps")
-  onCostBps           Int      @default(1250) @map("on_cost_bps")
-  marginBps           Int      @default(2000) @map("margin_bps")
-  gstBps              Int      @default(1500) @map("gst_bps")
+  holidayPayBps        Int      @default(800) @map("holiday_pay_bps")
+  onCostBps            Int      @default(1250) @map("on_cost_bps")
+  marginBps            Int      @default(2000) @map("margin_bps")
+  gstBps               Int      @default(1500) @map("gst_bps")
   // A submitted job is signed off automatically after this long without the customer answering.
-  autoReleaseHours    Int      @default(48) @map("auto_release_hours")
+  autoReleaseHours     Int      @default(48) @map("auto_release_hours")
   // The quick look the customer pays when a job needs someone to go and look (DECISIONS.md 2–3), incl GST.
-  quickLookPriceCents Int      @default(3000) @map("quick_look_price_cents")
+  quickLookPriceCents  Int      @default(3000) @map("quick_look_price_cents")
   // How long a quote bounty stays open.
-  bountyExpiryHours   Int      @default(24) @map("bounty_expiry_hours")
-  bountyAmountCents   Int      @default(3000) @map("bounty_amount_cents")
+  bountyExpiryHours    Int      @default(24) @map("bounty_expiry_hours")
+  bountyAmountCents    Int      @default(3000) @map("bounty_amount_cents")
   // Configuration only: the share base and bonus policy still need a founder decision.
-  quoterRewardBps     Int      @default(200) @map("quoter_reward_bps")
-  quoterBonusCents    Int?     @map("quoter_bonus_cents")
+  quoterRewardBps      Int      @default(200) @map("quoter_reward_bps")
+  quoterBonusCents     Int?     @map("quoter_bonus_cents")
   enabledTrades       Trade[]  @default([ELECTRICAL, PLUMBING, GAS, CONSTRUCTION, OTHER]) @map("enabled_trades")
   // Where we work (#97): a circle around a centre, Invercargill at launch (DECISIONS.md 12). A job is covered
   // when its point is within `coverage_radius_km` of the centre: 60 km at launch (Matt, 26 Oct), 1–200 km.
-  coverageCentreLat   Float    @default(-46.4132) @map("coverage_centre_lat")
-  coverageCentreLng   Float    @default(168.3538) @map("coverage_centre_lng")
-  coverageRadiusKm    Int      @default(60) @map("coverage_radius_km")
-  updatedById         String?  @map("updated_by_id") @db.Uuid
-  updatedBy           Profile? @relation(fields: [updatedById], references: [id], onDelete: SetNull)
-  updatedAt           DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  coverageCentreLat    Float    @default(-46.4132) @map("coverage_centre_lat")
+  coverageCentreLng    Float    @default(168.3538) @map("coverage_centre_lng")
+  coverageRadiusKm     Int      @default(60) @map("coverage_radius_km")
+  updatedById          String?  @map("updated_by_id") @db.Uuid
+  updatedBy            Profile? @relation(fields: [updatedById], references: [id], onDelete: SetNull)
+  updatedAt            DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   @@map("settings")
 }
@@ -984,15 +982,15 @@ model Review {
 // "estimate.requested"); `payload` holds what the row shows and links to (job id, amounts the reader may see).
 // The server builds the payload for its reader, so a worker's never holds the customer's price (AGENTS.md §5).
 model Notification {
-  id             String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId         String                   @map("user_id") @db.Uuid
-  user           Profile                  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  type           String
-  payload        Json                     @default("{}")
-  readAt         DateTime?                @map("read_at") @db.Timestamptz
+  id           String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId       String                @map("user_id") @db.Uuid
+  user         Profile               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type         String
+  payload      Json                  @default("{}")
+  readAt       DateTime?             @map("read_at") @db.Timestamptz
   // Where it was also sent, added as each one goes out.
-  channelsSent   NotificationChannel[]    @default([]) @map("channels_sent")
-  createdAt      DateTime                 @default(now()) @map("created_at") @db.Timestamptz
+  channelsSent NotificationChannel[] @default([]) @map("channels_sent")
+  createdAt    DateTime              @default(now()) @map("created_at") @db.Timestamptz
   pushDeliveries PriceReadyPushDelivery[]
 
   // The bell and the notifications page: newest first. Unread counts use a partial index (migration SQL).
@@ -1016,22 +1014,22 @@ model NotificationPreference {
 
 // G05: the real creation transaction freezes this message; provider delivery happens after commit (#121).
 model JobPostConfirmation {
-  jobId          String    @id @map("job_id") @db.Uuid
-  job            Job       @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  customerId     String    @map("customer_id") @db.Uuid
-  customer       Profile   @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  recipientEmail String    @map("recipient_email")
-  jobNumber      Int       @map("job_number")
-  title          String
-  message        Json
-  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  dueAt          DateTime  @default(now()) @map("due_at") @db.Timestamptz
-  attempts       Int       @default(0)
+  jobId String @id @map("job_id") @db.Uuid
+  job Job @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  customerId String @map("customer_id") @db.Uuid
+  customer Profile @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  recipientEmail String @map("recipient_email")
+  jobNumber Int @map("job_number")
+  title String
+  message Json
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  dueAt DateTime @default(now()) @map("due_at") @db.Timestamptz
+  attempts Int @default(0)
   firstAttemptAt DateTime? @map("first_attempt_at") @db.Timestamptz
-  leaseToken     String?   @map("lease_token") @db.Uuid
-  leasedUntil    DateTime? @map("leased_until") @db.Timestamptz
-  deliveredAt    DateTime? @map("delivered_at") @db.Timestamptz
-  failedAt       DateTime? @map("failed_at") @db.Timestamptz
+  leaseToken String? @map("lease_token") @db.Uuid
+  leasedUntil DateTime? @map("leased_until") @db.Timestamptz
+  deliveredAt DateTime? @map("delivered_at") @db.Timestamptz
+  failedAt DateTime? @map("failed_at") @db.Timestamptz
 
   @@index([deliveredAt, failedAt, dueAt], map: "job_post_confirmations_due_idx")
   @@index([customerId])
@@ -1040,15 +1038,15 @@ model JobPostConfirmation {
 
 // Tokens and device proofs are server-only. A browser can manage only its proven current device.
 model BrowserPushRegistration {
-  id         String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId     String                   @map("user_id") @db.Uuid
-  user       Profile                  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  deviceHash String                   @unique @map("device_hash") @db.Char(64)
-  tokenHash  String                   @unique @map("token_hash") @db.Char(64)
-  token      String                   @db.Text
-  revokedAt  DateTime?                @map("revoked_at") @db.Timestamptz
-  createdAt  DateTime                 @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt  DateTime                 @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  user Profile @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deviceHash String @unique @map("device_hash") @db.Char(64)
+  tokenHash String @unique @map("token_hash") @db.Char(64)
+  token String @db.Text
+  revokedAt DateTime? @map("revoked_at") @db.Timestamptz
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
   deliveries PriceReadyPushDelivery[]
 
   @@index([userId, revokedAt])
@@ -1057,23 +1055,23 @@ model BrowserPushRegistration {
 
 // One opaque delivery per recipient/device; provider acceptance and browser display are different facts.
 model PriceReadyPushDelivery {
-  notificationId String                  @map("notification_id") @db.Uuid
-  notification   Notification            @relation(fields: [notificationId], references: [id], onDelete: Cascade)
-  registrationId String                  @map("registration_id") @db.Uuid
-  registration   BrowserPushRegistration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
-  id             String                  @unique @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId         String                  @map("user_id") @db.Uuid
-  user           Profile                 @relation(fields: [userId], references: [id], onDelete: Cascade)
-  jobId          String                  @map("job_id") @db.Uuid
-  job            Job                     @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  createdAt      DateTime                @default(now()) @map("created_at") @db.Timestamptz
-  dueAt          DateTime                @default(now()) @map("due_at") @db.Timestamptz
-  attempts       Int                     @default(0)
-  leaseToken     String?                 @map("lease_token") @db.Uuid
-  leasedUntil    DateTime?               @map("leased_until") @db.Timestamptz
-  deliveredAt    DateTime?               @map("delivered_at") @db.Timestamptz
-  displayedAt    DateTime?               @map("displayed_at") @db.Timestamptz
-  failedAt       DateTime?               @map("failed_at") @db.Timestamptz
+  notificationId String @map("notification_id") @db.Uuid
+  notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  registrationId String @map("registration_id") @db.Uuid
+  registration BrowserPushRegistration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  id String @unique @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  user Profile @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobId String @map("job_id") @db.Uuid
+  job Job @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  dueAt DateTime @default(now()) @map("due_at") @db.Timestamptz
+  attempts Int @default(0)
+  leaseToken String? @map("lease_token") @db.Uuid
+  leasedUntil DateTime? @map("leased_until") @db.Timestamptz
+  deliveredAt DateTime? @map("delivered_at") @db.Timestamptz
+  displayedAt DateTime? @map("displayed_at") @db.Timestamptz
+  failedAt DateTime? @map("failed_at") @db.Timestamptz
 
   @@id([notificationId, registrationId])
   @@index([deliveredAt, failedAt, dueAt], map: "price_ready_push_deliveries_due_idx")
@@ -1247,7 +1245,6 @@ model HelpArticleFeedback {
   lookingFor  String?  @map("looking_for") @db.VarChar(300)
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz
-
   @@unique([articleSlug, voterKey])
   @@map("help_article_feedback")
 }
