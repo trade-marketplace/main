@@ -14,8 +14,9 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
   const source = exampleJob({ status: state === "priced" ? "BOOKABLE" : "REVIEW", workerId: null, worker: null, description: "Lights in the lounge keep flickering and the switch is getting warm. Pretty sure some wires behind it are exposed.", asap: true });
   if (!["estimated", "sent", "priced", "edited", "estimate-gallery"].includes(state)) source.estimates = source.estimates.filter(row => row.workerId !== VIEWERS.worker.userId);
   if (state === "edited") source.estimates[0].madeBeforeEdit = true;
-  const job = workerJobView(VIEWERS.worker, source)!;
+  const priced = workerJobView(VIEWERS.worker, { ...source, status: "BOOKABLE", pricing: { ...source.pricing!, minutes: 120, workerRateCents: 5511, workerGrossCents: 11022, holidayPayCents: 882 } })!;
+  const job = state === "priced" ? priced : workerJobView(VIEWERS.worker, source)!;
   return <AppShellView viewer={{ role: "TRADIE", firstName: "Jack", lastName: "Wilson", email: "worker@demo.test", counts: { messages: 0, notifications: 0 } }} testMode preview={{ at: `/jobs/${source.id}`, base: `/dev/components/worker-estimate?state=${state}` }}>
-    {state.endsWith("-gallery") ? <EstimateVariants job={job} eligibility={state === "eligibility-gallery"} /> : state === "loading" ? <WorkerJobLoading /> : state === "load-error" ? <WorkerJobLoadError back="/dev/components/job-board?state=ready&kind=estimate" /> : <EstimateDemo key={state} job={job} state={state} />}
+    {state.endsWith("-gallery") ? <EstimateVariants job={job} priced={priced} eligibility={state === "eligibility-gallery"} /> : state === "loading" ? <WorkerJobLoading /> : state === "load-error" ? <WorkerJobLoadError back="/dev/components/job-board?state=ready&kind=estimate" /> : <EstimateDemo key={state} job={job} state={state} />}
   </AppShellView>;
 }

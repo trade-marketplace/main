@@ -1,13 +1,13 @@
 "use client";
 import { useState } from "react";
 import { TextLink } from "@/components/TextLink";
-import { WorkerEstimateFields, WorkerEstimateNotice, WorkerEstimateSummary } from "@/components/jobs/WorkerEstimateParts";
+import { WorkerEstimateEarnings, WorkerEstimateFields, WorkerEstimateNotice, WorkerEstimateSummary } from "@/components/jobs/WorkerEstimateParts";
 import { estimateFields, type EstimateFields } from "@/lib/worker-estimate";
 import type { WorkerJobView } from "@/server/views/jobs";
 import styles from "@/components/jobs/worker-estimate.module.css";
 
 /** Bot galleries use the production fragments once per visible variant, inside the one app shell. */
-export function EstimateVariants({ job, eligibility }: { job: WorkerJobView; eligibility?: boolean }) {
+export function EstimateVariants({ job, priced, eligibility }: { job: WorkerJobView; priced: WorkerJobView; eligibility?: boolean }) {
   const own = job.ownEstimate!;
   const [value, setValue] = useState(() => estimateFields(own));
   function change<K extends keyof EstimateFields>(key: K, next: EstimateFields[K]) { setValue(previous => ({ ...previous, [key]: next })); }
@@ -22,7 +22,7 @@ export function EstimateVariants({ job, eligibility }: { job: WorkerJobView; eli
       <div className={styles.variantGrid}>
         <section className={styles.card} aria-label="Already quoted"><h2>Already quoted</h2><WorkerEstimateSummary own={own} /><TextLink href="/dev/components/worker-estimate?state=estimated">Edit</TextLink></section>
         <section className={styles.card} aria-label="Job edited"><h2>Job edited</h2><WorkerEstimateSummary own={{ ...own, madeBeforeEdit: true }} /><TextLink href="/dev/components/worker-estimate?state=edited">Edit</TextLink></section>
-        <section className={styles.card} aria-label="Priced (read-only)"><h2>Priced (read-only)</h2><WorkerEstimateSummary own={own} canEdit={false} /></section>
+        <section className={styles.card} aria-label="Priced (read-only)"><h2>Priced (read-only)</h2><WorkerEstimateSummary own={own} canEdit={false} />{priced.earnCents !== null && <WorkerEstimateEarnings cents={priced.earnCents} />}</section>
       </div>
       <section className={styles.card} aria-label="Invalid quote"><h2>Invalid quote</h2><div className={styles.form}><WorkerEstimateFields value={value} fields={fields} change={change} step={delta => change("hours", String(Math.max(0.5, Math.min(40, Number(value.hours) + delta))))} /></div></section>
     </>}

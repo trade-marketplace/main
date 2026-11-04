@@ -32,11 +32,26 @@ for (const width of [320, 390, 768, 1024, 1440]) test(`estimate states at ${widt
     if (state === "photo-error") await expect(page.getByText("Couldn’t load photos.", { exact: true })).toBeVisible();
     if (state === "invalid") await expect(page.getByLabel("Hours on site", { exact: true })).toHaveAttribute("aria-invalid", "true");
     if (state === "edited") { await expect(page.getByText("Job updated", { exact: true })).toBeVisible(); await expect(page.getByText("Check your quote and send it again.", { exact: false })).toBeVisible(); }
-    if (state === "priced") await expect(page.getByRole("button", { name: "Edit", exact: true })).toHaveCount(0);
+    if (state === "priced") { await expect(page.getByRole("button", { name: "Edit", exact: true })).toHaveCount(0); await expect(page.getByRole("complementary", { name: "Your quote", exact: true })).toContainText("$119.04"); }
     if (state === "empty") await expect(page.getByText("No photos yet", { exact: true })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true); await expectNoA11yViolations(page);
     if (process.env.ESTIMATE_SCREENSHOTS_DIR && [390, 1440].includes(width)) await page.screenshot({ path: `${process.env.ESTIMATE_SCREENSHOTS_DIR}/${state}-${width}.png`, fullPage: true });
   });
+});
+test("priced jobs show frozen cents rather than the quote forecast at every width", async ({ page }) => {
+  test.setTimeout(120_000);
+  for (const width of [320, 390, 768, 1024, 1440]) for (const state of ["priced", "estimate-gallery"]) {
+    await page.setViewportSize({ width, height: 1000 });
+    expect((await page.goto(`${preview}/dev/components/worker-estimate?state=${state}`))?.status()).toBe(200);
+    const card = state === "priced" ? page.getByRole("complementary", { name: "Your quote", exact: true }) : page.getByRole("region", { name: "Priced (read-only)", exact: true });
+    await expect(card).toContainText("$119.04"); expect(await card.innerText()).not.toContain("$189");
+    await expect(card.getByRole("button", { name: "Edit", exact: true })).toHaveCount(0);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true); await expectNoA11yViolations(page);
+    if (process.env.ESTIMATE_SCREENSHOTS_DIR && [390, 1440].includes(width)) await page.screenshot({ path: `${process.env.ESTIMATE_SCREENSHOTS_DIR}/${state}-${width}.png`, fullPage: true });
+  }
+  await page.goto(`${preview}/dev/components/worker-estimate?state=priced`);
+  await page.getByRole("link", { name: "Next job", exact: true }).press("Enter");
+  await expect(page).toHaveURL(/kind=estimate/); await expect(page.getByRole("heading", { name: "Jobs near you", exact: true })).toBeVisible();
 });
 test("quote from the job page: quick picks, keyboard half-hours, live earnings, edit, and Back keeps the board filter", async ({ page }) => {
   await page.goto(`${preview}/dev/components/worker-estimate?state=ready`);

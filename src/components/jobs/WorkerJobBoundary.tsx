@@ -18,7 +18,7 @@ import { estimateFields, workerEstimateSchema, type EstimateFields, type Estimat
 import { saveWorkerEstimateAction } from "@/server/jobs/worker-estimate-actions";
 import type { WorkerJobView } from "@/server/views";
 import type { EligibilityFailure } from "@/server/workers/eligibility";
-import { PointsChip, WorkerEstimateFields, WorkerEstimateNotice, WorkerEstimateSummary } from "./WorkerEstimateParts";
+import { PointsChip, WorkerEstimateEarnings, WorkerEstimateFields, WorkerEstimateNotice, WorkerEstimateSummary } from "./WorkerEstimateParts";
 import { QUOTE_POINTS } from "@/lib/points";
 import { quoteEarningsCents, type EarnRates } from "@/lib/quote-earnings";
 import styles from "./worker-estimate.module.css";
@@ -52,7 +52,7 @@ function WorkerJob({ job, details, back, failure: initialFailure, photos = [], p
   // Quote straight from the job page: the form is on the page whenever there's no quote yet, or while editing one.
   const quoting = Boolean(details) && estimateOpen && !failure && (!own || editing);
   const earnCents = earn ? quoteEarningsCents(Number(value.hours), earn) : null;
-  const ownEarnCents = earn && own ? quoteEarningsCents(own.minutes / 60, earn) : null;
+  const ownEarnCents = estimateOpen ? earn && own ? quoteEarningsCents(own.minutes / 60, earn) : null : details?.earnCents ?? null;
   function change<K extends keyof EstimateFields>(key: K, next: EstimateFields[K]) { setValue(previous => ({ ...previous, [key]: next })); setFields(previous => ({ ...previous, [key]: undefined })); }
   function step(delta: number) { const hours = Number(value.hours); change("hours", String(Math.min(40, Math.max(0.5, (Number.isFinite(hours) ? hours : 0.5) + delta)))); }
   async function submit(event: FormEvent) {
@@ -105,7 +105,7 @@ function WorkerJob({ job, details, back, failure: initialFailure, photos = [], p
         </div>
       </form> : own ? <>
         <WorkerEstimateSummary own={own} canEdit={estimateOpen && !failure} />
-        {ownEarnCents !== null && <p className={styles.earn}><span>You’d earn</span><b>{dollars.format(ownEarnCents / 100)}</b></p>}
+        {ownEarnCents !== null && <WorkerEstimateEarnings cents={ownEarnCents} forecast={estimateOpen} />}
         <Button href={back} icon="arrow_forward" width="full">Next job</Button>
         {!failure && estimateOpen && <Button variant="secondary" onClick={() => setEditing(true)} width="full">Edit</Button>}
       </> : null}
