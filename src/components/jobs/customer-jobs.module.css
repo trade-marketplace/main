@@ -5,7 +5,7 @@
 .page .notice { padding: var(--trade-space-4); margin-bottom: var(--trade-space-5); border-radius: var(--trade-radius-field); }
 .search { display: flex; gap: var(--trade-space-3); align-items: flex-start; margin-bottom: var(--trade-space-5); }
 .searchField { width: min(420px, 100%); min-width: 0; }
-.search > button { margin-top: var(--trade-space-1); }
+.search > button { margin-top: var(--trade-space-1); flex: 0 0 auto; white-space: nowrap; }
 .mobile { display: none; }
 .rows { display: grid; gap: var(--trade-space-3); }
 .stateCard { padding: var(--trade-space-4); background: var(--trade-surface); border-radius: var(--trade-radius-card); }
