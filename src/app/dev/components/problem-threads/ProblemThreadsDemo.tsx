@@ -27,7 +27,7 @@ export function demoMessages(state: string, second = false, trade = false): Mess
     },
   };
 }
-export function ProblemThreadsDemo({ state, second, trade, earlier = false, oldest = false }: { state: string; second: boolean; trade: boolean; earlier?: boolean; oldest?: boolean }) {
+export function ProblemThreadsDemo({ state, second, trade, earlier = false, oldest = false, jobReturn }: { state: string; second: boolean; trade: boolean; earlier?: boolean; oldest?: boolean; jobReturn?: string }) {
   const [data, setData] = useState(() => {
     const result = demoMessages(state, second, trade);
     if (state === "long-thread" && result.selected) {
@@ -39,8 +39,8 @@ export function ProblemThreadsDemo({ state, second, trade, earlier = false, olde
     return result;
   });
   const valid: MessagesState = ["empty", "offline", "error", "loading"].includes(state) ? state as MessagesState : "thread";
-  return <ProblemThreads data={data} state={valid} preview
-    listHref={`/dev/components/problem-threads?state=list${trade ? "&mode=trade" : ""}`}
+  return <ProblemThreads data={data} state={valid} preview jobReturn={jobReturn}
+    listHref={jobReturn ? "/dev/components/worker-claim?state=success" : `/dev/components/problem-threads?state=list${trade ? "&mode=trade" : ""}`}
     threadHref={id => `/dev/components/problem-threads?state=${state === "long-thread" ? "long-thread" : "thread"}${id === secondId ? "&thread=second" : ""}${trade ? "&mode=trade" : ""}`}
     upload={async (_jobId, file) => { if (file.name.includes("fail")) throw new Error("test upload failure"); return `demo/${file.name}`; }}
     open={async () => ({ ok: true, threadId: firstId })}

@@ -5,17 +5,20 @@ import { privateMetadata } from "@/lib/metadata";
 import { requireRole } from "@/server/auth/guard";
 import { getDb } from "@/server/db";
 import { getMessages, ProblemThreadError } from "@/server/messages/service";
+import { claimMessageHref, claimReturnFromQuery } from "@/lib/claim-return";
 
 export const metadata: Metadata = { ...privateMetadata, title: "Messages" };
 export default async function Page({ params, searchParams }: { params: Promise<{ threadId: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const [{ threadId }, query] = await Promise.all([params, searchParams]);
   const before = typeof query.before === "string" ? query.before : undefined;
-  const viewer = await requireRole(["CUSTOMER", "TRADIE"], { next: `/messages/${threadId}${before ? `?before=${encodeURIComponent(before)}` : ""}` });
+  const requestedReturn = claimReturnFromQuery(query, "thread");
+  const viewer = await requireRole(["CUSTOMER", "TRADIE"], { next: claimMessageHref(`/messages/${threadId}${before ? `?before=${encodeURIComponent(before)}` : ""}`, requestedReturn) });
   let data;
   try { data = await getMessages(getDb(), viewer, threadId, undefined, before); }
   catch (error) {
     if (error instanceof ProblemThreadError) notFound();
     return <ProblemThreads state="error" data={{ role: viewer.role, viewerId: viewer.userId, threads: [], jobs: [], selected: null }} />;
   }
-  return <ProblemThreads key={threadId} data={data} />;
+  const jobReturn = viewer.role === "TRADIE" && data.selected ? claimReturnFromQuery(query, "thread", data.selected.job.id) : null;
+  return <ProblemThreads key={threadId} data={data} jobReturn={jobReturn} />;
 }

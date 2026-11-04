@@ -9,6 +9,7 @@ import { SelectField, TextAreaField, TextField } from "@/components/forms";
 import { Icon } from "@/components/Icon";
 import { Banner } from "@/components/overlays";
 import { StatusPill } from "@/components/status/StatusPill";
+import { claimMessageHref } from "@/lib/claim-return";
 import { MESSAGE_ERRORS, messageDraftKey, type MessageResult, type MessagesData, type MessagesState } from "@/lib/problem-threads";
 import { markProblemThreadReadAction, openProblemThreadAction, sendProblemMessageAction } from "@/server/messages/actions";
 import styles from "./messages.module.css";
@@ -19,7 +20,7 @@ const clientReady = () => true;
 const serverReady = () => false;
 type Props = {
   data: MessagesData; state?: MessagesState; jobId?: string; preview?: boolean;
-  threadHref?: (id: string) => string; listHref?: string;
+  threadHref?: (id: string) => string; listHref?: string; jobReturn?: string | null;
   send?: (id: string, input: Input) => Promise<MessageResult>;
   open?: (input: Input & { jobId: string; reason: string }) => Promise<MessageResult>;
   upload?: (jobId: string, file: File) => Promise<string>;
@@ -46,7 +47,9 @@ async function uploadPhoto(jobId: string, file: File) {
   return result.path;
 }
 
-export function ProblemThreads({ data, state = "thread", jobId, preview = false, threadHref = id => `/messages/${id}`, listHref = "/messages", send = sendProblemMessageAction, open = openProblemThreadAction, upload = uploadPhoto }: Props) {
+export function ProblemThreads({ data, state = "thread", jobId, preview = false, threadHref: customThreadHref, listHref: customListHref, jobReturn, send = sendProblemMessageAction, open = openProblemThreadAction, upload = uploadPhoto }: Props) {
+  const threadHref = customThreadHref ?? (id => claimMessageHref(`/messages/${id}`, jobReturn));
+  const listHref = customListHref ?? jobReturn ?? "/messages";
   const router = useRouter(); const browserOnline = useOnlineStatus(); const online = state !== "offline" && browserOnline;
   const [search, setSearch] = useState(""); const [opening, setOpening] = useState(!!jobId);
   const [selectedJob, setSelectedJob] = useState(jobId ?? data.jobs[0]?.id ?? "");
@@ -77,7 +80,7 @@ export function ProblemThreads({ data, state = "thread", jobId, preview = false,
     previousWindow.current = windowKey;
   }, [windowKey, lastMessage?.id]);
   const filtered = data.threads.filter(row => `${row.subject} ${row.title} ${row.jobNumber}`.toLowerCase().includes(search.toLowerCase()));
-  return <section className={styles.page} aria-label="Messages" data-mode={data.role === "TRADIE" ? "trade" : "customer"}>
+  return <section className={styles.page} aria-label="Messages" data-mode={data.role === "TRADIE" ? "trade" : "customer"} data-job-return={jobReturn ? "true" : undefined}>
     <header className={styles.heading}><h1>Messages</h1><Button variant="secondary" size="sm" onClick={() => { setOpening(true); setError(""); }}>Ask about a job</Button></header>
     {state === "offline" ? <OfflineBanner online={false} sticky={false} /> : <OfflineBanner sticky={false} />}
     <div className={styles.layout} data-conversation={!!thread || opening}>
