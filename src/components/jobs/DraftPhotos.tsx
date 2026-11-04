@@ -35,7 +35,7 @@ export function DraftPhotos({ state, controls, category, offline, busy, onNext, 
     {!state.restoring && !state.photos.length && <p className={styles.hint}>Photos get you a price faster</p>}
     {category === "ELECTRICAL" && <Banner tone="brand" icon="lightbulb">Turn the power off before getting close to anything electrical.</Banner>}
     <div className={`${styles.actions} ${styles.photoActions}`}>
-      <Button href={backHref} variant="tertiary" width="auto">Back</Button>
+      <Button href={backHref} variant="secondary" width="auto">Back</Button>
       <Button onClick={onNext} disabled={blocked} loading={busy} width="full-on-phone">{uploading ? `Uploading ${uploading}…` : "Next"}</Button>
     </div>
   </div>;

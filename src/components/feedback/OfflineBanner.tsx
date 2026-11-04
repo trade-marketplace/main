@@ -124,7 +124,7 @@ export function OfflineBanner({ onRetry, online: forced, sticky = true, classNam
     return () => clearTimeout(timer);
   }, [backSince, suppressed]);
 
-  const classes = [styles.banner, styles.offline, className].filter(Boolean).join(" ");
+  const classes = [styles.banner, styles.offline, !sticky && styles.inline, className].filter(Boolean).join(" ");
   let banner = null;
   let say: string | null = null;
   if (!online) {

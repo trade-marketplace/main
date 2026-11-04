@@ -40,8 +40,8 @@ export function DraftReview({ draft, photos, editHrefs, backHref, busy, offline,
     </section>
     <p className={`${styles.hint} ${styles.reviewTrust}`}>Posting is free. We&apos;ll send you a price.</p>
     <div className={`${styles.actions} ${styles.reviewActions}`}>
-      {busy ? <Button variant="tertiary" disabled width="auto">Back</Button> : <Link href={backHref} className={buttonClasses({ variant: "tertiary", width: "auto" })} onClick={onEdit}>Back</Link>}
-      <Button variant="hero" onClick={onPost} loading={busy} disabled={blocked} width="full-on-phone">Post it</Button>
+      {busy ? <Button variant="secondary" disabled width="auto">Back</Button> : <Link href={backHref} className={buttonClasses({ variant: "secondary", width: "auto" })} onClick={onEdit}>Back</Link>}
+      <Button onClick={onPost} loading={busy} disabled={blocked} width="full-on-phone">Post it</Button>
     </div>
   </div>;
 }

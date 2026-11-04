@@ -27,7 +27,6 @@ export function ReviewDemo({ state }: { state: string }) {
     <OfflineBanner online={state === "offline" ? false : undefined} sticky={false} />
     <h1 className={styles.title}>{state === "posted" ? "Posted." : "All good?"}</h1>
     {state === "posted" ? <><p>TM-1042</p><Button href="/">Home</Button></> : <DraftReview draft={draft} photos={snapshot} editHrefs={hrefs} backHref={hrefs[2]} busy={busy} offline={state === "offline"} error={error} onPost={() => state === "guest" ? setSignup(true) : setError(true)} onEdit={() => {}} />}
-    {state === "error" && <><PostingEntryError conflict retry={() => {}} leave={() => router.push(hrefs[0])} /><PostingEntryError conflict={false} retry={() => {}} leave={() => router.push(hrefs[0])} /></>}
   </WizardFrame><Dialog open={signup} onClose={() => setSignup(false)} title="Create account" footer={<Link href="/login?next=%2Fjobs%2Fnew%3Fstep%3Dreview">Log in instead</Link>}>
     <CustomerSignup embedded next="/jobs/new?step=review" previewPending={state === "signup-pending"} previewOffline={state === "signup-offline" || state === "signup-recovery"} initialState={state === "signup-error" || state === "signup-recovery" ? { ok: false, error: "unavailable", values: {} } : undefined} />
   </Dialog></>;
