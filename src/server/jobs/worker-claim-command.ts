@@ -1,7 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import type { PrismaClient } from "@/generated/prisma/client";
-import { CLAIM_FAILURE_COPY, type WorkerClaimResult } from "@/lib/worker-claim";
+import { CLAIM_FAILURE_COPY, type WorkerClaimResult, type WorkerClaimView } from "@/lib/worker-claim";
 import { createAudit } from "@/server/audit/audit";
 import { problemContactHref } from "@/server/messages/contact";
 import { createNotify } from "@/server/notifications/notify";
@@ -9,13 +9,20 @@ import type { JobViewer } from "@/server/views";
 import { applyTransition, JobTransitionError, TransitionPreconditionError } from "./status-machine";
 import { loadWorkerClaim } from "./worker-claim-reader";
 
+async function claimedResult(db: PrismaClient, viewer: JobViewer, job: WorkerClaimView): Promise<WorkerClaimResult> {
+  let contactHref = `/messages?job=${encodeURIComponent(job.id)}`;
+  try { contactHref = await problemContactHref(db, viewer, job.id); } catch { /* An optional contact lookup cannot undo a committed claim. */ }
+  return { status: "claimed", job, contactHref };
+}
+
 /** The browser supplies only a job id; the canonical machine locks and rechecks every current claim fact. */
 export async function claimWorkerJob(db: PrismaClient, viewer: JobViewer, id: unknown): Promise<WorkerClaimResult> {
   if (viewer.role !== "TRADIE") return { status: "ineligible", failure: "worker-required" };
   if (!z.uuid().safeParse(id).success) return { status: "ineligible", failure: "not-open" };
   const jobId = id as string;
+  let claimed: WorkerClaimView;
   try {
-    await db.$transaction(async tx => {
+    claimed = await db.$transaction(async tx => {
       let eventId = "";
       await applyTransition(tx, {
         audit: async (_tx, entry) => {
@@ -26,10 +33,10 @@ export async function claimWorkerJob(db: PrismaClient, viewer: JobViewer, id: un
           await createNotify(tx)("job.claimed", [change.customerId, viewer.userId], { eventId, payload: { jobId, jobNumber: change.jobNumber } });
         },
       }, { jobId, transition: "claim", actor: viewer });
+      const current = await loadWorkerClaim(tx, viewer, jobId);
+      if (!current?.job.assignedToYou) throw new Error("Claim projection unavailable");
+      return current.job;
     });
-    const current = await loadWorkerClaim(db, viewer, jobId);
-    if (!current?.job.assignedToYou) return { status: "unavailable" };
-    return { status: "claimed", job: current.job, contactHref: await problemContactHref(db, viewer, jobId) };
   } catch (error) {
     if (error instanceof TransitionPreconditionError && Object.hasOwn(CLAIM_FAILURE_COPY, error.failure)) return { status: "ineligible", failure: error.failure as keyof typeof CLAIM_FAILURE_COPY };
     if (error instanceof JobTransitionError) {
@@ -37,10 +44,11 @@ export async function claimWorkerJob(db: PrismaClient, viewer: JobViewer, id: un
       if (current?.status === "ASSIGNED" && current.workerId && current.workerId !== viewer.userId) return { status: "lost" };
       if (current?.status === "ASSIGNED" && current.workerId === viewer.userId) {
         const owned = await loadWorkerClaim(db, viewer, jobId);
-        if (owned?.job.assignedToYou) return { status: "claimed", job: owned.job, contactHref: await problemContactHref(db, viewer, jobId) };
+        if (owned?.job.assignedToYou) return claimedResult(db, viewer, owned.job);
       }
       return { status: "ineligible", failure: "not-open" };
     }
     return { status: "unavailable" };
   }
+  return claimedResult(db, viewer, claimed);
 }

@@ -24,7 +24,7 @@ export function workerClaimView(viewer: JobViewer, source: ClaimSource, needs: N
   };
 }
 
-export async function loadWorkerClaim(db: PrismaClient, viewer: JobViewer, id: string) {
+export async function loadWorkerClaim(db: Pick<PrismaClient, "job" | "tradeEvidenceRule" | "profile" | "settings">, viewer: JobViewer, id: string) {
   if (viewer.role !== "TRADIE") return null;
   const source = await db.job.findUnique({ where: { id }, select: WORKER_CLAIM_SELECT });
   if (!source || !workerJobView(viewer, source)) return null;

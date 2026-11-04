@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import type { Role } from "@/generated/prisma/client";
+import type { Prisma, Role } from "@/generated/prisma/client";
 import { claimWorkerJob } from "@/server/jobs/worker-claim-command";
 import { loadWorkerClaim } from "@/server/jobs/worker-claim-reader";
 import { priceJob } from "@/server/pricing/price-job";
@@ -36,6 +36,66 @@ describe.skipIf(!testDatabaseUrl)("worker claim transaction", () => {
     for (const notice of notices) { expect(notice.payload).toEqual({ jobId: job.id, jobNumber: job.jobNumber }); expect(notice.channelsSent).toEqual([]); }
     expect((await claimWorkerJob(schema.db, viewer, job.id)).status).toBe("claimed");
     expect(await schema.db.auditLog.count({ where: { recordId: job.id, action: "job.claimed" } })).toBe(1);
+  });
+  it("rolls back assignment, history, audit and notices when the authorized projection query fails", async () => {
+    const { job, customer, viewer } = await fixture();
+    let inFlight: { assigned: boolean; audits: number; notices: number } | undefined;
+    const failing = new Proxy(schema.db, { get(target, key) {
+      if (key !== "$transaction") return Reflect.get(target, key, target);
+      return (run: (tx: Prisma.TransactionClient) => Promise<unknown>) => target.$transaction(tx => run(new Proxy(tx, { get(client, model) {
+        if (model !== "tradeEvidenceRule") return Reflect.get(client, model, client);
+        return new Proxy(client.tradeEvidenceRule, { get(delegate, method) {
+          if (method !== "findUnique") return Reflect.get(delegate, method, delegate);
+          return async () => {
+            const current = await tx.job.findUnique({ where: { id: job.id }, select: { status: true, workerId: true } });
+            inFlight = {
+              assigned: current?.status === "ASSIGNED" && current.workerId === viewer.userId,
+              audits: await tx.auditLog.count({ where: { recordId: job.id, action: "job.claimed" } }),
+              notices: await tx.notification.count({ where: { type: "job.claimed", userId: { in: [viewer.userId, customer.id] } } }),
+            };
+            // A real PostgreSQL query error after all writes, while constructing the claimed projection.
+            return tx.$queryRaw`SELECT 1 / 0`;
+          };
+        } });
+      } })));
+    } });
+    expect(await claimWorkerJob(failing, viewer, job.id)).toEqual({ status: "unavailable" });
+    expect(inFlight).toEqual({ assigned: true, audits: 1, notices: 2 });
+    expect(await schema.db.job.findUnique({ where: { id: job.id } })).toMatchObject({ status: "BOOKABLE", workerId: null });
+    expect(await schema.db.jobStatusHistory.count({ where: { jobId: job.id, toStatus: "ASSIGNED" } })).toBe(0);
+    expect(await schema.db.auditLog.count({ where: { recordId: job.id, action: "job.claimed" } })).toBe(0);
+    expect(await schema.db.notification.count({ where: { type: "job.claimed", userId: { in: [viewer.userId, customer.id] } } })).toBe(0);
+    expect((await claimWorkerJob(schema.db, viewer, job.id)).status).toBe("claimed");
+  });
+  it("preserves committed success through post-commit read/contact faults and an idempotent retry", async () => {
+    const { job, customer, viewer } = await fixture();
+    let refuseOutsideRead = true, outsideReads = 0, contactReads = 0;
+    const faulty = new Proxy(schema.db, { get(target, key) {
+      if (key === "$transaction") return target.$transaction.bind(target);
+      if (key === "job") return new Proxy(target.job, { get(delegate, method) {
+        if (method !== "findUnique") return Reflect.get(delegate, method, delegate);
+        return (...args: Parameters<typeof delegate.findUnique>) => {
+          outsideReads++;
+          if (refuseOutsideRead) throw Error("Post-commit job read unavailable");
+          return delegate.findUnique(...args);
+        };
+      } });
+      if (key === "supportThread") return new Proxy(target.supportThread, { get(delegate, method) {
+        if (method !== "findFirst") return Reflect.get(delegate, method, delegate);
+        return () => { contactReads++; throw Error("Contact lookup unavailable"); };
+      } });
+      return Reflect.get(target, key, target);
+    } });
+    const result = await claimWorkerJob(faulty, viewer, job.id);
+    expect(result).toMatchObject({ status: "claimed", job: { assignedToYou: true, address: { line1: "144 Private Street" } }, contactHref: `/messages?job=${job.id}` });
+    expect(outsideReads).toBe(0); expect(contactReads).toBe(1);
+    refuseOutsideRead = false;
+    expect(await claimWorkerJob(faulty, viewer, job.id)).toEqual(result);
+    expect(contactReads).toBe(2);
+    expect(await schema.db.job.findUnique({ where: { id: job.id } })).toMatchObject({ status: "ASSIGNED", workerId: viewer.userId });
+    expect(await schema.db.jobStatusHistory.count({ where: { jobId: job.id, toStatus: "ASSIGNED" } })).toBe(1);
+    expect(await schema.db.auditLog.count({ where: { recordId: job.id, action: "job.claimed" } })).toBe(1);
+    expect(await schema.db.notification.count({ where: { type: "job.claimed", userId: { in: [viewer.userId, customer.id] } } })).toBe(2);
   });
   it("uses current eligibility, refusing a pause after the claim screen was read with no side effects", async () => {
     const { job, viewer } = await fixture();
