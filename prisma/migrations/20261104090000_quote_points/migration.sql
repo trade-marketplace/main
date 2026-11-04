@@ -20,5 +20,10 @@ CREATE INDEX "point_entries_worker_id_created_at_idx" ON "point_entries"("worker
 ALTER TABLE "point_entries" ADD CONSTRAINT "point_entries_worker_id_fkey" FOREIGN KEY ("worker_id") REFERENCES "profiles"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "point_entries" ADD CONSTRAINT "point_entries_job_id_fkey" FOREIGN KEY ("job_id") REFERENCES "jobs"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
+-- Quotes made before points existed count too, once each, so editing an old quote never earns a "first" point.
+INSERT INTO "point_entries" ("worker_id", "job_id", "delta", "reason", "created_at")
+SELECT "worker_id", "job_id", 1, 'QUOTE', "created_at" FROM "estimates"
+ON CONFLICT ("worker_id", "job_id", "reason") DO NOTHING;
+
 -- Server-only, like every app table: no policies, so the browser's Supabase roles can't read or write it.
 ALTER TABLE "point_entries" ENABLE ROW LEVEL SECURITY;

@@ -35,7 +35,7 @@ describe("shared worker eligibility", () => {
       const candidate = job({ id: status, status });
       expect(eligibleJobsFor(person, [candidate], context)).toEqual([status]);
       expect(canClaim(person, candidate, context)).toBe(status === "BOOKABLE");
-      expect(canEstimate(person, candidate, context)).toBe(status !== "BOOKABLE");
+      expect(canEstimate(person, candidate, context)).toBe(status === "REVIEW");
     }
     for (const status of ["PRICED", "ASSIGNED", "SUBMITTED", "COMPLETED", "CANCEL_REVIEW", "CANCELLED"] as const) {
       expect(eligibleJobsFor(person, [job({ status })], context)).toEqual([]);
@@ -48,10 +48,10 @@ describe("shared worker eligibility", () => {
     expect(canClaim(person, candidate, before)).toBe(true);
     expect(eligibleJobsFor(person, [candidate], after)).toEqual([]);
     expect(eligibilityFailure(person, candidate, "claim", after)).toBe("time-windows-expired");
-    for (const status of ["REVIEW", "QUOTE_BOUNTY"] as const) {
-      expect(canEstimate(person, { ...candidate, status }, after)).toBe(true);
-      expect(eligibleJobsFor(person, [{ ...candidate, status }], after)).toEqual([candidate.id]);
-    }
+    for (const status of ["REVIEW", "QUOTE_BOUNTY"] as const) expect(eligibleJobsFor(person, [{ ...candidate, status }], after)).toEqual([candidate.id]);
+    expect(canEstimate(person, { ...candidate, status: "REVIEW" }, after)).toBe(true);
+    // A quote bounty goes through its own visit + fixed-price flow (D19): no blind quote, so no quote point either.
+    expect(canEstimate(person, { ...candidate, status: "QUOTE_BOUNTY" }, after)).toBe(false);
   });
   it("keeps same-day windows valid all day, Any time flexible and empty legacy schedules eligible", () => {
     const person = worker(), now = new Date("2026-11-03T07:00:00Z"); // Auckland20:00; no day-part cutoff.

@@ -47,7 +47,7 @@ function WorkerJob({ job, details, back, failure: initialFailure, photos = [], p
   const [fields, setFields] = useState<Partial<Record<keyof EstimateFields, string>>>(preview === "invalid" ? { hours: "Use half-hour steps from 0.5 to 40." } : {});
   const form = useRef<HTMLFormElement>(null);
   const offline = !online || preview === "offline", saving = busy || preview === "saving";
-  const estimateOpen = details?.status === "REVIEW" || details?.status === "QUOTE_BOUNTY";
+  const estimateOpen = details?.status === "REVIEW"; // Quote bounties have their own flow (D19).
   // Quote straight from the job page: the form is on the page whenever there's no quote yet, or while editing one.
   const quoting = Boolean(details) && estimateOpen && !failure && (!own || editing);
   function change<K extends keyof EstimateFields>(key: K, next: EstimateFields[K]) { setValue(previous => ({ ...previous, [key]: next })); setFields(previous => ({ ...previous, [key]: undefined })); }

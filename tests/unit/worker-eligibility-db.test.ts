@@ -40,6 +40,8 @@ describe.skipIf(!testDatabaseUrl)("worker eligibility at the real mutation bound
     expect(await saveEligibleEstimate(schema.db, { userId: tradie.id }, first.id, { minutes: 60 })).toMatchObject({ pointsAwarded: 1, points: 1 });
     expect(await saveEligibleEstimate(schema.db, { userId: tradie.id }, first.id, { minutes: 90 })).toMatchObject({ pointsAwarded: 0, points: 1 });
     await expect(saveEligibleEstimate(schema.db, { userId: tradie.id }, priced.id, { minutes: 60 })).rejects.toMatchObject({ failure: "not-open" });
+    const bounty = await job("QUOTE_BOUNTY", "OTHER");
+    await expect(saveEligibleEstimate(schema.db, { userId: tradie.id }, bounty.id, { minutes: 60 })).rejects.toMatchObject({ failure: "not-open" });
     expect(await saveEligibleEstimate(schema.db, { userId: tradie.id }, second.id, { minutes: 60 })).toMatchObject({ pointsAwarded: 1, points: 2 });
     expect(await schema.db.pointEntry.count({ where: { workerId: tradie.id } })).toBe(2);
     await expect(schema.db.pointEntry.create({ data: { workerId: tradie.id, jobId: first.id, delta: -1, reason: "QUOTE" } })).rejects.toThrow();
