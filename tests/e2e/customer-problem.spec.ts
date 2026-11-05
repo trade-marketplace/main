@@ -61,6 +61,13 @@ test.describe("customer report form", () => {
     await page.goto(url("completed-sent")); await expect(page.getByRole("heading", { name: "Sent.", exact: true })).toBeVisible();
     await expect(page.getByText(/Auto-release is paused/)).toHaveCount(0);
   });
+  test("unknown gallery groups fall back to the complete form group", async ({ page }) => {
+    for (const group of ["toString", "constructor", "__proto__"]) {
+      const response = await page.goto(new URL(`/dev/components/customer-problem?state=gallery&group=${group}`, dev).href);
+      expect(response?.status()).toBe(200); await expect(page.getByRole("heading", { name: "Report a problem states", exact: true })).toBeVisible();
+      await expect(page.getByRole("article")).toHaveCount(4);
+    }
+  });
   for (const viewport of VIEWPORTS) {
     test(`${viewport.width}px selected office report states fit and pass axe`, async ({ page }) => {
       test.setTimeout(180000); await page.setViewportSize(viewport);
@@ -69,6 +76,16 @@ test.describe("customer report form", () => {
         await expect(page.getByRole("region", { name: "Problem report", exact: true })).toBeVisible();
         expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), problem).toBe(false);
         await expectNoA11yViolations(page);
+      }
+    });
+    test(`${viewport.width}px complete customer and office galleries keep unique IDs and pass axe`, async ({ page }) => {
+      test.setTimeout(180000); await page.setViewportSize(viewport);
+      for (const route of ["customer-problem?state=gallery&group=form", "customer-problem?state=gallery&group=activity", "customer-problem?state=gallery&group=receipt", "office-job?problem=gallery&group=report", "office-job?problem=gallery&group=delivery"]) {
+        await page.goto(new URL(`/dev/components/${route}`, dev).href);
+        await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), route).toBe(false);
+        const duplicate = await page.evaluate(() => { const ids = Array.from(document.querySelectorAll<HTMLElement>("[id]"), node => node.id); return ids.filter((id, index) => ids.indexOf(id) !== index); });
+        expect(duplicate, route).toEqual([]); await expectNoA11yViolations(page);
       }
     });
   }

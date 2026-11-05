@@ -1,0 +1,4 @@
+.gallery { width: 100%; max-width: 900px; margin-inline: auto; padding: var(--trade-space-6) var(--trade-inset-browse); display: grid; gap: var(--trade-space-8); }
+.gallery > h1 { margin: 0; font-family: var(--trade-font-heading); font-variation-settings: var(--trade-display-axes); font-size: var(--trade-fs-heading); line-height: var(--trade-lh-heading); }
+.gallery article { display: grid; gap: var(--trade-space-4); }
+.label { margin: 0; font-family: var(--trade-font-heading); font-size: var(--trade-fs-section); }

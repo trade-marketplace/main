@@ -1,4 +1,5 @@
 .canvas { min-height: 100dvh; background: color-mix(in srgb, var(--trade-forest) 3.8%, var(--trade-surface)); color: var(--trade-text); }
+.canvas[data-embedded] { min-height: 0; }
 .page { width: 100%; max-width: 736px; margin-inline: auto; padding: var(--trade-space-8) var(--trade-space-6); display: grid; gap: var(--trade-space-4); color: var(--trade-text); }
 .page > a { justify-self: start; }
 .card { display: grid; gap: var(--trade-space-5); min-width: 0; padding: var(--trade-space-8); border: 1px solid var(--trade-line); border-radius: var(--trade-radius-card); background: var(--trade-surface); box-shadow: var(--trade-shadow-category); }
@@ -10,7 +11,7 @@
 .form { display: grid; gap: var(--trade-space-6); min-width: 0; }
 .photoSection { display: grid; gap: var(--trade-space-3); min-width: 0; }
 .photoHeading { display: flex; align-items: baseline; justify-content: space-between; gap: var(--trade-space-3); }
-.photoHeading h2 { margin: 0; font-size: var(--trade-fs-body); font-weight: 700; }
+.photoHeading :is(h2, h4) { margin: 0; font-size: var(--trade-fs-body); font-weight: 700; }
 .photoHeading span { color: var(--trade-text-2); font-size: var(--trade-fs-small); font-weight: 400; }
 .photos { display: grid; gap: var(--trade-space-3); list-style: none; padding: 0; margin: 0; }
 .photo { display: flex; align-items: center; gap: var(--trade-space-3); min-width: 0; padding: var(--trade-space-2); border: 1px solid var(--trade-line); border-radius: var(--trade-radius-field); }

@@ -9,14 +9,15 @@ import { Pill } from "@/components/status/Pill";
 import type { OfficeProblemReportState } from "@/lib/office-problem";
 import styles from "./problem-report.module.css";
 
-export function ProblemReportCard({ value }: { value: OfficeProblemReportState }) {
+export function ProblemReportCard({ value, id = "problem-report", label, embedded = false }: { value: OfficeProblemReportState; id?: string; label?: string; embedded?: boolean }) {
   const router = useRouter(), browserOnline = useOnlineStatus();
   const [failed, setFailed] = useState<Set<string>>(() => new Set());
   const report = "report" in value ? value.report : null, online = browserOnline && value.state !== "offline";
   const retry = () => { setFailed(new Set()); router.refresh(); };
   const photoError = report?.photos.some(photo => !photo.url || failed.has(photo.url));
-  return <section id="problem-report" className={styles.card} aria-labelledby="problem-report-title">
-    <header className={styles.heading}><h2 id="problem-report-title">Problem report</h2>{report && <Pill kind={report.status === "OPEN" ? "waiting" : "good"}>{report.status === "OPEN" ? "Open" : "Resolved"}</Pill>}</header>
+  const Heading = embedded ? "h3" : "h2", titleId = `${id}-title`;
+  return <section id={id} className={styles.card} aria-labelledby={label ? undefined : titleId} aria-label={label}>
+    <header className={styles.heading}><Heading id={titleId}>Problem report</Heading>{report && <Pill kind={report.status === "OPEN" ? "waiting" : "good"}>{report.status === "OPEN" ? "Open" : "Resolved"}</Pill>}</header>
     <OfflineBanner online={value.state === "offline" ? false : undefined} sticky={false} />
     {value.state === "loading" ? <div role="status" aria-label="Loading problem report"><SkeletonText lines={4} /></div> : value.state === "error" ? <>
       <Banner tone="alert" title="Couldn’t load the problem report." />

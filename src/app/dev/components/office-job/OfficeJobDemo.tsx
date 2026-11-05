@@ -4,7 +4,7 @@
 import { JobAdmin, type DialogName } from "@/components/office/JobAdmin";
 import { JobAdminSkeleton } from "@/components/office/JobAdminSkeleton";
 import type { JobActionResult, OfficeJobView } from "@/lib/office-job";
-import type { OfficeProblemReportState, OfficeProblemReportView } from "@/lib/office-problem";
+import { previewProblemReport } from "./problem-data";
 
 type Props = {
   job: OfficeJobView | null;
@@ -24,8 +24,7 @@ export function OfficeJobDemo({ job, loading, dialog, menuOpen, failure, problem
     await new Promise((resolve) => setTimeout(resolve, 400));
     return failure ? { ok: false, error: "unavailable", message: failure } : { ok: true };
   };
-  const sample: OfficeProblemReportView = { id: "18200000-0000-4000-8000-000000000001", topic: "Work not finished", details: "The light switch is still loose. I’ve added a photo of the problem.", urgent: true, status: problem === "resolved" ? "RESOLVED" : "OPEN", createdAt: "2026-11-04T22:00:00Z", when: "5m ago", photos: problem === "empty" ? [] : [{ id: "report-photo", url: problem === "photo-error" ? null : "/images/examples/switch.jpg" }] };
-  const report: OfficeProblemReportState | null = problem === "loading" || problem === "error" ? { state: problem } : problem ? { state: problem === "offline" ? "offline" : "ready", report: sample } : null;
+  const report = previewProblemReport(problem);
   return (
     <>
       <JobAdmin

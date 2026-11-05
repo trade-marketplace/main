@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Button, IconButton } from "@/components/Button";
 import { Icon } from "@/components/Icon";
@@ -17,11 +17,13 @@ import { reportCustomerProblemAction } from "@/server/jobs/customer-problem-acti
 import styles from "./customer-problem.module.css";
 
 type Photo = { id: string; name: string; url: string | null; path?: string; file?: File; failed?: boolean };
-type Props = { job: CustomerProblemContext; initialReport?: CustomerProblemReceipt | null; state?: CustomerProblemState; preview?: boolean; backHref?: string;
+type Props = { job: CustomerProblemContext; initialReport?: CustomerProblemReceipt | null; state?: CustomerProblemState; preview?: boolean; embedded?: boolean; backHref?: string;
   save?: (input: CustomerProblemInput) => Promise<CustomerProblemResult | AuthFailure>; upload?: (jobId: string, file: File) => Promise<string> };
 
-export function CustomerProblem({ job, initialReport = null, state = "form", preview = false, backHref = `/jobs/${job.id}`, save = reportCustomerProblemAction, upload = uploadSupportPhotoClient }: Props) {
+export function CustomerProblem({ job, initialReport = null, state = "form", preview = false, embedded = false, backHref = `/jobs/${job.id}`, save = reportCustomerProblemAction, upload = uploadSupportPhotoClient }: Props) {
   const router = useRouter(), session = useOptionalSessionExpired(), browserOnline = useOnlineStatus();
+  const instance = useId(), photoTitleId = `${instance}-photos`, photoInputId = `${instance}-photo-upload`;
+  const Heading = embedded ? "h3" : "h1", PhotoHeading = embedded ? "h4" : "h2";
   const offline = !browserOnline || state === "offline";
   const populated = ["error", "offline", "saving", "urgent", "photos", "uploading"].includes(state);
   const [topic, setTopic] = useState(state === "urgent" ? "Exposed wires" : populated ? "Work not finished" : "");
@@ -81,11 +83,11 @@ export function CustomerProblem({ job, initialReport = null, state = "form", pre
     finally { pending.current = false; setBusy(false); }
   }
   function submit(event: FormEvent) { event.preventDefault(); void send(); }
-  if (state === "loading") return <CustomerProblemLoading backHref={backHref} />;
-  return <div className={styles.canvas} data-mode="customer"><section className={styles.page}>
+  if (state === "loading") return <CustomerProblemLoading backHref={backHref} embedded={embedded} />;
+  return <div className={styles.canvas} data-mode="customer" data-embedded={embedded || undefined}><section className={styles.page}>
     <Button href={backHref} variant="tertiary" width="auto" icon="arrow_back">Back</Button>
     <div className={styles.card}>
-      <header className={styles.header}><p className={styles.eyebrow}>TM-{job.jobNumber}</p><h1 className={styles.title} ref={sentHeading} tabIndex={-1}>{report ? "Sent." : "Report a problem"}</h1><p className={styles.job}>{job.title}</p></header>
+      <header className={styles.header}><p className={styles.eyebrow}>TM-{job.jobNumber}</p><Heading className={styles.title} ref={sentHeading} tabIndex={-1}>{report ? "Sent." : "Report a problem"}</Heading><p className={styles.job}>{job.title}</p></header>
       {report ? <>
         <Banner tone="good" title="Your report has been sent to the office." live />
         {report.releasePaused && <Banner tone="info" title="Auto-release is paused while your report is open." />}
@@ -100,8 +102,8 @@ export function CustomerProblem({ job, initialReport = null, state = "form", pre
           <TextField name="topic" label="Topic" required maxLength={160} value={topic} disabled={saving} error={invalid && !topic.trim() ? "Add a topic." : undefined} onChange={event => { changed(); setTopic(event.target.value); }} />
           <TextAreaField name="details" label="Details" required rows={5} maxLength={4000} value={details} disabled={saving} error={invalid && !details.trim() ? "Add details." : undefined} onChange={event => { changed(); setDetails(event.target.value); }} />
           <CheckboxField label="Urgent / safety" checked={urgent} disabled={saving} onChange={event => { changed(); setUrgent(event.target.checked); }} />
-          <div className={styles.photoSection} role="group" aria-labelledby="problem-photos-title">
-            <div className={styles.photoHeading}><h2 id="problem-photos-title">Photos <span>(optional)</span></h2><span>{photos.length} / 6</span></div>
+          <div className={styles.photoSection} role="group" aria-labelledby={photoTitleId}>
+            <div className={styles.photoHeading}><PhotoHeading id={photoTitleId}>Photos <span>(optional)</span></PhotoHeading><span>{photos.length} / 6</span></div>
             {photos.length ? <ul className={styles.photos}>{photos.map((photo, index) => <li key={photo.id} className={styles.photo}>
               {photo.url ? /* Blob previews stay local; uploaded files remain in the private bucket. */
                 // eslint-disable-next-line @next/next/no-img-element
@@ -110,7 +112,7 @@ export function CustomerProblem({ job, initialReport = null, state = "form", pre
                 {photo.failed && <Button variant="tertiary" disabled={offline || photoBusy || saving} onClick={() => void retryPhoto(photo)}>Try again</Button>}</div>
               <IconButton icon="close" label={`Remove photo ${index + 1}`} disabled={photoBusy || saving} onClick={() => { changed(); setPhotos(previous => previous.filter(item => item.id !== photo.id)); if (photo.url && urls.current.delete(photo.url)) URL.revokeObjectURL(photo.url); }} />
             </li>)}</ul> : <p className={styles.caption}>No photos added.</p>}
-            <input ref={fileInput} id="problem-photo-upload" type="file" accept="image/jpeg,image/png,image/heic,image/heif" multiple className={styles.srOnly} tabIndex={-1} aria-label="Choose photos" disabled={offline || photoBusy || saving || photos.length >= 6} onChange={event => void addPhotos(event.target.files)} />
+            <input ref={fileInput} id={photoInputId} type="file" accept="image/jpeg,image/png,image/heic,image/heif" multiple className={styles.srOnly} tabIndex={-1} aria-label="Choose photos" disabled={offline || photoBusy || saving || photos.length >= 6} onChange={event => void addPhotos(event.target.files)} />
             <Button variant="secondary" icon="add_photo_alternate" disabled={offline ? "You’re offline" : photos.length >= 6 ? "Choose up to 6 photos." : photoBusy || saving} onClick={() => fileInput.current?.click()}>Add photos</Button>
             {photoBusy && <p role="status" className={styles.caption}>Uploading photos…</p>}
           </div>
@@ -121,10 +123,12 @@ export function CustomerProblem({ job, initialReport = null, state = "form", pre
   </section></div>;
 }
 
-export function CustomerProblemLoading({ backHref = "/" }: { backHref?: string }) {
-  return <div className={styles.canvas} data-mode="customer"><section className={styles.page}><Button href={backHref} variant="tertiary" icon="arrow_back">Back</Button><div className={styles.card} aria-busy="true" role="status" aria-label="Loading report form"><h1 className={styles.srOnly}>Report a problem</h1><Skeleton width="30%" /><Skeleton width="75%" height="2.5rem" /><Skeleton height="4rem" /><Skeleton height="3.5rem" /><Skeleton height="10rem" /><Skeleton height="3.5rem" /></div></section></div>;
+export function CustomerProblemLoading({ backHref = "/", embedded = false }: { backHref?: string; embedded?: boolean }) {
+  const Heading = embedded ? "h3" : "h1";
+  return <div className={styles.canvas} data-mode="customer" data-embedded={embedded || undefined}><section className={styles.page}><Button href={backHref} variant="tertiary" icon="arrow_back">Back</Button><div className={styles.card} aria-busy="true" role="status" aria-label="Loading report form"><Heading className={styles.srOnly}>Report a problem</Heading><Skeleton width="30%" /><Skeleton width="75%" height="2.5rem" /><Skeleton height="4rem" /><Skeleton height="3.5rem" /><Skeleton height="10rem" /><Skeleton height="3.5rem" /></div></section></div>;
 }
-export function CustomerProblemLoadError({ backHref = "/" }: { backHref?: string }) {
+export function CustomerProblemLoadError({ backHref = "/", embedded = false }: { backHref?: string; embedded?: boolean }) {
   const router = useRouter();
-  return <div className={styles.canvas} data-mode="customer"><section className={styles.page}><Button href={backHref} variant="tertiary" icon="arrow_back">Back</Button><div className={styles.card}><h1 className={styles.title}>Couldn’t load the report form.</h1><p>Check your connection and try again.</p><Button onClick={() => router.refresh()}>Try again</Button></div></section></div>;
+  const Heading = embedded ? "h3" : "h1";
+  return <div className={styles.canvas} data-mode="customer" data-embedded={embedded || undefined}><section className={styles.page}><Button href={backHref} variant="tertiary" icon="arrow_back">Back</Button><div className={styles.card}><Heading className={styles.title}>Couldn’t load the report form.</Heading><p>Check your connection and try again.</p><Button onClick={() => router.refresh()}>Try again</Button></div></section></div>;
 }
