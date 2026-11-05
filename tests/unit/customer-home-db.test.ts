@@ -6,6 +6,7 @@ import { loadCustomerHome } from "@/server/customer-home";
 import { INVERCARGILL_COVERAGE } from "@/lib/geo/coverage";
 import { priceJob } from "@/server/pricing/price-job";
 import { priceVariation } from "@/server/variations/price";
+import { transitionJob, type StatusMachineDeps } from "@/server/jobs/status-machine";
 import { testDatabaseUrl, useTestSchema } from "../support/test-db";
 
 describe.skipIf(!testDatabaseUrl)("customer home with PostgreSQL", () => {
@@ -20,6 +21,7 @@ describe.skipIf(!testDatabaseUrl)("customer home with PostgreSQL", () => {
     return schema.db.job.create({ data: { customerId: viewer.userId, category: "OTHER", title: `Home ${status}`, description: "Customer home test", addressLine1: "1 Example Street", suburb: "Windsor", city: "Invercargill", status, workerId, priceCents: ["REVIEW", "QUOTE_BOUNTY"].includes(status) ? null : 10000 } });
   }
   const load = (viewer: Viewer) => loadCustomerHome(schema.db, viewer, INVERCARGILL_COVERAGE);
+  const transitions: StatusMachineDeps = { audit: async () => undefined, notify: async () => undefined };
 
   it("owner-scopes every section, returns actual counts beyond the card limit, and omits private pricing", async () => {
     const own = await person(), foreign = await person();
@@ -31,7 +33,39 @@ describe.skipIf(!testDatabaseUrl)("customer home with PostgreSQL", () => {
     expect(data.needsYou).toHaveLength(3); expect(data.needsYou.every(row => row.action === "price")).toBe(true);
     expect(data.inProgress.every(row => row.action === null)).toBe(true); expect(data.recent).toHaveLength(1);
     expect(JSON.stringify(data)).not.toContain(foreignJob.id);
-    expect(JSON.stringify(data)).not.toMatch(/customerId|workerId|addressLine|estimate|margin|workerGross|earnCents|variations/);
+    expect(JSON.stringify(data)).not.toMatch(/customerId|workerId|addressLine|estimate|margin|workerGross|earnCents|variations|statusHistory|fromStatus|toStatus/);
+  });
+  it("keeps an unpublished cancelled draft price out of Recent's serialized client props, without clearing stored pricing", async () => {
+    const customer = await person(), row = await job(customer);
+    const draft = await priceJob(schema.db, { jobId: row.id, minutes: 91, materialsCents: 12345 });
+    if (!draft.ok) throw new Error("Fixture draft must be priced");
+    await transitionJob(schema.db, transitions, { jobId: row.id, transition: "cancel", actor: customer });
+    const stored = await schema.db.job.findUniqueOrThrow({ where: { id: row.id } });
+    expect(stored).toMatchObject({ status: "CANCELLED", priceCents: draft.breakdown.customerPriceCents });
+    const recent = (await load(customer))!.recent.find(item => item.id === row.id)!;
+    expect(recent).toMatchObject({ priceCents: null, gstCents: null });
+    expect(JSON.stringify(recent)).not.toContain(`"priceCents":${draft.breakdown.customerPriceCents}`);
+    expect(JSON.stringify(recent)).not.toMatch(/statusHistory|fromStatus|toStatus/);
+  });
+  it("preserves a genuinely published price in Recent after an unpaid cancellation", async () => {
+    const customer = await person(), office = await person("ADMIN"), row = await job(customer);
+    const draft = await priceJob(schema.db, { jobId: row.id, minutes: 83, materialsCents: 23456 });
+    if (!draft.ok) throw new Error("Fixture draft must be priced");
+    await transitionJob(schema.db, transitions, { jobId: row.id, transition: "send-price", actor: office });
+    await transitionJob(schema.db, transitions, { jobId: row.id, transition: "cancel", actor: customer });
+    expect((await load(customer))!.recent.find(item => item.id === row.id)?.priceCents).toBe(draft.breakdown.customerPriceCents);
+  });
+  it.each(["REVIEW", "QUOTE_BOUNTY"] as const)("hides the full-job draft through %s's paid quick-look cancellation review and approval", async status => {
+    const customer = await person(), office = await person("ADMIN"), row = await job(customer, status);
+    const draft = await priceJob(schema.db, { jobId: row.id, minutes: 97, materialsCents: 34567 });
+    if (!draft.ok) throw new Error("Fixture draft must be priced");
+    const payment = await schema.db.payment.create({ data: { jobId: row.id, kind: "QUICK_LOOK", amountCents: 3000, status: "PAID", paidAt: new Date(), idempotencyKey: randomUUID(), livemode: false } });
+    await transitionJob(schema.db, transitions, { jobId: row.id, transition: "cancel", actor: customer, reason: "Fixture cancellation request" });
+    expect((await load(customer))!.inProgress.find(item => item.id === row.id)).toMatchObject({ status: "CANCEL_REVIEW", priceCents: null, gstCents: null });
+    await transitionJob(schema.db, transitions, { jobId: row.id, transition: "approve-cancel", actor: office, reason: "Fixture cancellation review" });
+    expect((await load(customer))!.recent.find(item => item.id === row.id)).toMatchObject({ status: "CANCELLED", priceCents: null, gstCents: null });
+    expect((await schema.db.job.findUniqueOrThrow({ where: { id: row.id } })).priceCents).toBe(draft.breakdown.customerPriceCents);
+    expect((await schema.db.payment.findUniqueOrThrow({ where: { id: payment.id } })).status).toBe("PAID");
   });
   it("moves only published extra work into Needs you, and returns it to progress when declined", async () => {
     const customer = await person(), worker = await person("TRADIE"), office = await person("ADMIN");

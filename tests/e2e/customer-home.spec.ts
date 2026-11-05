@@ -104,6 +104,8 @@ test.describe("signed-in customer home journeys", () => {
   const foreign = { id: randomUUID(), email: `foreign115-${randomUUID()}@example.test` };
   const worker = { id: randomUUID(), email: `worker115-${randomUUID()}@example.test` };
   const ids: string[] = [];
+  const unpublishedPriceCents = 90817263;
+  let cancelledDraftId: string;
   test.beforeAll(async () => {
     if (!["localhost", "127.0.0.1"].includes(new URL(app!).hostname) || !["localhost", "127.0.0.1"].includes(new URL(database!).hostname) || new URL(database!).pathname !== "/issue115") throw new Error("Disposable localhost issue115 database required");
     secret = randomBytes(32).toString("hex"); auth = await startAuthStub(secret, authPort);
@@ -116,6 +118,10 @@ test.describe("signed-in customer home journeys", () => {
       const id = randomUUID(); ids.push(id);
       await db.query("INSERT INTO jobs(id,customer_id,worker_id,category,title,description,address_line1,suburb,city,status,price_cents) VALUES($1,$2,$3,'OTHER',$4,'Private description','Private street','Windsor','Invercargill',$5,$6)", [id, customer.id, status === "SUBMITTED" ? worker.id : null, title, status, status === "REVIEW" ? null : 12345]);
     }
+    cancelledDraftId = randomUUID(); ids.push(cancelledDraftId);
+    await db.query("INSERT INTO jobs(id,customer_id,category,title,description,address_line1,suburb,city,status,price_cents) VALUES($1,$2,'OTHER','Cancelled unpublished draft','Private description','Private street','Windsor','Invercargill','REVIEW',$3)", [cancelledDraftId, customer.id, unpublishedPriceCents]);
+    // The real status trigger records REVIEW→CANCELLED; this fixture leaves the office's stored draft intact.
+    await db.query("UPDATE jobs SET status='CANCELLED',updated_at=clock_timestamp() WHERE id=$1", [cancelledDraftId]);
   });
   test.afterAll(async () => {
     await db?.query("DELETE FROM jobs WHERE id=ANY($1::uuid[])", [ids]);
@@ -132,6 +138,13 @@ test.describe("signed-in customer home journeys", () => {
     const response = await page.goto(app!); expect(response?.status()).toBe(200);
     expect(response?.headers()["cache-control"]).toContain("private");
     await expect(page.locator('meta[name="viewport"]')).toHaveAttribute("content", "width=device-width, initial-scale=1, viewport-fit=cover");
+    const payload = await response!.text();
+    const draftField = `"priceCents":${unpublishedPriceCents}`, publishedField = '"priceCents":12345';
+    // Inspect both JSON and the JSON-string-escaped form in streamed HTML; a known public price proves the matcher.
+    expect(payload.includes(publishedField) || payload.includes(JSON.stringify(publishedField).slice(1, -1))).toBe(true);
+    for (const field of [draftField, JSON.stringify(draftField).slice(1, -1)]) expect(payload).not.toContain(field);
+    await expect(page.getByRole("region", { name: "Recent", exact: true })).toContainText("Cancelled unpublished draft");
+    expect((await db.query("SELECT price_cents FROM jobs WHERE id=$1", [cancelledDraftId])).rows[0].price_cents).toBe(unpublishedPriceCents);
     const needs = page.getByRole("region", { name: /^Needs you/ });
     await expect(needs).toContainText("Home price tap"); await expect(needs).toContainText("Home sign-off tap");
     await expect(needs).not.toContainText("Home progress tap");
