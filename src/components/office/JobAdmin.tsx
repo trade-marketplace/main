@@ -30,6 +30,8 @@ import {
   parseMoneyToCents,
 } from "@/lib/office-job";
 import { OFFICE_JOBS_PATH } from "@/lib/office-jobs";
+import type { OfficeProblemReportState, OfficeProblemReturn } from "@/lib/office-problem";
+import { ProblemReportCard } from "./ProblemReportCard";
 
 import styles from "./job-admin.module.css";
 
@@ -49,6 +51,8 @@ export type JobAdminProps = {
   initialError?: string | null;
   /** Previews: don't reload from the server when something worked. */
   onChanged?: () => void;
+  problemReport?: OfficeProblemReportState | null;
+  problemReturn?: OfficeProblemReturn | null;
 };
 
 const DONE: Record<DialogName, string> = {
@@ -60,7 +64,7 @@ const DONE: Record<DialogName, string> = {
   message: "Message sent.",
 };
 
-export function JobAdmin({ job, submit, initialDialog = null, initialMenuOpen = false, initialError = null, onChanged }: JobAdminProps) {
+export function JobAdmin({ job, submit, initialDialog = null, initialMenuOpen = false, initialError = null, onChanged, problemReport, problemReturn }: JobAdminProps) {
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [retrying, startRetry] = useTransition();
@@ -70,7 +74,7 @@ export function JobAdmin({ job, submit, initialDialog = null, initialMenuOpen = 
   if (!job) {
     return (
       <div className={styles.page}>
-        <Crumbs label="Job" />
+        <Crumbs label="Job" problemReturn={problemReturn} />
         <ErrorState
           title="Can’t load this job"
           message="Check your connection and try again."
@@ -91,7 +95,7 @@ export function JobAdmin({ job, submit, initialDialog = null, initialMenuOpen = 
 
   return (
     <div className={styles.page}>
-      <Crumbs label={job.number} />
+      <Crumbs label={job.number} problemReturn={problemReturn} />
       <div className={styles.head}>
         <div className={styles.headText}>
           <h1 className={styles.title}>
@@ -127,6 +131,7 @@ export function JobAdmin({ job, submit, initialDialog = null, initialMenuOpen = 
 
       <div className={styles.grid}>
         <div className={styles.left}>
+          {problemReport && <ProblemReportCard value={problemReport} />}
           <MoneyCard job={job} />
           <MessagesCard job={job} onMessage={() => setDialog("message")} />
         </div>
@@ -148,10 +153,10 @@ export function JobAdmin({ job, submit, initialDialog = null, initialMenuOpen = 
   );
 }
 
-function Crumbs({ label }: { label: string }) {
+function Crumbs({ label, problemReturn }: { label: string; problemReturn?: OfficeProblemReturn | null }) {
   return (
     <nav aria-label="Breadcrumb" className={styles.crumbs}>
-      <Link href={OFFICE_JOBS_PATH}>All jobs</Link>
+      <Link href={problemReturn?.href ?? OFFICE_JOBS_PATH}>{problemReturn?.label ?? "All jobs"}</Link>
       <Icon name="chevron_right" size="sm" decorative />
       <span aria-current="page">{label}</span>
     </nav>

@@ -12,6 +12,7 @@ export default async function Preview({ searchParams }: { searchParams: Promise<
   const state: QueuePreviewState = (QUEUE_PREVIEW_STATES as readonly string[]).includes(candidate) ? candidate as QueuePreviewState : "price";
   const query = parseQueueQuery({ ...params, tab: params.tab ?? (["price", "extra", "cancel", "signoff", "unclaimed"].includes(state) ? state : "price"), q: params.q ?? (state === "search" ? "Jack" : state === "search-empty" ? "nothing matches" : "") });
   const data = previewQueues(state, query);
+  if (params.urgent === "1") data.problems = data.problems.map(problem => ({ ...problem, topic: `Urgent · ${problem.topic}`, href: "/dev/components/office-job?problem=ready#problem-report" }));
   return <OfficeShellView viewer={{ role: "ADMIN", firstName: "Matt", lastName: "Larsen", email: "office@demo.test" }} counts={data.counts} testMode preview={{ at: "/admin", base: "/dev/components/office-queues" }}>
     <OfficeQueues query={query} data={state === "error" || state === "loading" ? null : data} loading={state === "loading"} offline={state === "offline"} basePath="/dev/components/office-queues" previewState={state} />
   </OfficeShellView>;

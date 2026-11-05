@@ -22,7 +22,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
     {state === "status-gallery" ? Object.values(statuses).map((status, index) => {
       const row = exampleJob({ status, id: `12200000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`, jobNumber: 1005 + index, ...(status === "BOOKABLE" ? { workerId: null, worker: null } : {}) });
       const example = customerJobView(VIEWERS.customer, row)!;
-      return <CustomerJob key={status} job={example} photos={photos} canEditWindows={canEditJobWindows(row)} preview="static" />;
-    }) : state === "loading" ? <CustomerJobLoading /> : state === "error" ? <CustomerJobLoadError /> : <CustomerJob job={job} photos={photos} photosFailed={state === "photos-error"} canEditWindows={canEditJobWindows(source)} preview={state === "offline" ? "offline" : "static"} />}
+      return <CustomerJob problemHref="/dev/components/customer-problem?state=form" key={status} job={example} photos={photos} canEditWindows={canEditJobWindows(row)} preview="static" />;
+    }) : state === "loading" ? <CustomerJobLoading /> : state === "error" ? <CustomerJobLoadError /> : <CustomerJob problemHref="/dev/components/customer-problem?state=form" job={job} photos={photos} photosFailed={state === "photos-error"} canEditWindows={canEditJobWindows(source)} preview={state === "offline" ? "offline" : "static"} />}
   </AppShellView>;
 }
