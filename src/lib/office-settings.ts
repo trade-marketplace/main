@@ -20,6 +20,9 @@ export const RATE_FIELDS: readonly NumberField[] = [
   { key: "bountyExpiryHours", label: "Bounty expiry hours", unit: "number", min: 1, max: 720, group: "Timing and quote bounties" },
   { key: "quoterRewardBps", label: "Quoter reward", unit: "percent", min: 0, max: 100, group: "Timing and quote bounties" },
   { key: "quoterBonusCents", label: "Weekly quoter bonus", unit: "money", min: 0, max: 10000, nullable: true, group: "Timing and quote bounties" },
+  { key: "starterPoints", label: "Starting points", unit: "number", min: 0, max: 100, group: "Quote points" },
+  { key: "quotePoints", label: "Points per quote", unit: "number", min: 0, max: 100, group: "Quote points" },
+  { key: "claimPoints", label: "Points to claim a job", unit: "number", min: 0, max: 100, group: "Quote points" },
 ];
 export const COVERAGE_FIELDS: readonly NumberField[] = [
   { key: "coverageCentreLat", label: "Centre latitude", unit: "number", min: -48, max: -33, group: "Coverage" },

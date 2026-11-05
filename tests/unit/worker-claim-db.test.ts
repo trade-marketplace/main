@@ -4,6 +4,7 @@ import type { Prisma, Role } from "@/generated/prisma/client";
 import { claimWorkerJob } from "@/server/jobs/worker-claim-command";
 import { loadWorkerClaim } from "@/server/jobs/worker-claim-reader";
 import { priceJob } from "@/server/pricing/price-job";
+import { pointBalance } from "@/server/points/ledger";
 import { testDatabaseUrl, useTestSchema } from "../support/test-db";
 describe.skipIf(!testDatabaseUrl)("worker claim transaction", () => {
   const schema = useTestSchema(import.meta.filename);
@@ -18,8 +19,27 @@ describe.skipIf(!testDatabaseUrl)("worker claim transaction", () => {
     const job = await schema.db.job.create({ data: { customerId: customer.id, category: "OTHER", status: "REVIEW", title: "Move a couch", description: "Move the couch upstairs.", addressLine1: "144 Private Street", suburb: "Windsor", city: "Invercargill", lat: -46.4132, lng: 168.3538, approxLat: -46.4117, approxLng: 168.3538, anyTime: true } });
     await priceJob(schema.db, { jobId: job.id, minutes: 120, materialsCents: 8500, pricedById: office.id });
     await schema.db.job.update({ where: { id: job.id }, data: { status: "BOOKABLE" } });
+    // Enough quote points to claim (starts with 3, claiming costs 5: #491).
+    await schema.db.pointEntry.create({ data: { workerId: worker.id, delta: 2, reason: "OFFICE" } });
     return { job, customer, viewer: { userId: worker.id, role: "TRADIE" as const } };
   }
+  it("spends the claim cost once in the claim transaction and refuses a claim without enough points (#491)", async () => {
+    const { job, viewer } = await fixture();
+    expect((await loadWorkerClaim(schema.db, viewer, job.id))?.points).toEqual({ balance: 5, cost: 5 });
+    expect((await claimWorkerJob(schema.db, viewer, job.id)).status).toBe("claimed");
+    expect(await pointBalance(schema.db, viewer.userId)).toBe(0);
+    expect((await claimWorkerJob(schema.db, viewer, job.id)).status).toBe("claimed");
+    expect(await pointBalance(schema.db, viewer.userId)).toBe(0);
+    const other = await fixture();
+    await schema.db.pointEntry.create({ data: { workerId: other.viewer.userId, delta: -3, reason: "OFFICE" } });
+    expect(await claimWorkerJob(schema.db, other.viewer, other.job.id)).toEqual({ status: "points", balance: 2, cost: 5 });
+    expect(await schema.db.job.findUnique({ where: { id: other.job.id } })).toMatchObject({ status: "BOOKABLE", workerId: null });
+    expect(await schema.db.auditLog.count({ where: { recordId: other.job.id, action: "job.claimed" } })).toBe(0);
+    await schema.db.settings.upsert({ where: { id: 1 }, create: { id: 1, claimPoints: 2 }, update: { claimPoints: 2 } });
+    try { expect((await claimWorkerJob(schema.db, other.viewer, other.job.id)).status).toBe("claimed"); }
+    finally { await schema.db.settings.update({ where: { id: 1 }, data: { claimPoints: 5 } }); }
+    expect(await pointBalance(schema.db, other.viewer.userId)).toBe(0);
+  });
   it("commits assignment, history, audit and private-recipient in-app notices together, then unlocks only the assignee", async () => {
     const { job, customer, viewer } = await fixture();
     expect((await loadWorkerClaim(schema.db, viewer, job.id))?.job.address).toBeNull();

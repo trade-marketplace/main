@@ -7,6 +7,7 @@ import { problemContactHref } from "@/server/messages/contact";
 import { createNotify } from "@/server/notifications/notify";
 import type { JobViewer } from "@/server/views";
 import { applyTransition, JobTransitionError, TransitionPreconditionError } from "./status-machine";
+import { NotEnoughPointsError, spendClaimPoints } from "@/server/points/ledger";
 import { loadWorkerClaim } from "./worker-claim-reader";
 
 async function claimedResult(db: PrismaClient, viewer: JobViewer, job: WorkerClaimView): Promise<WorkerClaimResult> {
@@ -33,11 +34,14 @@ export async function claimWorkerJob(db: PrismaClient, viewer: JobViewer, id: un
           await createNotify(tx)("job.claimed", [change.customerId, viewer.userId], { eventId, payload: { jobId, jobNumber: change.jobNumber } });
         },
       }, { jobId, transition: "claim", actor: viewer });
+      // Claiming costs points (#491). Spent in the same transaction, so a lost or refused claim never spends any.
+      await spendClaimPoints(tx, viewer.userId, jobId);
       const current = await loadWorkerClaim(tx, viewer, jobId);
       if (!current?.job.assignedToYou) throw new Error("Claim projection unavailable");
       return current.job;
     });
   } catch (error) {
+    if (error instanceof NotEnoughPointsError) return { status: "points", balance: error.balance, cost: error.cost };
     if (error instanceof TransitionPreconditionError && Object.hasOwn(CLAIM_FAILURE_COPY, error.failure)) return { status: "ineligible", failure: error.failure as keyof typeof CLAIM_FAILURE_COPY };
     if (error instanceof JobTransitionError) {
       const current = await db.job.findUnique({ where: { id: jobId }, select: { status: true, workerId: true } });

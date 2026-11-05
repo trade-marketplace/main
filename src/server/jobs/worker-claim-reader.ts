@@ -1,4 +1,5 @@
 import "server-only";
+import { pointBalance, pointLevels } from "@/server/points/ledger";
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { redactContactDetails } from "@/lib/problem-threads";
 import type { WorkerClaimView } from "@/lib/worker-claim";
@@ -24,16 +25,18 @@ export function workerClaimView(viewer: JobViewer, source: ClaimSource, needs: N
   };
 }
 
-export async function loadWorkerClaim(db: Pick<PrismaClient, "job" | "tradeEvidenceRule" | "profile" | "settings">, viewer: JobViewer, id: string) {
+export async function loadWorkerClaim(db: Pick<PrismaClient, "job" | "tradeEvidenceRule" | "profile" | "settings" | "pointEntry">, viewer: JobViewer, id: string) {
   if (viewer.role !== "TRADIE") return null;
   const source = await db.job.findUnique({ where: { id }, select: WORKER_CLAIM_SELECT });
   if (!source || !workerJobView(viewer, source)) return null;
   const needs = await db.tradeEvidenceRule.findUnique({ where: { trade: source.category }, select: { cocRequired: true, minPhotos: true, notesRequired: true } });
   const job = workerClaimView(viewer, source, needs); if (!job) return null;
-  if (job.assignedToYou) return { job, photoCount: source.photos.length, failure: null };
+  if (job.assignedToYou) return { job, photoCount: source.photos.length, failure: null, points: null };
   const [worker, settings] = await Promise.all([
     db.profile.findUnique({ where: { id: viewer.userId }, select: WORKER_ELIGIBILITY_SELECT }),
     db.settings.findUnique({ where: { id: 1 }, select: { enabledTrades: true } }),
   ]);
-  return { job, photoCount: source.photos.length, failure: eligibilityFailure(worker, source, "claim", { enabledTrades: settings?.enabledTrades }) };
+  const levels = await pointLevels(db);
+  const points = { balance: await pointBalance(db, viewer.userId, levels), cost: levels.claim };
+  return { job, photoCount: source.photos.length, failure: eligibilityFailure(worker, source, "claim", { enabledTrades: settings?.enabledTrades }), points };
 }

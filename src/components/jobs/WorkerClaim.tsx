@@ -1,4 +1,5 @@
 "use client";
+import { pointsLabel } from "@/lib/points";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/Button";
@@ -18,13 +19,15 @@ import { DAY_PARTS } from "@/lib/job-time-windows";
 import { boardJobHref } from "@/lib/job-board";
 import { claimMessageHref } from "@/lib/claim-return";
 import type { AuthFailure } from "@/lib/auth/results";
-import { CLAIM_FAILURE_COPY, type WorkerClaimResult, type WorkerClaimView } from "@/lib/worker-claim";
+import { CLAIM_FAILURE_COPY, type ClaimPoints, type WorkerClaimResult, type WorkerClaimView } from "@/lib/worker-claim";
 import type { EligibilityFailure } from "@/server/workers/eligibility";
 import { claimWorkerJobAction } from "@/server/jobs/worker-claim-actions";
 import styles from "./worker-claim.module.css";
 
 type Photos = { src: string; alt: string }[];
 type Props = { job: WorkerClaimView; back: string; failure?: EligibilityFailure | null; photos?: Photos; photosFailed?: boolean; preview?: string; contactHref?: string;
+  /** The worker's points and the claim cost (#491); null once the job is theirs. */
+  points?: ClaimPoints | null;
   claim?: (id: string) => Promise<WorkerClaimResult | AuthFailure> };
 function timing(job: WorkerClaimView) {
   if (job.asap) return "As soon as possible";
@@ -42,12 +45,14 @@ export function ClaimNumbers({ job, reveal = false }: { job: WorkerClaimView; re
 export function ClaimNextSteps({ job }: { job: WorkerClaimView }) {
   return <ol className={styles.nextSteps}><li>Book one of the customer’s time windows</li>{job.category === "ELECTRICAL" && <li>Grab materials at Telfer: job no. <b>TM-{job.jobNumber}</b></li>}<li>{job.needs?.coc ? "Do the work, upload the CoC" : "Do the work, send completion evidence"}</li></ol>;
 }
-export function WorkerClaim({ job: initial, back, failure: initialFailure, photos = [], photosFailed, preview, contactHref: initialContactHref, claim = claimWorkerJobAction }: Props) {
+export function WorkerClaim({ job: initial, back, failure: initialFailure, photos = [], photosFailed, preview, contactHref: initialContactHref, points: initialPoints = null, claim = claimWorkerJobAction }: Props) {
   const router = useRouter(), session = useOptionalSessionExpired(), online = useOnlineStatus(), pending = useRef(false);
   const [job, setJob] = useState(initial), [failure, setFailure] = useState(initialFailure);
   const [confirm, setConfirm] = useState(["confirm", "error", "offline", "saving"].includes(preview ?? ""));
   const [success, setSuccess] = useState(preview === "success"), [lost, setLost] = useState(preview === "lost");
   const [busy, setBusy] = useState(false), [error, setError] = useState(preview === "error");
+  const [points, setPoints] = useState(initialPoints);
+  const short = Boolean(points && !job.assignedToYou && points.balance < points.cost);
   const [contactHref, setContactHref] = useState(initialContactHref ?? `/messages?job=${encodeURIComponent(job.id)}`);
   const messageHref = claimMessageHref(contactHref, boardJobHref(job.id, back));
   const titleRef = useRef<HTMLSpanElement>(null), addressRef = useRef<HTMLHeadingElement>(null);
@@ -67,7 +72,7 @@ export function WorkerClaim({ job: initial, back, failure: initialFailure, photo
   const offline = !online || preview === "offline", saving = busy || preview === "saving";
   useEffect(() => { if (success) titleRef.current?.closest("h2")?.focus(); }, [success]);
   async function take() {
-    if (pending.current || offline || saving || lost || failure) return;
+    if (pending.current || offline || saving || lost || failure || short) return;
     pending.current = true; setBusy(true); setError(false);
     try {
       const result = await claim(job.id);
@@ -75,6 +80,7 @@ export function WorkerClaim({ job: initial, back, failure: initialFailure, photo
       if (!("status" in result)) { setError(true); return; }
       if (result.status === "claimed") { setJob(result.job); setContactHref(result.contactHref); setConfirm(false); setSuccess(true); }
       else if (result.status === "lost") { setConfirm(false); setLost(true); }
+      else if (result.status === "points") { setConfirm(false); setPoints({ balance: result.balance, cost: result.cost }); }
       else if (result.status === "ineligible") { setConfirm(false); setFailure(result.failure); }
       else setError(true);
     } catch { setError(true); }
@@ -93,7 +99,9 @@ export function WorkerClaim({ job: initial, back, failure: initialFailure, photo
         <div><Pill kind="good">Paid by customer</Pill></div><ClaimNumbers job={job} reveal />
         <OfflineBanner online={preview === "offline" ? false : undefined} sticky={false} />
         {failure && <Banner tone="alert" live={failure !== initialFailure}>{CLAIM_FAILURE_COPY[failure]}</Banner>}
-        <Button variant={job.assignedToYou ? "secondary" : "hero"} width="full" disabled={lost || Boolean(failure) || offline} onClick={() => job.assignedToYou ? openOwnedJob() : setConfirm(true)}>{job.assignedToYou ? "Open job" : "Claim job"}</Button>
+        {points && !job.assignedToYou && points.cost > 0 && <p className={styles.points}><span className={styles.cost}><Icon name="toll" size="sm" fill decorative />{points.cost}</span>to claim · you have {pointsLabel(points.balance)}</p>}
+        {short && points && <Banner tone="info" live action={<TextLink href="/jobs?kind=estimate" inline>Find jobs to quote</TextLink>}>Quote {points.cost - points.balance} more {points.cost - points.balance === 1 ? "job" : "jobs"} to claim this one.</Banner>}
+        <Button variant={job.assignedToYou ? "secondary" : "hero"} width="full" disabled={lost || Boolean(failure) || offline || short} onClick={() => job.assignedToYou ? openOwnedJob() : setConfirm(true)}>{job.assignedToYou ? "Open job" : "Claim job"}</Button>
       </aside>
     </div>
     <Dialog open={confirm || success} onClose={() => { setConfirm(false); setSuccess(false); }} dismissible={!saving} role={success ? "dialog" : "alertdialog"} title={<span ref={dialogTitleRef}>{success ? "It’s yours." : "Take this job?"}</span>} eyebrow={success ? undefined : `${job.title} · TM-${job.jobNumber}`} size="sm" footer={success ? <><Button variant="secondary" onClick={openOwnedJob}>Open job</Button><Button href={messageHref}>Message {job.customerFirstName}</Button></> : <><Button variant="secondary" onClick={() => setConfirm(false)} disabled={saving}>Not now</Button><Button loading={saving} disabled={offline} onClick={() => void take()}>Yes, it’s mine</Button></>}>

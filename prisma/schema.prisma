@@ -827,6 +827,11 @@ model Settings {
   // Configuration only: the share base and bonus policy still need a founder decision.
   quoterRewardBps      Int      @default(200) @map("quoter_reward_bps")
   quoterBonusCents     Int?     @map("quoter_bonus_cents")
+  // Quote points (#488/#491): tradies start with `starterPoints`, earn `quotePoints` the first time they quote a
+  // job and spend `claimPoints` to claim one. The office tunes these while the founders find the right levels.
+  starterPoints        Int      @default(3) @map("starter_points")
+  quotePoints          Int      @default(1) @map("quote_points")
+  claimPoints          Int      @default(5) @map("claim_points")
   enabledTrades       Trade[]  @default([ELECTRICAL, PLUMBING, GAS, CONSTRUCTION, OTHER]) @map("enabled_trades")
   // Where we work (#97): a circle around a centre, Invercargill at launch (DECISIONS.md 12). A job is covered
   // when its point is within `coverage_radius_km` of the centre: 60 km at launch (Matt, 26 Oct), 1–200 km.

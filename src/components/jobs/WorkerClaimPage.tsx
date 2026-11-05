@@ -18,5 +18,5 @@ export async function WorkerClaimPage({ viewer, id, back }: { viewer: JobViewer;
   if (current.photoCount) {
     try { photos = (await getUploadService().jobPhotoUrls(viewer, id)).map(photo => ({ src: photo.url, alt: current.job.title })); } catch { photosFailed = true; }
   }
-  return <WorkerClaim key={`${viewer.userId}:${id}`} job={current.job} failure={current.failure} back={back} photos={photos} photosFailed={photosFailed} contactHref={contactHref} />;
+  return <WorkerClaim key={`${viewer.userId}:${id}`} job={current.job} failure={current.failure} back={back} photos={photos} photosFailed={photosFailed} contactHref={contactHref} points={current.points} />;
 }
