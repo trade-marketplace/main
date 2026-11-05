@@ -55,7 +55,7 @@ describe.skipIf(!testDatabaseUrl)("office queues with real PostgreSQL", () => {
     expect(data.kpis.extra.count).toBe(2); expect(data.total).toBe(2);
     expect(data.rows.map(row => row.context)).toEqual(["First extra task", "Second extra task"]);
     expect(new Set(data.rows.map(row => row.id)).size).toBe(2);
-    expect(data.rows.every(row => row.jobId === f.job.id && row.href === `/admin/jobs/${f.job.id}`)).toBe(true);
+    expect(data.rows.every(row => row.jobId === f.job.id && row.action === "Price it" && row.href === `/admin/variations/${row.id}?from=%2Fadmin%3Ftab%3Dextra`)).toBe(true);
     await clearJobs();
   });
 
