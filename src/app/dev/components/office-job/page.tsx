@@ -1,6 +1,7 @@
 // /dev/components/office-job: the office job admin view (#171, F05, pages.html w-o-job) in every state, with a
 // pretend server. Flags: ?state=default|unpaid|no-tradie|cancelled|long-text|loading|error
 // · ?dialog=reassign|refund|price|status|cancel|message · ?menu=open · ?failure=1 (the dialog shows an error).
+// · ?problem=ready|loading|error|offline|photo-error|empty|resolved shows the selected report independently.
 // Development only: in a production build this page is a 404. Names, prices and times are examples.
 import type { Metadata, Viewport } from "next";
 
@@ -36,6 +37,7 @@ export default async function OfficeJobPreview({ searchParams }: { searchParams:
         dialog={dialog}
         menuOpen={one(query.menu) === "open"}
         failure={one(query.failure) === "1" ? "Couldn’t save that. Nothing was changed. Try again." : null}
+        problem={one(query.problem)}
       />
     </OfficeShellView>
   );

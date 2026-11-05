@@ -11,7 +11,7 @@ import { CheckboxField } from "@/components/forms/ChoiceFields";
 import { TextAreaField, TextField } from "@/components/forms/TextFields";
 import { Banner } from "@/components/overlays/Banner";
 import type { AuthFailure } from "@/lib/auth/results";
-import { CUSTOMER_PROBLEM_ERRORS, customerProblemSchema, type CustomerProblemContext, type CustomerProblemInput, type CustomerProblemReceipt, type CustomerProblemResult, type CustomerProblemState } from "@/lib/customer-problem";
+import { CUSTOMER_PROBLEM_ERRORS, customerProblemHref, customerProblemSchema, type CustomerProblemContext, type CustomerProblemInput, type CustomerProblemReceipt, type CustomerProblemResult, type CustomerProblemState } from "@/lib/customer-problem";
 import { uploadSupportPhotoClient } from "@/lib/support-photo-upload";
 import { reportCustomerProblemAction } from "@/server/jobs/customer-problem-actions";
 import styles from "./customer-problem.module.css";
@@ -74,7 +74,7 @@ export function CustomerProblem({ job, initialReport = null, state = "form", pre
       if (session?.check(result, { resend: send })) return;
       if (result.ok) {
         setReport(result.report);
-        if (!preview) router.replace(`/jobs/${job.id}/problem?report=${result.report.id}&from=${encodeURIComponent(backHref)}`);
+        if (!preview) router.replace(customerProblemHref(job.id, result.report.id, backHref));
         requestAnimationFrame(() => sentHeading.current?.focus());
       } else setError(CUSTOMER_PROBLEM_ERRORS[result.error] ?? CUSTOMER_PROBLEM_ERRORS.unavailable);
     } catch { setError(CUSTOMER_PROBLEM_ERRORS.unavailable); }

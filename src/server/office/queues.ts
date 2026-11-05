@@ -5,7 +5,8 @@ import type { JobStatus, Prisma, PrismaClient } from "@/generated/prisma/client"
 import type { Role } from "@/lib/mode";
 import { normaliseMobile } from "@/lib/auth/signup";
 import { jobNumberFromSearch, STATUS_GROUPS } from "@/lib/office-jobs";
-import { QUEUE_PAGE_SIZE, waitingLabel, type QueueData, type QueueKey, type QueueKpi, type QueueQuery, type QueueRow } from "@/lib/office-queues";
+import { QUEUE_PAGE_SIZE, waitingLabel, queueHref, type QueueData, type QueueKey, type QueueKpi, type QueueQuery, type QueueRow } from "@/lib/office-queues";
+import { officeProblemJobHref } from "@/lib/office-problem";
 import { getDb } from "@/server/db";
 import { JOB_SUMMARY_SELECT, officeJobListView } from "@/server/views/jobs";
 import type { JobViewer } from "@/server/views/access";
@@ -156,7 +157,7 @@ export async function readOfficeQueues(db: QueueDatabase, viewer: JobViewer, que
   if (!search && rows.length !== Math.min(QUEUE_PAGE_SIZE, Math.max(0, total - skip))) throw new Error("queue-read-changed");
   const problemPage = Math.min(query.problemPage, Math.max(1, Math.ceil(current.problemCount / QUEUE_PAGE_SIZE)));
   const cases = await db.problemReport.findMany({ where: { status: "OPEN" }, orderBy: [{ urgent: "desc" }, { createdAt: "asc" }, { id: "asc" }], skip: (problemPage - 1) * QUEUE_PAGE_SIZE, take: QUEUE_PAGE_SIZE, select: { id: true, topic: true, urgent: true, createdAt: true, job: { select: JOB_SUMMARY_SELECT } } });
-  const problems = cases.flatMap(problem => { const job = officeQueueJobView(viewer, problem.job); return job ? [{ id: problem.id, jobId: job.jobId, number: job.number, title: job.title, topic: `${problem.urgent ? "Urgent · " : ""}${problem.topic}`, since: problem.createdAt.toISOString(), reported: waitingLabel(problem.createdAt, now), href: `/admin/jobs/${job.jobId}` }] : []; });
+  const problems = cases.flatMap(problem => { const job = officeQueueJobView(viewer, problem.job); return job ? [{ id: problem.id, jobId: job.jobId, number: job.number, title: job.title, topic: `${problem.urgent ? "Urgent · " : ""}${problem.topic}`, since: problem.createdAt.toISOString(), reported: waitingLabel(problem.createdAt, now), href: officeProblemJobHref(job.jobId, problem.id, { label: "Problems", href: `${queueHref(query)}#queue-problems` }) }] : []; });
   return { kpis: current.kpis, things: current.things, counts: current.counts, waitingCustomer: current.waitingCustomer, date: current.date,
     problemCount: current.problemCount, problemPage, rows, total, page, problems };
 }

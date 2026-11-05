@@ -5,6 +5,13 @@ export function customerProblemReturn(id: string, value: unknown): string {
   const back = customerJobWindowsReturn(id, value);
   return back === "/notifications" ? `/jobs/${id}` : back;
 }
+/** The page guard and Sent navigation keep the same validated receipt and customer list context. */
+export function customerProblemHref(id: string, report: unknown, from: unknown): string {
+  const query = new URLSearchParams(), parsed = z.uuid().safeParse(report), back = customerProblemReturn(id, from);
+  if (parsed.success) query.set("report", parsed.data);
+  if (back !== `/jobs/${id}`) query.set("from", back);
+  return `/jobs/${id}/problem${query.size ? `?${query}` : ""}`;
+}
 
 export const customerProblemSchema = z.object({
   jobId: z.uuid(), topic: z.string().trim().min(1).max(160), details: z.string().trim().min(1).max(4000),

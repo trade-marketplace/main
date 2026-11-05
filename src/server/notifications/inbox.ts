@@ -3,6 +3,7 @@ import "server-only";
 import type { Prisma } from "@/generated/prisma/client";
 import type { InboxItem, InboxSnapshot } from "@/lib/notifications";
 import { NOTIFICATIONS_PAGE_SIZE, notificationsQuery, type NotificationsPage } from "@/lib/notifications";
+import { officeProblemJobHref } from "@/lib/office-problem";
 
 export type InboxDb = Pick<Prisma.TransactionClient, "notification">;
 const SELECT = { id: true, type: true, payload: true, createdAt: true, readAt: true } as const;
@@ -60,7 +61,8 @@ export function inboxItem(row: Row): InboxItem {
   else if (row.type === "message.received" && threadId) href = `/messages/${encodeURIComponent(threadId)}`;
   else if (jobId) {
     if (row.type === "job.reschedule_requested" && payload.refreshWindows === true) href = `/jobs/${encodeURIComponent(jobId)}/windows`;
-    else if (row.type === "payment.review_required" || row.type === "variation.requested" || row.type === "problem_report.created") href = `/admin/jobs/${encodeURIComponent(jobId)}`;
+    else if (row.type === "problem_report.created") href = officeProblemJobHref(jobId, payload.reportId, null);
+    else if (row.type === "payment.review_required" || row.type === "variation.requested") href = `/admin/jobs/${encodeURIComponent(jobId)}`;
     else if (row.type === "message.received") href = `/messages/${encodeURIComponent(jobId)}`;
     else if (row.type === "job.paid") href = `/receipts/${encodeURIComponent(jobId)}`;
     else href = `/jobs/${encodeURIComponent(jobId)}`;

@@ -69,6 +69,15 @@ test.describe("signed-in customer problem report", () => {
       await expect(page.getByRole("heading", { name: "Sent.", exact: true })).toBeVisible(); await expect(page.getByText(/Auto-release is paused/)).toBeVisible();
       const reportId = new URL(page.url()).searchParams.get("report")!;
       await page.reload(); await expect(page.getByRole("heading", { name: "Sent.", exact: true })).toBeVisible();
+      if (viewport.width === 390) {
+        const receipt = new URL(page.url()), destination = `${receipt.pathname}${receipt.search}`;
+        await page.context().clearCookies(); await page.reload();
+        await expect(page).toHaveURL(/\/login\?next=/);
+        expect(new URL(page.url()).searchParams.get("next")).toBe(destination);
+        await page.getByLabel("Email", { exact: true }).fill(SECURITY_USER.email); await page.getByLabel("Password", { exact: true }).fill(SECURITY_PASSWORD);
+        await page.getByRole("button", { name: "Log in", exact: true }).click(); await expect(page).toHaveURL(`${app}${destination}`);
+        await expect(page.getByRole("heading", { name: "Sent.", exact: true })).toBeVisible();
+      }
       const row = (await db.query("SELECT p.status,p.urgent,t.job_participants,m.body,(SELECT count(*) FROM problem_report_photos WHERE report_id=p.id) AS photos FROM problem_reports p JOIN support_threads t ON t.problem_report_id=p.id JOIN support_messages m ON m.thread_id=t.id WHERE p.id=$1", [reportId])).rows[0];
       expect(row).toMatchObject({ status: "OPEN", urgent: true, job_participants: false, photos: "1" }); expect(row.body).toContain("Urgent / safety");
       await page.getByRole("link", { name: "Back to job", exact: true }).click(); await expect(page).toHaveURL(`${app}${jobHref}`);
@@ -76,10 +85,10 @@ test.describe("signed-in customer problem report", () => {
       await page.goto(`${app}/jobs/${foreignJob}/problem`); await expect(page.getByRole("heading", { name: "Wrong address.", exact: true })).toBeVisible();
     });
   }
-  test("office follows the urgent Problems row to the existing job messages and private photo; worker cannot read the report", async ({ browser }) => {
+  test("office follows an old urgent report beyond twenty messages to its specific card/photo and Problems Back; worker cannot read it", async ({ browser }) => {
     test.setTimeout(120000);
-    const jobId = randomUUID();
-    await db.query("INSERT INTO jobs(id,customer_id,worker_id,category,title,description,address_line1,suburb,city,status,price_cents) VALUES($1,$2,$3,'OTHER','Office handoff fixture','Switch is loose','1 Fixture Street','Windsor','Invercargill','SUBMITTED',12000)", [jobId, SECURITY_USER.id, SECURITY_TRADIE.id]);
+    const jobId = randomUUID(), officeTitle = `Office handoff ${jobId.slice(0, 8)}`;
+    await db.query("INSERT INTO jobs(id,customer_id,worker_id,category,title,description,address_line1,suburb,city,status,price_cents) VALUES($1,$2,$3,'OTHER',$4,'Switch is loose','1 Fixture Street','Windsor','Invercargill','SUBMITTED',12000)", [jobId, SECURITY_USER.id, SECURITY_TRADIE.id, officeTitle]);
     const customerContext = await browser.newContext(), customer = await customerContext.newPage();
     try {
       await login(customer, SECURITY_USER.email, `/jobs/${jobId}/problem`);
@@ -91,6 +100,10 @@ test.describe("signed-in customer problem report", () => {
       await expect(customer.getByRole("heading", { name: "Sent.", exact: true })).toBeVisible();
     } finally { await customerContext.close(); }
     const report = (await db.query("SELECT p.id,p.job_id,t.id AS thread_id FROM problem_reports p JOIN support_threads t ON t.problem_report_id=p.id WHERE p.job_id=$1", [jobId])).rows[0];
+    await db.query("INSERT INTO problem_reports(job_id,reported_by_id,topic,details) VALUES($1,$2,'Another report','This is a different case on the same job.')", [jobId, SECURITY_USER.id]);
+    const laterThread = randomUUID();
+    await db.query("INSERT INTO support_threads(id,user_id,job_id,job_participants,subject) VALUES($1,$2,$3,true,'Later conversation')", [laterThread, SECURITY_USER.id, jobId]);
+    await db.query("INSERT INTO support_messages(thread_id,author_id,body,created_at) SELECT $1,$2,'Later context '||n,now()+n*interval '1 second' FROM generate_series(1,26) AS n", [laterThread, SECURITY_USER.id]);
     const workerContext = await browser.newContext(), worker = await workerContext.newPage();
     try {
       await login(worker, SECURITY_TRADIE.email, "/messages");
@@ -102,12 +115,26 @@ test.describe("signed-in customer problem report", () => {
     await db.query("UPDATE notifications SET user_id=$1 WHERE type='problem_report.created' AND user_id=$2", [SECURITY_TRADIE.id, officeId]);
     const officeContext = await browser.newContext(), office = await officeContext.newPage();
     try {
-      await login(office, SECURITY_TRADIE.email, "/admin");
-      const row = office.getByRole("row").filter({ hasText: "Office handoff fixture" }).filter({ hasText: "Urgent · Exposed wires" });
-      await expect(row).toBeVisible(); await row.getByRole("link", { name: "Office handoff fixture", exact: true }).click(); await expect(office).toHaveURL(new RegExp(`/admin/jobs/${report.job_id}$`));
-      await expect(office.getByText(/Urgent \/ safety/).first()).toBeVisible();
-      const photo = office.getByRole("img", { name: /Message photo/ }).first(); await expect(photo).toBeVisible();
+      await login(office, SECURITY_TRADIE.email, "/admin?tab=signoff");
+      const row = office.getByRole("row").filter({ hasText: officeTitle }).filter({ hasText: "Urgent · Exposed wires" });
+      await expect(row).toBeVisible(); await row.getByRole("link", { name: officeTitle, exact: true }).click();
+      await expect(office).toHaveURL(new RegExp(`/admin/jobs/${report.job_id}\\?`));
+      expect(new URL(office.url()).searchParams.get("problem")).toBe(report.id); expect(new URL(office.url()).searchParams.get("from")).toBe("problems");
+      const card = office.getByRole("region", { name: "Problem report", exact: true });
+      await expect(card.getByText("Urgent / safety", { exact: true })).toBeVisible();
+      await expect(card).toContainText("Private report at office handoff."); await expect(card).not.toContainText("different case on the same job");
+      await expect(office.getByRole("region", { name: "Messages", exact: true })).not.toContainText("Private report at office handoff.");
+      const photo = card.getByRole("img", { name: "Report photo 1", exact: true }); await expect(photo).toBeVisible();
       await expect.poll(() => photo.evaluate(element => (element as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
+      await expectNoA11yViolations(office);
+      await officeContext.clearCookies(); await office.reload(); await expect(office).toHaveURL(/\/login\?next=/);
+      const next = new URL(new URL(office.url()).searchParams.get("next")!, app);
+      expect(next.searchParams.get("problem")).toBe(report.id); expect(next.searchParams.get("from")).toBe("problems");
+      expect(next.searchParams.get("problemReturn")).toBe("/admin?tab=signoff#queue-problems");
+      await office.getByLabel("Email", { exact: true }).fill(SECURITY_TRADIE.email); await office.getByLabel("Password", { exact: true }).fill(SECURITY_PASSWORD);
+      await office.getByRole("button", { name: "Log in", exact: true }).click(); await expect(card).toContainText("Private report at office handoff.");
+      await office.getByRole("navigation", { name: "Breadcrumb", exact: true }).getByRole("link", { name: "Problems", exact: true }).click();
+      await expect(office).toHaveURL(`${app}/admin?tab=signoff#queue-problems`);
     } finally { await officeContext.close(); await db.query("UPDATE profiles SET role='TRADIE' WHERE id=$1", [SECURITY_TRADIE.id]); }
   });
 });

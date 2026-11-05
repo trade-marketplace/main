@@ -61,4 +61,15 @@ test.describe("customer report form", () => {
     await page.goto(url("completed-sent")); await expect(page.getByRole("heading", { name: "Sent.", exact: true })).toBeVisible();
     await expect(page.getByText(/Auto-release is paused/)).toHaveCount(0);
   });
+  for (const viewport of VIEWPORTS) {
+    test(`${viewport.width}px selected office report states fit and pass axe`, async ({ page }) => {
+      test.setTimeout(180000); await page.setViewportSize(viewport);
+      for (const problem of ["ready", "loading", "error", "offline", "photo-error", "empty", "resolved"]) {
+        await page.goto(new URL(`/dev/components/office-job?problem=${problem}`, dev).href);
+        await expect(page.getByRole("region", { name: "Problem report", exact: true })).toBeVisible();
+        expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), problem).toBe(false);
+        await expectNoA11yViolations(page);
+      }
+    });
+  }
 });

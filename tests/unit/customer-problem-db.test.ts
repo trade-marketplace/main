@@ -10,6 +10,7 @@ import { inboxItem } from "@/server/notifications/inbox";
 import { readOfficeQueues } from "@/server/office/queues";
 import { parseQueueQuery } from "@/lib/office-queues";
 import { priceJob } from "@/server/pricing/price-job";
+import { loadOfficeProblemReport } from "@/server/office/problem-report";
 import { testDatabaseUrl, useTestSchema } from "../support/test-db";
 
 describe.skipIf(!testDatabaseUrl)("customer problem reports (database)", () => {
@@ -46,9 +47,11 @@ describe.skipIf(!testDatabaseUrl)("customer problem reports (database)", () => {
     expect(await schema.db.auditLog.count({ where: { recordId: report.id, action: "problem_report.created" } })).toBe(1);
     const notice = await schema.db.notification.findFirstOrThrow({ where: { userId: f.office.userId, type: "problem_report.created" } });
     expect(notice.payload).toMatchObject({ reportId: report.id, urgent: true });
-    expect(inboxItem(notice)).toMatchObject({ line: "Urgent problem report", href: `/admin/jobs/${f.job.id}` });
+    expect(inboxItem(notice)).toMatchObject({ line: "Urgent problem report" });
+    expect(new URL(inboxItem(notice).href, "https://app.test").searchParams.get("problem")).toBe(report.id);
     const queues = await readOfficeQueues(schema.db, { ...f.office, role: "ADMIN" }, parseQueueQuery({}));
-    expect(queues.problems[0]).toMatchObject({ id: report.id, topic: "Urgent · Work not finished", href: `/admin/jobs/${f.job.id}` });
+    expect(queues.problems[0]).toMatchObject({ id: report.id, topic: "Urgent · Work not finished" });
+    expect(new URL(queues.problems[0].href, "https://app.test").searchParams.get("problem")).toBe(report.id);
     expect(await schema.db.notification.count({ where: { type: "problem_report.created", userId: { in: [f.customer.userId, f.worker.userId, f.stranger.userId] } } })).toBe(0);
     await expect(transitionJob(schema.db, transitions, { jobId: f.job.id, transition: "auto-sign-off", actor: { role: "SYSTEM", source: "test" }, now: new Date(Date.now() + 49 * 3600000) })).rejects.toMatchObject({ failure: "problem-open" });
     expect(await schema.db.payout.count({ where: { jobId: f.job.id } })).toBe(0);
@@ -100,6 +103,26 @@ describe.skipIf(!testDatabaseUrl)("customer problem reports (database)", () => {
     finally { vi.restoreAllMocks(); }
     expect(await schema.db.problemReport.count({ where: { jobId: f.job.id } })).toBe(0);
     expect(await schema.db.supportThread.count({ where: { jobId: f.job.id } })).toBe(0);
+  });
+  it("loads the selected canonical report and photos after its message falls outside the newest twenty; authorization stays fresh", async () => {
+    const f = await fixture(), path = `support/${f.job.id}/${f.customer.userId}/${"b".repeat(32)}.webp`;
+    await schema.db.supportPhotoCleanup.create({ data: { path } });
+    const saved = await reportCustomerProblem(schema.db, f.customer, { ...input(f.job.id), urgent: true, photoPaths: [path] }, { ...deps, files: { exists: async () => true } });
+    if (!saved.ok) throw new Error(saved.error);
+    const other = await reportCustomerProblem(schema.db, f.customer, { ...input(f.job.id), details: "A different report on this same job." }, deps); expect(other.ok).toBe(true);
+    const later = await schema.db.supportThread.create({ data: { jobId: f.job.id, userId: f.customer.userId, jobParticipants: true, subject: "Later job conversation" } });
+    await schema.db.supportMessage.createMany({ data: Array.from({ length: 26 }, (_, index) => ({ threadId: later.id, authorId: f.customer.userId, body: `Later context ${index}`, createdAt: new Date(Date.now() + 1000 + index * 1000) })) });
+    const recent = await getOfficeJob(schema.db, { ...f.office, role: "ADMIN" }, f.job.id, new Date(), async () => "https://files.test/recent");
+    expect(recent?.messages).toHaveLength(20); expect(recent?.messages.some(message => message.body.includes(saved.report.details))).toBe(false);
+    const sign = vi.fn(async () => "https://files.test/selected-report");
+    const report = await loadOfficeProblemReport(schema.db, { ...f.office, role: "ADMIN" }, f.job.id, saved.report.id, new Date(), sign);
+    expect(report).toMatchObject({ id: saved.report.id, details: saved.report.details, urgent: true, photos: [{ url: "https://files.test/selected-report" }] }); expect(sign).toHaveBeenCalledWith(path);
+    sign.mockClear();
+    for (const actor of [f.customer, f.worker, f.stranger]) expect(await loadOfficeProblemReport(schema.db, { ...actor, role: "ADMIN" }, f.job.id, saved.report.id, new Date(), sign)).toBeNull();
+    expect(await loadOfficeProblemReport(schema.db, { ...f.office, role: "ADMIN" }, randomUUID(), saved.report.id, new Date(), sign)).toBeNull(); expect(sign).not.toHaveBeenCalled();
+    expect((await loadOfficeProblemReport(schema.db, { ...f.office, role: "ADMIN" }, f.job.id, saved.report.id, new Date(), async () => { throw new Error("storage unavailable"); }))?.photos[0].url).toBeNull();
+    await schema.db.profile.update({ where: { id: f.office.userId }, data: { role: "CUSTOMER" } });
+    expect(await loadOfficeProblemReport(schema.db, { ...f.office, role: "ADMIN" }, f.job.id, saved.report.id, new Date(), sign)).toBeNull(); expect(sign).not.toHaveBeenCalled();
   });
   it("validates private photo ownership/existence and keeps a file until its final report/message reference is deleted", async () => {
     const f = await fixture(), path = `support/${f.job.id}/${f.customer.userId}/${"a".repeat(32)}.webp`, data = { ...input(f.job.id), photoPaths: [path] };
