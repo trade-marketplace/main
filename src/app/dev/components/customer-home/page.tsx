@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { AppShellView } from "@/components/app/AppShellView";
 import { CustomerHome } from "@/components/home/CustomerHome";
 import { CATEGORIES } from "@/lib/cards";
@@ -7,6 +7,7 @@ import { INVERCARGILL_COVERAGE } from "@/lib/geo/coverage";
 import { guardDevPage } from "@/server/dev-pages";
 
 export const metadata: Metadata = { title: "Customer home (dev)", robots: { index: false, follow: false } };
+export const viewport: Viewport = { viewportFit: "cover" };
 function job(index: number, status: HomeJob["status"], title: string, action: HomeJob["action"] = null): HomeJob {
   return { id: `11500000-0000-4000-8000-${String(index).padStart(12, "0")}`, jobNumber: 1000 + index, title, category: "ELECTRICAL", status,
     suburb: "Windsor", city: "Invercargill", asap: false, createdAt: "2026-11-04T00:00:00Z", updatedAt: "2026-11-04T00:00:00Z", priceCents: status === "PRICED" ? 37200 : null, gstCents: null, action };

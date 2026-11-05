@@ -70,8 +70,27 @@ test.describe("customer home previews", () => {
     await expect(page.getByRole("heading", { level: 1, name: /^Your home\.\s*Done right\.$/ })).toBeVisible();
     await expect(page.getByRole("region", { name: "Our promises", exact: true })).toContainText("No surprise bills");
   });
-  test("production keeps the state previews guarded", async ({ request }) => {
+  test("production keeps previews guarded and the guest public viewport unchanged", async ({ request, page }) => {
     expect((await request.get("/dev/components/customer-home?state=jobs")).status()).toBe(404);
+    await page.goto("/");
+    await expect(page.getByRole("heading", { level: 1, name: "Sorted in a flash.", exact: true })).toBeVisible();
+    await expect(page.locator('meta[name="viewport"]')).toHaveAttribute("content", "width=device-width, initial-scale=1");
+  });
+  test("mobile home reserves a nonzero home-indicator safe area below the navigation targets", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    const device = await page.context().newCDPSession(page);
+    await device.send("Emulation.setSafeAreaInsetsOverride", { insets: { top: 0, left: 0, right: 0, bottom: 34 } });
+    await page.goto(`${preview}/dev/components/customer-home?state=jobs`);
+    await expect(page.locator('meta[name="viewport"]')).toHaveAttribute("content", /viewport-fit=cover/);
+    const navigation = page.getByRole("navigation", { name: "Main", exact: true });
+    await expect(navigation).toHaveCSS("padding-bottom", "34px");
+    const bounds = await navigation.boundingBox(), home = await navigation.getByRole("link", { name: "Home", exact: true }).boundingBox();
+    expect(bounds).not.toBeNull(); expect(home).not.toBeNull();
+    expect(bounds!.y + bounds!.height).toBe(844);
+    expect(home!.y + home!.height).toBeLessThanOrEqual(844 - 34);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await expectNoA11yViolations(page);
+    await device.detach();
   });
 });
 
@@ -112,6 +131,7 @@ test.describe("signed-in customer home journeys", () => {
     await signIn(page); await page.setViewportSize({ width: 1440, height: 900 });
     const response = await page.goto(app!); expect(response?.status()).toBe(200);
     expect(response?.headers()["cache-control"]).toContain("private");
+    await expect(page.locator('meta[name="viewport"]')).toHaveAttribute("content", "width=device-width, initial-scale=1, viewport-fit=cover");
     const needs = page.getByRole("region", { name: /^Needs you/ });
     await expect(needs).toContainText("Home price tap"); await expect(needs).toContainText("Home sign-off tap");
     await expect(needs).not.toContainText("Home progress tap");

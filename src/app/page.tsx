@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { redirect, unstable_rethrow } from "next/navigation";
 import { Suspense } from "react";
 import { AppShell } from "@/components/app/AppShell";
@@ -19,6 +19,11 @@ async function readViewer() {
 
 export async function generateMetadata(): Promise<Metadata> {
   return (await readViewer())?.role === "CUSTOMER" ? { ...privateMetadata, title: "Home" } : publicMetadata;
+}
+
+/** The app's bottom bar needs the phone safe area; the public shell keeps its existing viewport. */
+export async function generateViewport(): Promise<Viewport> {
+  return (await readViewer())?.role === "CUSTOMER" ? { viewportFit: "cover" } : {};
 }
 
 /** One route owns the landing dispatch. Other public pages retain their public shell. */
