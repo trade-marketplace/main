@@ -18,9 +18,8 @@ import { estimateFields, workerEstimateSchema, type EstimateFields, type Estimat
 import { saveWorkerEstimateAction } from "@/server/jobs/worker-estimate-actions";
 import type { WorkerJobView } from "@/server/views";
 import type { EligibilityFailure } from "@/server/workers/eligibility";
-import { PointsChip, WorkerEstimateEarnings, WorkerEstimateFields, WorkerEstimateNotice, WorkerEstimateSummary } from "./WorkerEstimateParts";
+import { PointsChip, WorkerEstimateFields, WorkerEstimateNotice, WorkerEstimateSummary } from "./WorkerEstimateParts";
 import { QUOTE_POINTS } from "@/lib/points";
-import { quoteEarningsCents, type EarnRates } from "@/lib/quote-earnings";
 import styles from "./worker-estimate.module.css";
 
 type Props = {
@@ -28,15 +27,15 @@ type Props = {
   details?: WorkerJobView; back: string; failure?: EligibilityFailure | null;
   photos?: { src: string; alt: string }[]; photosFailed?: boolean; preview?: string;
   save?: (id: string, input: EstimateFields) => Promise<EstimateResult | AuthFailure>;
-  /** The worker's own pay rates for this trade, for the live "You'd earn" line. */
-  earn?: EarnRates | null;
 };
-const dollars = new Intl.NumberFormat("en-NZ", { style: "currency", currency: "NZD", maximumFractionDigits: 0 });
-const SENT_TOAST = { message: `Quote sent. +${QUOTE_POINTS} ${QUOTE_POINTS === 1 ? "point" : "points"}`, icon: "toll" };
+const plural = (n: number) => `${n} ${n === 1 ? "point" : "points"}`;
+const sentToast = (earned: number, balance?: number) =>
+  ({ message: `Quote sent. +${plural(earned)}${balance === undefined ? "" : ` · ${plural(balance)}`}`, icon: "toll" });
+const SENT_TOAST = sentToast(QUOTE_POINTS);
 export function WorkerJobBoundary(props: Props) {
   return <ToastProvider initial={props.preview === "sent" ? SENT_TOAST : undefined}><WorkerJob {...props} /></ToastProvider>;
 }
-function WorkerJob({ job, details, back, failure: initialFailure, photos = [], photosFailed, preview, earn, save = saveWorkerEstimateAction }: Props) {
+function WorkerJob({ job, details, back, failure: initialFailure, photos = [], photosFailed, preview, save = saveWorkerEstimateAction }: Props) {
   const router = useRouter(), toast = useToast(), session = useOptionalSessionExpired(), online = useOnlineStatus(), formId = useId();
   const [own, setOwn] = useState(details?.ownEstimate ?? null);
   const [value, setValue] = useState(() => estimateFields(details?.ownEstimate ?? null));
@@ -48,11 +47,9 @@ function WorkerJob({ job, details, back, failure: initialFailure, photos = [], p
   const [fields, setFields] = useState<Partial<Record<keyof EstimateFields, string>>>(preview === "invalid" ? { hours: "Use half-hour steps from 0.5 to 40." } : {});
   const form = useRef<HTMLFormElement>(null);
   const offline = !online || preview === "offline", saving = busy || preview === "saving";
-  const estimateOpen = details?.status === "REVIEW" || details?.status === "QUOTE_BOUNTY";
+  const estimateOpen = details?.status === "REVIEW"; // Quote bounties have their own flow (D19).
   // Quote straight from the job page: the form is on the page whenever there's no quote yet, or while editing one.
   const quoting = Boolean(details) && estimateOpen && !failure && (!own || editing);
-  const earnCents = earn ? quoteEarningsCents(Number(value.hours), earn) : null;
-  const ownEarnCents = estimateOpen ? earn && own ? quoteEarningsCents(own.minutes / 60, earn) : null : details?.earnCents ?? null;
   function change<K extends keyof EstimateFields>(key: K, next: EstimateFields[K]) { setValue(previous => ({ ...previous, [key]: next })); setFields(previous => ({ ...previous, [key]: undefined })); }
   function step(delta: number) { const hours = Number(value.hours); change("hours", String(Math.min(40, Math.max(0.5, (Number.isFinite(hours) ? hours : 0.5) + delta)))); }
   async function submit(event: FormEvent) {
@@ -71,7 +68,7 @@ function WorkerJob({ job, details, back, failure: initialFailure, photos = [], p
       const result = await save(details.id, value);
       if (session?.check(result)) return;
       if (!("status" in result)) { setError(true); return; }
-      if (result.status === "saved") { setOwn(result.estimate); setValue(estimateFields(result.estimate)); setSent(`estimate-sent:${details.id}:${Date.now()}`); setEditing(false); toast.show(SENT_TOAST); router.refresh(); }
+      if (result.status === "saved") { setOwn(result.estimate); setValue(estimateFields(result.estimate)); setSent(`estimate-sent:${details.id}:${Date.now()}`); setEditing(false); toast.show(result.pointsAwarded === 0 ? { message: "Quote updated.", icon: "check_circle" } : sentToast(result.pointsAwarded ?? QUOTE_POINTS, result.points)); router.refresh(); }
       else if (result.status === "invalid") { setFields(result.fields); setError(Object.keys(result.fields).length === 0); form.current?.querySelector<HTMLElement>(`[name="${Object.keys(result.fields)[0]}"]`)?.focus(); }
       else if (result.status === "ineligible") { setFailure(result.failure); setEditing(false); }
       else setError(true);
@@ -99,13 +96,11 @@ function WorkerJob({ job, details, back, failure: initialFailure, photos = [], p
         {error && <Banner tone="alert" title="Couldn’t save." live />}
         <WorkerEstimateFields value={value} fields={fields} saving={saving} change={change} step={step} />
         <div className={styles.send}>
-          {earnCents !== null && earn && <p className={styles.earn} aria-live="polite"><span>You’d earn{Number(value.hours) * 60 < earn.minMinutes && <small>{earn.minMinutes / 60} h minimum</small>}</span><b>{dollars.format(earnCents / 100)}</b></p>}
-          <Button type="submit" loading={saving} disabled={offline || Boolean(failure)} width="full">Send quote<span className={styles.sendPoints} aria-hidden="true">+{QUOTE_POINTS}</span></Button>
+          <Button type="submit" loading={saving} disabled={offline || Boolean(failure)} width="full">Submit<span className={styles.sendPoints} aria-hidden="true">+{QUOTE_POINTS}</span></Button>
           {editing && <Button variant="tertiary" onClick={() => { setEditing(false); setValue(estimateFields(own)); setFields({}); }} disabled={saving} width="full">Cancel</Button>}
         </div>
       </form> : own ? <>
         <WorkerEstimateSummary own={own} canEdit={estimateOpen && !failure} />
-        {ownEarnCents !== null && <WorkerEstimateEarnings cents={ownEarnCents} forecast={estimateOpen} />}
         <Button href={back} icon="arrow_forward" width="full">Next job</Button>
         {!failure && estimateOpen && <Button variant="secondary" onClick={() => setEditing(true)} width="full">Edit</Button>}
       </> : null}

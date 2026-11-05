@@ -5,18 +5,22 @@ import { WorkerJobLoading, WorkerJobLoadError } from "@/components/jobs/WorkerJo
 import { WorkerEstimatePage } from "@/components/jobs/WorkerEstimatePage";
 import { WorkerClaimLoading } from "@/components/jobs/WorkerClaim";
 import { WorkerClaimPage } from "@/components/jobs/WorkerClaimPage";
-import { PostedJob, CustomerJobSummary } from "@/components/jobs/PostedJob";
+import { CustomerJobPage } from "@/components/jobs/CustomerJobPage";
+import { CustomerJobLoadError } from "@/components/jobs/CustomerJob";
 import { boardJobHref, boardReturn } from "@/lib/job-board";
+import { customerJobReturn } from "@/lib/customer-job";
 import { privateMetadata } from "@/lib/metadata";
 import { requireUser } from "@/server/auth/guard";
 import { getDb } from "@/server/db";
-import { JOB_DETAIL_SELECT, canReadJob, customerJobView } from "@/server/views";
-import { firebaseWebConfig } from "@/server/notifications/push-config";
+import { loadCustomerJobPage } from "@/server/jobs/customer-page";
+import { canReadJob } from "@/server/views";
 
 export const metadata = { ...privateMetadata, title: "Job" };
 export default async function JobPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ from?: unknown; view?: unknown; posted?: unknown }> }) {
   const { id } = await params, search = await searchParams, back = boardReturn(search.from, search.view);
-  const viewer = await requireUser({ next: search.posted === "1" ? `/jobs/${id}?posted=1` : boardJobHref(id, back) });
+  const customerBack = customerJobReturn(search.from);
+  const next = search.from === "/" || customerBack.startsWith("/dashboard") ? `/jobs/${id}?from=${encodeURIComponent(customerBack)}` : boardJobHref(id, back);
+  const viewer = await requireUser({ next: search.posted === "1" ? `/jobs/${id}?posted=1` : next });
   // Keep role dispatch local: customer Posted (#121) and customer /windows (#119) can coexist here.
   if (!z.uuid().safeParse(id).success) notFound();
   if (viewer.role === "TRADIE") {
@@ -30,11 +34,14 @@ export default async function JobPage({ params, searchParams }: { params: Promis
       return <Suspense fallback={<WorkerClaimLoading />}><WorkerClaimPage viewer={viewer} id={id} back={back} /></Suspense>;
     return <Suspense fallback={<WorkerJobLoading />}><WorkerEstimatePage viewer={viewer} id={id} back={back} /></Suspense>;
   }
-  const db = getDb(), job = await db.job.findUnique({ where: { id }, select: JOB_DETAIL_SELECT });
-  if (!job) notFound();
   if (viewer.role === "CUSTOMER") {
-    const safe = customerJobView(viewer, job); if (!safe) notFound();
-    return search.posted === "1" ? <PostedJob job={safe} ownerId={viewer.userId} push={viewer.emailVerified ? firebaseWebConfig() : null} /> : <CustomerJobSummary job={safe} />;
+    // Resolve ownership before any Suspense fallback starts streaming, preserving a real HTTP 404.
+    let result;
+    try { result = await loadCustomerJobPage(getDb(), viewer, id); }
+    catch { return <CustomerJobLoadError />; }
+    if (result.state === "not-found") notFound();
+    if (result.state === "error") return <CustomerJobLoadError />;
+    return <CustomerJobPage job={result.job} viewer={viewer} posted={search.posted === "1"} back={customerBack} canEditWindows={result.canEditWindows} />;
   }
   notFound();
 }

@@ -9,7 +9,7 @@ export const workerEstimateSchema = z.object({
 }).strict();
 export type EstimateFields = { hours: string; materials: string; note: string; needsSiteVisit: boolean };
 export type OwnEstimate = NonNullable<WorkerJobView["ownEstimate"]>;
-export type EstimateResult = { status: "saved"; estimate: OwnEstimate } | { status: "invalid"; fields: Partial<Record<keyof EstimateFields, string>> }
+export type EstimateResult = { status: "saved"; estimate: OwnEstimate; pointsAwarded?: number; points?: number } | { status: "invalid"; fields: Partial<Record<keyof EstimateFields, string>> }
   | { status: "ineligible"; failure: EligibilityFailure } | { status: "unavailable" };
 export const ESTIMATE_ELIGIBILITY_MESSAGES: Record<EligibilityFailure, string> = {
   "worker-required": "Log in as a tradie to quote this job.", "email-required": "Confirm your email to quote this job.",

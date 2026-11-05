@@ -44,7 +44,7 @@ export function eligibilityFailure(worker: EligibilityWorker | null, job: Eligib
   const basic = workerBasicProofFailure(worker, now);
   if (basic || !worker) return basic ?? "worker-required";
   if (job.customerId === worker.id) return "own-job";
-  const statuses: readonly JobStatus[] = intent === "claim" ? ["BOOKABLE"] : intent === "estimate" ? ["REVIEW", "QUOTE_BOUNTY"] : DISCOVERY_STATUSES;
+  const statuses: readonly JobStatus[] = intent === "claim" ? ["BOOKABLE"] : intent === "estimate" ? ["REVIEW"] : DISCOVERY_STATUSES; // A quote bounty has its own visit + fixed-price flow (D19), not a blind quote.
   if (job.workerId !== null || !statuses.includes(job.status)) return "not-open";
   if (!(context.enabledTrades ?? LAUNCH_TRADES).includes(job.category)) return "trade-unavailable";
   // Match #119's claim rule before offering paid work; estimating retains its existing open-status policy.

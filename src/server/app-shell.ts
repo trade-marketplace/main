@@ -11,8 +11,9 @@ import { DatabaseNotConfiguredError, getDb } from "@/server/db";
 import type { Viewer } from "@/server/auth/viewer";
 import { paymentsInTestMode as stripeTestMode } from "@/server/payments/stripe";
 import { unreadProblemThreadCount } from "@/server/messages/service";
+import { pointBalance } from "@/server/points/ledger";
 
-export type ShellExtras = { lastName: string | null; unreadNotifications: number; unreadMessages?: number };
+export type ShellExtras = { lastName: string | null; unreadNotifications: number; unreadMessages?: number; points?: number };
 
 /** Where the extras come from. Swapped for a fake in tests, so no test talks to a database. */
 export type ShellSources = { findExtras: (userId: string) => Promise<ShellExtras | null> };
@@ -20,11 +21,13 @@ export type ShellSources = { findExtras: (userId: string) => Promise<ShellExtras
 /** The name and notification count, alongside unread shared problem threads for this current participant. */
 export async function findShellExtras(userId: string): Promise<ShellExtras | null> {
   const db = getDb();
-  const [row, unreadMessages] = await Promise.all([db.profile.findUnique({
+  const [row, unreadMessages, points] = await Promise.all([db.profile.findUnique({
     where: { id: userId },
     select: { lastName: true, _count: { select: { notifications: { where: { readAt: null } } } } },
-  }), unreadProblemThreadCount(db, userId)]);
-  return row ? { lastName: row.lastName, unreadNotifications: row._count.notifications, unreadMessages } : null;
+  }), unreadProblemThreadCount(db, userId),
+    // Points are a nice-to-have in the header: if they can't be read, the name and badges still show.
+    pointBalance(db, userId).catch(() => undefined)]);
+  return row ? { lastName: row.lastName, unreadNotifications: row._count.notifications, unreadMessages, points } : null;
 }
 
 /**
@@ -49,6 +52,8 @@ export async function loadShellViewer(viewer: Viewer | null, sources: ShellSourc
     email: viewer.email,
     emailVerified: viewer.emailVerified,
     counts: { notifications: extras?.unreadNotifications ?? 0, messages: extras?.unreadMessages ?? 0 },
+    // Tradies always see their points (#488), even before they've earned any.
+    ...(viewer.role === "TRADIE" ? { points: extras?.points ?? 0 } : {}),
   };
 }
 

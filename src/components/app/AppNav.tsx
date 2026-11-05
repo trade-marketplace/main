@@ -28,6 +28,7 @@ import { logOutAction } from "@/server/auth/actions";
 import { NotificationBell } from "@/components/notifications/NotificationInbox";
 
 import { NavCount } from "./NavCount";
+import { PointsBalance } from "./PointsBalance";
 export { NavCount } from "./NavCount";
 export { NotificationBell } from "@/components/notifications/NotificationInbox";
 
@@ -183,6 +184,7 @@ export function AppHeader({ viewer, preview }: NavProps) {
             Post a job
           </Button>
         )}
+        {viewer.points !== undefined && <PointsBalance points={viewer.points} />}
         <NotificationBell count={viewer.counts.notifications} allHref={previewHref(preview, NOTIFICATIONS_PATH)} preview={Boolean(preview)} defaultOpen={preview?.notificationsOpen} />
         <AccountMenu viewer={viewer} defaultOpen={preview?.menuOpen} />
       </div>
@@ -191,7 +193,10 @@ export function AppHeader({ viewer, preview }: NavProps) {
       <header className={styles.mobileHeader}>
         <AccountMenu viewer={viewer} compact defaultOpen={preview?.menuOpen} />
         <Link href={previewHref(preview, "/")} className={styles.logo} aria-label="Trade Marketplace home"><Wordmark label={null} className={styles.logoMark} /></Link>
-        <NotificationBell count={viewer.counts.notifications} allHref={previewHref(preview, NOTIFICATIONS_PATH)} preview={Boolean(preview)} defaultOpen={preview?.notificationsOpen} />
+        <div className={styles.mobileEnd}>
+          {viewer.points !== undefined && <PointsBalance points={viewer.points} />}
+          <NotificationBell count={viewer.counts.notifications} allHref={previewHref(preview, NOTIFICATIONS_PATH)} preview={Boolean(preview)} defaultOpen={preview?.notificationsOpen} />
+        </div>
       </header>
     )} />
     </>
