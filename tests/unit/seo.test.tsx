@@ -47,7 +47,7 @@ describe("published sitemap", () => {
       expect(PRIVATE_PATHS.some(prefix => parsed.pathname.startsWith(prefix))).toBe(false);
     }
     // A new static marketing page must join the sitemap, not silently disappear from search.
-    const marketing = [...pageFiles("src/app/(site)"), "src/app/for-tradies/page.tsx"]
+    const marketing = [...pageFiles("src/app/(site)"), "src/app/page.tsx", "src/app/for-tradies/page.tsx"]
       .map(pagePath).filter(route => !route.includes("[") && route !== "/coming-soon");
     expect(marketing.toSorted()).toEqual([...PUBLIC_SITE_PATHS].toSorted());
     for (const article of articles) expect(entries.find(entry => entry.url.endsWith(`/help/${article.slug}`))?.lastModified).toBe(article.updated);
