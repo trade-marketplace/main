@@ -29,6 +29,10 @@ p.description { margin: var(--trade-space-3) 0 0; }
 .emptyPhotos { display: grid; place-content: center; justify-items: center; min-height: 12rem; padding: var(--trade-space-6); border: 1px solid var(--trade-line); border-radius: var(--trade-radius-card); color: var(--trade-text-2); background: var(--trade-surface); }
 .emptyPhotos p { margin: var(--trade-space-2) 0 0; }
 .notice { padding: var(--trade-space-4); margin-bottom: var(--trade-space-5); }
+.waitingActions, .editForm, .editBody { display: grid; gap: var(--trade-space-4); width: 100%; min-width: 0; }
+.editBody > p { margin: 0; }
+.actionRow { display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: var(--trade-space-3); }
+.actionRow > button { width: 100%; }
 .gallery { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .galleryWrap { min-width: 0; }
 .srOnly { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
@@ -58,7 +62,15 @@ p.description { margin: var(--trade-space-3) 0 0; }
   .loaded .trade { display: none; }
   .loaded .title { grid-row: 4; margin: var(--trade-space-2) var(--trade-space-5) 0; }
   .loaded .panelContent { grid-row: 5; width: auto; margin: var(--trade-space-5) var(--trade-space-5) 0; }
-  .loaded [data-panel="getting-price"] .panelContent { display: none; }
+  .loaded [data-panel="getting-price"] .panelContent { display: contents; }
+  .loaded [data-panel="getting-price"] .panelContent > .heading,
+  .loaded [data-panel="getting-price"] .panelContent > .message { display: none; }
+  .loaded [data-panel="getting-price"] .panelContent > .notice { grid-row: 5; margin: var(--trade-space-5) var(--trade-space-5) 0; }
+  .loaded .waitingActions { grid-row: 7; width: auto; margin: var(--trade-space-5) var(--trade-space-5) 0; }
+  .loaded .actionRow { grid-template-columns: 1fr; }
+  .loaded:has([data-panel="getting-price"]) .detailCard > .description { grid-row: 8; }
+  .loaded:has([data-panel="getting-price"]) .info { grid-row: 9; }
+  .loaded:has([data-panel="getting-price"]) .help { grid-row: 10; }
   .loaded .tracker { grid-row: 6; width: auto; margin: var(--trade-space-5) var(--trade-space-5) 0; padding-top: 0; border: 0; }
   .loaded .detailCard > .description { grid-row: 7; margin: var(--trade-space-6) var(--trade-space-5) 0; }
   .loaded .info { grid-row: 8; margin: var(--trade-space-6) var(--trade-space-5) 0; }

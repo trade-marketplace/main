@@ -16,22 +16,27 @@ import { StatusPill } from "@/components/status/StatusPill";
 import { Tracker } from "@/components/status/Tracker";
 import { CUSTOMER_JOB_PANELS, CUSTOMER_JOB_POLL_MS, customerJobHref, customerJobReturn, customerJobShouldRefresh } from "@/lib/customer-job";
 import { jobTracker } from "@/lib/job-tracker";
+import { customerPriceDelayed } from "@/lib/customer-job-waiting";
 import type { CustomerJobView } from "@/server/views";
+import { CustomerWaitingActions, type WaitingActions } from "./CustomerWaitingActions";
 import styles from "./customer-job.module.css";
 
-type Props = { job: CustomerJobView; photos?: readonly ViewerPhoto[]; photosFailed?: boolean; photoLease?: { batchId: string; renewAfterMs: number } | null; back?: string; canEditWindows?: boolean; preview?: "offline" | "static" };
+type Props = { job: CustomerJobView; photos?: readonly ViewerPhoto[]; photosFailed?: boolean; photoLease?: { batchId: string; renewAfterMs: number } | null; back?: string; canEditWindows?: boolean; preview?: "offline" | "static"; initialAgeMs?: number; waitingPreview?: string; waitingActions?: WaitingActions };
 const trades = { ELECTRICAL: "Electrical", PLUMBING: "Plumbing", GAS: "Gas", CONSTRUCTION: "Construction", OTHER: "Other" } as const;
 const date = new Intl.DateTimeFormat("en-NZ", { timeZone: "UTC", weekday: "short", day: "numeric", month: "short" });
 const postedDate = new Intl.DateTimeFormat("en-NZ", { timeZone: "Pacific/Auckland", weekday: "short", day: "numeric", month: "short" });
 const time = { MORNING: "Morning", AFTERNOON: "Afternoon", EVENING: "Evening" } as const;
 
-export function CustomerJob({ job, photos = [], photosFailed = false, photoLease, back = "/", canEditWindows = false, preview }: Props) {
+export function CustomerJob({ job, photos = [], photosFailed = false, photoLease, back = "/", canEditWindows = false, preview, initialAgeMs = 0, waitingPreview, waitingActions }: Props) {
   const router = useRouter();
   const browserOnline = useOnlineStatus();
   const online = browserOnline && preview !== "offline";
   const [refreshing, startRefresh] = useTransition();
   const [failedGallery, setFailedGallery] = useState<string | null>(null);
+  const [ageMs, setAgeMs] = useState(initialAgeMs);
   const renewAt = useRef<number | null>(null);
+  const [cancelFocusJob, setCancelFocusJob] = useState<string | null>(null);
+  const statusHeading = useRef<HTMLHeadingElement>(null);
   const photoBatch = photoLease?.batchId, photoRenewAfterMs = photoLease?.renewAfterMs;
   const photoKey = photos.map(photo => photo.src).join("\n");
   const photoError = photosFailed || failedGallery === photoKey;
@@ -42,6 +47,33 @@ export function CustomerJob({ job, photos = [], photosFailed = false, photoLease
   const returnTo = customerJobReturn(back);
   const refresh = () => { if (online) startRefresh(() => router.refresh()); };
   const retryPhotos = () => { setFailedGallery(null); refresh(); };
+
+  useEffect(() => {
+    if (job.status !== "CANCELLED" || cancelFocusJob !== job.id) return;
+    let frame = 0;
+    const moveFocus = () => {
+      if (document.querySelector("dialog[open]")) return;
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        if (document.querySelector("dialog[open]")) return;
+        statusHeading.current?.focus({ preventScroll: true });
+        statusHeading.current?.scrollIntoView({ block: "nearest" });
+        setCancelFocusJob(null);
+        observer.disconnect();
+      });
+    };
+    const observer = new MutationObserver(moveFocus);
+    observer.observe(document.body, { childList: true, subtree: true });
+    moveFocus();
+    return () => { observer.disconnect(); cancelAnimationFrame(frame); };
+  }, [job.status, job.id, cancelFocusJob]);
+
+  useEffect(() => {
+    if (preview || job.status !== "REVIEW") return;
+    const started = Date.now();
+    const timer = setInterval(() => setAgeMs(initialAgeMs + Date.now() - started), 60_000);
+    return () => clearInterval(timer);
+  }, [initialAgeMs, job.status, preview]);
 
   // Anchor the server-provided remaining lifetime to this browser's clock, once per signed response.
   useEffect(() => { renewAt.current = photoRenewAfterMs === undefined ? null : Date.now() + photoRenewAfterMs; }, [photoBatch, photoRenewAfterMs]);
@@ -98,8 +130,12 @@ export function CustomerJob({ job, photos = [], photosFailed = false, photoLease
           <div className={`${styles.card} ${styles.statusCard}`} data-panel={panel.kind}>
             <span id={statusId} className={styles.status}><StatusPill status={job.status} audience="customer" announce /></span>
             <div className={styles.panelContent}>
-              <h2 className={styles.heading}>{panel.heading}</h2>
+              <h2 ref={statusHeading} tabIndex={-1} className={styles.heading}>{panel.heading}</h2>
               {panel.message && <p className={styles.message}>{panel.message}</p>}
+              {job.status === "REVIEW" && <>
+                {customerPriceDelayed(ageMs) && <Banner tone="info" title="Taking a little longer than usual" className={styles.notice}>Still working on it. Thanks for your patience. We’ll message you.</Banner>}
+                <CustomerWaitingActions key={job.id} job={job} online={online} preview={waitingPreview} actions={waitingActions} onCancelled={() => setCancelFocusJob(job.id)} />
+              </>}
               {panel.kind === "confirmed" && job.worker && <p className={styles.worker}>{job.worker.firstName}{job.worker.lastInitial ? ` ${job.worker.lastInitial}` : ""}</p>}
               {panel.price && job.priceCents !== null && <PriceBlock audience="customer" priceCents={job.priceCents} />}
             </div>
