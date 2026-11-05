@@ -69,6 +69,31 @@ describe.skipIf(!testDatabaseUrl)("customer problem reports (database)", () => {
     expect(await loadCustomerProblem(schema.db, f.stranger, f.job.id, result.report.id)).toBeNull();
     expect(await loadCustomerProblem(schema.db, f.customer, f.job.id, randomUUID())).toBeNull();
   });
+  it("returns the persisted receipt before consuming rate allowance, but rejects new and changed requests", async () => {
+    const f = await fixture(), data = input(f.job.id);
+    const rateLimit = vi.fn().mockResolvedValueOnce({ allowed: true }).mockResolvedValue({ allowed: false, retryAfter: 600 });
+    const saved = await reportCustomerProblem(schema.db, f.customer, data, { rateLimit });
+    expect(saved.ok).toBe(true);
+    expect(await reportCustomerProblem(schema.db, f.customer, data, { rateLimit })).toEqual(saved);
+    expect(rateLimit).toHaveBeenCalledTimes(1);
+    expect(await reportCustomerProblem(schema.db, f.customer, { ...data, details: "Changed retry" }, { rateLimit })).toEqual({ ok: false, error: "invalid" });
+    expect(await reportCustomerProblem(schema.db, f.stranger, data, { rateLimit })).toEqual({ ok: false, error: "forbidden" });
+    expect(rateLimit).toHaveBeenCalledTimes(1);
+    expect(await reportCustomerProblem(schema.db, f.customer, input(f.job.id), { rateLimit })).toEqual({ ok: false, error: "try-later", retryAfter: 600 });
+    expect(await schema.db.problemReport.count({ where: { jobId: f.job.id } })).toBe(1);
+  });
+  it("returns the first receipt when an in-flight duplicate consumes the last allowance before the first commit", async () => {
+    const f = await fixture(), data = input(f.job.id); let entered!: () => void, release!: () => void;
+    const held = new Promise<void>(resolve => { entered = resolve; }), proceed = new Promise<void>(resolve => { release = resolve; });
+    const rateLimit = vi.fn().mockResolvedValueOnce({ allowed: true }).mockResolvedValue({ allowed: false, retryAfter: 600 });
+    const first = reportCustomerProblem(schema.db, f.customer, data, { rateLimit, notify: async () => { entered(); await proceed; } });
+    await held;
+    const retry = reportCustomerProblem(schema.db, f.customer, data, { rateLimit });
+    try { await vi.waitFor(() => expect(rateLimit).toHaveBeenCalledTimes(2)); }
+    finally { release(); }
+    const saved = await first; expect(saved.ok).toBe(true); expect(await retry).toEqual(saved);
+    expect(await schema.db.problemReport.count({ where: { jobId: f.job.id } })).toBe(1);
+  });
   it("rolls back the hold and all report data when notification persistence fails", async () => {
     const f = await fixture(); vi.spyOn(console, "error").mockImplementation(() => {});
     try { expect(await reportCustomerProblem(schema.db, f.customer, input(f.job.id), { ...deps, notify: async () => { throw new Error("offline provider"); } })).toEqual({ ok: false, error: "unavailable" }); }
