@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import type { Prisma, Role } from "@/generated/prisma/client";
+import type { Prisma, Role, Trade } from "@/generated/prisma/client";
 import { claimWorkerJob } from "@/server/jobs/worker-claim-command";
 import { loadWorkerClaim } from "@/server/jobs/worker-claim-reader";
 import { priceJob } from "@/server/pricing/price-job";
@@ -13,10 +13,14 @@ describe.skipIf(!testDatabaseUrl)("worker claim transaction", () => {
     await schema.db.$executeRaw`INSERT INTO auth.users(id,email) VALUES(${id}::uuid,${email})`;
     return schema.db.profile.create({ data: { id, email, role, firstName: role === "CUSTOMER" ? "Sarah" : "Jack", emailVerifiedAt: new Date() } });
   }
-  async function fixture() {
+  async function fixture(category: Trade = "OTHER") {
     const customer = await person("CUSTOMER"), worker = await person("TRADIE"), office = await person("ADMIN");
     await schema.db.workerProfile.create({ data: { userId: worker.id, identityCheckedAt: new Date(), identityCheckedById: office.id, baseSuburb: "Invercargill", areaLat: -46.4132, areaLng: 168.3538, areaRadiusKm: 50, available: true } });
-    const job = await schema.db.job.create({ data: { customerId: customer.id, category: "OTHER", status: "REVIEW", title: "Move a couch", description: "Move the couch upstairs.", addressLine1: "144 Private Street", suburb: "Windsor", city: "Invercargill", lat: -46.4132, lng: 168.3538, approxLat: -46.4117, approxLng: 168.3538, anyTime: true } });
+    if (category !== "OTHER") {
+      await schema.db.workerTrade.create({ data: { userId: worker.id, trade: category } });
+      await schema.db.licence.create({ data: { userId: worker.id, trade: category, number: "EW123456", status: "VERIFIED", checkedAt: new Date(), checkedById: office.id, expiresOn: new Date("2099-01-01") } });
+    }
+    const job = await schema.db.job.create({ data: { customerId: customer.id, category, status: "REVIEW", title: "Move a couch", description: "Move the couch upstairs.", addressLine1: "144 Private Street", suburb: "Windsor", city: "Invercargill", lat: -46.4132, lng: 168.3538, approxLat: -46.4117, approxLng: 168.3538, anyTime: true } });
     await priceJob(schema.db, { jobId: job.id, minutes: 120, materialsCents: 8500, pricedById: office.id });
     await schema.db.job.update({ where: { id: job.id }, data: { status: "BOOKABLE" } });
     // Enough quote points to claim (starts with 3, claiming costs 5: #491).
@@ -124,6 +128,51 @@ describe.skipIf(!testDatabaseUrl)("worker claim transaction", () => {
     expect(await claimWorkerJob(schema.db, viewer, job.id)).toEqual({ status: "ineligible", failure: "worker-paused" });
     expect(await schema.db.job.findUnique({ where: { id: job.id } })).toMatchObject({ status: "BOOKABLE", workerId: null });
     expect(await schema.db.auditLog.count({ where: { recordId: job.id, action: "job.claimed" } })).toBe(0);
+  });
+  it("refuses a licence that expired after opening the claim screen without spending points or publishing a claim", async () => {
+    const { job, customer, viewer } = await fixture("ELECTRICAL");
+    expect((await loadWorkerClaim(schema.db, viewer, job.id))?.failure).toBeNull();
+    await schema.db.licence.updateMany({ where: { userId: viewer.userId, trade: "ELECTRICAL" }, data: { expiresOn: new Date("2000-01-01") } });
+
+    expect(await claimWorkerJob(schema.db, viewer, job.id)).toEqual({ status: "ineligible", failure: "licence-required" });
+    expect(await schema.db.job.findUnique({ where: { id: job.id } })).toMatchObject({ status: "BOOKABLE", workerId: null });
+    expect(await pointBalance(schema.db, viewer.userId)).toBe(5);
+    expect(await schema.db.pointEntry.count({ where: { jobId: job.id, reason: "CLAIM" } })).toBe(0);
+    expect(await schema.db.jobStatusHistory.count({ where: { jobId: job.id, toStatus: "ASSIGNED" } })).toBe(0);
+    expect(await schema.db.auditLog.count({ where: { recordId: job.id, action: "job.claimed" } })).toBe(0);
+    expect(await schema.db.notification.count({ where: { type: "job.claimed", userId: { in: [viewer.userId, customer.id] } } })).toBe(0);
+  });
+  it("returns exactly one winner and one private lost result when two funded workers confirm concurrently", async () => {
+    const { job, customer, viewer } = await fixture(), other = await fixture();
+    const viewers = [viewer, other.viewer];
+    for (const worker of viewers) expect((await loadWorkerClaim(schema.db, worker, job.id))?.failure).toBeNull();
+
+    // Both real PostgreSQL transactions must be open before either attempts the claim locks.
+    let arrived = 0, release!: () => void;
+    const together = new Promise<void>(resolve => { release = resolve; });
+    const concurrent = new Proxy(schema.db, { get(target, key) {
+      if (key !== "$transaction") return Reflect.get(target, key, target);
+      return (run: (tx: Prisma.TransactionClient) => Promise<unknown>) => target.$transaction(async tx => {
+        if (++arrived === 2) release();
+        await together;
+        return run(tx);
+      });
+    } });
+    const results = await Promise.all(viewers.map(worker => claimWorkerJob(concurrent, worker, job.id)));
+    expect(results.map(result => result.status).sort()).toEqual(["claimed", "lost"]);
+    const winnerIndex = results.findIndex(result => result.status === "claimed"), loserIndex = 1 - winnerIndex;
+    const winner = viewers[winnerIndex], loser = viewers[loserIndex];
+    expect(results[loserIndex]).toEqual({ status: "lost" });
+    expect(await schema.db.job.findUnique({ where: { id: job.id } })).toMatchObject({ status: "ASSIGNED", workerId: winner.userId });
+    expect(await pointBalance(schema.db, winner.userId)).toBe(0);
+    expect(await pointBalance(schema.db, loser.userId)).toBe(5);
+    expect(await schema.db.pointEntry.findMany({ where: { jobId: job.id, reason: "CLAIM" }, select: { workerId: true, delta: true } })).toEqual([{ workerId: winner.userId, delta: -5 }]);
+    expect(await schema.db.jobStatusHistory.count({ where: { jobId: job.id, toStatus: "ASSIGNED" } })).toBe(1);
+    expect(await schema.db.auditLog.findMany({ where: { recordId: job.id, action: "job.claimed" }, select: { actorId: true } })).toEqual([{ actorId: winner.userId }]);
+    const notices = await schema.db.notification.findMany({ where: { type: "job.claimed", userId: { in: [...viewers.map(worker => worker.userId), customer.id] } } });
+    expect(notices.map(notice => notice.userId).sort()).toEqual([winner.userId, customer.id].sort());
+    expect(await loadWorkerClaim(schema.db, loser, job.id)).toBeNull();
+    expect((await loadWorkerClaim(schema.db, winner, job.id))?.job.address).toMatchObject({ line1: "144 Private Street" });
   });
   it("returns the lost-race state without leaking the winner, and distinguishes a cancelled job", async () => {
     const { job, viewer } = await fixture(), other = await person("TRADIE");
