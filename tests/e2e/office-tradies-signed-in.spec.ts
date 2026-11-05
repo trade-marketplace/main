@@ -30,16 +30,40 @@ test.describe("real office licence and pause journeys", () => {
   }
   test("office approves one trade, rejects another with public reason, then pauses/unpauses with audit notes", async ({ page, browser, context }) => {
     test.setTimeout(240_000); await page.setViewportSize({ width: 390, height: 844 });
-    let releaseGas!: () => void;
-    const gasGate = new Promise<void>(resolve => { releaseGas = resolve; });
+    let heldSelection: string | null = null, releaseSelection = () => {}, selectionGate = Promise.resolve();
+    function holdSelection(trade: "ELECTRICAL" | "GAS") {
+      heldSelection = `${SECURITY_TRADIE.id}:${trade}`;
+      selectionGate = new Promise<void>(resolve => { releaseSelection = () => { heldSelection = null; resolve(); }; });
+    }
     await page.route("**/admin/tradies?**", async route => {
       const url = new URL(route.request().url());
-      if (url.searchParams.get("selected") === `${SECURITY_TRADIE.id}:GAS` && route.request().headers().rsc === "1") await gasGate;
+      if (heldSelection && url.searchParams.get("selected") === heldSelection && route.request().headers().rsc === "1") await selectionGate;
       await route.continue();
     });
     try {
     await login(page, SECURITY_USER.email, "/admin/tradies");
     await page.getByRole("link", { name: "Review Jack Wilson, Electrical", exact: true }).click();
+    await page.getByLabel("Note (saved with the decision)", { exact: true }).fill("Fixture174 electrical history draft");
+    await page.getByRole("link", { name: "Review Jack Wilson, Gas fitting", exact: true }).click();
+    await page.getByLabel("Note (saved with the decision)", { exact: true }).fill("Fixture174 gas history draft");
+    // Reload clears Next's in-memory history cache while preserving genuine browser history entries.
+    // Both traversals must fetch the destination; hold that response to exercise the old editable pane.
+    for (const [trade, traverse, expectedDraft] of [["ELECTRICAL", () => page.goBack(), "Fixture174 electrical history draft"], ["GAS", () => page.goForward(), "Fixture174 gas history draft"]] as const) {
+      await page.reload(); await expect(page.getByLabel("Note (saved with the decision)", { exact: true })).toBeEnabled();
+      holdSelection(trade);
+      const request = page.waitForRequest(candidate => new URL(candidate.url()).searchParams.get("selected") === `${SECURITY_TRADIE.id}:${trade}` && candidate.headers().rsc === "1");
+      const traversal = traverse();
+      try {
+        await request;
+        await expect(page.getByRole("table", { name: "Tradies", exact: true })).toHaveAttribute("aria-busy", "true");
+        await expect(page.getByLabel("Note (saved with the decision)", { exact: true })).toHaveCount(0);
+      } finally { releaseSelection(); await traversal; }
+      await expect(page.getByLabel("Note (saved with the decision)", { exact: true })).toHaveValue(expectedDraft);
+    }
+    expect((await db.query("SELECT status FROM licences WHERE user_id=$1", [SECURITY_TRADIE.id])).rows.every(row => row.status === "PENDING")).toBe(true);
+    await page.getByRole("link", { name: "Review Jack Wilson, Electrical", exact: true }).click();
+    await expect(page.getByLabel("Note (saved with the decision)", { exact: true })).toHaveValue("Fixture174 electrical history draft");
+    await page.getByLabel("Note (saved with the decision)", { exact: true }).fill("");
     const opened = page.waitForEvent("popup"); await page.getByRole("link", { name: "View licence", exact: true }).click(); const document = await opened; await document.waitForLoadState(); await expect.poll(() => document.locator("img").evaluate((image: HTMLImageElement) => image.naturalWidth)).toBe(24); await document.close();
     await expect(page.getByRole("button", { name: "Approve", exact: true })).toBeDisabled(); await page.getByLabel("Note (saved with the decision)", { exact: true }).fill("Fixture174 checked the EWRB register");
     await context.setOffline(true); await expect(page.getByRole("button", { name: "Approve", exact: true })).toBeDisabled(); await context.setOffline(false); await page.reload();
@@ -47,11 +71,12 @@ test.describe("real office licence and pause journeys", () => {
     await page.getByRole("alertdialog").getByRole("button", { name: "Approve", exact: true }).click(); await expect(page.getByText("Saved.", { exact: true })).toBeVisible();
     expect((await db.query("SELECT trade,status FROM licences WHERE user_id=$1 ORDER BY trade", [SECURITY_TRADIE.id])).rows).toEqual(expect.arrayContaining([{ trade: "ELECTRICAL", status: "VERIFIED" }, { trade: "GAS", status: "PENDING" }]));
     await page.getByRole("link", { name: "Back", exact: true }).click();
+    holdSelection("GAS");
     const openingGas = page.getByRole("link", { name: "Review Jack Wilson, Gas fitting", exact: true }).click();
     try {
       await expect(page.getByRole("table", { name: "Tradies", exact: true })).toHaveAttribute("aria-busy", "true");
       await expect(page.getByLabel("Note (saved with the decision)", { exact: true })).toHaveCount(0);
-    } finally { releaseGas(); await openingGas; }
+    } finally { releaseSelection(); await openingGas; }
     await page.getByLabel("Note (saved with the decision)", { exact: true }).fill("Fixture174 private decision note"); await page.getByRole("button", { name: "Reject…", exact: true }).click(); await page.getByLabel("Reason shown to the tradie", { exact: true }).fill("Fixture174 please upload a current card"); await page.getByRole("alertdialog").getByRole("button", { name: "Reject", exact: true }).click(); await expect(page.getByRole("region", { name: "Audit timeline", exact: true })).toContainText("Fixture174 private decision note");
     const workerContext = await browser.newContext(), worker = await workerContext.newPage();
     try {
@@ -64,6 +89,6 @@ test.describe("real office licence and pause journeys", () => {
     await page.getByRole("button", { name: "Unpause", exact: true }).click(); await page.getByLabel("Reason", { exact: true }).fill("Fixture174 concern resolved"); await page.getByRole("alertdialog").getByRole("button", { name: "Unpause", exact: true }).click(); await expect(page.getByRole("button", { name: "Pause", exact: true })).toBeVisible();
     const audit = (await db.query("SELECT action,reason FROM audit_log WHERE record_id=$1 AND action IN ('worker.paused','worker.unpaused')", [SECURITY_TRADIE.id])).rows; expect(audit).toEqual(expect.arrayContaining([{ action: "worker.paused", reason: "Fixture174 checking account concern" }, { action: "worker.unpaused", reason: "Fixture174 concern resolved" }]));
     await db.query("UPDATE profiles SET role='CUSTOMER' WHERE id=$1", [SECURITY_USER.id]); await page.reload(); await expect(page).toHaveURL(`${app}/`); await expect(page.locator("body")).not.toContainText("Fixture174 private decision note");
-    } finally { releaseGas(); }
+    } finally { releaseSelection(); }
   });
 });

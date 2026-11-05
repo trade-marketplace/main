@@ -32,7 +32,22 @@ function TradiesContent({ data, query, state = "default", decide = decideTradieA
   useEffect(() => { latest.current = query; }, [query]);
   const [lastQuery, setLastQuery] = useState(query.q);
   if (lastQuery !== query.q) { setLastQuery(query.q); setSearch(query.q); }
+  const [historyTarget, setHistoryTarget] = useState<TradiesQuery | "leaving" | null>(null);
+  const historyPage = historyTarget && historyTarget !== "leaving" ? data ? Math.min(historyTarget.page, Math.max(1, Math.ceil(data.total / OFFICE_TRADIES_PAGE_SIZE))) : historyTarget.page : query.page;
+  const historyPending = historyTarget === "leaving" || Boolean(historyTarget && (historyTarget.tab !== query.tab || historyTarget.q !== query.q || historyTarget.sort !== query.sort || historyTarget.selected !== query.selected || historyPage !== query.page));
+  // History traversal does not join our link transition. Wait for the committed destination,
+  // not a new props object: an unrelated refresh can still contain the previous person's record.
+  if (historyTarget && !historyPending) setHistoryTarget(null);
+  useEffect(() => {
+    const onHistory = () => {
+      const url = new URL(location.href), ownPath = new URL(hrefFor("/admin/tradies"), location.href).pathname;
+      setHistoryTarget(url.pathname === ownPath ? tradiesQuery(Object.fromEntries(url.searchParams)) : "leaving");
+    };
+    window.addEventListener("popstate", onHistory, true);
+    return () => window.removeEventListener("popstate", onHistory, true);
+  }, [hrefFor]);
   const go = (changes: Partial<TradiesQuery>, replace = false) => {
+    setHistoryTarget(null);
     latest.current = { ...latest.current, ...changes };
     startTransition(() => { if (navigate) navigate(latest.current); else (replace ? router.replace : router.push)(tradiesHref(latest.current), { scroll: false }); });
   };
@@ -53,13 +68,13 @@ function TradiesContent({ data, query, state = "default", decide = decideTradieA
     // Search alone starts the debounce; latest holds any intervening tab/sort change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search]);
-  const connected = useOnlineStatus(), online = state !== "offline" && connected, loading = state === "loading" || pending;
+  const connected = useOnlineStatus(), online = state !== "offline" && connected, loading = state === "loading" || pending || historyPending;
   useEffect(() => { if (loading) return; if (detailVersion && previousDetail.current !== detailVersion) detailHeading.current?.focus(); previousDetail.current = detailVersion; }, [detailVersion, loading]);
   const columns: Column<TradieRow>[] = [
     { key: "name", header: "Name", primary: true, cell: row => <TableItem title={row.name} href={hrefFor(tradiesHref(query, { selected: row.id }))} /> },
     { key: "trade", header: "Trade", cell: row => tradeLabel(row.trade) },
     { key: "number", header: "Licence no.", cell: row => row.licenceNumber ?? (row.trade === "OTHER" ? "No licence needed" : "Not provided") },
-    { key: "date", header: query.tab === "verified" ? "Expiry" : "Signed up", optional: true, cell: row => query.tab === "verified" ? row.expiry ?? "—" : <time dateTime={row.joinedAt}>{row.joined}</time> },
+    { key: "date", header: query.tab === "verified" ? "Expiry" : "Signed up", optional: query.tab !== "verified", cell: row => query.tab === "verified" ? row.expiry ?? "—" : <time dateTime={row.joinedAt}>{row.joined}</time> },
   ];
   return <div className={styles.page} onClickCapture={follow}><h1 ref={heading} tabIndex={-1}>Tradies</h1><OfflineBanner online={state === "offline" ? false : undefined} sticky={false} />
     <Tabs label="Tradie checks" value={query.tab} onChange={tab => go({ tab, selected: null, page: 1 })} items={[{ value: "check", label: "To check", count: data?.counts.check ?? 0 }, { value: "verified", label: "Verified", count: data?.counts.verified ?? 0 }, { value: "paused", label: "Paused", count: data?.counts.paused ?? 0 }]}>

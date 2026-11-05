@@ -18,6 +18,13 @@ test.describe("office tradie checks", () => {
       if (state === "paused") await expect(page.getByRole("button", { name: "Unpause", exact: true })).toBeVisible();
     }
   });
+  test("verified licence expiry stays visible at every viewport", async ({ page }) => {
+    for (const viewport of VIEWPORTS) {
+      await page.setViewportSize(viewport); await page.goto(`${dev}/dev/components/office-tradies?state=verified`);
+      await expect(page.getByRole("table", { name: "Tradies", exact: true }).getByRole("cell", { name: /^(?:Expiry )?2027-03-31$/ })).toBeVisible();
+      expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false); await expectNoA11yViolations(page);
+    }
+  });
   test("saved toast fits every viewport and passes axe", async ({ page }) => {
     for (const viewport of VIEWPORTS) {
       await page.setViewportSize(viewport); await page.goto(`${dev}/dev/components/office-tradies?state=success`);
