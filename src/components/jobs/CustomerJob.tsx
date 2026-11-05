@@ -132,8 +132,8 @@ export function CustomerJob({ job, photos = [], photosFailed = false, photoLease
             <div className={styles.panelContent}>
               <h2 ref={statusHeading} tabIndex={-1} className={styles.heading}>{panel.heading}</h2>
               {panel.message && <p className={styles.message}>{panel.message}</p>}
-              {job.status === "REVIEW" && <>
-                {customerPriceDelayed(ageMs) && <Banner tone="info" title="Taking a little longer than usual" className={styles.notice}>Still working on it. Thanks for your patience. We’ll message you.</Banner>}
+              {(job.status === "REVIEW" || job.status === "QUOTE_BOUNTY") && <>
+                {job.status === "REVIEW" && customerPriceDelayed(ageMs) && <Banner tone="info" title="Taking a little longer than usual" className={styles.notice}>Still working on it. Thanks for your patience. We’ll message you.</Banner>}
                 <CustomerWaitingActions key={job.id} job={job} online={online} preview={waitingPreview} actions={waitingActions} onCancelled={() => setCancelFocusJob(job.id)} />
               </>}
               {panel.kind === "confirmed" && job.worker && <p className={styles.worker}>{job.worker.firstName}{job.worker.lastInitial ? ` ${job.worker.lastInitial}` : ""}</p>}

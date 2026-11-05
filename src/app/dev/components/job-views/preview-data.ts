@@ -26,6 +26,8 @@ export function exampleJob(overrides: Partial<JobSource> = {}): JobSource {
     locationSource: "SEARCH", coverage: "INSIDE", locationNeedsCheck: false,
     priceCents: 37200, asap: false, anyTime: false, bookedDate: new Date("2026-11-05"), bookedTime: "MORNING",
     createdAt: now, updatedAt: now, editedAt: null, photosNeedCheck: false,
+    // Terminal examples were cancelled after an assigned/public price; draft examples override this fact.
+    statusHistory: overrides.status === "CANCELLED" || overrides.status === "CANCEL_REVIEW" ? [{ fromStatus: "ASSIGNED", toStatus: overrides.status, createdAt: now }] : [],
     customer: { id: VIEWERS.customer.userId, firstName: "Sarah", lastName: "Thompson", phone: "0210000001", email: "sarah@example.test" },
     worker: { id: VIEWERS.worker.userId, firstName: "Jack", lastName: "Wilson", phone: "0210000002", email: "jack@example.test" },
     pricing: { workerRateCents: 7000, minMinutes: 120, holidayPayBps: 800, onCostBps: 2000, marginBps: 2000, gstBps: 1500,
@@ -50,5 +52,5 @@ export function jobViewExample(state: JobViewPreviewState): JobSource {
   }
   if (state === "worker-unclaimed" || state === "missing-pin") return { ...job, status: "BOOKABLE", workerId: null, worker: null,
     ...(state === "missing-pin" ? { approxLat: null, approxLng: null } : {}) };
-  return state === "worker-cancelled" ? { ...job, status: "CANCELLED" } : job;
+  return state === "worker-cancelled" ? { ...job, status: "CANCELLED", statusHistory: [{ fromStatus: "ASSIGNED", toStatus: "CANCELLED", createdAt: job.updatedAt }] } : job;
 }

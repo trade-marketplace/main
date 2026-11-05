@@ -23,7 +23,8 @@ export async function changeWaitingJob(db: PrismaClient, viewer: JobViewer, id: 
       const job = await tx.job.findFirst({ where: { id: jobId, customerId: viewer.userId }, select: { id: true, jobNumber: true, status: true, updatedAt: true, title: true, description: true, accessNotes: true } });
       if (!job || profile?.role !== "CUSTOMER") return { status: "forbidden" };
       const before = { title: job.title, description: job.description, accessNotes: job.accessNotes ?? "" };
-      if (job.status !== "REVIEW" || waitingJobRevision(job.updatedAt.toISOString(), before) !== revision) return { status: "changed" };
+      const allowed = command === "edit" ? job.status === "REVIEW" || job.status === "QUOTE_BOUNTY" : job.status === "REVIEW";
+      if (!allowed || waitingJobRevision(job.updatedAt.toISOString(), before) !== revision) return { status: "changed" };
       // This dialog promises a free cancellation, and must never create a paid cancellation request.
       if (command === "cancel") {
         if (await tx.payment.count({ where: { jobId, status: { in: ["PAID", "PARTIALLY_REFUNDED"] } } })) return { status: "changed" };

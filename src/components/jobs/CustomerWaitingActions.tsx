@@ -61,7 +61,7 @@ export function CustomerWaitingActions({ job, online, preview, actions, onCancel
     {saved && <Banner tone="good" title="Saved." live className={styles.notice} />}
     <div className={styles.actionRow}>
       <Button variant="secondary" disabled={!online} onClick={() => open("edit")}>Edit job</Button>
-      <Button variant="tertiary" disabled={!online} onClick={() => open("cancel")}>Cancel job</Button>
+      {job.status === "REVIEW" && <Button variant="tertiary" disabled={!online} onClick={() => open("cancel")}>Cancel job</Button>}
     </div>
     <Dialog open={dialog !== null} title={dialog === "cancel" ? "Cancel this job?" : "Edit job"} role={dialog === "cancel" ? "alertdialog" : "dialog"} onClose={close} dismissible={!saving}
       footer={<><Button variant="secondary" disabled={saving} onClick={close}>{dialog === "cancel" ? "Keep job" : "Not now"}</Button><Button variant={dialog === "cancel" ? "destructive" : "primary"} type={dialog === "edit" ? "submit" : "button"} form={dialog === "edit" ? formId : undefined} loading={saving} disabled={!online || changed} onClick={dialog === "cancel" ? () => void run("cancel") : undefined}>{dialog === "cancel" ? "Cancel job" : "Save changes"}</Button></>}>
