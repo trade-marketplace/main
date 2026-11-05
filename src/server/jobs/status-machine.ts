@@ -459,6 +459,9 @@ export async function applyTransition(
   // Who is acting, for the history trigger and the audit log's default. Local to this transaction.
   await tx.$queryRaw`SELECT set_config('app.actor_id', ${actorId(request.actor) ?? ""}, true)`;
   if (request.transition === "claim" && request.actor.role === "TRADIE") await lockEligibilityRows(tx, request.actor.userId, request.jobId);
+  // Reporting a problem takes this same row lock before opening the report. Read the OPEN-report facts
+  // only after the lock, so a timer that waited for that report cannot complete from a stale pre-lock count.
+  if (request.transition === "auto-sign-off") await lockJobWindows(tx, request.jobId);
 
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
     const job = await tx.job.findUnique({ where: { id: request.jobId }, select: JOB_SELECT });

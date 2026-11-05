@@ -155,8 +155,8 @@ export async function readOfficeQueues(db: QueueDatabase, viewer: JobViewer, que
   // Do not turn an inconsistent read or a legacy row missing its required history into a reassuring all-clear.
   if (!search && rows.length !== Math.min(QUEUE_PAGE_SIZE, Math.max(0, total - skip))) throw new Error("queue-read-changed");
   const problemPage = Math.min(query.problemPage, Math.max(1, Math.ceil(current.problemCount / QUEUE_PAGE_SIZE)));
-  const cases = await db.problemReport.findMany({ where: { status: "OPEN" }, orderBy: [{ createdAt: "asc" }, { id: "asc" }], skip: (problemPage - 1) * QUEUE_PAGE_SIZE, take: QUEUE_PAGE_SIZE, select: { id: true, topic: true, createdAt: true, job: { select: JOB_SUMMARY_SELECT } } });
-  const problems = cases.flatMap(problem => { const job = officeQueueJobView(viewer, problem.job); return job ? [{ id: problem.id, jobId: job.jobId, number: job.number, title: job.title, topic: problem.topic, since: problem.createdAt.toISOString(), reported: waitingLabel(problem.createdAt, now), href: `/admin/jobs/${job.jobId}` }] : []; });
+  const cases = await db.problemReport.findMany({ where: { status: "OPEN" }, orderBy: [{ urgent: "desc" }, { createdAt: "asc" }, { id: "asc" }], skip: (problemPage - 1) * QUEUE_PAGE_SIZE, take: QUEUE_PAGE_SIZE, select: { id: true, topic: true, urgent: true, createdAt: true, job: { select: JOB_SUMMARY_SELECT } } });
+  const problems = cases.flatMap(problem => { const job = officeQueueJobView(viewer, problem.job); return job ? [{ id: problem.id, jobId: job.jobId, number: job.number, title: job.title, topic: `${problem.urgent ? "Urgent · " : ""}${problem.topic}`, since: problem.createdAt.toISOString(), reported: waitingLabel(problem.createdAt, now), href: `/admin/jobs/${job.jobId}` }] : []; });
   return { kpis: current.kpis, things: current.things, counts: current.counts, waitingCustomer: current.waitingCustomer, date: current.date,
     problemCount: current.problemCount, problemPage, rows, total, page, problems };
 }

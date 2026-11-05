@@ -34,7 +34,7 @@ export function supportPhotoCleanup(files: () => Pick<FileStore, "remove"> = cre
             await lockSupportPhoto(tx, record.path);
             const pending = await tx.supportPhotoCleanup.findUnique({ where: { path: record.path } });
             if (!pending || pending.createdAt > cutoff) return "skipped" as const;
-            if (await tx.supportMessagePhoto.count({ where: { path: record.path } })) {
+            if (await tx.supportMessagePhoto.count({ where: { path: record.path } }) || await tx.problemReportPhoto.count({ where: { path: record.path } })) {
               await tx.supportPhotoCleanup.delete({ where: { path: record.path } }); return "skipped" as const;
             }
             await files().remove(PHOTO_BUCKET, [record.path]);
