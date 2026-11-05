@@ -12,6 +12,11 @@ const PERSON_SELECT = { id: true, firstName: true, lastName: true, phone: true, 
 export const JOB_SUMMARY_SELECT = {
   id: true, jobNumber: true, title: true, category: true, status: true, customerId: true, workerId: true,
   suburb: true, city: true, priceCents: true, asap: true, createdAt: true, updatedAt: true,
+  // Bounded cancellation provenance: two possible hops plus one row to detect timestamp ambiguity.
+  // Never serialize these internal rows; UUID order is not event chronology.
+  statusHistory: {
+    orderBy: { createdAt: "desc" }, take: 3, select: { fromStatus: true, toStatus: true, createdAt: true },
+  },
 } satisfies Prisma.JobSelect;
 
 /** Shared list input. It stays on the server; role projections below are the only serialized result. */
@@ -48,6 +53,8 @@ export type JobSummarySource = JobAccess & {
   priceCents?: number | null; asap: boolean; createdAt: Date; updatedAt: Date;
   customer?: Person; worker?: Person | null;
   pricing?: { workerGrossCents?: number; holidayPayCents?: number; gstCents?: number } | null;
+  /** Canonical customer reads include both statuses; narrower internal readers may supply timestamps only. */
+  statusHistory?: readonly { fromStatus?: JobStatus | null; toStatus?: JobStatus; createdAt: Date }[];
 } & PointSource;
 
 function point(lat: number | null | undefined, lng: number | null | undefined): Point | null {
@@ -63,9 +70,30 @@ function shortPerson(person: Person | null | undefined, phone: boolean) {
   return person ? { id: person.id, firstName: person.firstName, lastInitial: person.lastName?.trim().charAt(0) ?? null, phone: phone ? person.phone ?? null : null } : null;
 }
 
+const PRICE_PUBLIC_STATUSES: readonly JobStatus[] = ["PRICED", "BOOKABLE", "ASSIGNED", "SUBMITTED", "COMPLETED"];
+function customerPricePublished(job: JobSummarySource): boolean {
+  if (PRICE_PUBLIC_STATUSES.includes(job.status)) return true;
+  if (job.status !== "CANCELLED" && job.status !== "CANCEL_REVIEW") return false;
+  // Cancellation is not publication (#498). An older PRICED cycle followed by REVIEW must not
+  // publish a newer office draft. Missing, tied or discontinuous provenance fails closed.
+  const history = job.statusHistory ?? [];
+  let expected: JobStatus = job.status;
+  for (let index = 0; index < 2; index++) {
+    const event = history[index], previous = history[index + 1];
+    if (!event || event.toStatus !== expected || event.fromStatus == null) return false;
+    const time = event.createdAt.getTime(), previousTime = previous?.createdAt.getTime();
+    if (!Number.isFinite(time) || (previousTime !== undefined && (!Number.isFinite(previousTime) || previousTime >= time))) return false;
+    // A unique direct public→cancel row proves publication; older unrelated ties are irrelevant.
+    if (PRICE_PUBLIC_STATUSES.includes(event.fromStatus)) return true;
+    if ((event.fromStatus !== "CANCEL_REVIEW" && event.fromStatus !== "CANCELLED") || !previous || previous.toStatus !== event.fromStatus) return false;
+    expected = event.fromStatus;
+  }
+  return false;
+}
+
 export function customerJobListView(viewer: JobViewer | null, job: JobSummarySource) {
   if (viewer?.role !== "CUSTOMER" || !canReadJob(viewer, job)) return null;
-  const published = !["REVIEW", "QUOTE_BOUNTY"].includes(job.status);
+  const published = customerPricePublished(job);
   const person = isClaimedJob(job) ? shortPerson(job.worker, false) : null;
   // List screens need the assigned tradie's short name, never their contact details or internal identifier.
   const worker = person ? { firstName: person.firstName, lastInitial: person.lastInitial } : null;

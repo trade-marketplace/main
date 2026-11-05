@@ -11,6 +11,7 @@ vi.mock("@/components/jobs/WorkerClaimPage", () => ({ WorkerClaimPage: () => nul
 vi.mock("@/components/jobs/WorkerEstimatePage", () => ({ WorkerEstimatePage: () => null }));
 vi.mock("@/components/jobs/WorkerJobBoundary", () => ({ WorkerJobLoading: () => null, WorkerJobLoadError: () => null }));
 vi.mock("@/components/jobs/CustomerJobPage", () => ({ CustomerJobPage: () => null }));
+vi.mock("@/components/jobs/CustomerJob", () => ({ CustomerJobLoading: () => null, CustomerJobLoadError: () => null }));
 const { default: JobPage } = await import("@/app/(app)/jobs/[id]/page");
 const { WorkerClaimPage } = await import("@/components/jobs/WorkerClaimPage");
 const { WorkerEstimatePage } = await import("@/components/jobs/WorkerEstimatePage");
