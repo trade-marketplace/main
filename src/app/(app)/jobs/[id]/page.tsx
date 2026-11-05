@@ -3,6 +3,8 @@ import { Suspense } from "react";
 import { z } from "zod";
 import { WorkerJobLoading, WorkerJobLoadError } from "@/components/jobs/WorkerJobBoundary";
 import { WorkerEstimatePage } from "@/components/jobs/WorkerEstimatePage";
+import { WorkerClaimLoading } from "@/components/jobs/WorkerClaim";
+import { WorkerClaimPage } from "@/components/jobs/WorkerClaimPage";
 import { CustomerJobPage } from "@/components/jobs/CustomerJobPage";
 import { CustomerJobLoadError } from "@/components/jobs/CustomerJob";
 import { boardJobHref, boardReturn } from "@/lib/job-board";
@@ -24,9 +26,12 @@ export default async function JobPage({ params, searchParams }: { params: Promis
   if (viewer.role === "TRADIE") {
     // Resolve the central read boundary before streaming so missing/forbidden jobs retain their 404 status.
     let access;
-    try { access = await getDb().job.findUnique({ where: { id }, select: { customerId: true, workerId: true, status: true } }); }
+    try { access = await getDb().job.findUnique({ where: { id }, select: { customerId: true, workerId: true, status: true, pricing: { select: { jobId: true } } } }); }
     catch { return <WorkerJobLoadError back={back} />; }
     if (!access || !canReadJob(viewer, access)) notFound();
+    // Ready to claim (#144), and the claimed result on reload/back; legacy assigned rows without pricing keep the quote summary.
+    if (access.status === "BOOKABLE" || (access.status === "ASSIGNED" && access.workerId === viewer.userId && access.pricing))
+      return <Suspense fallback={<WorkerClaimLoading />}><WorkerClaimPage viewer={viewer} id={id} back={back} /></Suspense>;
     return <Suspense fallback={<WorkerJobLoading />}><WorkerEstimatePage viewer={viewer} id={id} back={back} /></Suspense>;
   }
   if (viewer.role === "CUSTOMER") {
