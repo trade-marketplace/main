@@ -45,6 +45,15 @@ export function ClaimNumbers({ job, reveal = false }: { job: WorkerClaimView; re
 export function ClaimNextSteps({ job }: { job: WorkerClaimView }) {
   return <ol className={styles.nextSteps}><li>Book one of the customer’s time windows</li>{job.category === "ELECTRICAL" && <li>Grab materials at Telfer: job no. <b>TM-{job.jobNumber}</b></li>}<li>{job.needs?.coc ? "Do the work, upload the CoC" : "Do the work, send completion evidence"}</li></ol>;
 }
+/** Not enough points to claim (#491): a locked card with a progress bar, so it's obvious at a glance. */
+function PointsLocked({ points }: { points: ClaimPoints }) {
+  const missing = points.cost - points.balance, have = Math.max(0, points.balance);
+  return <div className={styles.locked} role="status">
+    <div className={styles.lockedHead}><Icon name="lock" fill decorative /><b>Locked</b><span className={styles.cost}><Icon name="toll" size="sm" fill decorative />{have} / {points.cost}</span></div>
+    <div className={styles.meter} aria-hidden="true"><span style={{ width: `${Math.min(100, (have / points.cost) * 100)}%` }} /></div>
+    <p>Quote {missing} more {missing === 1 ? "job" : "jobs"} to claim this one.</p>
+  </div>;
+}
 export function WorkerClaim({ job: initial, back, failure: initialFailure, photos = [], photosFailed, preview, contactHref: initialContactHref, points: initialPoints = null, claim = claimWorkerJobAction }: Props) {
   const router = useRouter(), session = useOptionalSessionExpired(), online = useOnlineStatus(), pending = useRef(false);
   const [job, setJob] = useState(initial), [failure, setFailure] = useState(initialFailure);
@@ -99,9 +108,10 @@ export function WorkerClaim({ job: initial, back, failure: initialFailure, photo
         <div><Pill kind="good">Paid by customer</Pill></div><ClaimNumbers job={job} reveal />
         <OfflineBanner online={preview === "offline" ? false : undefined} sticky={false} />
         {failure && <Banner tone="alert" live={failure !== initialFailure}>{CLAIM_FAILURE_COPY[failure]}</Banner>}
-        {points && !job.assignedToYou && points.cost > 0 && <p className={styles.points}><span className={styles.cost}><Icon name="toll" size="sm" fill decorative />{points.cost}</span>to claim · you have {pointsLabel(points.balance)}</p>}
-        {short && points && <Banner tone="info" live action={<TextLink href="/jobs?kind=estimate" inline>Find jobs to quote</TextLink>}>Quote {points.cost - points.balance} more {points.cost - points.balance === 1 ? "job" : "jobs"} to claim this one.</Banner>}
-        <Button variant={job.assignedToYou ? "secondary" : "hero"} width="full" disabled={lost || Boolean(failure) || offline || short} onClick={() => job.assignedToYou ? openOwnedJob() : setConfirm(true)}>{job.assignedToYou ? "Open job" : "Claim job"}</Button>
+        {points && !job.assignedToYou && points.cost > 0 && !short && <p className={styles.points}><span className={styles.cost}><Icon name="toll" size="sm" fill decorative />{points.cost}</span>to claim · you have {pointsLabel(points.balance)}</p>}
+        {short && points ? <PointsLocked points={points} /> : null}
+        {short ? <><Button variant="hero" width="full" disabled icon="lock">Claim job</Button><Button href="/jobs?kind=estimate" width="full" icon="bolt">Quote jobs to unlock</Button></>
+        : <Button variant={job.assignedToYou ? "secondary" : "hero"} width="full" disabled={lost || Boolean(failure) || offline || short} onClick={() => job.assignedToYou ? openOwnedJob() : setConfirm(true)}>{job.assignedToYou ? "Open job" : "Claim job"}</Button>}
       </aside>
     </div>
     <Dialog open={confirm || success} onClose={() => { setConfirm(false); setSuccess(false); }} dismissible={!saving} role={success ? "dialog" : "alertdialog"} title={<span ref={dialogTitleRef}>{success ? "It’s yours." : "Take this job?"}</span>} eyebrow={success ? undefined : `${job.title} · TM-${job.jobNumber}`} size="sm" footer={success ? <><Button variant="secondary" onClick={openOwnedJob}>Open job</Button><Button href={messageHref}>Message {job.customerFirstName}</Button></> : <><Button variant="secondary" onClick={() => setConfirm(false)} disabled={saving}>Not now</Button><Button loading={saving} disabled={offline} onClick={() => void take()}>Yes, it’s mine</Button></>}>
