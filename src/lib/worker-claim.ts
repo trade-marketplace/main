@@ -11,7 +11,10 @@ export type WorkerClaimView = {
   budgetCents: number; needs: { coc: boolean; photos: number; notes: boolean } | null;
 };
 export type WorkerClaimResult = { status: "claimed"; job: WorkerClaimView; contactHref: string }
-  | { status: "lost" } | { status: "ineligible"; failure: EligibilityFailure } | { status: "unavailable" };
+  | { status: "lost" } | { status: "ineligible"; failure: EligibilityFailure } | { status: "unavailable" }
+  | { status: "points"; balance: number; cost: number };
+/** The worker's points and what claiming costs (#491). */
+export type ClaimPoints = { balance: number; cost: number };
 
 export const CLAIM_FAILURE_COPY: Record<EligibilityFailure, string> = {
   "worker-required": "Log in as a tradie to claim this job.", "email-required": "Confirm your email to claim this job.",

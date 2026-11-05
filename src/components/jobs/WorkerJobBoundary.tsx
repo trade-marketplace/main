@@ -27,15 +27,16 @@ type Props = {
   details?: WorkerJobView; back: string; failure?: EligibilityFailure | null;
   photos?: { src: string; alt: string }[]; photosFailed?: boolean; preview?: string;
   save?: (id: string, input: EstimateFields) => Promise<EstimateResult | AuthFailure>;
+  /** Points for a first quote, as the office has set them (#491). */
+  quotePoints?: number;
 };
 const plural = (n: number) => `${n} ${n === 1 ? "point" : "points"}`;
 const sentToast = (earned: number, balance?: number) =>
   ({ message: `Quote sent. +${plural(earned)}${balance === undefined ? "" : ` · ${plural(balance)}`}`, icon: "toll" });
-const SENT_TOAST = sentToast(QUOTE_POINTS);
 export function WorkerJobBoundary(props: Props) {
-  return <ToastProvider initial={props.preview === "sent" ? SENT_TOAST : undefined}><WorkerJob {...props} /></ToastProvider>;
+  return <ToastProvider initial={props.preview === "sent" ? sentToast(props.quotePoints ?? QUOTE_POINTS) : undefined}><WorkerJob {...props} /></ToastProvider>;
 }
-function WorkerJob({ job, details, back, failure: initialFailure, photos = [], photosFailed, preview, save = saveWorkerEstimateAction }: Props) {
+function WorkerJob({ job, details, back, failure: initialFailure, photos = [], photosFailed, preview, quotePoints = QUOTE_POINTS, save = saveWorkerEstimateAction }: Props) {
   const router = useRouter(), toast = useToast(), session = useOptionalSessionExpired(), online = useOnlineStatus(), formId = useId();
   const [own, setOwn] = useState(details?.ownEstimate ?? null);
   const [value, setValue] = useState(() => estimateFields(details?.ownEstimate ?? null));
@@ -68,7 +69,7 @@ function WorkerJob({ job, details, back, failure: initialFailure, photos = [], p
       const result = await save(details.id, value);
       if (session?.check(result)) return;
       if (!("status" in result)) { setError(true); return; }
-      if (result.status === "saved") { setOwn(result.estimate); setValue(estimateFields(result.estimate)); setSent(`estimate-sent:${details.id}:${Date.now()}`); setEditing(false); toast.show(result.pointsAwarded === 0 ? { message: "Quote updated.", icon: "check_circle" } : sentToast(result.pointsAwarded ?? QUOTE_POINTS, result.points)); router.refresh(); }
+      if (result.status === "saved") { setOwn(result.estimate); setValue(estimateFields(result.estimate)); setSent(`estimate-sent:${details.id}:${Date.now()}`); setEditing(false); toast.show(result.pointsAwarded === 0 ? { message: "Quote updated.", icon: "check_circle" } : sentToast(result.pointsAwarded ?? quotePoints, result.points)); router.refresh(); }
       else if (result.status === "invalid") { setFields(result.fields); setError(Object.keys(result.fields).length === 0); form.current?.querySelector<HTMLElement>(`[name="${Object.keys(result.fields)[0]}"]`)?.focus(); }
       else if (result.status === "ineligible") { setFailure(result.failure); setEditing(false); }
       else setError(true);
@@ -90,13 +91,13 @@ function WorkerJob({ job, details, back, failure: initialFailure, photos = [], p
       {(own || quoting) && <div className={styles.cardHead}>
         <div><h2 className={styles.cardTitle}>{quoting ? "Quote this job" : "Your quote"}</h2>
           {quoting && !own && <p className={styles.small}>{details.estimateCount === 0 ? "No quotes yet" : `${details.estimateCount} ${details.estimateCount === 1 ? "quote" : "quotes"} in`}</p>}</div>
-        <PointsChip earned={Boolean(own)} />
+        {quotePoints > 0 && <PointsChip points={quotePoints} earned={Boolean(own)} />}
       </div>}
       {quoting ? <form id={formId} ref={form} onSubmit={event => void submit(event)} className={styles.form} noValidate>
         {error && <Banner tone="alert" title="Couldn’t save." live />}
         <WorkerEstimateFields value={value} fields={fields} saving={saving} change={change} step={step} />
         <div className={styles.send}>
-          <Button type="submit" loading={saving} disabled={offline || Boolean(failure)} width="full">Submit<span className={styles.sendPoints} aria-hidden="true">+{QUOTE_POINTS}</span></Button>
+          <Button type="submit" loading={saving} disabled={offline || Boolean(failure)} width="full">Submit{quotePoints > 0 && <span className={styles.sendPoints} aria-hidden="true">+{quotePoints}</span>}</Button>
           {editing && <Button variant="tertiary" onClick={() => { setEditing(false); setValue(estimateFields(own)); setFields({}); }} disabled={saving} width="full">Cancel</Button>}
         </div>
       </form> : own ? <>
