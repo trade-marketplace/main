@@ -10,10 +10,12 @@ import { createSupabaseFileStore, PHOTO_BUCKET, SIGNED_URL_SECONDS, type Inspect
 import { createAudit } from "@/server/audit/audit";
 import { isClaimedJob, JOB_SUMMARY_SELECT, jobThreadContextView } from "@/server/views";
 import { lockSupportPhoto } from "./photo-cleanup";
+import { persistSupportMessage } from "./persist";
+import { ProblemThreadError } from "./errors";
+export { ProblemThreadError } from "./errors";
 
 type Actor = Pick<Viewer, "userId">;
 type Tx = Prisma.TransactionClient;
-export class ProblemThreadError extends Error { constructor(readonly code: string) { super(code); } }
 const JOB_SELECT = { id: true, jobNumber: true, title: true, suburb: true, status: true, customerId: true, workerId: true,
   customer: { select: { firstName: true, lastName: true } }, worker: { select: { firstName: true, lastName: true } } } as const;
 const JOB_CONTEXT_SELECT = { ...JOB_SUMMARY_SELECT, worker: { select: { id: true, firstName: true, lastName: true } } } as const;
@@ -50,13 +52,13 @@ type Deps = {
   files?: Pick<InspectableFileStore, "exists">;
   notify?: (threadId: string, messageId: string, job: { id: string; customerId: string; workerId: string | null }, senderId: string) => Promise<void>;
 };
-async function photosReady(tx: Tx, paths: string[], actor: Actor, jobId: string, deps: Deps) {
+export async function requireSupportPhotosReady(tx: Tx, paths: string[], actor: Actor, jobId: string, deps: Deps) {
   if (new Set(paths).size !== paths.length || paths.some(path => !ownsSupportPhoto(actor.userId, jobId, path))) throw new ProblemThreadError("photos-pending");
   if (!paths.length) return;
   for (const path of [...paths].sort()) {
     await lockSupportPhoto(tx, path);
     const pending = await tx.supportPhotoCleanup.findUnique({ where: { path } });
-    if (pending?.deleting || (!pending && !(await tx.supportMessagePhoto.count({ where: { path } })))) throw new ProblemThreadError("photos-pending");
+    if (pending?.deleting || (!pending && !(await tx.supportMessagePhoto.count({ where: { path } })) && !(await tx.problemReportPhoto.count({ where: { path } })))) throw new ProblemThreadError("photos-pending");
   }
   try {
     const files = deps.files ?? createSupabaseFileStore();
@@ -87,29 +89,22 @@ async function command(db: PrismaClient, actor: Actor, raw: unknown, opening: bo
         // The customer/worker must initiate a support request; this is not a general direct-message endpoint.
         if (actor.userId !== job.customerId && actor.userId !== job.workerId) throw new ProblemThreadError("forbidden");
         const existing = await tx.supportThread.findFirst({ where: { jobId: job.id, jobParticipants: true, status: "OPEN" } });
-        await photosReady(tx, data.photoPaths, actor, job.id, deps);
+        await requireSupportPhotosReady(tx, data.photoPaths, actor, job.id, deps);
         thread = existing ?? await tx.supportThread.create({ data: { userId: job.customerId, jobId: job.id, jobParticipants: true, subject: input.reason } });
         if (!existing) await createAudit(tx)(actor, "support_thread.opened", { type: "support_threads", id: thread.id }, null, { jobId: job.id });
       } else {
         if (!threadId || !/^[0-9a-f-]{36}$/i.test(threadId)) throw new ProblemThreadError("forbidden");
         ({ thread, job } = await requireThread(tx, actor, threadId));
         if (thread.status !== "OPEN") throw new ProblemThreadError("closed");
-        await photosReady(tx, data.photoPaths, actor, job.id, deps);
+        await requireSupportPhotosReady(tx, data.photoPaths, actor, job.id, deps);
       }
-      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`support.message:${data.requestKey}`}, 0))`;
-      const old = await tx.supportMessage.findUnique({ where: { requestKey: data.requestKey }, include: { photos: { orderBy: { position: "asc" } } } });
-      if (old) {
-        if (old.authorId !== actor.userId || old.threadId !== thread.id) throw new ProblemThreadError("forbidden");
-        if (old.body !== data.text || JSON.stringify(old.photos.map(photo => photo.path)) !== JSON.stringify(data.photoPaths)) throw new ProblemThreadError("invalid");
-        return { threadId: thread.id, messageId: old.id, job };
-      }
-      const message = await tx.supportMessage.create({ data: { threadId: thread.id, authorId: actor.userId, body: data.text, requestKey: data.requestKey,
-        photos: { create: data.photoPaths.map((path, position) => ({ path, position })) } } });
-      await createAudit(tx)(actor, "support_thread.message_sent", { type: "support_threads", id: thread.id }, null, { messageId: message.id, photoCount: data.photoPaths.length });
+      const saved = await persistSupportMessage(tx, actor.userId, thread.id, data);
+      if (!saved.created) return { threadId: thread.id, messageId: saved.messageId, job };
+      await createAudit(tx)(actor, "support_thread.message_sent", { type: "support_threads", id: thread.id }, null, { messageId: saved.messageId, photoCount: data.photoPaths.length });
       // Launch notifications are durable IN_APP rows: save them atomically with the message. A failure rolls
       // everything back, returning the existing retryable error so the composer keeps the complete draft.
-      await (deps.notify ?? ((...args) => deliver(tx, ...args)))(thread.id, message.id, job, actor.userId);
-      return { threadId: thread.id, messageId: message.id, job };
+      await (deps.notify ?? ((...args) => deliver(tx, ...args)))(thread.id, saved.messageId, job, actor.userId);
+      return { threadId: thread.id, messageId: saved.messageId, job };
     }, { timeout: 30_000 });
     return { ok: true, threadId: outcome.threadId };
   } catch (error) {
