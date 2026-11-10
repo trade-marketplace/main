@@ -56,6 +56,8 @@ export function inboxItem(row: Row): InboxItem {
   if (row.type === "payout.details_missing") href = "/profile/payroll";
   else if (row.type.startsWith("payout.")) href = "/earnings";
   else if (row.type.startsWith("licence.")) href = "/profile/trades";
+  else if (row.type === "message.received" && identifier(payload.officeSupportThreadId)) href = `/admin/support/${encodeURIComponent(identifier(payload.officeSupportThreadId)!)}`;
+  else if (row.type === "message.received" && identifier(payload.supportThreadId)) href = `/support/${encodeURIComponent(identifier(payload.supportThreadId)!)}`;
   else if (row.type === "message.received" && identifier(payload.officeJobId)) href = `/admin/jobs/${encodeURIComponent(identifier(payload.officeJobId)!)}`;
   else if (row.type === "message.received" && threadId) href = `/messages/${encodeURIComponent(threadId)}`;
   else if (jobId) {

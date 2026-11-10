@@ -30,6 +30,7 @@ import {
   parseMoneyToCents,
 } from "@/lib/office-job";
 import { OFFICE_JOBS_PATH } from "@/lib/office-jobs";
+import type { OfficeSupportReturn } from "@/lib/office-support";
 
 import styles from "./job-admin.module.css";
 
@@ -39,6 +40,7 @@ export type SubmitJobAction = (input: unknown) => Promise<JobActionResult | { ok
 export type DialogName = JobActionName | "message";
 
 export type JobAdminProps = {
+  supportReturn?: OfficeSupportReturn;
   /** The job, or null when it couldn't be read ("Can't load this job"). */
   job: OfficeJobView | null;
   submit: SubmitJobAction;
@@ -60,7 +62,7 @@ const DONE: Record<DialogName, string> = {
   message: "Message sent.",
 };
 
-export function JobAdmin({ job, submit, initialDialog = null, initialMenuOpen = false, initialError = null, onChanged }: JobAdminProps) {
+export function JobAdmin({ job, submit, initialDialog = null, initialMenuOpen = false, initialError = null, onChanged, supportReturn }: JobAdminProps) {
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [retrying, startRetry] = useTransition();
@@ -70,7 +72,7 @@ export function JobAdmin({ job, submit, initialDialog = null, initialMenuOpen = 
   if (!job) {
     return (
       <div className={styles.page}>
-        <Crumbs label="Job" />
+        <Crumbs label="Job" supportReturn={supportReturn} />
         <ErrorState
           title="Can’t load this job"
           message="Check your connection and try again."
@@ -91,7 +93,7 @@ export function JobAdmin({ job, submit, initialDialog = null, initialMenuOpen = 
 
   return (
     <div className={styles.page}>
-      <Crumbs label={job.number} />
+      <Crumbs label={job.number} supportReturn={supportReturn} />
       <div className={styles.head}>
         <div className={styles.headText}>
           <h1 className={styles.title}>
@@ -148,10 +150,10 @@ export function JobAdmin({ job, submit, initialDialog = null, initialMenuOpen = 
   );
 }
 
-function Crumbs({ label }: { label: string }) {
+function Crumbs({ label, supportReturn }: { label: string; supportReturn?: OfficeSupportReturn }) {
   return (
     <nav aria-label="Breadcrumb" className={styles.crumbs}>
-      <Link href={OFFICE_JOBS_PATH}>All jobs</Link>
+      <Link href={supportReturn?.href ?? OFFICE_JOBS_PATH}>{supportReturn?.label ?? "All jobs"}</Link>
       <Icon name="chevron_right" size="sm" decorative />
       <span aria-current="page">{label}</span>
     </nav>
