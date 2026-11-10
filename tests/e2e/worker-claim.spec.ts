@@ -6,7 +6,7 @@ import pg from "pg";
 import { expectNoA11yViolations } from "./support/a11y";
 import { SECURITY_PASSWORD, SECURITY_TRADIE, SECURITY_USER, startSecurityAuthStub } from "./support/security-auth-stub";
 const preview = process.env.CLAIM_E2E_APP_URL || process.env.POSTED_PREVIEW_E2E_URL || "http://127.0.0.1:3101";
-const states = ["ready", "confirm", "success", "lost", "loading", "empty", "photo-error", "error", "offline", "saving", "load-error", "not-eligible", "wrong-trade", "paused", "licence", "eligibility-gallery"];
+const states = ["ready", "confirm", "success", "lost", "loading", "empty", "photo-error", "error", "offline", "saving", "load-error", "not-eligible", "wrong-trade", "paused", "licence", "eligibility-gallery", "points"];
 test("claim examples retain the ordinary production 404 guard", async ({ page }) => { expect((await page.goto("/dev/components/worker-claim?state=ready"))?.status()).toBe(404); });
 for (const width of [320, 390, 768, 1024, 1440]) test(`claim states at ${width}px`, async ({ page }) => {
   test.setTimeout(180_000); await page.setViewportSize({ width, height: 1000 });
@@ -34,6 +34,12 @@ for (const width of [320, 390, 768, 1024, 1440]) test(`claim states at ${width}p
     if (state === "wrong-trade") await expect(page.getByText("This job needs a different trade.", { exact: true })).toBeVisible();
     if (state === "paused") await expect(page.getByText("Your account is paused. Contact the office.", { exact: true })).toBeVisible();
     if (state === "licence") await expect(page.getByText("You need a current, checked licence for this trade.", { exact: true })).toBeVisible();
+    if (state === "points") {
+      await expect(page.getByText("Locked", { exact: true })).toBeVisible();
+      await expect(page.getByText("Quote 2 more jobs to claim this one.", { exact: true })).toBeVisible();
+      await expect(page.getByRole("button", { name: "Claim job", exact: true })).toHaveAttribute("aria-disabled", "true");
+      await expect(page.getByRole("link", { name: "Quote jobs to unlock", exact: true })).toBeVisible();
+    }
     if (state === "empty") await expect(page.getByText("No photos yet", { exact: true })).toBeVisible();
     if (state === "photo-error") await expect(page.getByText("Couldn’t load photos.", { exact: true })).toBeVisible();
     if (state === "error") await expect(page.getByText("Couldn’t claim this job. Try again.", { exact: true })).toBeVisible();
@@ -119,6 +125,11 @@ test.describe("real claim server action", () => {
     await db.query("UPDATE jobs SET status='BOOKABLE' WHERE id=$1", [job]);
     await db.query("INSERT INTO support_threads(id,user_id,job_id,job_participants,subject) VALUES($1,$2,$3,true,'Claim conversation')", [thread, SECURITY_USER.id, job]);
     await db.query("INSERT INTO support_messages(thread_id,author_id,body) VALUES($1,$2,'Existing claim conversation')", [thread, SECURITY_USER.id]);
+  });
+  test.beforeEach(async () => {
+    // This dedicated local fixture now needs claim points (#492). Replenish between scenarios;
+    // a refused/lost claim must still be exercised with enough points to open its confirmation.
+    await db.query("INSERT INTO point_entries(worker_id,delta,reason) VALUES($1,5,'OFFICE')", [SECURITY_TRADIE.id]);
   });
   test.afterAll(async () => { await auth?.close(); await db?.end(); });
   async function login(page: Page) {

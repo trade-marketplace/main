@@ -1,7 +1,7 @@
 import { renderToString } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
-import Home from "@/app/(site)/page";
+import { PublicHome as Home } from "@/components/site/PublicHome";
 import { INVERCARGILL_COVERAGE } from "@/lib/geo/coverage";
 
 vi.mock("next/headers", () => ({ headers: async () => new Headers() }));

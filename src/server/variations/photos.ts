@@ -38,11 +38,11 @@ export async function uploadVariationPhoto(db: PrismaClient, store: FileStore, a
 export async function variationPhotoUrls(db: PrismaClient, store: FileStore, actor: VariationActor, variationId: string) {
   if (!isUuid(variationId) || !isUuid(actor.userId)) return [];
   const profile = await db.profile.findUnique({ where: { id: actor.userId }, select: { role: true } });
-  const variation = await db.variation.findFirst({ where: { id: variationId, job: { OR: [
-    ...(profile?.role === "ADMIN" ? [{}] : []),
-    ...(profile?.role === "CUSTOMER" ? [{ customerId: actor.userId }] : []),
-    ...(profile?.role === "TRADIE" ? [{ workerId: actor.userId }] : []),
-  ] } }, select: { photos: { where: { ready: true }, orderBy: { position: "asc" }, take: 6, select: { path: true, position: true } } } });
+  if (!profile) return [];
+  // Prisma treats OR: [{}] as no matches. Office access is explicit; other roles still need ownership.
+  const variation = await db.variation.findFirst({ where: { id: variationId, ...(profile.role === "ADMIN" ? {} : {
+    job: profile.role === "CUSTOMER" ? { customerId: actor.userId } : { workerId: actor.userId },
+  }) }, select: { photos: { where: { ready: true }, orderBy: { position: "asc" }, take: 6, select: { path: true, position: true } } } });
   if (!variation) return [];
   return Promise.all(variation.photos.map(async p => ({ position: p.position, url: await store.signedUrl(PHOTO_BUCKET, p.path, SIGNED_URL_SECONDS), expiresInSeconds: SIGNED_URL_SECONDS })));
 }

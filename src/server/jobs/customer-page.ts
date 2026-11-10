@@ -31,6 +31,6 @@ export async function loadCustomerJobPhotos(job: CustomerJobView, viewer: JobVie
   const ttl = Math.min(...signed.map(photo => photo.expiresInSeconds * 1000));
   const photoLease = signed.length && Number.isFinite(ttl) && ttl > 0
     ? { batchId: randomUUID(), renewAfterMs: Math.max(0, ttl - Math.min(30_000, ttl / 2) - Math.max(0, now() - startedAt)) } : null;
-  return { photosFailed, photoLease,
+  return { photosFailed, photoLease, initialAgeMs: Math.max(0, startedAt - new Date(job.createdAt).getTime()),
     photos: signed.map((photo, index) => ({ src: photo.url, alt: `${job.title} · ${index + 1}` })) };
 }

@@ -14,6 +14,7 @@ import { MESSAGE_ERRORS, messageDraftKey, type MessageResult, type MessagesData,
 import { markProblemThreadReadAction, openProblemThreadAction, sendProblemMessageAction } from "@/server/messages/actions";
 import { uploadSupportPhotoClient } from "@/lib/support-photo-upload";
 import styles from "./messages.module.css";
+import { MessageBubble } from "./MessageBubble";
 
 type Input = { text: string; requestKey: string; photoPaths: string[] };
 const noSubscribe = () => () => {};
@@ -98,16 +99,7 @@ export function ProblemThreads({ data, state = "thread", jobId, preview = false,
             <div ref={scroll} tabIndex={0} className={styles.bubbles} aria-label="Conversation" role="log" aria-live="polite" aria-relevant="additions" onScroll={() => { const el = scroll.current; atBottom.current = !el || el.scrollHeight - el.scrollTop - el.clientHeight < 80; }}>
               {[...thread.messages.map(message => ({ type: "message" as const, at: message.at, message })), ...thread.events.map(event => ({ type: "event" as const, at: event.at, event }))].sort((a, b) => a.at.localeCompare(b.at)).map(item => item.type === "event"
                 ? <p className={styles.event} key={`event-${item.event.id}`}><Icon name="bolt" size="sm" decorative />{item.event.label}</p>
-                : <article className={`${styles.message} tm-anim-bubble`} data-own={item.message.own} key={item.message.id} aria-label={`${item.message.author}, ${item.message.when}`}>
-                  <div className={styles.sender}>{item.message.office && <Icon name="bolt" size="sm" decorative />}<b>{item.message.own ? "You" : item.message.author}</b><time dateTime={item.message.at}>{item.message.when}</time></div>
-                  <p>{item.message.body}</p>
-                  {!!item.message.photos.length && <div className={styles.photos}>{item.message.photos.map((photo, i) => photo.url
-                    // Signed storage URLs expire and are renewed with the thread's refresh.
-                    // eslint-disable-next-line @next/next/no-img-element
-                    ? <a key={photo.id} href={photo.url} target="_blank" rel="noreferrer"><img src={photo.url} alt={`Message photo ${i + 1}`} /></a>
-                    : <span key={photo.id}>Photo unavailable</span>)}</div>}
-                  {item.message.id === thread.latestMessageId && item.message.own && <span className={styles.receipt}>{item.message.seen ? "Read" : "Sent"}</span>}
-                </article>)}
+                : <MessageBubble key={item.message.id} message={item.message} latest={item.message.id === thread.latestMessageId} />)}
             </div>
             {thread.closed ? <p className={styles.help}>This thread is closed.</p> : <Composer key={thread.id} viewerId={data.viewerId} draftId={thread.id} jobId={thread.job.id} online={online} error={error} setError={setError} upload={upload}
               onSend={async input => { const result = await send(thread.id, input); if (result.ok) { if (thread.earlier) router.push(threadHref(thread.id)); router.refresh(); } return result; }} />}

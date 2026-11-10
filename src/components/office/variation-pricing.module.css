@@ -1,0 +1,5 @@
+.notice { padding: var(--trade-space-4); margin-bottom: var(--trade-space-2); }
+.request { display: grid; gap: var(--trade-space-3); margin: 0; }
+.request > div { display: flex; justify-content: space-between; gap: var(--trade-space-4); }
+.request dt { color: var(--trade-text-2); }
+.request dd { margin: 0; font-weight: 700; }

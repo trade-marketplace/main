@@ -1,0 +1,29 @@
+.page { display: grid; gap: var(--trade-space-5); min-width: 0; max-width: var(--trade-content-max); color: var(--trade-text); }
+.heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--trade-space-3); min-width: 0; }
+.heading h1 { margin: 0; font-family: var(--trade-font-heading); font-variation-settings: var(--trade-display-axes); font-weight: 900; font-size: var(--trade-fs-title); line-height: var(--trade-lh-title); overflow-wrap: anywhere; }
+.filters { display: grid; grid-template-columns: minmax(0, 1fr) minmax(140px, 180px) auto; align-items: end; gap: var(--trade-space-4); padding: var(--trade-space-5); border: 1px solid var(--trade-line); border-radius: var(--trade-radius-card); background: var(--trade-surface); }
+.person { display: grid; gap: var(--trade-space-1); overflow-wrap: anywhere; }
+.person span, .secondary { color: var(--trade-text-2); font-size: var(--trade-fs-small); }
+.secondary { display: block; }
+.preview { display: block; max-width: 32rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.badge { display: inline-flex; align-items: center; gap: var(--trade-space-2); padding: var(--trade-space-1) var(--trade-space-3); background: var(--trade-tint); color: var(--trade-text); border-radius: var(--trade-radius-pill); font-size: var(--trade-fs-small); font-weight: 700; }
+.badge[data-closed] { background: var(--trade-waiting-bg); }
+.unread { display: inline-block; width: var(--trade-space-2); height: var(--trade-space-2); border-radius: 50%; background: var(--trade-action); }
+.notice { padding: var(--trade-space-4) !important; margin-bottom: var(--trade-space-4); }
+.pager { border: 0; margin: 0; padding: 0; min-width: 0; }
+.back { display: inline-flex; align-items: center; gap: var(--trade-space-2); justify-self: start; min-height: var(--trade-tap); color: var(--trade-link); text-decoration: none; }
+.back:focus-visible, .history a:focus-visible, .messages:focus-visible { outline: var(--trade-focus-ring); outline-offset: 2px; }
+.card { min-width: 0; padding: var(--trade-space-5); border: 1px solid var(--trade-line); border-radius: var(--trade-radius-card); background: var(--trade-surface); overflow-wrap: anywhere; }
+.card p { margin: var(--trade-space-2) 0; }
+.card .owner { font-weight: 800; font-size: var(--trade-fs-body); }
+.details { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); gap: var(--trade-space-4); margin-bottom: var(--trade-space-5); }
+.conversation { min-width: 0; border: 1px solid var(--trade-line); border-radius: var(--trade-radius-card); background: var(--trade-surface); overflow: hidden; }
+.sectionTitle { font-family: var(--trade-font-heading); font-variation-settings: var(--trade-display-axes); font-size: var(--trade-fs-section); margin: 0; padding: var(--trade-space-5); border-bottom: 1px solid var(--trade-line); }
+.messages { display: flex; flex-direction: column; align-items: flex-start; gap: var(--trade-space-4); min-height: 12rem; max-height: 28rem; overflow-y: auto; overscroll-behavior: contain; padding: var(--trade-space-5); }
+.composer { display: grid; gap: var(--trade-space-4); padding: var(--trade-space-5); border-top: 1px solid var(--trade-line); }
+.composer > button { justify-self: end; }
+.history { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--trade-space-4); padding: var(--trade-space-3) var(--trade-space-5); border-bottom: 1px solid var(--trade-line); }
+.history a { display: inline-flex; align-items: center; min-height: var(--trade-tap); color: var(--trade-link); }
+.empty, .closed { padding: var(--trade-space-5); margin: 0; color: var(--trade-text-2); }
+.closed { border-top: 1px solid var(--trade-line); }
+@media (max-width: 767.98px) { .filters { grid-template-columns: minmax(0, 1fr); padding: var(--trade-space-4); } .filters button { width: 100%; } .details { grid-template-columns: minmax(0, 1fr); } .heading h1 { font-size: var(--trade-fs-heading); line-height: var(--trade-lh-heading); } .card, .composer, .messages { padding: var(--trade-space-4); } .composer > button { width: 100%; justify-self: stretch; } }

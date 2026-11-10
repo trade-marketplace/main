@@ -11,6 +11,7 @@ import { getDb } from "@/server/db";
 import { JOB_SUMMARY_SELECT, officeJobListView } from "@/server/views/jobs";
 import type { JobViewer } from "@/server/views/access";
 import { officeQueueJobView } from "@/server/views/office-queues";
+import { variationPricingHref } from "@/lib/office-variation";
 import { PRICE_SLOW_AFTER_HOURS, UNCLAIMED_AFTER_HOURS } from "@/server/scheduler/rules";
 
 export type QueueDatabase = Pick<PrismaClient, "job" | "jobStatusHistory" | "variation" | "completionEvidence" | "problemReport" | "workerProfile" | "supportThread" | "settings" | "auditLog">;
@@ -119,7 +120,7 @@ export async function readOfficeQueues(db: QueueDatabase, viewer: JobViewer, que
     rows = jobs.flatMap(job => { const row = rowView(viewer, job, job.id, job.statusHistory[0]?.createdAt ?? job.createdAt, "unclaimed", now, "", current.autoReleaseHours); return row ? [{ ...row, overdue: false, action: "Open" as const, href: `/admin/jobs/${job.id}` }] : []; });
   } else if (query.tab === "extra") {
     const extras = await db.variation.findMany({ where: ACTIVE_EXTRA, orderBy: [{ createdAt: "asc" }, { id: "asc" }], skip, take: QUEUE_PAGE_SIZE, select: { id: true, description: true, createdAt: true, job: { select: QUEUE_JOB_SELECT } } });
-    rows = extras.flatMap(extra => { const row = rowView(viewer, extra.job, extra.id, extra.createdAt, "extra", now, extra.description, current.autoReleaseHours); return row ? [row] : []; });
+    rows = extras.flatMap(extra => { const row = rowView(viewer, extra.job, extra.id, extra.createdAt, "extra", now, extra.description, current.autoReleaseHours); return row ? [{ ...row, action: "Price it" as const, href: variationPricingHref(extra.id, queueHref({ ...query, page })) }] : []; });
   } else if (query.tab === "signoff") {
     const missingEvidence = { status: "SUBMITTED", OR: [{ evidence: { is: null } }, { evidence: { is: { submittedAt: null } } }] } satisfies Prisma.JobWhereInput;
     // Merge only the first page-end items from each ordered stream before slicing the requested page.
