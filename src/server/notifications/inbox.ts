@@ -10,6 +10,7 @@ type Row = Prisma.NotificationGetPayload<{ select: typeof SELECT }>;
 
 const COPY: Readonly<Record<string, readonly [string, string]>> = {
   "job.posted": ["Job posted", "task_alt"],
+  "job.details_updated": ["Job updated", "edit"],
   "job.priced": ["Your price is ready", "sell"],
   "job.paid": ["Payment received", "receipt_long"],
   "job.claimed": ["Tradie confirmed", "person_check"],
