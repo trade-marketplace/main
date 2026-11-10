@@ -5,11 +5,13 @@ import type { Metadata } from "next";
 import { notFound, unstable_rethrow } from "next/navigation";
 
 import { JobAdminClient } from "@/components/office/JobAdminClient";
-import { OFFICE_JOB_PATH, type OfficeJobView } from "@/lib/office-job";
+import type { OfficeJobView } from "@/lib/office-job";
 import { officeSupportJobHref, officeSupportJobReturn, parseOfficeSupportQuery } from "@/lib/office-support";
 import { requireRole } from "@/server/auth/guard";
 import { DatabaseNotConfiguredError, getDb } from "@/server/db";
 import { getOfficeJob } from "@/server/office/job";
+import { loadOfficeProblemReport } from "@/server/office/problem-report";
+import { officeProblemId, officeProblemJobHref, officeProblemJobReturn, type OfficeProblemReportState } from "@/lib/office-problem";
 
 export const metadata: Metadata = { title: "Job" };
 
@@ -17,13 +19,17 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export default async function JobAdminPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const { id } = await params;
-  const query = await searchParams ?? {};
-  const price = query.dialog === "price";
-  const supportReturn = officeSupportJobReturn(query);
-  const next = supportReturn ? officeSupportJobHref(id, parseOfficeSupportQuery(query), supportReturn.label === "Support" ? query.supportThread as string : undefined).split("#")[0] : `${OFFICE_JOB_PATH}/${encodeURIComponent(id)}${price ? "?dialog=price" : ""}`;
+  const query = (await searchParams) ?? {}, price = query.dialog === "price", reportId = officeProblemId(query.problem);
+  // Arrived from the support inbox (from=support) or the Problems queue (from=problems); never both.
+  const supportReturn = officeSupportJobReturn(query), problemReturn = supportReturn ? null : officeProblemJobReturn(query);
+  // After logging in, come back to the same view: the support origin, or the selected report, Problems origin and price dialog.
+  const next = supportReturn
+    ? officeSupportJobHref(id, parseOfficeSupportQuery(query), supportReturn.label === "Support" ? query.supportThread as string : undefined).split("#")[0]
+    : officeProblemJobHref(id, reportId, problemReturn, price);
   const viewer = await requireRole(["ADMIN"], { next });
   // An address that isn't a job id is a 404, not a database error.
   if (!UUID.test(id)) notFound();
+  if (query.problem !== undefined && !reportId) notFound();
   let job: OfficeJobView | null = null;
   try {
     job = await getOfficeJob(getDb(), viewer, id);
@@ -31,8 +37,16 @@ export default async function JobAdminPage({ params, searchParams }: { params: P
     unstable_rethrow(error);
     // Shown as "Can't load this job" with Try again; the details stay in the server log.
     if (!(error instanceof DatabaseNotConfiguredError)) console.error("Job admin: couldn't read the job.", error);
-    return <JobAdminClient job={null} supportReturn={supportReturn} />;
+    return <JobAdminClient job={null} problemReturn={problemReturn} supportReturn={supportReturn} />;
   }
   if (!job) notFound();
-  return <JobAdminClient job={job} supportReturn={supportReturn} initialDialog={price && ["REVIEW", "QUOTE_BOUNTY"].includes(job.status) ? "price" : null} />;
+  let problemReport: OfficeProblemReportState | null = null;
+  if (reportId) {
+    try {
+      const report = await loadOfficeProblemReport(getDb(), viewer, id, reportId);
+      if (!report) notFound();
+      problemReport = { state: "ready", report };
+    } catch (error) { unstable_rethrow(error); console.error("Problem report could not be loaded."); problemReport = { state: "error" }; }
+  }
+  return <JobAdminClient job={job} problemReport={problemReport} problemReturn={problemReturn} supportReturn={supportReturn} initialDialog={price && ["REVIEW", "QUOTE_BOUNTY"].includes(job.status) ? "price" : null} />;
 }

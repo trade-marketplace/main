@@ -3,12 +3,14 @@ import "server-only";
 import type { Prisma } from "@/generated/prisma/client";
 import type { InboxItem, InboxSnapshot } from "@/lib/notifications";
 import { NOTIFICATIONS_PAGE_SIZE, notificationsQuery, type NotificationsPage } from "@/lib/notifications";
+import { officeProblemJobHref } from "@/lib/office-problem";
 
 export type InboxDb = Pick<Prisma.TransactionClient, "notification">;
 const SELECT = { id: true, type: true, payload: true, createdAt: true, readAt: true } as const;
 type Row = Prisma.NotificationGetPayload<{ select: typeof SELECT }>;
 
 const COPY: Readonly<Record<string, readonly [string, string]>> = {
+  "problem_report.created": ["Problem reported", "report"],
   "job.posted": ["Job posted", "task_alt"],
   "job.details_updated": ["Job updated", "edit"],
   "job.priced": ["Your price is ready", "sell"],
@@ -50,7 +52,7 @@ export function inboxItem(row: Row): InboxItem {
   const payload = row.payload && typeof row.payload === "object" && !Array.isArray(row.payload) ? row.payload : {};
   const jobId = identifier(payload.jobId);
   const threadId = identifier(payload.threadId);
-  const [label, icon] = row.type === "job.posted" && payload.asap === true ? ["ASAP · Job posted", "bolt"] : row.type === "payout.details_missing" && payload.needsPayrollReview === true ? ["Bank & tax review", "account_balance"] : Object.hasOwn(COPY, row.type) ? COPY[row.type] : ["Notification", "notifications"];
+  const [label, icon] = row.type === "problem_report.created" && payload.urgent === true ? ["Urgent problem report", "report"] : row.type === "job.posted" && payload.asap === true ? ["ASAP · Job posted", "bolt"] : row.type === "payout.details_missing" && payload.needsPayrollReview === true ? ["Bank & tax review", "account_balance"] : Object.hasOwn(COPY, row.type) ? COPY[row.type] : ["Notification", "notifications"];
   const title = typeof payload.jobTitle === "string" ? payload.jobTitle.trim() : "";
   let href = `/notifications#${encodeURIComponent(row.id)}`;
   if (row.type === "payout.details_missing") href = "/profile/payroll";
@@ -62,6 +64,7 @@ export function inboxItem(row: Row): InboxItem {
   else if (row.type === "message.received" && threadId) href = `/messages/${encodeURIComponent(threadId)}`;
   else if (jobId) {
     if (row.type === "job.reschedule_requested" && payload.refreshWindows === true) href = `/jobs/${encodeURIComponent(jobId)}/windows`;
+    else if (row.type === "problem_report.created") href = officeProblemJobHref(jobId, payload.reportId, null);
     else if (row.type === "payment.review_required" || row.type === "variation.requested") href = `/admin/jobs/${encodeURIComponent(jobId)}`;
     else if (row.type === "message.received") href = `/messages/${encodeURIComponent(jobId)}`;
     else if (row.type === "job.paid") href = `/receipts/${encodeURIComponent(jobId)}`;

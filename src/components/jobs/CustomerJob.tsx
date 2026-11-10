@@ -21,13 +21,13 @@ import type { CustomerJobView } from "@/server/views";
 import { CustomerWaitingActions, type WaitingActions } from "./CustomerWaitingActions";
 import styles from "./customer-job.module.css";
 
-type Props = { job: CustomerJobView; photos?: readonly ViewerPhoto[]; photosFailed?: boolean; photoLease?: { batchId: string; renewAfterMs: number } | null; back?: string; canEditWindows?: boolean; preview?: "offline" | "static"; initialAgeMs?: number; waitingPreview?: string; waitingActions?: WaitingActions };
+type Props = { job: CustomerJobView; photos?: readonly ViewerPhoto[]; photosFailed?: boolean; photoLease?: { batchId: string; renewAfterMs: number } | null; back?: string; canEditWindows?: boolean; preview?: "offline" | "static"; initialAgeMs?: number; waitingPreview?: string; waitingActions?: WaitingActions; problemHref?: string };
 const trades = { ELECTRICAL: "Electrical", PLUMBING: "Plumbing", GAS: "Gas", CONSTRUCTION: "Construction", OTHER: "Other" } as const;
 const date = new Intl.DateTimeFormat("en-NZ", { timeZone: "UTC", weekday: "short", day: "numeric", month: "short" });
 const postedDate = new Intl.DateTimeFormat("en-NZ", { timeZone: "Pacific/Auckland", weekday: "short", day: "numeric", month: "short" });
 const time = { MORNING: "Morning", AFTERNOON: "Afternoon", EVENING: "Evening" } as const;
 
-export function CustomerJob({ job, photos = [], photosFailed = false, photoLease, back = "/", canEditWindows = false, preview, initialAgeMs = 0, waitingPreview, waitingActions }: Props) {
+export function CustomerJob({ job, photos = [], photosFailed = false, photoLease, back = "/", canEditWindows = false, preview, initialAgeMs = 0, waitingPreview, waitingActions, problemHref }: Props) {
   const router = useRouter();
   const browserOnline = useOnlineStatus();
   const online = browserOnline && preview !== "offline";
@@ -141,7 +141,7 @@ export function CustomerJob({ job, photos = [], photosFailed = false, photoLease
             </div>
             {tracker && <div className={styles.tracker}><Tracker {...tracker} /></div>}
           </div>
-          <div className={`${styles.card} ${styles.help}`}><TextLink href="/help">Need a hand?</TextLink></div>
+          <div className={`${styles.card} ${styles.help}`}><TextLink href={problemHref ?? `/jobs/${job.id}/problem?from=${encodeURIComponent(customerJobHref(job.id, returnTo))}`}>Report a problem</TextLink><TextLink href="/help">Need a hand?</TextLink></div>
         </aside>
       </div>
     </div>

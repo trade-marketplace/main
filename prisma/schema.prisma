@@ -1097,6 +1097,7 @@ model ProblemReport {
   // The topic picked on the form, e.g. "Work not finished". Free text until the list settles.
   topic        String
   details      String
+  urgent       Boolean       @default(false)
   status       ProblemStatus @default(OPEN)
   // Required when RESOLVED, empty while OPEN.
   resolution   String?

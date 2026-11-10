@@ -4,6 +4,6 @@ import { jobAction } from "@/server/office/job-actions";
 
 import { JobAdmin, type JobAdminProps } from "./JobAdmin";
 
-export function JobAdminClient({ job, initialDialog, supportReturn }: Pick<JobAdminProps, "job" | "initialDialog" | "supportReturn">) {
-  return <JobAdmin key={`${job?.id}:${initialDialog ?? ""}`} job={job} initialDialog={initialDialog} supportReturn={supportReturn} submit={jobAction} />;
+export function JobAdminClient({ job, initialDialog, problemReport, problemReturn, supportReturn }: Pick<JobAdminProps, "job" | "initialDialog" | "problemReport" | "problemReturn" | "supportReturn">) {
+  return <JobAdmin key={`${job?.id}:${initialDialog ?? ""}`} job={job} initialDialog={initialDialog} problemReport={problemReport} problemReturn={problemReturn} supportReturn={supportReturn} submit={jobAction} />;
 }

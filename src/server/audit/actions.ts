@@ -103,6 +103,7 @@ export const AUDIT_ACTIONS = {
   "evidence.flagged": { record: "completion_evidence", reason: "required" },
   "review.hidden": { record: "reviews", reason: "required" },
   "review.shown": { record: "reviews" },
+  "problem_report.created": { record: "problem_reports" },
   "problem_report.resolved": { record: "problem_reports" },
   "support_thread.closed": { record: "support_threads" },
   "support_thread.opened": { record: "support_threads" },

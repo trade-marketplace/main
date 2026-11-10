@@ -119,6 +119,8 @@ describe.skipIf(!testDatabaseUrl)("office queues with real PostgreSQL", () => {
     data = await readOfficeQueues(schema.db, f.office, parseQueueQuery({ tab: "signoff" }), now);
     expect(data.rows.find(row => row.jobId === f.job.id)).toMatchObject({ context: "Problems", overdue: false });
     expect(data.kpis.signoff.detail).toBe("0 auto-release today"); expect(data.kpis.cancel.count).toBe(0);
-    expect(data.problems[0]).toMatchObject({ id: report.id, href: `/admin/jobs/${f.job.id}` });
+    expect(data.problems[0]).toMatchObject({ id: report.id });
+    const problemHref = new URL(data.problems[0].href, "https://app.test");
+    expect(problemHref.pathname).toBe(`/admin/jobs/${f.job.id}`); expect(problemHref.searchParams.get("problem")).toBe(report.id); expect(problemHref.searchParams.get("from")).toBe("problems");
   });
 });

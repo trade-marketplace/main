@@ -7,6 +7,7 @@ export type NotificationChannel = "IN_APP" | "EMAIL" | "PUSH";
 type EventRule = { readonly channels: readonly NotificationChannel[]; readonly description: string };
 
 export const NOTIFICATION_EVENTS = {
+  "problem_report.created": { channels: ["IN_APP"], description: "A customer reported a problem with a job." },
   "message.received": { channels: ["IN_APP"], description: "A job support message arrived." },
   "job.posted": { channels: ["IN_APP"], description: "A job was posted." },
   "job.details_updated": { channels: ["IN_APP"], description: "The customer changed a job’s details after a quote." },
