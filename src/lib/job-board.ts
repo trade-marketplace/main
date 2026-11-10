@@ -72,11 +72,12 @@ export function boardJobHref(id: string, back: unknown): string {
   params.set("from", canonical);
   return `/jobs/${encodeURIComponent(id)}?${params}`;
 }
-/** Keep the canonical board destination through the Alerts page's independent login guard. */
-export function boardAlertsRoute(value: unknown): { href: string; back: string | null } {
+/** Keep the canonical board destination through a settings page's independent login guard (alerts, setup checklist #132). */
+export function boardSettingsRoute(path: string, value: unknown): { href: string; back: string | null } {
   const back = typeof value === "string" && value.startsWith("/jobs") ? boardReturn(value) : null;
-  return { href: back ? `/profile/notifications?next=${encodeURIComponent(back)}` : "/profile/notifications", back };
+  return { href: back ? `${path}?next=${encodeURIComponent(back)}` : path, back };
 }
+export const boardAlertsRoute = (value: unknown) => boardSettingsRoute("/profile/notifications", value);
 
 export type BoardCard = WorkerJobListView & { distanceKm: number; photoUrl: string | null; tradeLabel: string; whenLabel: string; alreadyEstimated: boolean };
 export type BoardCounts = Record<BoardKind | "saved" | "estimated", number>;
