@@ -21,7 +21,7 @@ import { Button, IconButton } from "@/components/Button";
 import { Icon } from "@/components/Icon";
 import { Wordmark } from "@/components/Wordmark";
 import { Menu, MenuItem, MenuSeparator } from "@/components/overlays/Menu";
-import { initials } from "@/lib/cards";
+import { Avatar } from "@/components/media/Avatar";
 import { useTabIndicator } from "@/lib/motion/hooks";
 import { logOutAction } from "@/server/auth/actions";
 
@@ -103,16 +103,14 @@ export function AccountMenu({ viewer, defaultOpen, compact = false }: { viewer: 
         defaultOpen={defaultOpen}
         trigger={(props) => compact ? <IconButton {...props} icon="menu" label={`Account: ${name}`} className={styles.navBtn} /> : (
           <button type="button" {...props} className={styles.avatarBtn} aria-label={`Account: ${name}`}>
-            <span className={styles.avatar} aria-hidden="true">
-              {initials(name)}
-            </span>
+            <Avatar name={name} src={viewer.avatarUrl} decorative className={styles.avatar} />
           </button>
         )}
         header={
-          <>
-            <b className={styles.menuName}>{name}</b>
-            <span className={styles.menuEmail}>{viewer.email}</span>
-          </>
+          <div className={styles.menuIdentity}>
+            <Avatar name={name} src={viewer.avatarUrl} decorative className={styles.avatar} />
+            <div><b className={styles.menuName}>{name}</b><span className={styles.menuEmail}>{viewer.email}</span></div>
+          </div>
         }
       >
         {accountMenuItems(viewer.role).map((item) => (

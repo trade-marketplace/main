@@ -10,6 +10,7 @@
 import type { Metadata } from "next";
 
 import { guardDevPage } from "@/server/dev-pages";
+import { OfficeShellView } from "@/components/office/OfficeShellView";
 
 import { COUNTS, type CountsKey, DEMO_VIEWERS, type DemoKey } from "./demo-data";
 import { ShellDemo } from "./ShellDemo";
@@ -33,6 +34,12 @@ export default async function AppShellPreview({ searchParams }: { searchParams: 
   guardDevPage();
 
   const params = await searchParams;
+  const state = one(params.state);
+  if (one(params.viewer) === "office") return <OfficeShellView
+    viewer={{ role: "ADMIN", firstName: "Matt", lastName: "Larsen", email: "office@demo.test", avatarUrl: state === "photo" ? "/images/examples/large/outlet.jpg" : state === "photo-broken" ? "/images/missing-avatar.webp" : null }}
+    testMode
+    preview={{ at: "/admin", base: `/dev/components/app-shell?${new URLSearchParams({ viewer: "office", state: state ?? "initials" })}`, accountOpen: one(params.menu) === "open" }}
+  ><h1>Office shell</h1></OfficeShellView>;
   const viewer: DemoKey = isKey(DEMO_VIEWERS, one(params.viewer)) ? (one(params.viewer) as DemoKey) : "customer";
   const counts: CountsKey = isKey(COUNTS, one(params.counts)) ? (one(params.counts) as CountsKey) : "some";
   const atParam = one(params.at);
@@ -46,6 +53,7 @@ export default async function AppShellPreview({ searchParams }: { searchParams: 
       at={at}
       testMode={one(params.test) !== "off"}
       menuOpen={one(params.menu) === "open"}
+      state={one(params.state) === "photo" || one(params.state) === "photo-broken" ? one(params.state) as "photo" | "photo-broken" : "initials"}
     />
   );
 }

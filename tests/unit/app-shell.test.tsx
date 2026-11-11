@@ -19,7 +19,8 @@ import {
   linkHref,
   TOP_NAV,
 } from "@/components/app/app-links";
-import { loadShellViewer, paymentsInTestMode } from "@/server/app-shell";
+import { loadShellViewer, paymentsInTestMode, shellAvatarUrl } from "@/server/app-shell";
+import { createAvatarService } from "@/server/account/avatar";
 import { getViewer, type Viewer } from "@/server/auth/viewer";
 import { DatabaseNotConfiguredError } from "@/server/db";
 
@@ -222,6 +223,7 @@ describe("loadShellViewer", () => {
       role: "CUSTOMER",
       firstName: "Sarah",
       lastName: "Thompson",
+      avatarUrl: null,
       email: "sarah@email.co.nz",
       emailVerified: true,
       counts: { notifications: 4, messages: 0 },
@@ -245,11 +247,56 @@ describe("loadShellViewer", () => {
     expect(await loadShellViewer(viewerRow(), { findExtras: extras })).toMatchObject({ counts: { notifications: 2, messages: 3 } });
   });
 
+  it("returns a signed photo link without exposing the private profile path", async () => {
+    const avatarUrl = vi.fn(async () => "https://photos.example.test/signed?token=temporary");
+    extras.mockResolvedValueOnce({ lastName: "Thompson", unreadNotifications: 2, avatarPath: "private-server-path" });
+    const result = await loadShellViewer(viewerRow(), { findExtras: extras, avatarUrl });
+    expect(result?.avatarUrl).toBe("https://photos.example.test/signed?token=temporary");
+    expect(result).not.toHaveProperty("avatarPath");
+    expect(avatarUrl).toHaveBeenCalledExactlyOnceWith("user-1", "private-server-path");
+  });
+
+  it("does not call Storage without a photo and keeps the shell when Storage throws", async () => {
+    const avatarUrl = vi.fn(async () => { throw new Error("Storage private details"); });
+    extras.mockResolvedValueOnce({ lastName: "Thompson", unreadNotifications: 2 });
+    expect(await loadShellViewer(viewerRow(), { findExtras: extras, avatarUrl })).toMatchObject({ avatarUrl: null });
+    expect(avatarUrl).not.toHaveBeenCalled();
+    extras.mockResolvedValueOnce({ lastName: "Thompson", unreadNotifications: 2, avatarPath: "private-server-path" });
+    expect(await loadShellViewer(viewerRow(), { findExtras: extras, avatarUrl })).toMatchObject({ avatarUrl: null, firstName: "Sarah", counts: { notifications: 2 } });
+  });
+
   it("doesn't log on every page when there's simply no database yet", async () => {
     const log = vi.spyOn(console, "error").mockImplementation(() => {});
     extras.mockRejectedValueOnce(new DatabaseNotConfiguredError());
     expect(await loadShellViewer(viewerRow(), { findExtras: extras })).toMatchObject({ lastName: null });
     expect(log).not.toHaveBeenCalled();
+  });
+});
+
+describe("optional shell photo", () => {
+  it("uses the existing ownership check before signing a private photo", async () => {
+    const userId = "43100000-0000-4000-8000-000000000001";
+    const path = (id: string) => `avatars/${id}/${"a".repeat(32)}.webp`;
+    const signedUrl = vi.fn(async () => "https://photos.example.test/signed");
+    const service = createAvatarService({ db: { find: vi.fn(), setPath: vi.fn() }, store: { put: vi.fn(), remove: vi.fn(), signedUrl } });
+    expect(await shellAvatarUrl(userId, path("43100000-0000-4000-8000-000000000002"), service.avatarUrl)).toBeNull();
+    expect(signedUrl).not.toHaveBeenCalled();
+    expect(await shellAvatarUrl(userId, path(userId), service.avatarUrl)).toBe("https://photos.example.test/signed");
+    expect(signedUrl).toHaveBeenCalledOnce();
+  });
+
+  it("falls back after 1.5 seconds and clears the timeout when signing finishes", async () => {
+    vi.useFakeTimers();
+    try {
+      const result = shellAvatarUrl("user-1", "private-path", () => new Promise(() => {}));
+      await vi.advanceTimersByTimeAsync(1500);
+      expect(await result).toBeNull();
+      expect(vi.getTimerCount()).toBe(0);
+      expect(await shellAvatarUrl("user-1", "private-path", async () => "https://photos.example.test/signed")).toBe("https://photos.example.test/signed");
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 
@@ -317,6 +364,12 @@ describe("AppShellView", () => {
     expect(html).toMatch(/>ST<\/span>/);
   });
 
+  it("uses the kit photo with decorative markup and keeps the labelled account button", () => {
+    const html = shell({ ...SARAH, avatarUrl: "https://photos.example.test/signed" });
+    expect(html).toContain('aria-label="Account: Sarah Thompson"');
+    expect(html).toMatch(/aria-hidden="true"[^>]*>\s*<img src="https:\/\/photos.example.test\/signed" alt=""/);
+  });
+
   it("logs out with a POST form, never a link", () => {
     const html = shell(SARAH);
     expect(html).toMatch(/<form[^>]*hidden/);
@@ -349,8 +402,9 @@ describe("AppShell and the (app) layout", () => {
     expect(out).toContain('aria-label="Notifications, 3 unread"');
     expect(out).toContain("Test mode.");
     expect(findUnique).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { id: "user-1" }, select: expect.objectContaining({ lastName: true }) }),
+      expect.objectContaining({ where: { id: "user-1" }, select: expect.objectContaining({ lastName: true, avatarPath: true }) }),
     );
+    expect(findUnique).toHaveBeenCalledOnce();
   });
 
   it("shows the page without the nav for someone the app isn't for (the proxy normally stops them first)", async () => {

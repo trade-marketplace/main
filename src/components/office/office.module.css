@@ -42,12 +42,14 @@
 }
 .accountButton:hover { background: color-mix(in srgb, var(--trade-surface) 8%, transparent); }
 .accountLabel { display: none; min-width: 0; overflow-wrap: anywhere; }
-.avatar {
+.avatar.avatar {
   display: grid; place-items: center; flex-shrink: 0; width: var(--trade-space-8); height: var(--trade-space-8);
   border-radius: var(--trade-radius-pill); background: var(--trade-signature); color: var(--trade-on-signature);
   font-size: var(--trade-fs-caption); font-weight: 800; line-height: 1;
 }
 .menuName, .menuEmail { display: block; overflow-wrap: anywhere; }
+.menuIdentity { display: grid; grid-template-columns: var(--trade-space-8) minmax(0, 1fr); align-items: center; gap: var(--trade-space-3); }
+.menuEmail { font-size: var(--trade-fs-caption); color: var(--trade-text-2); }
 .visuallyHidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .count {
   flex-shrink: 0; min-width: 0; height: auto; border: 0; border-radius: 9px; padding: 1px 7px;

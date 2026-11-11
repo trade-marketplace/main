@@ -7,30 +7,32 @@ import { cache } from "react";
 import type { OfficeShellViewer } from "@/components/office/OfficeShellView";
 import type { Viewer } from "@/server/auth/viewer";
 import { DatabaseNotConfiguredError, getDb } from "@/server/db";
+import { shellAvatarUrl, type ShellSources } from "@/server/app-shell";
 
-export type OfficeShellExtras = { lastName: string | null };
+export type OfficeShellExtras = { lastName: string | null; avatarPath?: string | null };
 
 /** A small database boundary: unit tests supply a fake and check the actual queries, without connecting. */
 export type OfficeShellDatabase = {
   profile: {
     findUnique: (args: {
       where: { id: string };
-      select: { lastName: true };
-    }) => Promise<{ lastName: string | null } | null>;
+      select: { lastName: true; avatarPath: true };
+    }) => Promise<OfficeShellExtras | null>;
   };
 };
 
 export type OfficeShellSources = {
   findExtras: (userId: string) => Promise<OfficeShellExtras | null>;
+  avatarUrl?: ShellSources["avatarUrl"];
 };
 
-/** One optional identity lookup. Only the last name is selected; no queue reads belong in the shell. */
+/** One optional identity lookup. No queue reads belong in the shell. */
 export async function findOfficeShellExtras(
   userId: string,
   database?: OfficeShellDatabase,
 ): Promise<OfficeShellExtras | null> {
   const db = database ?? getDb();
-  return db.profile.findUnique({ where: { id: userId }, select: { lastName: true } });
+  return db.profile.findUnique({ where: { id: userId }, select: { lastName: true, avatarPath: true } });
 }
 
 /**
@@ -54,6 +56,7 @@ export async function loadOfficeShellViewer(
     role: "ADMIN",
     firstName: viewer.firstName,
     lastName: extras?.lastName ?? null,
+    avatarUrl: await shellAvatarUrl(viewer.userId, extras?.avatarPath ?? null, sources.avatarUrl),
     email: viewer.email,
   };
 }

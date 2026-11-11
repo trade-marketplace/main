@@ -39,6 +39,85 @@ test.describe("/dev/components/app-shell", () => {
   test.skip(!devUrl, "set E2E_DEV_BASE_URL to a running `npm run dev` to check the dev-only page");
 
   for (const viewport of VIEWPORTS) {
+    test(`${viewport.width}px: office photo and broken-photo avatars preserve the menu and Back journey`, async ({ page }) => {
+      await page.setViewportSize(viewport);
+      for (const state of ["photo", "photo-broken"]) {
+        await page.goto(url(`?viewer=office&state=${state}`));
+        const account = page.getByRole("button", { name: "Account: Matt Larsen", exact: true });
+        await account.press("Enter");
+        const menu = page.getByRole("menu", { name: "Account", exact: true });
+        await expect(menu).toBeVisible();
+        if (state === "photo") await expect(menu.locator("..").locator("img")).toBeVisible();
+        else await expect(menu.locator("..").locator("img")).toHaveCount(0);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
+        await expectNoA11yViolations(page);
+        await page.keyboard.press("Escape");
+        await expect(account).toBeFocused();
+        await account.click();
+        await menu.getByRole("menuitem", { name: "Help", exact: true }).click();
+        await expect(page).toHaveURL(/\/help$/);
+        await page.goBack();
+        await expect(page.getByRole("button", { name: "Account: Matt Larsen", exact: true })).toBeVisible();
+      }
+    });
+
+    test(`${viewport.width}px: photo and broken-photo avatars keep the account menu working`, async ({ page, context }) => {
+      await page.setViewportSize(viewport);
+      for (const state of ["photo", "photo-broken"]) {
+        await page.goto(url(`?state=${state}`));
+        const account = page.getByRole("button", { name: "Account: Sarah Thompson", exact: true });
+        if (viewport.width >= 1024) {
+          if (state === "photo") await expect(account.locator("img")).toBeVisible();
+          else await expect(account).toHaveText("ST");
+          expect((await account.boundingBox())?.width).toBeGreaterThanOrEqual(44);
+          const avatar = account.locator("span").first();
+          await expect(avatar).toHaveCSS("width", "36px");
+          await expect(avatar).toHaveCSS("height", "36px");
+        }
+        await account.click();
+        const menu = page.getByRole("menu", { name: "Account", exact: true });
+        await expect(menu).toBeVisible();
+        const panel = menu.locator("..");
+        if (state === "photo") {
+          const image = panel.locator("img");
+          await expect(image).toBeVisible();
+          await expect.poll(() => image.evaluate((el: HTMLImageElement) => el.complete && el.naturalWidth > 0)).toBe(true);
+        } else {
+          await expect(panel.locator("img")).toHaveCount(0);
+          await expect(panel).toContainText("ST");
+        }
+        expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
+        await expectNoA11yViolations(page);
+        await page.keyboard.press("Escape");
+        await expect(menu).toBeHidden();
+        await expect(account).toBeFocused();
+        await account.press("Enter");
+        await expect(menu).toBeVisible();
+        await page.keyboard.press("Escape");
+        await account.press("Space");
+        await expect(menu).toBeVisible();
+        await page.keyboard.press("Escape");
+        await page.getByRole("link", { name: "Tradie", exact: true }).click();
+        await expect(page).toHaveURL(new RegExp(`viewer=tradie.*state=${state}`));
+        const tradieAccount = page.getByRole("button", { name: "Account: Jack Wilson", exact: true });
+        await tradieAccount.click();
+        const tradieMenu = page.getByRole("menu", { name: "Account", exact: true });
+        await expect(tradieMenu).toBeVisible();
+        if (state === "photo") await expect(tradieMenu.locator("..").locator("img")).toBeVisible();
+        else await expect(tradieMenu.locator("..").locator("img")).toHaveCount(0);
+        await expectNoA11yViolations(page);
+        await page.keyboard.press("Escape");
+        await page.goBack();
+        await expect(page.getByRole("button", { name: "Account: Sarah Thompson", exact: true })).toBeVisible();
+      }
+      await context.setOffline(true);
+      const account = page.getByRole("button", { name: "Account: Sarah Thompson", exact: true });
+      await account.click();
+      await expect(page.getByRole("menu", { name: "Account", exact: true })).toBeVisible();
+      await page.keyboard.press("Escape");
+      await context.setOffline(false);
+    });
+
     test(`${viewport.name} (${viewport.width}px): no axe violations, no sideways scroll, the right nav`, async ({ browser }) => {
       test.setTimeout(120_000);
       const context = await browser.newContext({ viewport: { width: viewport.width, height: viewport.height } });
