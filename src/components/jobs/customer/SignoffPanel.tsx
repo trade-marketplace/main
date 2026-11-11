@@ -50,11 +50,11 @@ export function SignoffPanel({ job, data, online, problemHref, preview, action =
   function retry() { setRevision(job.updatedAt); setChanged(false); if (brokenFiles === fileKey) setCheckingFiles(true); setBrokenFiles(null); router.refresh(); }
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (pending.current || saving || !online || !data?.submittedAt || failedFiles || changed || sorted) return;
+    if (pending.current || saving || !online || !data?.submittedAt || !data.evidenceRevision || !job.worker || failedFiles || changed || sorted) return;
     pending.current = true; setBusy(true); setFailed(false);
     const review: SignoffReview | undefined = rating === null ? undefined : { rating, tags: selectedTags as SignoffReview["tags"], comment };
     try {
-      const result = await action(job.id, { jobUpdatedAt: revision, workerId: job.worker?.id ?? null, evidenceRevision: data.evidenceRevision }, review);
+      const result = await action(job.id, { jobUpdatedAt: revision, workerId: job.worker.id, evidenceRevision: data.evidenceRevision }, review);
       if (session?.check(result)) return;
       if (!("status" in result)) { setFailed(true); return; }
       if (result.status === "signed-off") {
@@ -89,7 +89,7 @@ export function SignoffPanel({ job, data, online, problemHref, preview, action =
       {failed && <Banner tone="alert" title="Couldn’t save. Try again." live action={<Button variant="tertiary" disabled={!online} onClick={() => form.current?.requestSubmit()}>Try again</Button>} />}
       {changed && <Banner tone="info" title="Job updated. Check it again." live action={retryButton} />}
       <div className={styles.actions}>
-        <Button type="submit" loading={saving} disabled={!online ? "You’re offline" : changed ? "Check the updated job first" : !data.submittedAt ? "Finished work isn’t available yet" : failedFiles}>Yes, all sorted</Button>
+        <Button type="submit" loading={saving} disabled={!online ? "You’re offline" : changed ? "Check the updated job first" : !data.submittedAt || !data.evidenceRevision || !job.worker ? "Finished work isn’t available yet" : failedFiles}>Yes, all sorted</Button>
         {saving ? <Button variant="secondary" disabled>Something’s not right</Button> : <Button href={problemHref} variant="secondary">Something’s not right</Button>}
       </div>
     </form>

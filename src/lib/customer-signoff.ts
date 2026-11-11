@@ -9,8 +9,8 @@ export const signoffReviewSchema = z.object({
 export type SignoffReview = z.infer<typeof signoffReviewSchema>;
 export const signoffRevisionSchema = z.object({
   jobUpdatedAt: z.string().min(1).max(100),
-  workerId: z.uuid().nullable(),
-  evidenceRevision: z.string().regex(/^[a-f0-9]{64}$/).nullable(),
+  workerId: z.uuid(),
+  evidenceRevision: z.string().regex(/^[a-f0-9]{64}$/),
 }).strict();
 export type SignoffRevision = z.infer<typeof signoffRevisionSchema>;
 export type CustomerSignoff = {

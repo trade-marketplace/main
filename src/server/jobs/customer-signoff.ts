@@ -51,10 +51,6 @@ export async function loadCustomerSignoff(db: Pick<PrismaClient, "job" | "settin
 /** A stale page cannot complete another state; completion, optional review, audit and notification commit together. */
 export async function signOffJob(db: PrismaClient, viewer: JobViewer, id: unknown, revision: unknown, review?: unknown): Promise<SignoffResult> {
   if (viewer.role !== "CUSTOMER" || !z.uuid().safeParse(id).success) return { status: "forbidden" };
-  const parsed = signoffReviewSchema.optional().safeParse(review);
-  if (!parsed.success) return { status: "invalid" };
-  const expected = signoffRevisionSchema.safeParse(revision);
-  if (!expected.success) return { status: "changed" };
   const jobId = id as string;
   try {
     const namespace = databaseSchema(db).replaceAll('"', '""'), relation = `"${namespace}".jobs`, evidenceRelation = `"${namespace}".completion_evidence`;
@@ -64,10 +60,14 @@ export async function signOffJob(db: PrismaClient, viewer: JobViewer, id: unknow
       const profile = await tx.profile.findUnique({ where: { id: viewer.userId }, select: { role: true } });
       const job = await tx.job.findFirst({ where: { id: jobId, customerId: viewer.userId }, select: { id: true, jobNumber: true, status: true, workerId: true, updatedAt: true } });
       if (!job || profile?.role !== "CUSTOMER") return { status: "forbidden" };
+      const expected = signoffRevisionSchema.safeParse(revision);
+      if (!expected.success) return { status: "changed" };
       if (job.status !== "SUBMITTED" || job.updatedAt.toISOString() !== expected.data.jobUpdatedAt || !job.workerId || job.workerId !== expected.data.workerId) return { status: "changed" };
       await tx.$queryRawUnsafe(`SELECT job_id FROM ${evidenceRelation} WHERE job_id = $1::uuid FOR UPDATE`, jobId);
       const currentEvidence = await tx.completionEvidence.findUnique({ where: { jobId }, select: EVIDENCE_SELECT });
-      if ((currentEvidence && currentEvidence.workerId !== job.workerId) || evidenceRevision(currentEvidence) !== expected.data.evidenceRevision) return { status: "changed" };
+      if (!currentEvidence?.submittedAt || currentEvidence.workerId !== job.workerId || evidenceRevision(currentEvidence) !== expected.data.evidenceRevision) return { status: "changed" };
+      const parsed = signoffReviewSchema.optional().safeParse(review);
+      if (!parsed.success) return { status: "invalid" };
       let eventId = "";
       await applyTransition(tx, {
         // The machine's sign-off action maps to the existing catalogue's completed entry.

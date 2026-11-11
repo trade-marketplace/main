@@ -14,15 +14,19 @@ describe.skipIf(!testDatabaseUrl)("customer sign-off transactions", () => {
     await schema.db.profile.create({ data: { id, email: `${id}@example.nz`, role, firstName: "Example" } });
     return { userId: id, role };
   }
-  async function fixture() {
+  async function fixture(cocPath = "documents/private-coc.pdf", hasEvidence = true) {
     const customer = await person(), worker = await person("TRADIE");
     const initial = await schema.db.job.create({ data: { customerId: customer.userId, category: "OTHER", status: "REVIEW", title: "Hang a door", description: "Interior door", addressLine1: "1 Example Street", suburb: "Windsor", city: "Invercargill" } });
     expect(await priceJob(schema.db, { jobId: initial.id, minutes: 60, materialsCents: 0 })).toMatchObject({ ok: true });
     const job = await schema.db.job.update({ where: { id: initial.id }, data: { status: "SUBMITTED", workerId: worker.userId } });
-    return { customer, worker, job, revision: { jobUpdatedAt: job.updatedAt.toISOString(), workerId: worker.userId, evidenceRevision: null as string | null } };
+    if (hasEvidence) await evidence(job.id, worker.userId, cocPath);
+    const shown = await loadCustomerSignoff(schema.db, customer, job.id, async () => "signed");
+    return { customer, worker, job, revision: { jobUpdatedAt: job.updatedAt.toISOString(), workerId: worker.userId, evidenceRevision: shown?.evidenceRevision ?? null } };
   }
   type EvidenceDb = Pick<PrismaClient, "jobMaterials" | "completionEvidence" | "completionEvidencePhoto">;
   async function evidence(jobId: string, workerId: string, cocPath = "documents/private-coc.pdf", db: EvidenceDb = schema.db) {
+    const existing = await db.completionEvidence.findUnique({ where: { jobId } });
+    if (existing) return existing;
     await db.jobMaterials.create({ data: { jobId, budgetCents: 0, spentCents: 0, spentAt: new Date() } });
     await db.completionEvidence.create({ data: { jobId, workerId, cocNumber: "2026-118734", cocPath, notes: "All done.", declaration: "I did this work and it is safe and complete.", declaredAt: new Date() } });
     await db.completionEvidencePhoto.create({ data: { jobId, path: `evidence/${jobId}/private.webp` } });
@@ -63,11 +67,13 @@ describe.skipIf(!testDatabaseUrl)("customer sign-off transactions", () => {
   it("refuses another customer or changed real role and returns changed for a stale revision or status", async () => {
     const { customer, job, revision } = await fixture(), other = await person();
     expect(await signOffJob(schema.db, other, job.id, revision)).toEqual({ status: "forbidden" });
+    expect(await signOffJob(schema.db, other, job.id, null)).toEqual({ status: "forbidden" });
     expect(await signOffJob(schema.db, customer, job.id, "old")).toEqual({ status: "changed" });
     expect(await signOffJob(schema.db, customer, job.id, { ...revision, jobUpdatedAt: "old" })).toEqual({ status: "changed" });
     expect(await signOffJob(schema.db, customer, job.id, { ...revision, evidenceRevision: "a signed URL is not a revision" })).toEqual({ status: "changed" });
     await schema.db.profile.update({ where: { id: customer.userId }, data: { role: "TRADIE" } });
     expect(await signOffJob(schema.db, customer, job.id, revision)).toEqual({ status: "forbidden" });
+    expect(await signOffJob(schema.db, customer, job.id, null)).toEqual({ status: "forbidden" });
     await schema.db.profile.update({ where: { id: customer.userId }, data: { role: "CUSTOMER" } });
     await schema.db.job.update({ where: { id: job.id }, data: { status: "ASSIGNED" } });
     expect(await signOffJob(schema.db, customer, job.id, revision)).toEqual({ status: "changed" });
@@ -134,7 +140,7 @@ describe.skipIf(!testDatabaseUrl)("customer sign-off transactions", () => {
     await schema.db.settings.update({ where: { id: 1 }, data: { autoReleaseHours: 48 } });
   });
   it.each([["coc/worker/certificate.webp", "Photo"], ["coc/legacy-document", "File"]])("labels existing CoC metadata %s without returning its private path", async (path, label) => {
-    const { customer, worker, job } = await fixture(); await evidence(job.id, worker.userId, path);
+    const { customer, worker, job } = await fixture(path); await evidence(job.id, worker.userId, path);
     const data = await loadCustomerSignoff(schema.db, customer, job.id, async () => "https://example.test/signed");
     expect(data?.cocFileLabel).toBe(label); expect(JSON.stringify(data)).not.toContain(path);
   });
@@ -160,7 +166,7 @@ describe.skipIf(!testDatabaseUrl)("customer sign-off transactions", () => {
     expect(await schema.db.review.count({ where: { jobId: job.id } })).toBe(0);
   });
   it("detects a replacement with equal submitted and updated timestamps using its logical content", async () => {
-    const { customer, worker, job, revision } = await fixture(), office = await person("ADMIN");
+    const { customer, worker, job, revision } = await fixture(undefined, false), office = await person("ADMIN");
     const shown = await schema.db.$transaction(async tx => {
       const original = await evidence(job.id, worker.userId, "documents/private-coc.pdf", tx);
       const data = await loadCustomerSignoff(tx, customer, job.id, async () => "signed");
@@ -197,6 +203,20 @@ describe.skipIf(!testDatabaseUrl)("customer sign-off transactions", () => {
     await schema.db.$executeRawUnsafe(`UPDATE "${schema.name}".jobs SET worker_id=$1::uuid WHERE id=$2::uuid`, replacement.userId, job.id);
     const latest = await schema.db.job.findUniqueOrThrow({ where: { id: job.id } });
     expect(await signOffJob(schema.db, customer, job.id, { ...revision, jobUpdatedAt: latest.updatedAt.toISOString(), evidenceRevision: shown!.evidenceRevision }, { rating: 5, tags: [] })).toEqual({ status: "changed" });
+    await expectNoCompletion(job.id);
+  });
+  it("refuses missing evidence even when a caller supplies a valid-shaped revision", async () => {
+    const { customer, job, revision } = await fixture(undefined, false);
+    expect(await signOffJob(schema.db, customer, job.id, revision, { rating: 5, tags: [] })).toEqual({ status: "changed" });
+    expect(await signOffJob(schema.db, customer, job.id, { ...revision, evidenceRevision: "a".repeat(64) }, { rating: 5, tags: [] })).toEqual({ status: "changed" });
+    await expectNoCompletion(job.id);
+  });
+  it("refuses evidence returned to a draft without changing the job revision", async () => {
+    const { customer, job, revision } = await fixture(), office = await person("ADMIN");
+    await schema.db.completionEvidence.update({ where: { jobId: job.id }, data: { officeCheck: "FLAGGED", checkNote: "Please finish this work.", checkedById: office.userId, checkedAt: new Date() } });
+    await schema.db.completionEvidence.update({ where: { jobId: job.id }, data: { submittedAt: null } });
+    expect((await schema.db.job.findUniqueOrThrow({ where: { id: job.id } })).updatedAt.toISOString()).toBe(revision.jobUpdatedAt);
+    expect(await signOffJob(schema.db, customer, job.id, revision, { rating: 5, tags: [] })).toEqual({ status: "changed" });
     await expectNoCompletion(job.id);
   });
 });
