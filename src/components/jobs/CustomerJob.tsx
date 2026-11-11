@@ -19,15 +19,17 @@ import { jobTracker } from "@/lib/job-tracker";
 import { customerPriceDelayed } from "@/lib/customer-job-waiting";
 import type { CustomerJobView } from "@/server/views";
 import { CustomerWaitingActions, type WaitingActions } from "./CustomerWaitingActions";
+import { ConfirmedPanel } from "./customer/ConfirmedPanel";
+import type { CustomerWorkerCard } from "@/lib/customer-worker-card";
 import styles from "./customer-job.module.css";
 
-type Props = { job: CustomerJobView; photos?: readonly ViewerPhoto[]; photosFailed?: boolean; photoLease?: { batchId: string; renewAfterMs: number } | null; back?: string; canEditWindows?: boolean; preview?: "offline" | "static"; initialAgeMs?: number; waitingPreview?: string; waitingActions?: WaitingActions; problemHref?: string };
+type Props = { job: CustomerJobView; photos?: readonly ViewerPhoto[]; photosFailed?: boolean; photoLease?: { batchId: string; renewAfterMs: number } | null; back?: string; canEditWindows?: boolean; preview?: "offline" | "static"; initialAgeMs?: number; waitingPreview?: string; waitingActions?: WaitingActions; problemHref?: string; workerCard?: CustomerWorkerCard | null; confirmedWindowsHref?: string };
 const trades = { ELECTRICAL: "Electrical", PLUMBING: "Plumbing", GAS: "Gas", CONSTRUCTION: "Construction", OTHER: "Other" } as const;
 const date = new Intl.DateTimeFormat("en-NZ", { timeZone: "UTC", weekday: "short", day: "numeric", month: "short" });
 const postedDate = new Intl.DateTimeFormat("en-NZ", { timeZone: "Pacific/Auckland", weekday: "short", day: "numeric", month: "short" });
 const time = { MORNING: "Morning", AFTERNOON: "Afternoon", EVENING: "Evening" } as const;
 
-export function CustomerJob({ job, photos = [], photosFailed = false, photoLease, back = "/", canEditWindows = false, preview, initialAgeMs = 0, waitingPreview, waitingActions, problemHref }: Props) {
+export function CustomerJob({ job, photos = [], photosFailed = false, photoLease, back = "/", canEditWindows = false, preview, initialAgeMs = 0, waitingPreview, waitingActions, problemHref, workerCard, confirmedWindowsHref }: Props) {
   const router = useRouter();
   const browserOnline = useOnlineStatus();
   const online = browserOnline && preview !== "offline";
@@ -136,7 +138,7 @@ export function CustomerJob({ job, photos = [], photosFailed = false, photoLease
                 {job.status === "REVIEW" && customerPriceDelayed(ageMs) && <Banner tone="info" title="Taking a little longer than usual" className={styles.notice}>Still working on it. Thanks for your patience. We’ll message you.</Banner>}
                 <CustomerWaitingActions key={job.id} job={job} online={online} preview={waitingPreview} actions={waitingActions} onCancelled={() => setCancelFocusJob(job.id)} />
               </>}
-              {panel.kind === "confirmed" && job.worker && <p className={styles.worker}>{job.worker.firstName}{job.worker.lastInitial ? ` ${job.worker.lastInitial}` : ""}</p>}
+              {panel.kind === "confirmed" && job.worker && <ConfirmedPanel job={job} card={workerCard} back={returnTo} online={online} preview={Boolean(preview)} windowsHref={confirmedWindowsHref} />}
               {panel.price && job.priceCents !== null && <PriceBlock audience="customer" priceCents={job.priceCents} />}
             </div>
             {tracker && <div className={styles.tracker}><Tracker {...tracker} /></div>}
