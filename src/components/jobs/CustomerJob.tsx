@@ -18,16 +18,18 @@ import { CUSTOMER_JOB_PANELS, CUSTOMER_JOB_POLL_MS, customerJobHref, customerJob
 import { jobTracker } from "@/lib/job-tracker";
 import { customerPriceDelayed } from "@/lib/customer-job-waiting";
 import type { CustomerJobView } from "@/server/views";
+import type { CustomerSignoff } from "@/lib/customer-signoff";
+import { SignoffPanel, type SignoffAction } from "./customer/SignoffPanel";
 import { CustomerWaitingActions, type WaitingActions } from "./CustomerWaitingActions";
 import styles from "./customer-job.module.css";
 
-type Props = { job: CustomerJobView; photos?: readonly ViewerPhoto[]; photosFailed?: boolean; photoLease?: { batchId: string; renewAfterMs: number } | null; back?: string; canEditWindows?: boolean; preview?: "offline" | "static"; initialAgeMs?: number; waitingPreview?: string; waitingActions?: WaitingActions; problemHref?: string };
+type Props = { job: CustomerJobView; photos?: readonly ViewerPhoto[]; photosFailed?: boolean; photoLease?: { batchId: string; renewAfterMs: number } | null; back?: string; canEditWindows?: boolean; preview?: "offline" | "static"; initialAgeMs?: number; waitingPreview?: string; waitingActions?: WaitingActions; problemHref?: string; signoffData?: CustomerSignoff | null; signoffPreview?: string; signoffAction?: SignoffAction };
 const trades = { ELECTRICAL: "Electrical", PLUMBING: "Plumbing", GAS: "Gas", CONSTRUCTION: "Construction", OTHER: "Other" } as const;
 const date = new Intl.DateTimeFormat("en-NZ", { timeZone: "UTC", weekday: "short", day: "numeric", month: "short" });
 const postedDate = new Intl.DateTimeFormat("en-NZ", { timeZone: "Pacific/Auckland", weekday: "short", day: "numeric", month: "short" });
 const time = { MORNING: "Morning", AFTERNOON: "Afternoon", EVENING: "Evening" } as const;
 
-export function CustomerJob({ job, photos = [], photosFailed = false, photoLease, back = "/", canEditWindows = false, preview, initialAgeMs = 0, waitingPreview, waitingActions, problemHref }: Props) {
+export function CustomerJob({ job, photos = [], photosFailed = false, photoLease, back = "/", canEditWindows = false, preview, initialAgeMs = 0, waitingPreview, waitingActions, problemHref, signoffData, signoffPreview, signoffAction }: Props) {
   const router = useRouter();
   const browserOnline = useOnlineStatus();
   const online = browserOnline && preview !== "offline";
@@ -137,7 +139,8 @@ export function CustomerJob({ job, photos = [], photosFailed = false, photoLease
                 <CustomerWaitingActions key={job.id} job={job} online={online} preview={waitingPreview} actions={waitingActions} onCancelled={() => setCancelFocusJob(job.id)} />
               </>}
               {panel.kind === "confirmed" && job.worker && <p className={styles.worker}>{job.worker.firstName}{job.worker.lastInitial ? ` ${job.worker.lastInitial}` : ""}</p>}
-              {panel.price && job.priceCents !== null && <PriceBlock audience="customer" priceCents={job.priceCents} />}
+              {job.status === "SUBMITTED" ? <SignoffPanel key={job.id} job={job} data={signoffData ?? null} online={online} problemHref={problemHref ?? `/jobs/${job.id}/problem?from=${encodeURIComponent(customerJobHref(job.id, returnTo))}`} preview={signoffPreview} action={signoffAction} /> : panel.price && job.priceCents !== null && <PriceBlock audience="customer" priceCents={job.priceCents} />}
+              {job.status === "COMPLETED" && signoffData?.autoCompleted && <p className={styles.message}>We marked this done after 48 hours.</p>}
             </div>
             {tracker && <div className={styles.tracker}><Tracker {...tracker} /></div>}
           </div>

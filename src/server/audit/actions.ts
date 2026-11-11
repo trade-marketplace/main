@@ -99,6 +99,7 @@ export const AUDIT_ACTIONS = {
   "profile.role_changed": { record: "profiles", reason: "required" },
 
   // Sign-off, reviews and support.
+  "review.posted": { record: "reviews" },
   "evidence.approved": { record: "completion_evidence" },
   "evidence.flagged": { record: "completion_evidence", reason: "required" },
   "review.hidden": { record: "reviews", reason: "required" },
