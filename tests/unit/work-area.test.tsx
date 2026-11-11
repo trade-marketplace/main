@@ -19,6 +19,8 @@ describe("work area", () => {
     expect(parseWorkArea({ ...initial, point: null })).toEqual({ ok: false, fields: { baseSuburb: "Choose a suburb from the search results." } });
     expect(parseWorkArea({ ...initial, radiusKm: 30 })).toEqual({ ok: false, fields: { radiusKm: "Choose 10, 25 or 50 km." } });
     expect(parseWorkArea({ ...initial, point: { lat: NaN, lng: 168 } }).ok).toBe(false);
+    expect(parseWorkArea({ ...initial, point: { lat: 0, lng: 0 } })).toEqual({ ok: false, fields: { baseSuburb: "Choose a suburb from the search results." } });
+    expect(parseWorkArea({ ...initial, baseSuburb: "Auckland", point: { lat: -36.8485, lng: 174.7633 } }).ok).toBe(true);
     expect(parseWorkArea({ ...initial, baseSuburb: "  Windsor  " })).toMatchObject({ ok: true, data: { baseSuburb: "Windsor" } });
   });
   it("only supplies Back to jobs for a bounded board return destination", () => {
@@ -56,6 +58,7 @@ describe("work area", () => {
     const html = renderToStaticMarkup(<AccountSettings role="TRADIE" active="/profile/area" next="/jobs?trade=electrical&distance=10">Content</AccountSettings>);
     expect(html.match(/href="\/profile\/notifications\?next=%2Fjobs%3Ftrade%3Delectrical%26distance%3D10"/g)).toHaveLength(2);
     expect(html.match(/href="\/profile\/trades\?next=%2Fjobs%3Ftrade%3Delectrical%26distance%3D10"/g)).toHaveLength(2);
+    for (const path of ["/profile", "/profile/security", "/profile/area", "/profile/payroll", "/profile/delete"]) expect(html).toContain(`href="${path}"`);
   });
   it("keeps all default sidebar links bare and rejects an external next destination", () => {
     for (const next of [undefined, "https://evil.test/jobs"]) {

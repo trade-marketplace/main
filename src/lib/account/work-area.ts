@@ -1,5 +1,5 @@
 import { parseWorkerSignup, type SignupTrade } from "@/lib/auth/worker-signup";
-import type { Point } from "@/lib/geo/distance";
+import { isInNewZealand, type Point } from "@/lib/geo/distance";
 
 export const WORK_AREA_SELECTION_ERROR = "Choose a suburb from the search results.";
 
@@ -20,7 +20,7 @@ export function parseWorkArea(input: WorkAreaInput) {
     if (fields.baseSuburb === "Choose the suburb again, or type it by hand.") fields.baseSuburb = WORK_AREA_SELECTION_ERROR;
     return { ok: false as const, fields };
   }
-  if (!result.details.point) return { ok: false as const, fields: { baseSuburb: WORK_AREA_SELECTION_ERROR } };
+  if (!result.details.point || !isInNewZealand(result.details.point)) return { ok: false as const, fields: { baseSuburb: WORK_AREA_SELECTION_ERROR } };
   return { ok: true as const, data: { baseSuburb: result.details.baseSuburb, radiusKm: result.details.radiusKm, point: result.details.point } };
 }
 

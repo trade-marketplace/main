@@ -75,4 +75,14 @@ describe.skipIf(!testDatabaseUrl)("work area commands (Postgres)", () => {
     await saveWorkArea(schema.db, viewer, input);
     expect(await setAvailable(schema.db, viewer, true)).toMatchObject({ ok: true, snapshot: { available: true } });
   });
+  it("uses the board's NZ point predicate for saves and availability without changing eligibility policy", async () => {
+    const viewer = await person();
+    expect(await saveWorkArea(schema.db, viewer, { ...input, point: { lat: 0, lng: 0 } })).toMatchObject({ ok: false, error: "invalid" });
+    expect(await schema.db.auditLog.count({ where: { actorId: viewer.userId } })).toBe(0);
+    expect(await loadWorkArea(schema.db, viewer)).toMatchObject({ point: { lat: -46.4132, lng: 168.3538 } });
+    await schema.db.workerProfile.update({ where: { userId: viewer.userId }, data: { areaLat: 0, areaLng: 0, available: false } });
+    expect(await setAvailable(schema.db, viewer, true)).toMatchObject({ ok: false, error: "invalid" });
+    expect(await schema.db.auditLog.count({ where: { actorId: viewer.userId } })).toBe(0);
+    expect(await setAvailable(schema.db, viewer, false)).toMatchObject({ ok: true, snapshot: { available: false } });
+  });
 });

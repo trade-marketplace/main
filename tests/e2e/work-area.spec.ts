@@ -145,6 +145,7 @@ test.describe("real work area journey", () => {
         await expect(page.getByRole("heading", { level: 1, name: "Work area", exact: true })).toBeVisible();
         if (viewport.width < 1024) await page.locator("summary").filter({ hasText: "Account settings" }).press("Enter");
         const navigation = page.getByRole("navigation", { name: "Account settings", exact: true });
+        await expect(navigation.getByRole("link", { name: "Security", exact: true })).toHaveAttribute("href", "/profile/security");
         await expectNoA11yViolations(page); expect(await fits(page)).toBe(true);
         await navigation.getByRole("link", { name: label, exact: true }).press("Enter");
         await expect(page).toHaveURL(`${app}${path}?next=${encodeURIComponent(back)}`);
