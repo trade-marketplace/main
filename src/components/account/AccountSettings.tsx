@@ -5,10 +5,11 @@ import type { ReactNode } from "react";
 
 import { Icon } from "@/components/Icon";
 import type { AppRole } from "@/components/app/app-links";
+import { boardSettingsRoute } from "@/lib/job-board";
 
 import styles from "./account.module.css";
 
-export function AccountSettings({ role, children, active = "/profile/security" }: { role: AppRole; children: ReactNode; active?: string }) {
+export function AccountSettings({ role, children, active = "/profile/security", next }: { role: AppRole; children: ReactNode; active?: string; next?: string | null }) {
   const links = [
     ["Profile", "/profile", "person"],
     ["Security", "/profile/security", "lock"],
@@ -25,13 +26,13 @@ export function AccountSettings({ role, children, active = "/profile/security" }
       }}>
         <summary>Account settings <Icon name="expand_more" size="sm" decorative /></summary>
         <nav aria-label="Account settings" className={styles.nav}>
-          {links.map(([label, href, icon]) => <Link href={href} key={href} aria-current={href === active ? "page" : undefined}>
+          {links.map(([label, href, icon]) => <Link href={boardSettingsRoute(href, next).href} key={href} aria-current={href === active ? "page" : undefined}>
             <Icon name={icon} size="sm" decorative />{label}
           </Link>)}
         </nav>
       </details>
       <nav aria-label="Account settings" className={`${styles.nav} ${styles.desktopNav}`}>
-        {links.map(([label, href, icon]) => <Link href={href} key={href} aria-current={href === active ? "page" : undefined}>
+        {links.map(([label, href, icon]) => <Link href={boardSettingsRoute(href, next).href} key={href} aria-current={href === active ? "page" : undefined}>
           <Icon name={icon} size="sm" decorative />{label}
         </Link>)}
       </nav>

@@ -135,6 +135,28 @@ test.describe("real work area journey", () => {
     await expect(page).toHaveURL(`${app}/`);
     await expect(page.getByRole("heading", { level: 1, name: "Work area", exact: true })).toHaveCount(0);
   });
+  test("sidebar destinations preserve filtered Back at every width and default links stay unchanged", async ({ page }) => {
+    await login(page);
+    const back = "/jobs?trade=electrical&distance=10&view=all";
+    for (const viewport of VIEWPORTS) {
+      await page.setViewportSize(viewport);
+      for (const [label, path] of [["Notifications", "/profile/notifications"], ["Trades & licences", "/profile/trades"]]) {
+        await page.goto(`${app}/profile/area?next=${encodeURIComponent(back)}`);
+        await expect(page.getByRole("heading", { level: 1, name: "Work area", exact: true })).toBeVisible();
+        if (viewport.width < 1024) await page.locator("summary").filter({ hasText: "Account settings" }).press("Enter");
+        const navigation = page.getByRole("navigation", { name: "Account settings", exact: true });
+        await expectNoA11yViolations(page); expect(await fits(page)).toBe(true);
+        await navigation.getByRole("link", { name: label, exact: true }).press("Enter");
+        await expect(page).toHaveURL(`${app}${path}?next=${encodeURIComponent(back)}`);
+        await expect(page.getByRole("heading", { level: 1, name: label, exact: true })).toBeVisible();
+        if (viewport.width < 1024) await expect(page.locator("details").filter({ has: page.locator("summary").filter({ hasText: "Account settings" }) })).not.toHaveAttribute("open", "");
+        await page.getByRole("link", { name: "Back to jobs", exact: true }).click(); await expect(page).toHaveURL(`${app}${back}`);
+      }
+    }
+    await page.setViewportSize({ width: 1440, height: 900 }); await page.goto(`${app}/profile/area`);
+    await page.getByRole("navigation", { name: "Account settings", exact: true }).getByRole("link", { name: "Notifications", exact: true }).click();
+    await expect(page).toHaveURL(`${app}/profile/notifications`); await expect(page.getByRole("link", { name: "Back to jobs", exact: true })).toHaveCount(0);
+  });
   test("expired sessions recover and resend both area and availability saves without losing the draft", async ({ page }) => {
     await login(page); await page.getByRole("radio", { name: "25 km", exact: true }).focus(); await page.keyboard.press("ArrowRight");
     await page.context().clearCookies(); await page.getByRole("button", { name: "Save changes", exact: true }).click();

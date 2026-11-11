@@ -12,6 +12,6 @@ export default async function Preview({ searchParams }: { searchParams: Promise<
   const params = await searchParams;
   const state = WORK_AREA_STATES.find(item => item === params.state) ?? "ready";
   return <AppShellView viewer={{ role: "TRADIE", firstName: "Jack", lastName: "Wilson", email: "worker@demo.test", emailVerified: true, counts: { messages: 0, notifications: 0 } }} testMode preview={{ at: "/profile/area", base: "/dev/components/work-area" }}>
-    <AccountSettings role="TRADIE" active="/profile/area">{params.state === "gallery" ? <div className={styles.gallery}><h1>Work area states</h1>{(["offline", "loading", "load-error"] as const).map(item => <section key={item} aria-labelledby={`work-area-state-${item}`}><h2 id={`work-area-state-${item}`}>{item}</h2><WorkAreaDemo state={item} network={false} /></section>)}</div> : <WorkAreaDemo state={state} network={params.transport === "network"} />}</AccountSettings>
+    <AccountSettings role="TRADIE" active="/profile/area" next={state === "from-jobs" ? "/jobs" : undefined}>{params.state === "gallery" ? <div className={styles.gallery}><h1>Work area states</h1>{(["offline", "loading", "load-error"] as const).map(item => <section key={item} aria-labelledby={`work-area-state-${item}`}><h2 id={`work-area-state-${item}`}>{item}</h2><WorkAreaDemo state={item} network={false} /></section>)}</div> : <WorkAreaDemo state={state} network={params.transport === "network"} />}</AccountSettings>
   </AppShellView>;
 }

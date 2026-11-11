@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { WorkArea } from "@/components/account/WorkArea";
+import { AccountSettings } from "@/components/account/AccountSettings";
 import { WorkerSignupFields } from "@/components/auth/WorkerSignupFields";
 import { parseWorkArea, workAreaChanged, type WorkAreaSnapshot } from "@/lib/account/work-area";
 import { boardSettingsRoute } from "@/lib/job-board";
@@ -50,5 +51,16 @@ describe("work area", () => {
     const html = renderToStaticMarkup(<WorkArea initial={initial} next="/jobs?trade=electrical&distance=10" />);
     expect(html).toContain('href="/profile/trades?next=%2Fjobs%3Ftrade%3Delectrical%26distance%3D10"');
     expect(html).toContain('href="/profile/notifications?next=%2Fjobs%3Ftrade%3Delectrical%26distance%3D10"');
+  });
+  it("opts the desktop and mobile account sidebar into a safe board return", () => {
+    const html = renderToStaticMarkup(<AccountSettings role="TRADIE" active="/profile/area" next="/jobs?trade=electrical&distance=10">Content</AccountSettings>);
+    expect(html.match(/href="\/profile\/notifications\?next=%2Fjobs%3Ftrade%3Delectrical%26distance%3D10"/g)).toHaveLength(2);
+    expect(html.match(/href="\/profile\/trades\?next=%2Fjobs%3Ftrade%3Delectrical%26distance%3D10"/g)).toHaveLength(2);
+  });
+  it("keeps all default sidebar links bare and rejects an external next destination", () => {
+    for (const next of [undefined, "https://evil.test/jobs"]) {
+      const html = renderToStaticMarkup(<AccountSettings role="TRADIE" next={next}>Content</AccountSettings>);
+      expect(html).toContain('href="/profile/notifications"'); expect(html).toContain('href="/profile/trades"'); expect(html).not.toContain("?next=");
+    }
   });
 });
