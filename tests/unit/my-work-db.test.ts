@@ -4,6 +4,8 @@ import type { JobStatus, Role } from "@/generated/prisma/client";
 import { loadMyQuotes, loadMyWork } from "@/server/workers/my-work";
 import { priceJob } from "@/server/pricing/price-job";
 import { priceVariation } from "@/server/variations/price";
+import { calculatePayout } from "@/server/payouts/calculate";
+import { payoutTotal } from "@/lib/earnings";
 import { testDatabaseUrl, useTestSchema } from "../support/test-db";
 
 describe.skipIf(!testDatabaseUrl)("My work owner-scoped PostgreSQL reads", () => {
@@ -13,10 +15,13 @@ describe.skipIf(!testDatabaseUrl)("My work owner-scoped PostgreSQL reads", () =>
     await schema.db.profile.create({ data: { id: userId, role, firstName: "Fixture", email: `${userId}@example.test` } });
     return { userId, role };
   }
-  async function job(customerId: string, workerId: string | null, status: JobStatus = "ASSIGNED", title = "My work fixture") {
+  async function job(customerId: string, workerId: string | null, status: JobStatus = "ASSIGNED", title = "My work fixture", recordClaim = true) {
     const row = await schema.db.job.create({ data: { customerId, category: "OTHER", title, description: "Private description", addressLine1: "Private street", suburb: "Windsor", city: "Invercargill", anyTime: true } });
     expect((await priceJob(schema.db, { jobId: row.id, minutes: 120, materialsCents: 5000 })).ok).toBe(true);
-    return schema.db.job.update({ where: { id: row.id }, data: { status, workerId } });
+    const assigned = await schema.db.job.update({ where: { id: row.id }, data: { status, workerId } });
+    if (workerId && recordClaim) await schema.db.auditLog.create({ data: { actorId: workerId, actorRole: "TRADIE", action: "job.claimed", recordType: "jobs", recordId: row.id,
+      before: { status: "BOOKABLE", workerId: null }, after: { status: "ASSIGNED", workerId } } });
+    return assigned;
   }
   it("returns only own assigned statuses, with canonical worker pay and true column counts", async () => {
     const me = await person(), other = await person(), customer = await person("CUSTOMER");
@@ -44,6 +49,58 @@ describe.skipIf(!testDatabaseUrl)("My work owner-scoped PostgreSQL reads", () =>
     const data = await loadMyWork(schema.db, me);
     expect(data.counts.done).toBe(8); expect(data.columns.done.map(row => row.id)).toEqual(ids.slice(3).reverse());
     expect(data.columns.done.map(row => row.payout)).toEqual(["Paid", "Queued", "Queued", "Queued", "Queued"]);
+  });
+  it("uses the existing payout calculation for approved extra work and stored payout totals once queued", async () => {
+    const me = await person(), customer = await person("CUSTOMER"), office = await person("ADMIN");
+    const row = await job(customer.userId, me.userId), pricing = await schema.db.jobPricing.findUniqueOrThrow({ where: { jobId: row.id } });
+    for (const status of ["APPROVED", "PRICED", "DECLINED"] as const) {
+      const extra = await schema.db.variation.create({ data: { jobId: row.id, requestedById: me.userId, requestKey: randomUUID(), description: "Extra work", requestedMinutes: 35 } });
+      expect(await priceVariation(schema.db, office, extra.id, 0)).toMatchObject({ ok: true });
+      if (status === "APPROVED") {
+        const priced = await schema.db.variation.findUniqueOrThrow({ where: { id: extra.id } });
+        await schema.db.payment.create({ data: { jobId: row.id, kind: "VARIATION", variationId: extra.id, variationRevision: priced.revision, amountCents: priced.priceCents!, status: "PAID", paidAt: new Date(), idempotencyKey: randomUUID() } });
+      }
+      if (status !== "PRICED") await schema.db.variation.update({ where: { id: extra.id }, data: { status } });
+    }
+    const expected = calculatePayout({ jobMinutes: pricing.minutes, approvedExtraMinutes: [35], workerRateCents: pricing.workerRateCents, holidayPayBps: pricing.holidayPayBps });
+    let data = await loadMyWork(schema.db, me);
+    expect(data.columns["to-book"][0]).toMatchObject({ earnCents: expected.totalCents, openExtraWork: 1 });
+    expect(expected.totalCents).toBeGreaterThan(pricing.workerGrossCents + pricing.holidayPayCents);
+    const stored = calculatePayout({ jobMinutes: pricing.minutes, approvedExtraMinutes: [70], workerRateCents: pricing.workerRateCents, holidayPayBps: pricing.holidayPayBps });
+    await schema.db.job.update({ where: { id: row.id }, data: { status: "COMPLETED" } });
+    const payout = await schema.db.payout.create({ data: { jobId: row.id, workerId: me.userId, minutes: stored.minutes, rateCents: stored.rateCents, grossCents: stored.grossCents, holidayPayCents: stored.holidayPayCents } });
+    data = await loadMyWork(schema.db, me);
+    expect(data.columns.done[0]).toMatchObject({ earnCents: payoutTotal(payout), payout: "Queued" });
+    expect(data.columns.done[0].earnCents).not.toBe(expected.totalCents);
+    expect(JSON.stringify(data)).not.toMatch(/priceCents|workerRateCents|holidayPayBps|approvedExtraMinutes|grossCents|materialsCents/);
+  });
+  it("uses current-worker audit proof after same-status reassignment and omits ambiguous or unproven claim dates", async () => {
+    const me = await person(), other = await person(), customer = await person("CUSTOMER"), office = await person("ADMIN");
+    const row = await job(customer.userId, other.userId);
+    await schema.db.jobStatusHistory.updateMany({ where: { jobId: row.id, toStatus: "ASSIGNED" }, data: { createdAt: new Date("2026-10-01") } });
+    await schema.db.job.update({ where: { id: row.id }, data: { workerId: me.userId } });
+    const proof = await schema.db.auditLog.create({ data: { actorId: office.userId, actorRole: "ADMIN", action: "job.reassigned", recordType: "jobs", recordId: row.id,
+      before: { status: "ASSIGNED", workerId: other.userId }, after: { status: "ASSIGNED", workerId: me.userId }, reason: "Private office note" } });
+    await schema.db.auditLog.create({ data: { actorId: office.userId, actorRole: "ADMIN", action: "job.status_overridden", recordType: "jobs", recordId: row.id,
+      before: { status: "CANCEL_REVIEW", workerId: me.userId }, after: { status: "ASSIGNED", workerId: me.userId }, reason: "Same worker, not a new assignment" } });
+    const legacy = await job(customer.userId, me.userId, "ASSIGNED", "Legacy fixture", false);
+    let data = await loadMyWork(schema.db, me);
+    expect(data.columns["to-book"].find(item => item.id === row.id)?.claimedAt).toBe(proof.createdAt.toISOString());
+    expect(data.columns["to-book"].find(item => item.id === legacy.id)?.claimedAt).toBeNull();
+    await schema.db.auditLog.create({ data: { actorId: me.userId, actorRole: "TRADIE", action: "job.claimed", recordType: "jobs", recordId: row.id,
+      before: { status: "BOOKABLE", workerId: null }, after: { status: "ASSIGNED", workerId: me.userId } } });
+    data = await loadMyWork(schema.db, me);
+    expect(data.columns["to-book"].find(item => item.id === row.id)?.claimedAt).toBeNull();
+    expect(JSON.stringify(data)).not.toMatch(/Private office note|actorId|workerId|before|after/);
+  });
+  it("omits claim dates when bounded audit history cannot prove a unique assignment", async () => {
+    const me = await person(), customer = await person("CUSTOMER");
+    const unique = await job(customer.userId, me.userId), repeated = await job(customer.userId, me.userId);
+    await schema.db.auditLog.createMany({ data: Array.from({ length: 2000 }, () => ({ actorId: me.userId, actorRole: "TRADIE" as const, action: "job.claimed", recordType: "jobs", recordId: repeated.id,
+      before: { status: "BOOKABLE", workerId: null }, after: { status: "ASSIGNED", workerId: me.userId } })) });
+    const data = await loadMyWork(schema.db, me);
+    expect(data.columns["to-book"].map(row => row.id).sort()).toEqual([unique.id, repeated.id].sort());
+    expect(data.columns["to-book"].every(row => row.claimedAt === null)).toBe(true);
   });
   it("reads the configured clock, actual evidence time, customer holds and priced extra work", async () => {
     const me = await person(), customer = await person("CUSTOMER"), office = await person("ADMIN");
