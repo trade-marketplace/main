@@ -8,6 +8,8 @@ import { transitionJob } from "@/server/jobs/status-machine";
 import { loadJobWindows, saveJobWindows } from "@/server/jobs/windows";
 import { canClaim, JOB_ELIGIBILITY_SELECT, WORKER_ELIGIBILITY_SELECT } from "@/server/workers/eligibility";
 import { testDatabaseUrl, useTestSchema } from "../support/test-db";
+import { cardToMapJob } from "@/lib/board-map";
+import { APPROX_MAX_METRES } from "@/server/geo/approximate";
 
 const NOW = new Date(Date.now() + 60_000), CENTRE = { lat: -46.4132, lng: 168.3538 };
 const boardOf = (result: BoardResult): BoardPage => { expect(result.ok).toBe(true); if (!result.ok) throw Error(result.error); return result.board; };
@@ -36,6 +38,37 @@ describe.skipIf(!testDatabaseUrl)("eligible job board real PostgreSQL reader", (
       workerGrossCents: amount, holidayPayCents: 800, onCostCents: 1000, marginCents: 2000, gstCents: 1500 } });
   }
   const deps = () => ({ now: () => NOW, signPhoto: vi.fn<NonNullable<BoardDependencies["signPhoto"]>>(async () => "https://storage.example.test/signed-public-photo") });
+
+  it("maps only approximate job points with own work-area config and the canonical configured bounty clock", async () => {
+    vi.stubEnv("MAPBOX_ACCESS_TOKEN", "pk.board_map_fixture");
+    try {
+      const actor = await worker(), row = await job({ status: "QUOTE_BOUNTY", shift: .003 });
+      await schema.db.settings.update({ where: { id: 1 }, data: { bountyAmountCents: 4500, bountyExpiryHours: 36 } });
+      const entered = await schema.db.jobStatusHistory.findFirstOrThrow({ where: { jobId: row.id, toStatus: "QUOTE_BOUNTY" }, orderBy: { createdAt: "desc" } });
+      const map = boardOf(await loadJobBoard(schema.db, actor, { ...DEFAULT_BOARD_QUERY, view: "map" }, {}, deps()));
+      expect(map.cards[0].point).toEqual({ lat: row.approxLat, lng: row.approxLng });
+      expect(map.cards[0].point).not.toEqual({ lat: row.lat, lng: row.lng }); expect(map.cards[0].precision).toBe("approximate");
+      expect(map.meta.map).toEqual({ accessToken: "pk.board_map_fixture", workArea: { name: "Invercargill", centre: CENTRE, radiusKm: 50 }, approxRadiusMetres: APPROX_MAX_METRES });
+      expect(map.cards[0].bounty).toEqual({ amountCents: 4500, durationMs: 36 * 3_600_000, endsAt: entered.createdAt.getTime() + 36 * 3_600_000 });
+      expect(cardToMapJob(map.cards[0])).toMatchObject({ kind: "bounty", bountyCents: 4500 });
+      expect(JSON.stringify(map.cards)).not.toMatch(/addressLine|accessNotes|Private Street|Secret key|customerId|priceCents|marginCents/);
+      const grid = boardOf(await loadJobBoard(schema.db, actor, DEFAULT_BOARD_QUERY, {}, deps()));
+      expect(grid.meta).not.toHaveProperty("map"); expect(grid.cards[0]).not.toHaveProperty("bounty");
+    } finally { vi.unstubAllEnvs(); }
+  });
+  it("does not expose a secret provider token or invent a work area or legacy bounty deadline", async () => {
+    vi.stubEnv("MAPBOX_ACCESS_TOKEN", "sk.must_never_be_serialized");
+    try {
+      const actor = await worker(), row = await job({ status: "QUOTE_BOUNTY" });
+      await schema.db.jobStatusHistory.deleteMany({ where: { jobId: row.id } });
+      const map = boardOf(await loadJobBoard(schema.db, actor, { ...DEFAULT_BOARD_QUERY, view: "map" }, {}, deps()));
+      expect(map.meta.map?.accessToken).toBeNull(); expect(JSON.stringify(map)).not.toContain("sk.must_never_be_serialized");
+      expect(map.cards[0]).not.toHaveProperty("bounty"); expect(cardToMapJob(map.cards[0])).toBeNull();
+      await schema.db.workerProfile.update({ where: { userId: actor.userId }, data: { areaLat: null, areaLng: null, areaRadiusKm: null } });
+      const missing = boardOf(await loadJobBoard(schema.db, actor, { ...DEFAULT_BOARD_QUERY, view: "map" }, {}, deps()));
+      expect(missing.meta.blocked).toBe("work-area-required"); expect(missing.meta).not.toHaveProperty("map"); expect(missing.cards).toEqual([]);
+    } finally { vi.unstubAllEnvs(); }
+  });
 
   it("uses Other with ID/email and no phone/trade selection, exposes worker pay only, and sorts that frozen pay", async () => {
     const actor = await worker(), cheap = await job({ status: "REVIEW" }), high = await job({ status: "REVIEW" }), review = await job({ status: "REVIEW" }), bounty = await job({ status: "QUOTE_BOUNTY" });

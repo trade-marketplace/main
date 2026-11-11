@@ -6,6 +6,7 @@ import { Button } from "@/components/Button";
 import { TextLink } from "@/components/TextLink";
 import { useOptionalSessionExpired } from "@/components/auth/SessionExpired";
 import { JobTile } from "@/components/cards/JobTile";
+import { BoardMap, BoardMapSkeleton } from "./BoardMap";
 import { SegmentedControl, Tabs } from "@/components/data/Tabs";
 import { CheckboxField } from "@/components/forms/ChoiceFields";
 import { SelectField } from "@/components/forms/TextFields";
@@ -28,12 +29,17 @@ export function BoardSkeleton({ count = 8 }: { count?: number }) {
 }
 
 export type JobBoardProps = { initial: BoardResult; ownerId: string; source?: BoardSource; previewState?: string; initialSaved?: string[];
+  /** Guarded map previews use the real board with a map default; public routes keep their existing defaults. */
+  previewMap?: boolean;
   /** A slim message above the heading, e.g. the setup checklist's "Finish setup (4/6)" (#132). */
   notice?: ReactNode };
-export function JobBoard({ initial, ownerId, source = LIVE_SOURCE, previewState, initialSaved = [], notice }: JobBoardProps) {
+export function JobBoard({ initial, ownerId, source = LIVE_SOURCE, previewState, previewMap = false, initialSaved = [], notice }: JobBoardProps) {
   // Owner key at the route boundary remounts all state after an account switch. Stored data contains IDs only.
   const pathname = usePathname(), search = useSearchParams(), session = useOptionalSessionExpired();
-  const urlQuery = parseBoardQuery(search), urlKey = boardHref(urlQuery);
+  const urlQuery = parseBoardQuery(search);
+  if (previewMap && !search.has("view") && !search.has("layout")) urlQuery.view = "map";
+  if (previewMap && previewState === "chips-estimate" && !search.has("kind")) urlQuery.kind = "estimate";
+  const urlKey = boardHref(urlQuery);
   const [location, setLocation] = useState(urlKey), [query, setQuery] = useState(urlQuery);
   // Controls respond in the click's render. Back/Forward still replaces them from the canonical URL.
   if (location !== urlKey) { setLocation(urlKey); setQuery(urlQuery); }
@@ -53,7 +59,12 @@ export function JobBoard({ initial, ownerId, source = LIVE_SOURCE, previewState,
   const board = cacheChanged ? null : cachedBoard;
   useEffect(() => { savedRef.current = saved; queryRef.current = query; boardRef.current = cachedBoard; }, [saved, query, cachedBoard]);
   const extra = new URLSearchParams(search); for (const name of ["kind", "trade", "distance", "when", "sort", "saved", "estimated", "view", "layout"]) extra.delete(name);
-  const href = (next: BoardQuery) => boardHref(next, pathname, extra.toString());
+  const href = (next: BoardQuery) => {
+    const value = boardHref(next, pathname, extra.toString()), explicit = new URLSearchParams();
+    if (previewMap && next.view === "grid") explicit.set("layout", "grid");
+    if (previewMap && previewState === "chips-estimate" && next.kind === "all") explicit.set("kind", "all");
+    return `${value}${explicit.size ? `${value.includes("?") ? "&" : "?"}${explicit}` : ""}`;
+  };
   const update = (patch: Partial<BoardQuery>) => { const next = { ...query, ...patch }; updates.invalidate(); setQuery(next); window.history.pushState(null, "", href(next)); };
   const resetFilters = () => update({ ...DEFAULT_BOARD_QUERY, entry: query.entry, view: query.view });
 
@@ -155,19 +166,19 @@ export function JobBoard({ initial, ownerId, source = LIVE_SOURCE, previewState,
         <Button variant="tertiary" onClick={resetFilters}>Reset filters</Button>
       </div></aside>
       <section id="board-results" className={styles.results} aria-label="Jobs">
-        <Tabs label="Job kind" items={kindItems.map(item => ({ ...item, count: board?.counts[item.value] }))} value={query.kind} onChange={kind => update({ kind })} controls="board-cards" />
+        {query.view !== "map" && <Tabs label="Job kind" items={kindItems.map(item => ({ ...item, count: board?.counts[item.value] }))} value={query.kind} onChange={kind => update({ kind })} controls="board-cards" />}
         <div className={styles.toolbar}><span>{meta ? `Within ${meta.distanceKm} km of ${meta.areaName}` : ""}</span><SelectField label="Sort by" value={query.sort} onChange={event => update({ sort: event.target.value as BoardQuery["sort"] })}>
           <option value="nearest">Nearest</option><option value="newest">Newest</option><option value="earn">Highest pay</option></SelectField></div>
         {storageError && <InlineError message="Couldn’t save your jobs on this browser. Check your browser storage and try again." />}
         {error && !cacheChanged && <InlineError message="Can’t load your jobs. Check your connection and try again." onRetry={() => load()} />}
         {newCount > 0 && <div className={styles.newJobs}><Button size="sm" onClick={() => load()} disabled={!online ? "You’re offline" : busy}>{newCount} new {newCount === 1 ? "job" : "jobs"}</Button></div>}
-        <div id="board-cards"><LoadingRegion loading={busy || !hydrated} label="Loading your jobs" skeleton={<BoardSkeleton />}>
+        <div id="board-cards"><LoadingRegion loading={busy || !hydrated} label="Loading your jobs" skeleton={query.view === "map" ? <BoardMapSkeleton /> : <BoardSkeleton />}>
           {cacheChanged ? <ErrorState className={styles.empty} title="Can’t load your jobs" message="Check your connection and try again." onRetry={() => load()} />
             : !result.ok ? <ErrorState className={styles.empty} title={result.error === "forbidden" ? "Trade account required" : "Can’t load your jobs"} message="Check your connection and try again." onRetry={() => load()} />
             : meta?.blocked ? <EmptyState className={styles.empty} icon="verified_user" title={meta.blocked === "worker-paused" ? "Your account is paused" : meta.blocked === "work-area-required" ? "Set your work area" : "Get verified to see jobs"}
               message={meta.blocked === "email-required" ? "Confirm your email to continue." : meta.blocked === "worker-paused" ? "Contact us to get back to work." : meta.blocked === "work-area-required" ? "Contact us to set the area you work in." : "We need to check your ID before you can see jobs."}
               action={<Button href={contact}>Contact us</Button>} />
-            : query.view === "map" ? <div className={styles.boundary}><h2>Map</h2><TextLink href={href({ ...query, view: "grid" })}>Back to jobs</TextLink></div>
+            : query.view === "map" ? <BoardMap cards={board?.cards ?? []} counts={board?.counts} query={query} ownerId={ownerId} config={meta?.map} serverNow={Date.parse(board?.before ?? "") || 0} onKindChange={kind => update({ kind })} previewState={previewState} previewBasePath={pathname} />
             : !board?.cards.length ? <div className={styles.empty}><EmptyState icon="search_off" title="No jobs match that." message="Try fewer filters."
               action={<Button onClick={() => meta && meta.distanceKm < meta.maxDistanceKm ? update({ distance: meta.maxDistanceKm }) : resetFilters()}>{meta && meta.distanceKm < meta.maxDistanceKm ? "Widen distance" : "Reset filters"}</Button>}
               secondaryAction={<TextLink href={alerts}>Alerts settings</TextLink>} /><p>Need to change your work area? <TextLink href={contact} inline>Contact us</TextLink>.</p></div>
