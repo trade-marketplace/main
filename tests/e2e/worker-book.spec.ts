@@ -16,7 +16,7 @@ for (const width of [320, 390, 768, 1024, 1440]) test(`booking states at ${width
     else await expect(page.getByRole("heading", { name: "Pick a time", exact: true })).toBeVisible();
     if (state === "any-time") { await expect(page.getByRole("radio")).toHaveCount(21); await expect(page.getByText("Any time works for Sarah.")).toBeVisible(); }
     if (state === "none-left") { await expect(page.getByRole("radio")).toHaveCount(0); await expect(page.getByText("None of Sarah’s times are left.")).toBeVisible(); }
-    if (state === "changed") await expect(page.getByText("Sarah changed her times. Pick again.")).toBeVisible();
+    if (state === "changed") await expect(page.getByText("Sarah changed the times. Pick again.")).toBeVisible();
     if (state === "asked") await expect(page.getByText("Sarah’s been asked for more times.")).toBeVisible();
     if (state === "booked") await expect(page.getByText("Booked: Thu 12 Nov · Morning")).toBeVisible();
     if (state === "offline") await expect(page.getByRole("button", { name: "Suggest other times", exact: true })).toHaveAttribute("aria-disabled", "true");
@@ -66,13 +66,14 @@ test.describe("real booking command journey", () => {
     await page.context().clearCookies(); await page.goto(`${app}${next}`); await expect(page).toHaveURL(/\/login\?next=/);
   });
   test("books through the action, returns with toast, reschedules and goes Back", async ({ page }) => {
-    const next = `/jobs/${id}/book`; await page.goto(`${app}/login?next=${encodeURIComponent(next)}`); await page.getByRole("textbox", { name: "Email", exact: true }).fill(SECURITY_TRADIE.email); await page.getByLabel("Password", { exact: true }).fill(SECURITY_PASSWORD); await page.getByRole("button", { name: "Log in", exact: true }).click(); await expect(page).toHaveURL(`${app}${next}`);
+    const next = `/jobs/${id}`; await page.goto(`${app}/login?next=${encodeURIComponent(next)}`); await page.getByRole("textbox", { name: "Email", exact: true }).fill(SECURITY_TRADIE.email); await page.getByLabel("Password", { exact: true }).fill(SECURITY_PASSWORD); await page.getByRole("button", { name: "Log in", exact: true }).click(); await expect(page).toHaveURL(`${app}${next}`);
+    await page.getByRole("link", { name: "Book a time", exact: true }).press("Enter"); await expect(page).toHaveURL(`${app}${next}/book`);
     expect(await page.locator("main").innerText()).not.toContain("146 Private Street");
     await page.getByRole("radio", { name: "Morning", exact: true }).focus(); await page.getByRole("radio", { name: "Morning", exact: true }).press("Space");
     await page.getByRole("button", { name: `Book ${date.label} · Morning`, exact: true }).press("Enter"); await expect(page).toHaveURL(`${app}/jobs/${id}`); await expect(page.getByRole("status").filter({ hasText: `Booked ${date.label} · Morning` })).toBeVisible();
     expect((await db.query("SELECT booked_time FROM jobs WHERE id=$1", [id])).rows[0].booked_time).toBe("MORNING");
-    await page.goto(`${app}${next}`); await page.getByRole("radio", { name: "Afternoon", exact: true }).check(); await page.getByRole("button", { name: `Change to ${date.label} · Afternoon`, exact: true }).click(); await expect(page).toHaveURL(`${app}/jobs/${id}`); await expect(page.getByRole("status").filter({ hasText: `Changed to ${date.label} · Afternoon` })).toBeVisible();
-    await page.goto(`${app}${next}`); await page.getByRole("button", { name: "Suggest other times", exact: true }).click(); await expect(page.getByText("Sarah’s been asked for more times.")).toBeVisible(); await page.getByRole("link", { name: "Back to job", exact: true }).press("Enter"); await expect(page).toHaveURL(`${app}/jobs/${id}`);
+    await page.reload(); await expect(page.getByRole("link", { name: "Book a time", exact: true })).toBeVisible(); await page.getByRole("link", { name: "Book a time", exact: true }).click(); await expect(page).toHaveURL(`${app}${next}/book`); await page.getByRole("radio", { name: "Afternoon", exact: true }).check(); await page.getByRole("button", { name: `Change to ${date.label} · Afternoon`, exact: true }).click(); await expect(page).toHaveURL(`${app}/jobs/${id}`); await expect(page.getByRole("status").filter({ hasText: `Changed to ${date.label} · Afternoon` })).toBeVisible();
+    await page.getByRole("link", { name: "Book a time", exact: true }).click(); await expect(page).toHaveURL(`${app}${next}/book`); await page.getByRole("button", { name: "Suggest other times", exact: true }).click(); await expect(page.getByText("Sarah’s been asked for more times.")).toBeVisible(); await page.getByRole("link", { name: "Back to job", exact: true }).press("Enter"); await expect(page).toHaveURL(`${app}/jobs/${id}`);
     expect((await db.query("SELECT count(*)::int AS count FROM notifications WHERE type='job.window_booked' AND payload->>'jobId'=$1", [id])).rows[0].count).toBe(2);
     expect((await db.query("SELECT booked_time FROM jobs WHERE id=$1", [id])).rows[0].booked_time).toBe("AFTERNOON");
     const missing = await page.request.get(`${app}/jobs/${randomUUID()}/book`); expect([200, 404]).toContain(missing.status()); expect(await missing.text()).toContain("Wrong address.");

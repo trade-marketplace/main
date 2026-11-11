@@ -18,9 +18,9 @@ describe("worker booking", () => {
     expect(bookingButtonLabel(window, false)).toBe("Book Thu 12 Nov · Morning");
     expect(bookingButtonLabel(window, true)).toBe("Change to Thu 12 Nov · Morning");
   });
-  it("renders only booking information, with no customer phone or address", () => {
-    const job = { id: "preview", title: "Sub wiring", suburb: "Windsor", customerFirstName: "Sarah", windows: [window], booked: null, anyTime: false, revision: "1", customerPhone: "0211234567", address: "146 Private Street" };
+  it("uses the customer name without inferred pronouns and exposes no phone or address", () => {
+    const job = { id: "preview", title: "Sub wiring", suburb: "Windsor", customerFirstName: "Alex", windows: [window], booked: null, anyTime: false, revision: "1", customerPhone: "0211234567", address: "146 Private Street" };
     const html = renderToStaticMarkup(<BookWindow initial={job satisfies BookingSnapshot & { customerPhone: string; address: string }} />);
-    expect(html).toContain("Sub wiring"); expect(html).not.toMatch(/0211234567|146 Private Street|tel:/);
+    expect(html).toContain("Sub wiring"); expect(html).toContain("and Alex’s told straight away"); expect(html).not.toMatch(/\bshe’s|\bher times/); expect(html).not.toMatch(/0211234567|146 Private Street|tel:/);
   });
 });

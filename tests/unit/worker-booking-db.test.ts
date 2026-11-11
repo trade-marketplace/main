@@ -1,10 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import type { Role } from "@/generated/prisma/client";
+import type { Prisma, Role } from "@/generated/prisma/client";
 import type { Viewer } from "@/server/auth/viewer";
 import { bookJobWindow, loadBooking, requestOtherTimes } from "@/server/jobs/worker-booking";
 import { loadJobWindows, saveJobWindows } from "@/server/jobs/windows";
-import { lockJobWindows } from "@/server/jobs/window-lock";
 import { inboxItem } from "@/server/notifications/inbox";
 import { testDatabaseUrl, useTestSchema } from "../support/test-db";
 describe.skipIf(!testDatabaseUrl)("worker booking database", () => {
@@ -64,14 +63,22 @@ describe.skipIf(!testDatabaseUrl)("worker booking database", () => {
     const f = await fixture(), worker = await load(f), customer = (await loadJobWindows(schema.db, f.customer, f.job.id))!;
     let release!: () => void, locked!: () => void;
     const gate = new Promise<void>(resolve => { release = resolve; }), entered = new Promise<void>(resolve => { locked = resolve; });
-    const holder = schema.db.$transaction(async tx => { await lockJobWindows(tx, f.job.id); locked(); await gate; });
-    await entered;
-    const save = () => saveJobWindows(schema.db, f.customer, f.job.id, { asap: false, anyTime: false, timeWindows: [two] }, customer.revision, now);
-    const book = () => bookJobWindow(schema.db, f.worker, f.job.id, one, worker.revision, now);
-    const earlier = first === "customer" ? save() : book();
-    // Confirm the first command is queued at the row lock before queuing the second.
-    for (let attempt = 0; attempt < 100; attempt++) { const waiting = await schema.db.$queryRaw<{ count: bigint }[]>`SELECT count(*) FROM pg_stat_activity WHERE datname = current_database() AND wait_event_type = 'Lock'`; if (waiting[0].count > 0n) break; await new Promise(resolve => setTimeout(resolve, 10)); }
-    const later = first === "customer" ? book() : save(); release(); await holder;
+    // Pause the actual first command immediately after it acquires the row lock. The second
+    // command then starts against that held lock, without relying on pool/statement arrival order.
+    const firstDb = new Proxy(schema.db, { get(target, key, receiver) {
+      if (key !== "$transaction") return Reflect.get(target, key, receiver);
+      return (command: (tx: Prisma.TransactionClient) => Promise<unknown>) => target.$transaction(tx => command(new Proxy(tx, { get(transaction, field, transactionReceiver) {
+        if (field !== "job") return Reflect.get(transaction, field, transactionReceiver);
+        return new Proxy(transaction.job, { get(jobs, operation, jobsReceiver) {
+          if (operation !== "updateMany") return Reflect.get(jobs, operation, jobsReceiver);
+          return async (args: Prisma.JobUpdateManyArgs) => { const result = await jobs.updateMany(args); locked(); await gate; return result; };
+        } });
+      } })));
+    } });
+    const save = (db = schema.db) => saveJobWindows(db, f.customer, f.job.id, { asap: false, anyTime: false, timeWindows: [two] }, customer.revision, now);
+    const book = (db = schema.db) => bookJobWindow(db, f.worker, f.job.id, one, worker.revision, now);
+    const earlier = first === "customer" ? save(firstDb) : book(firstDb); await entered;
+    const later = first === "customer" ? book() : save(); release();
     expect((await earlier).status).toBe(first === "customer" ? "saved" : "booked"); expect((await later).status).toBe("changed");
     const after = await load(f); if (after.booked) expect(after.windows).toContainEqual(after.booked);
   });

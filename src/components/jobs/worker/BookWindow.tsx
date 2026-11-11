@@ -57,9 +57,9 @@ export function BookWindow({ initial, state = "pick", backHref = `/jobs/${initia
     <header><h1>Pick a time</h1><p className={styles.subtitle}>{job.title} · {job.suburb}</p></header>
     <div className={styles.body}>
       {job.booked && <Banner tone="info">Booked: {bookingWindowLabel(job.booked)}</Banner>}
-      <p>{job.anyTime ? `Any time works for ${job.customerFirstName}.` : `${job.customerFirstName}’s free in these windows. Pick one and she’s told straight away. No back-and-forth.`}</p>
+      <p>{job.anyTime ? `Any time works for ${job.customerFirstName}.` : `${job.customerFirstName}’s free in these windows. Pick one and ${job.customerFirstName}’s told straight away. No back-and-forth.`}</p>
       <OfflineBanner online={offline ? false : undefined} sticky={false} />
-      {changed && <Banner tone="info" live>{job.customerFirstName} changed her times. Pick again.</Banner>}
+      {changed && <Banner tone="info" live>{job.customerFirstName} changed the times. Pick again.</Banner>}
       {asked && <Banner tone="info" live>{job.customerFirstName}’s been asked for more times.</Banner>}
       {error && <Banner tone="alert" live action={<Button variant="tertiary" disabled={offline || saving} onClick={() => void submit(lastRequest)}>Try again</Button>}>Couldn’t save. Try again.</Banner>}
       {dates.length ? <div className={styles.windows}>{dates.map(date => <RadioGroup key={date} className={styles.day} label={bookingDateLabel(date)} name={`booking-${job.id}`} value={selected} disabled={saving || offline}
