@@ -139,7 +139,7 @@ export function CustomerJob({ job, photos = [], photosFailed = false, photoLease
                 <CustomerWaitingActions key={job.id} job={job} online={online} preview={waitingPreview} actions={waitingActions} onCancelled={() => setCancelFocusJob(job.id)} />
               </>}
               {panel.kind === "confirmed" && job.worker && <p className={styles.worker}>{job.worker.firstName}{job.worker.lastInitial ? ` ${job.worker.lastInitial}` : ""}</p>}
-              {job.status === "SUBMITTED" ? <SignoffPanel key={`${job.id}:${job.worker?.id ?? ""}:${signoffData?.submittedAt ?? ""}`} job={job} data={signoffData ?? null} online={online} problemHref={problemHref ?? `/jobs/${job.id}/problem?from=${encodeURIComponent(customerJobHref(job.id, returnTo))}`} preview={signoffPreview} action={signoffAction} /> : panel.price && job.priceCents !== null && <PriceBlock audience="customer" priceCents={job.priceCents} />}
+              {job.status === "SUBMITTED" ? <SignoffPanel key={`${job.id}:${job.worker?.id ?? ""}:${signoffData?.evidenceRevision ?? ""}`} job={job} data={signoffData ?? null} online={online} problemHref={problemHref ?? `/jobs/${job.id}/problem?from=${encodeURIComponent(customerJobHref(job.id, returnTo))}`} preview={signoffPreview} action={signoffAction} /> : panel.price && job.priceCents !== null && <PriceBlock audience="customer" priceCents={job.priceCents} />}
               {job.status === "COMPLETED" && signoffData?.autoCompleted && <p className={styles.message}>We marked this done automatically.</p>}
             </div>
             {tracker && <div className={styles.tracker}><Tracker {...tracker} /></div>}

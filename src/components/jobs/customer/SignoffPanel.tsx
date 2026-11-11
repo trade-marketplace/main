@@ -54,7 +54,7 @@ export function SignoffPanel({ job, data, online, problemHref, preview, action =
     pending.current = true; setBusy(true); setFailed(false);
     const review: SignoffReview | undefined = rating === null ? undefined : { rating, tags: selectedTags as SignoffReview["tags"], comment };
     try {
-      const result = await action(job.id, revision, review);
+      const result = await action(job.id, { jobUpdatedAt: revision, workerId: job.worker?.id ?? null, evidenceRevision: data.evidenceRevision }, review);
       if (session?.check(result)) return;
       if (!("status" in result)) { setFailed(true); return; }
       if (result.status === "signed-off") {

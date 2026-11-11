@@ -216,17 +216,19 @@ test.describe("real customer sign-off journey", () => {
     await page.getByRole("checkbox", { name: "Tidy", exact: true }).check();
     await page.getByRole("textbox", { name: "Add a comment (optional)", exact: true }).fill("Review of the original work.");
     const workerId = change === "worker" ? replacement.id : worker.id;
+    const oldJobRevision = (await db.query("SELECT updated_at FROM jobs WHERE id=$1", [id])).rows[0].updated_at.toISOString();
     objects.set(`documents/coc/${workerId}/replacement.pdf`, objects.get(`documents/coc/${worker.id}/signoff.pdf`)!);
     await db.query("BEGIN");
     try {
       // Sent evidence is immutable: use its existing FLAGGED → draft → resubmit path.
       await db.query("UPDATE completion_evidence SET office_check='FLAGGED',check_note=$1,checked_by_id=$2,checked_at=now() WHERE job_id=$3", ["Fixture replacement work.", office.id, id]);
       await db.query("UPDATE completion_evidence SET submitted_at=NULL WHERE job_id=$1", [id]);
-      await db.query("UPDATE jobs SET worker_id=$1,updated_at=now() WHERE id=$2", [workerId, id]);
+      if (change === "worker") await db.query("UPDATE jobs SET worker_id=$1 WHERE id=$2", [workerId, id]);
       await db.query("UPDATE completion_evidence SET worker_id=$1,coc_path=$2,notes=$3,updated_at=now() WHERE job_id=$4", [workerId, `coc/${workerId}/replacement.pdf`, "Replacement finished work.", id]);
       await db.query("UPDATE completion_evidence SET submitted_at=now() WHERE job_id=$1", [id]);
       await db.query("COMMIT");
     } catch (error) { await db.query("ROLLBACK"); throw error; }
+    if (change === "evidence") expect((await db.query("SELECT updated_at FROM jobs WHERE id=$1", [id])).rows[0].updated_at.toISOString()).toBe(oldJobRevision);
     await page.getByRole("button", { name: "Yes, all sorted", exact: true }).click();
     await expect(page.getByText("Replacement finished work.", { exact: true })).toBeVisible();
     await expect(page.getByText(`${change === "worker" ? "Moana" : "Jack"}’s finished. All good?`, { exact: true })).toBeVisible();

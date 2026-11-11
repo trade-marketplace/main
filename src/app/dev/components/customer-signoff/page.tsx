@@ -18,7 +18,7 @@ function Demo({ state, now: currentTime, suffix = "1" }: { state: string; now: s
     cocNumber: state === "photos" || empty ? null : "2026-118734", cocUrl: filesUnavailable || empty || state === "photos" ? null : state === "certificate-photo" ? "/images/examples/modules.jpg" : "/dev/components/customer-signoff/certificate", cocFileLabel: state === "certificate-photo" ? "Photo" : "PDF",
     photos: empty ? [] : ["modules", "switch"].map((name, index) => ({ id: `finished-${suffix}-${index}`, url: filesUnavailable ? null : `/images/examples/${name}.jpg` })),
     notes: empty ? null : "All done. The switch and wiring are secure.", submittedAt: empty ? null : new Date(now - (48 - hours) * 3_600_000).toISOString(),
-    autoReleaseHours: 48, hoursLeft: empty ? null : hours, releaseAt: empty ? null : new Date(now + hours * 3_600_000).toISOString(), problemOpen: state === "paused", autoCompleted: state === "auto-completed", filesUnavailable, filesRenewAfterMs: 270000,
+    evidenceRevision: empty ? null : suffix.padStart(64, "0"), autoReleaseHours: 48, hoursLeft: empty ? null : hours, releaseAt: empty ? null : new Date(now + hours * 3_600_000).toISOString(), problemOpen: state === "paused", autoCompleted: state === "auto-completed", filesUnavailable, filesRenewAfterMs: 270000,
   };
   return <SignoffDemo job={job} data={data} state={state} />;
 }

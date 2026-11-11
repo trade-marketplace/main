@@ -8,7 +8,7 @@ import { customerJobView } from "@/server/views";
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 
 const job = customerJobView(VIEWERS.customer, exampleJob({ status: "SUBMITTED" }))!;
-const data: CustomerSignoff = { cocNumber: "2026-118734", cocUrl: "https://files.example.test/signed-certificate", cocFileLabel: "PDF", photos: [{ id: "photo", url: "https://files.example.test/signed-photo" }], notes: "Finished notes.", submittedAt: "2026-11-11T00:00:00Z", releaseAt: "2026-11-13T00:00:00Z", autoReleaseHours: 48, hoursLeft: 46, problemOpen: false, autoCompleted: false, filesUnavailable: false, filesRenewAfterMs: 270000 };
+const data: CustomerSignoff = { cocNumber: "2026-118734", cocUrl: "https://files.example.test/signed-certificate", cocFileLabel: "PDF", photos: [{ id: "photo", url: "https://files.example.test/signed-photo" }], notes: "Finished notes.", submittedAt: "2026-11-11T00:00:00Z", evidenceRevision: "a".repeat(64), releaseAt: "2026-11-13T00:00:00Z", autoReleaseHours: 48, hoursLeft: 46, problemOpen: false, autoCompleted: false, filesUnavailable: false, filesRenewAfterMs: 270000 };
 function render(preview = "electrical", input = data) { return renderToStaticMarkup(<SignoffPanel job={job} data={input} online problemHref={`/jobs/${job.id}/problem?from=test`} preview={preview} />); }
 
 describe("customer please-check panel", () => {

@@ -1,7 +1,8 @@
 import "server-only";
+import { createHash } from "node:crypto";
 import { z } from "zod";
-import type { PrismaClient } from "@/generated/prisma/client";
-import { signoffHoursLeft, signoffReviewSchema, type CustomerSignoff, type SignoffResult } from "@/lib/customer-signoff";
+import type { Prisma, PrismaClient } from "@/generated/prisma/client";
+import { signoffHoursLeft, signoffReviewSchema, signoffRevisionSchema, type CustomerSignoff, type SignoffResult } from "@/lib/customer-signoff";
 import { createAudit } from "@/server/audit/audit";
 import { databaseSchema } from "@/server/database-client";
 import { createSupabaseFileStore, DOCUMENT_BUCKET, PHOTO_BUCKET, SIGNED_URL_SECONDS } from "@/server/files/storage";
@@ -11,12 +12,26 @@ import { applyTransition } from "./status-machine";
 
 type SignFile = (bucket: string, path: string) => Promise<string>;
 const signFile: SignFile = (bucket, path) => createSupabaseFileStore().signedUrl(bucket, path, SIGNED_URL_SECONDS);
+const EVIDENCE_SELECT = {
+  workerId: true, cocNumber: true, cocPath: true, notes: true, declaration: true, declaredAt: true, submittedAt: true, updatedAt: true,
+  photos: { orderBy: [{ position: "asc" }, { id: "asc" }], select: { id: true, path: true, position: true } },
+} satisfies Prisma.CompletionEvidenceSelect;
+type EvidenceSnapshot = Prisma.CompletionEvidenceGetPayload<{ select: typeof EVIDENCE_SELECT }>;
+function evidenceRevision(evidence: EvidenceSnapshot | null): string | null {
+  if (!evidence) return null;
+  // Logical content/version only: renewing signed links must not discard a review draft.
+  return createHash("sha256").update(JSON.stringify({
+    workerId: evidence.workerId, submittedAt: evidence.submittedAt, updatedAt: evidence.updatedAt,
+    cocNumber: evidence.cocNumber, cocPath: evidence.cocPath, notes: evidence.notes, declaration: evidence.declaration, declaredAt: evidence.declaredAt,
+    photos: evidence.photos.map(photo => ({ id: photo.id, path: photo.path, position: photo.position })),
+  })).digest("hex");
+}
 
 /** Authorize the actual customer before reading private evidence or signing any storage path. */
 export async function loadCustomerSignoff(db: Pick<PrismaClient, "job" | "settings">, viewer: JobViewer, jobId: string, sign: SignFile = signFile, now = new Date(), expectedWorkerId?: string): Promise<CustomerSignoff | null> {
   if (viewer.role !== "CUSTOMER" || !z.uuid().safeParse(jobId).success) return null;
   const job = await db.job.findFirst({ where: { id: jobId, customerId: viewer.userId, customer: { role: "CUSTOMER" }, workerId: expectedWorkerId, status: { in: ["SUBMITTED", "COMPLETED"] } },
-    select: { status: true, workerId: true, evidence: { select: { workerId: true, cocNumber: true, cocPath: true, notes: true, submittedAt: true, photos: { orderBy: [{ position: "asc" }, { id: "asc" }], select: { id: true, path: true } } } },
+    select: { status: true, workerId: true, evidence: { select: EVIDENCE_SELECT },
       problems: { where: { status: "OPEN" }, take: 1, select: { id: true } }, statusHistory: { where: { toStatus: "COMPLETED" }, orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: 1, select: { changedById: true } } } });
   if (!job) return null;
   const settings = await db.settings.findUniqueOrThrow({ where: { id: 1 }, select: { autoReleaseHours: true } });
@@ -28,25 +43,31 @@ export async function loadCustomerSignoff(db: Pick<PrismaClient, "job" | "settin
     Promise.all((evidence?.photos ?? []).map(async photo => ({ id: photo.id, url: await link(PHOTO_BUCKET, photo.path) }))),
   ]);
   const cocFileLabel = evidence?.cocPath?.endsWith(".pdf") ? "PDF" : evidence?.cocPath?.endsWith(".webp") ? "Photo" : "File";
-  return { cocNumber: evidence?.cocNumber ?? null, cocUrl, cocFileLabel, photos, notes: evidence?.notes ?? null, submittedAt: evidence?.submittedAt?.toISOString() ?? null,
+  return { cocNumber: evidence?.cocNumber ?? null, cocUrl, cocFileLabel, photos, notes: evidence?.notes ?? null, submittedAt: evidence?.submittedAt?.toISOString() ?? null, evidenceRevision: evidenceRevision(evidence),
     autoReleaseHours: settings.autoReleaseHours, hoursLeft: signoffHoursLeft(evidence?.submittedAt ?? null, settings.autoReleaseHours, now), releaseAt: evidence?.submittedAt ? new Date(evidence.submittedAt.getTime() + settings.autoReleaseHours * 3_600_000).toISOString() : null, problemOpen: job.problems.length > 0,
     autoCompleted: job.status === "COMPLETED" && job.statusHistory[0]?.changedById === null, filesUnavailable: failed || Boolean(evidence?.cocNumber && !cocUrl), filesRenewAfterMs: Math.max(1000, (SIGNED_URL_SECONDS - 30) * 1000) };
 }
 
 /** A stale page cannot complete another state; completion, optional review, audit and notification commit together. */
 export async function signOffJob(db: PrismaClient, viewer: JobViewer, id: unknown, revision: unknown, review?: unknown): Promise<SignoffResult> {
-  if (viewer.role !== "CUSTOMER" || !z.uuid().safeParse(id).success || typeof revision !== "string") return { status: "forbidden" };
+  if (viewer.role !== "CUSTOMER" || !z.uuid().safeParse(id).success) return { status: "forbidden" };
   const parsed = signoffReviewSchema.optional().safeParse(review);
   if (!parsed.success) return { status: "invalid" };
+  const expected = signoffRevisionSchema.safeParse(revision);
+  if (!expected.success) return { status: "changed" };
   const jobId = id as string;
   try {
-    const relation = `"${databaseSchema(db).replaceAll('"', '""')}".jobs`;
+    const namespace = databaseSchema(db).replaceAll('"', '""'), relation = `"${namespace}".jobs`, evidenceRelation = `"${namespace}".completion_evidence`;
     return await db.$transaction(async tx => {
-      await tx.$queryRawUnsafe(`SELECT id FROM ${relation} WHERE id = $1::uuid AND customer_id = $2::uuid FOR UPDATE`, jobId, viewer.userId);
+      // Still excludes other job writes, while allowing the evidence trigger's foreign-key key-share check.
+      await tx.$queryRawUnsafe(`SELECT id FROM ${relation} WHERE id = $1::uuid AND customer_id = $2::uuid FOR NO KEY UPDATE`, jobId, viewer.userId);
       const profile = await tx.profile.findUnique({ where: { id: viewer.userId }, select: { role: true } });
       const job = await tx.job.findFirst({ where: { id: jobId, customerId: viewer.userId }, select: { id: true, jobNumber: true, status: true, workerId: true, updatedAt: true } });
       if (!job || profile?.role !== "CUSTOMER") return { status: "forbidden" };
-      if (job.status !== "SUBMITTED" || job.updatedAt.toISOString() !== revision || !job.workerId) return { status: "changed" };
+      if (job.status !== "SUBMITTED" || job.updatedAt.toISOString() !== expected.data.jobUpdatedAt || !job.workerId || job.workerId !== expected.data.workerId) return { status: "changed" };
+      await tx.$queryRawUnsafe(`SELECT job_id FROM ${evidenceRelation} WHERE job_id = $1::uuid FOR UPDATE`, jobId);
+      const currentEvidence = await tx.completionEvidence.findUnique({ where: { jobId }, select: EVIDENCE_SELECT });
+      if ((currentEvidence && currentEvidence.workerId !== job.workerId) || evidenceRevision(currentEvidence) !== expected.data.evidenceRevision) return { status: "changed" };
       let eventId = "";
       await applyTransition(tx, {
         // The machine's sign-off action maps to the existing catalogue's completed entry.
