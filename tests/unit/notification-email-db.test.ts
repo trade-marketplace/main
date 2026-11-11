@@ -8,6 +8,7 @@ import { notificationId } from "@/server/notifications/notify";
 import { createNotify } from "@/server/notifications/notify";
 import { createNotificationEmailRule } from "@/server/notifications/email-rule";
 import type { ContactMailer } from "@/server/contact";
+import { transitionJob } from "@/server/jobs/status-machine";
 import { decideTradie, licenceReviewVersion } from "@/server/office/tradie-commands";
 
 import { testDatabaseUrl, useTestSchema } from "../support/test-db";
@@ -77,6 +78,21 @@ describe.skipIf(!testDatabaseUrl)("notification email delivery in PostgreSQL", (
     const results = await Promise.all([run(send), run(send)]);
     expect(results.reduce((sum, result) => sum + result.done, 0)).toBe(1);
     expect(send).toHaveBeenCalledExactlyOnceWith(expect.any(Object), `${notice.id}:EMAIL`);
+  });
+
+  it.each(["job.priced", "job.submitted"] as const)("skips %s when the customer has already acted before the scheduler", async event => {
+    const { customer, job, notice } = await jobNotice(event);
+    const effects = { audit: async () => {}, notify: async () => {} };
+    if (event === "job.priced") {
+      await schema.db.payment.create({ data: { jobId: job.id, kind: "JOB", amountCents: job.priceCents!, status: "PAID", paidAt: new Date(), idempotencyKey: randomUUID() } });
+      await transitionJob(schema.db, effects, { jobId: job.id, transition: "mark-paid", actor: { role: "SYSTEM", source: "email-test" } });
+    } else await transitionJob(schema.db, effects, { jobId: job.id, transition: "sign-off", actor: { role: "CUSTOMER", userId: customer.userId } });
+    expect((await schema.db.job.findUniqueOrThrow({ where: { id: job.id } })).status).toBe(event === "job.priced" ? "BOOKABLE" : "COMPLETED");
+    const send = mailer();
+    expect(await run(send)).toMatchObject({ due: 1, done: 0, skipped: 1 });
+    expect(send).not.toHaveBeenCalled();
+    expect((await schema.db.notification.findUniqueOrThrow({ where: { id: notice.id } })).channelsSent).toContain("EMAIL");
+    expect(await run(send)).toMatchObject({ due: 0, done: 0 });
   });
 
   it("takes only the oldest five notices of each event per run", async () => {

@@ -51,7 +51,7 @@ async function freshMessage(tx: Tx, event: NotificationEmailEvent, row: { id: st
   if (!payload.success) return null;
   const source = await tx.job.findUnique({ where: { id: payload.data.jobId }, select: JOB_DETAIL_SELECT });
   const view = source && customerJobView({ userId: row.userId, role: "CUSTOMER" }, source);
-  if (!view) return null;
+  if (!view || view.status !== (event === "job.priced" ? "PRICED" : "SUBMITTED")) return null;
   const job = { to, jobId: view.id, jobNumber: view.jobNumber, title: view.title };
   if (event === "job.priced") return view.priceCents === null ? null : notificationEmail(event, { ...job, priceCents: view.priceCents });
   if (!view.worker?.firstName) return null;
