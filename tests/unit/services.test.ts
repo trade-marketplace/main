@@ -34,7 +34,7 @@ describe("service content and handoffs", () => {
     const findMany = vi.fn().mockResolvedValue([{ id: "real", rating: 4, comment: "Customer words", reviewer: { firstName: "First" } }, { id: "blank", rating: 5, comment: " ", reviewer: { firstName: "Hidden" } }]);
     const data = await loadService("other", { review: { findMany } } as unknown as Parameters<typeof loadService>[1]);
     expect(data.reviews).toEqual([{ id: "real", rating: 4, comment: "Customer words", name: "First" }]);
-    expect(findMany.mock.calls[0][0]).toMatchObject({ where: { hiddenAt: null, job: { trade: "OTHER" } }, select: { reviewer: { select: { firstName: true } } } });
+    expect(findMany.mock.calls[0][0]).toMatchObject({ where: { hiddenAt: null, job: { category: "OTHER" } }, select: { reviewer: { select: { firstName: true } } } });
     expect(findMany.mock.calls[0][0].select).not.toHaveProperty("job");
   });
   it("reports a review failure without exposing raw database details", async () => {
