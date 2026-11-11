@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import type { Prisma, Role } from "@/generated/prisma/client";
+import type { JobTimeWindow } from "@/lib/job-time-windows";
 import type { Viewer } from "@/server/auth/viewer";
 import { bookJobWindow, loadBooking, requestOtherTimes } from "@/server/jobs/worker-booking";
 import { loadJobWindows, saveJobWindows } from "@/server/jobs/windows";
@@ -83,11 +84,31 @@ describe.skipIf(!testDatabaseUrl)("worker booking database", () => {
     expect((await earlier).status).toBe(first === "customer" ? "saved" : "booked"); expect((await later).status).toBe("changed");
     const after = await load(f); if (after.booked) expect(after.windows).toContainEqual(after.booked);
   });
-  it("customer cannot remove the booked window and assigned-worker notification links to booking", async () => {
+  it("customer cannot remove the booked window and its restoration sends no added-times notice", async () => {
     const f = await fixture(); await bookJobWindow(schema.db, f.worker, f.job.id, one, (await load(f)).revision, now);
     const customer = (await loadJobWindows(schema.db, f.customer, f.job.id))!; expect(customer.editable).toBe(true);
     expect((await saveJobWindows(schema.db, f.customer, f.job.id, { asap: false, anyTime: false, timeWindows: [two] }, customer.revision, now)).status).toBe("saved");
     expect((await load(f)).windows).toContainEqual(one);
-    const notification = (await notices(f.job.id)).find(n => n.type === "job.times_added")!; expect(notification.userId).toBe(f.worker.userId); expect(inboxItem(notification).href).toBe(`/jobs/${f.job.id}/book`);
+    expect((await notices(f.job.id)).filter(n => n.type === "job.times_added")).toHaveLength(0);
   });
+  it("notifies the assigned worker only for an actual new choice, with a booking link", async () => {
+    const f = await fixture();
+    const save = async (timeWindows: JobTimeWindow[]) => saveJobWindows(schema.db, f.customer, f.job.id, { asap: true, anyTime: false, timeWindows }, (await loadJobWindows(schema.db, f.customer, f.job.id))!.revision, now);
+    const added = { date: "2026-11-14", timeOfDay: "MORNING" as const };
+    expect((await save([one, two])).status).toBe("saved");
+    expect((await save([one])).status).toBe("saved");
+    expect((await notices(f.job.id)).filter(n => n.type === "job.times_added")).toHaveLength(0);
+    expect((await save([one, added])).status).toBe("saved");
+    expect((await save([one, added])).status).toBe("saved");
+    const notifications = (await notices(f.job.id)).filter(n => n.type === "job.times_added"); expect(notifications).toHaveLength(1);
+    expect(notifications[0].userId).toBe(f.worker.userId); expect(inboxItem(notifications[0]).href).toBe(`/jobs/${f.job.id}/book`);
+  });
+  it("distinguishes adding Any time from refreshing its dated rows on an ASAP-only save", async () => {
+    for (const anyTime of [true, false]) {
+      const f = await fixture(anyTime), before = (await loadJobWindows(schema.db, f.customer, f.job.id))!;
+      expect((await saveJobWindows(schema.db, f.customer, f.job.id, { asap: true, anyTime: true, timeWindows: [] }, before.revision, now)).status).toBe("saved");
+      expect((await notices(f.job.id)).filter(n => n.type === "job.times_added")).toHaveLength(anyTime ? 0 : 1);
+    }
+  });
+
 });

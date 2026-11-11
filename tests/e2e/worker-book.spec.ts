@@ -78,6 +78,11 @@ test.describe("real booking command journey", () => {
     await page.getByRole("link", { name: "Book a time", exact: true }).press("Enter"); await expect(page).toHaveURL(`${app}${next}/book`);
     expect(await page.locator("main").innerText()).not.toContain("146 Private Street");
     await page.getByRole("radio", { name: "Morning", exact: true }).focus(); await page.getByRole("radio", { name: "Morning", exact: true }).press("Space");
+    await page.context().setOffline(true); await expect(page.getByText("You’re offline.", { exact: true })).toHaveCount(1);
+    await expect(page.getByRole("button", { name: `Book ${date.label} · Morning`, exact: true })).toHaveAttribute("aria-disabled", "true");
+    await page.getByRole("button", { name: `Book ${date.label} · Morning`, exact: true }).press("Enter");
+    expect((await db.query("SELECT booked_time FROM jobs WHERE id=$1", [id])).rows[0].booked_time).toBeNull();
+    await page.context().setOffline(false); await expect(page.getByRole("button", { name: `Book ${date.label} · Morning`, exact: true })).toBeEnabled();
     await page.getByRole("button", { name: `Book ${date.label} · Morning`, exact: true }).press("Enter"); await expect(page).toHaveURL(`${app}/jobs/${id}`); await expect(page.getByRole("status").filter({ hasText: `Booked ${date.label} · Morning` })).toBeVisible();
     expect((await db.query("SELECT booked_time FROM jobs WHERE id=$1", [id])).rows[0].booked_time).toBe("MORNING");
     await page.reload(); await expect(page.getByRole("link", { name: "Book a time", exact: true })).toBeVisible(); await page.getByRole("link", { name: "Book a time", exact: true }).click(); await expect(page).toHaveURL(`${app}${next}/book`); await page.getByRole("radio", { name: "Afternoon", exact: true }).check(); await page.getByRole("button", { name: `Change to ${date.label} · Afternoon`, exact: true }).click(); await expect(page).toHaveURL(`${app}/jobs/${id}`); await expect(page.getByRole("status").filter({ hasText: `Changed to ${date.label} · Afternoon` })).toBeVisible();
