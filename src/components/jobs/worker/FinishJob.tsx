@@ -24,7 +24,7 @@ import type { AuthFailure } from "@/lib/auth/results";
 import { removeEvidencePhotoAction, saveFinishDraftAction, sendForSignOffAction } from "@/server/jobs/evidence-actions";
 import styles from "./finish-job.module.css";
 
-type DocumentState = { url: string; name: string; size?: number; status: UploadStatus };
+type DocumentState = { url: string; name: string; size?: number; status: UploadStatus; error?: string };
 type UploadKind = "photo" | "coc" | "receipt";
 type Props = { job: FinishView; preview?: FinishState; embedded?: boolean;
   save?: (id: string, fields: FinishFields) => Promise<FinishResult | AuthFailure>;
@@ -44,7 +44,7 @@ export function FinishJob(props: Props) { return <ToastProvider initial={props.p
 function FinishContent({ job, preview, embedded, save = saveFinishDraftAction, send = sendForSignOffAction, remove = removeEvidencePhotoAction, upload = uploadFile }: Props) {
   const router = useRouter(), session = useOptionalSessionExpired(), toast = useToast(), online = useOnlineStatus(), pending = useRef(false), lastIntent = useRef<"save" | "send">("save"), retryRemove = useRef<string | null>(null), form = useRef<HTMLFormElement>(null);
   const [storedFields, setFields] = useState(job.fields), [reasonEdited, setReasonEdited] = useState(false), [photos, setPhotos] = useState<PickedPhoto[]>(() => job.photos.map((photo, i) => ({ ...photo, status: preview === "uploading" && i === 0 ? "uploading" : preview === "upload-error" && i === 0 ? "failed" : "done", progress: .5 })));
-  const [coc, setCoc] = useState<DocumentState | null>(job.cocDocument ? { ...job.cocDocument, status: "done" } : null), [receipt, setReceipt] = useState<DocumentState | null>(job.receipt ? { ...job.receipt, status: "done" } : null);
+  const [coc, setCoc] = useState<DocumentState | null>(job.cocDocument ? { ...job.cocDocument, status: preview === "upload-error" ? "failed" : "done", ...(preview === "upload-error" ? { error: "Couldn’t upload this file. Try again." } : {}) } : null), [receipt, setReceipt] = useState<DocumentState | null>(job.receipt ? { ...job.receipt, status: "done" } : null);
   const [busy, setBusy] = useState<"save" | "send" | "remove" | null>(null), [sent, setSent] = useState(preview === "sent"), [eventId, setEventId] = useState("finish-preview");
   const [problems, setProblems] = useState<string[]>([]), [error, setError] = useState(preview === "error"), [storageError, setStorageError] = useState(false), [cleanupError, setCleanupError] = useState(false);
   const [errors, setErrors] = useState<FinishErrors>(() => preview === "field-errors" ? finishErrors(job.fields, { rule: job.rule, photoCount: job.photos.length, cocFile: Boolean(job.cocDocument), receipt: Boolean(job.receipt), budgetCents: job.budgetCents, category: job.category, extraWorkOpen: job.extraWorkOpen }) : {});
@@ -67,9 +67,8 @@ function FinishContent({ job, preview, embedded, save = saveFinishDraftAction, s
   function change<K extends keyof FinishFields>(key: K, value: FinishFields[K]) { if (key === "reason") setReasonEdited(true); setFields(previous => ({ ...previous, [key]: value })); setErrors(previous => ({ ...previous, [key]: undefined })); setError(false); }
   function clearReason() { try { return clearFinishReason(localStorage, job.ownerId, job.id); } catch { return false; } }
   function failedUpload(kind: UploadKind, id: string, message: string) {
-    if (kind === "photo") setPhotos(previous => previous.map(photo => photo.id === id ? { ...photo, status: "failed" } : photo));
-    else (kind === "coc" ? setCoc : setReceipt)(previous => previous ? { ...previous, status: "failed" } : null);
-    setProblems([message]);
+    if (kind === "photo") { setPhotos(previous => previous.map(photo => photo.id === id ? { ...photo, status: "failed" } : photo)); setProblems([message]); }
+    else (kind === "coc" ? setCoc : setReceipt)(previous => previous ? { ...previous, status: "failed", error: message } : null);
   }
   async function put(kind: UploadKind, file: File, id: string) {
     try {
@@ -92,14 +91,14 @@ function FinishContent({ job, preview, embedded, save = saveFinishDraftAction, s
   }
   function addDocument(kind: "coc" | "receipt", chosen: File[]) {
     const file = chosen[0]; if (!file || offline || saving || uploading || readOnly) return;
-    files.current.set(kind, file); (kind === "coc" ? setCoc : setReceipt)({ url: "", name: file.name, size: file.size, status: "uploading" }); setProblems([]); void put(kind, file, kind);
+    files.current.set(kind, file); (kind === "coc" ? setCoc : setReceipt)({ url: "", name: file.name, size: file.size, status: "uploading" }); void put(kind, file, kind);
   }
   function retry(kind: UploadKind, id: string) {
     if (offline || saving || uploading || readOnly) return;
-    const file = files.current.get(id); setProblems([]);
-    if (!file) { if (preview && kind === "photo") setPhotos(previous => previous.map(photo => photo.id === id ? { ...photo, status: "done" } : photo)); else setProblems(["Choose the file again."]); return; }
+    const file = files.current.get(id); if (kind === "photo") setProblems([]);
+    if (!file) { if (preview) { if (kind === "photo") setPhotos(previous => previous.map(photo => photo.id === id ? { ...photo, status: "done" } : photo)); else (kind === "coc" ? setCoc : setReceipt)(previous => previous ? { ...previous, status: "done", error: undefined } : null); } else failedUpload(kind, id, "Choose the file again."); return; }
     if (kind === "photo") setPhotos(previous => previous.map(photo => photo.id === id ? { ...photo, status: "uploading" } : photo));
-    else (kind === "coc" ? setCoc : setReceipt)(previous => previous ? { ...previous, status: "uploading" } : null);
+    else (kind === "coc" ? setCoc : setReceipt)(previous => previous ? { ...previous, status: "uploading", error: undefined } : null);
     void put(kind, file, id);
   }
   async function removePhoto(id: string) {
@@ -150,10 +149,10 @@ function FinishContent({ job, preview, embedded, save = saveFinishDraftAction, s
         <section aria-label={region("Photos of the finished work")}><h2 className={styles.label}>Photos of the finished work</h2>{readOnly ? photos.length ? <PhotoGallery photos={photos.map(photo => ({ src: photo.src, alt: photo.name }))} label={region("Finished work")} /> : <p>No photos added.</p> : <fieldset className={styles.picker} disabled={offline || saving || uploading}><legend className={styles.srOnly}>{region("Finished work photos")}</legend><PhotoPicker photos={photos} max={10} addLabel="Add" label={region("Finished work photos")} onAdd={addPhotos} onRemove={id => void removePhoto(id)} onRetry={id => retry("photo", id)} problems={problems} retryDisabled={offline || saving || uploading} /></fieldset>}{errors.photos && <p className={styles.error}>{errors.photos}</p>}</section>
         <div className={styles.cocFields}>
           {job.rule?.cocRequired && <TextField label="CoC number" name="cocNumber" required value={fields.cocNumber} maxLength={200} readOnly={readOnly} disabled={saving} error={errors.cocNumber} onChange={event => change("cocNumber", event.target.value)} />}
-          {job.rule?.cocFileRequired && <DocumentField label="CoC document" document={coc} error={errors.cocDocument} disabled={offline || saving || uploading} readOnly={readOnly} onFiles={files => addDocument("coc", files)} onRetry={() => retry("coc", "coc")} region={region("CoC document")} />}
+          {job.rule?.cocFileRequired && <DocumentField label="CoC document" document={coc} error={coc?.error ?? errors.cocDocument} disabled={offline || saving || uploading} readOnly={readOnly} onFiles={files => addDocument("coc", files)} onRetry={() => retry("coc", "coc")} region={region("CoC document")} />}
         </div>
         <TextAreaField label="Notes" name="notes" required={job.rule?.notesRequired} value={fields.notes} maxLength={4000} readOnly={readOnly} disabled={saving} error={errors.notes} onChange={event => change("notes", event.target.value)} />
-        {job.budgetCents > 0 && <section className={styles.materials} aria-label={region("Materials")}><MoneyField label={job.category === "ELECTRICAL" ? "Telfer spend" : "Materials spend"} name="spent" value={fields.spent} readOnly={readOnly} disabled={saving} aria-describedby={`${descriptionId}-budget`} error={errors.spent} onChange={event => change("spent", event.target.value)} /><p id={`${descriptionId}-budget`} className={styles.hint}>Budget {formatCents(job.budgetCents)}</p>{job.category !== "ELECTRICAL" && spent !== null && spent > 0 && <DocumentField label="Receipt" document={receipt} error={errors.receipt} disabled={offline || saving || uploading} readOnly={readOnly} onFiles={files => addDocument("receipt", files)} onRetry={() => retry("receipt", "receipt")} region={region("Receipt")} />}{over && <><TextAreaField label="Why was it over?" name="reason" required value={fields.reason} maxLength={2000} readOnly={readOnly} disabled={saving} error={errors.reason} aria-describedby={`${descriptionId}-office`} onChange={event => change("reason", event.target.value)} /><p id={`${descriptionId}-office`} className={styles.hint}>The office checks this before you’re paid.</p></>}</section>}
+        {job.budgetCents > 0 && <section className={styles.materials} aria-label={region("Materials")}><MoneyField label={job.category === "ELECTRICAL" ? "Telfer spend" : "Materials spend"} name="spent" value={fields.spent} readOnly={readOnly} disabled={saving} aria-describedby={`${descriptionId}-budget`} error={errors.spent} onChange={event => change("spent", event.target.value)} /><p id={`${descriptionId}-budget`} className={styles.hint}>Budget {formatCents(job.budgetCents)}</p>{job.category !== "ELECTRICAL" && spent !== null && spent > 0 && <DocumentField label="Receipt" document={receipt} error={receipt?.error ?? errors.receipt} disabled={offline || saving || uploading} readOnly={readOnly} onFiles={files => addDocument("receipt", files)} onRetry={() => retry("receipt", "receipt")} region={region("Receipt")} />}{over && <><TextAreaField label="Why was it over?" name="reason" required value={fields.reason} maxLength={2000} readOnly={readOnly} disabled={saving} error={errors.reason} aria-describedby={`${descriptionId}-office`} onChange={event => change("reason", event.target.value)} /><p id={`${descriptionId}-office`} className={styles.hint}>The office checks this before you’re paid.</p></>}</section>}
         <CheckboxField label={FINISH_DECLARATION} name="declaration" checked={fields.declaration} disabled={readOnly || saving} error={errors.declaration} onChange={event => change("declaration", event.target.checked)} />
         {!readOnly && <div className={styles.actions}><Button variant="secondary" type="button" loading={busy === "save"} disabled={offline || saving || uploading || failed} onClick={() => void submit("save")}>Save for later</Button><Button type="submit" loading={busy === "send" || preview === "sending"} disabled={job.extraWorkOpen ? "Extra work is waiting on the customer’s OK." : sendDisabled}>Send for sign-off</Button></div>}
       </form>

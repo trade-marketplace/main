@@ -34,6 +34,12 @@ describe("finish job form", () => {
     expect(html()).toContain("The work matches the job and any approved extras.");
     const body = html({ ...finishExample, readOnly: true }); expect(body).toContain("Sent for sign-off"); expect(body).not.toContain("Save for later"); expect(body).not.toContain("Send for sign-off"); expect(body).not.toContain("Remove ");
   });
+  it("keeps document upload failure text inline with its own file, separate from photo feedback", () => {
+    const body = renderToStaticMarkup(<FinishJob job={finishExample} preview="upload-error" />);
+    const document = body.match(/aria-label="CoC document"[^]*?<\/section>/)?.[0];
+    expect(document).toContain("Couldn’t upload this file. Try again.");
+    expect(body.match(/aria-label="Photos of the finished work"[^]*?<\/section>/)?.[0]).not.toContain("Couldn’t upload this file. Try again.");
+  });
   it.each([["72.50", 7250], ["0", 0], [" 2.05 ", 205], ["-1", null], ["1.001", null], ["1e2", null], ["NaN", null], ["21474836.48", null]])("validates money %s without floating dollar storage", (value, cents) => expect(finishSpend(value as string)).toBe(cents));
   it("keeps the bounded unsent reason only in its owner/job envelope, with honest storage failure", () => {
     const values = new Map<string, string>(), storage = { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => { values.set(key, value); }, removeItem: (key: string) => { values.delete(key); } };
