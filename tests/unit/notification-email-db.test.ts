@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Role } from "@/generated/prisma/client";
+import { money } from "@/lib/office-job";
 import { saveTrade } from "@/server/account/trades";
 import { notificationId } from "@/server/notifications/notify";
 import { createNotify } from "@/server/notifications/notify";
@@ -10,6 +11,7 @@ import { createNotificationEmailRule } from "@/server/notifications/email-rule";
 import type { ContactMailer } from "@/server/contact";
 import { transitionJob } from "@/server/jobs/status-machine";
 import { decideTradie, licenceReviewVersion } from "@/server/office/tradie-commands";
+import { publishOfficePrice, readOfficePricePreview } from "@/server/office/pricing-commands";
 
 import { testDatabaseUrl, useTestSchema } from "../support/test-db";
 
@@ -92,6 +94,45 @@ describe.skipIf(!testDatabaseUrl)("notification email delivery in PostgreSQL", (
     expect(await run(send)).toMatchObject({ due: 1, done: 0, skipped: 1 });
     expect(send).not.toHaveBeenCalled();
     expect((await schema.db.notification.findUniqueOrThrow({ where: { id: notice.id } })).channelsSent).toContain("EMAIL");
+    expect(await run(send)).toMatchObject({ due: 0, done: 0 });
+  });
+
+  it("coalesces real replacement-price publications into one current-price email across concurrent runs", async () => {
+    const customer = await person("CUSTOMER"), office = { ...await person("ADMIN"), role: "ADMIN" as const };
+    const job = await schema.db.job.create({ data: { customerId: customer.userId, category: "OTHER", title: "Sub wiring", description: "Replace the old wiring.", addressLine1: "1 Example Street", suburb: "Windsor", city: "Invercargill" } });
+    async function publish(hours: string) {
+      const fields = { jobId: job.id, hours, materials: "0.00" };
+      const preview = await readOfficePricePreview(schema.db, office, fields);
+      expect(preview.ok).toBe(true); if (!preview.ok) throw new Error("Expected a real price preview");
+      expect(await publishOfficePrice(schema.db, office, { ...fields, token: preview.preview.token, requestId: randomUUID() })).toEqual({ ok: true });
+    }
+    await publish("2");
+    await transitionJob(schema.db, { audit: async () => {}, notify: async () => {} }, { jobId: job.id, transition: "override", actor: office, to: "REVIEW", reason: "Replace the first published price." });
+    await publish("3");
+    const notices = await schema.db.notification.findMany({ where: { userId: customer.userId, type: "job.priced" } });
+    expect(notices).toHaveLength(2);
+    const latest = await schema.db.job.findUniqueOrThrow({ where: { id: job.id } }), send = mailer();
+    const results = await Promise.all([run(send), run(send)]);
+    expect(results.reduce((sum, result) => sum + result.done, 0)).toBe(1);
+    expect(send).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ subject: `Your price is ready · Sub wiring · ${money(latest.priceCents!)}` }), expect.any(String));
+    expect(notices.map(row => `${row.id}:EMAIL`)).toContain(send.mock.calls[0][1]);
+    expect(await schema.db.notification.count({ where: { id: { in: notices.map(row => row.id) }, channelsSent: { has: "EMAIL" } } })).toBe(2);
+    expect(await run(send)).toMatchObject({ due: 0, done: 0 });
+  });
+
+  it("coalesces pending sign-off notices after rework, even with equal notification clocks", async () => {
+    const { customer, worker, job } = await jobNotice("job.submitted"), office = { ...await person("ADMIN"), role: "ADMIN" as const };
+    const effects = { audit: async () => {}, notify: async () => {} };
+    await transitionJob(schema.db, effects, { jobId: job.id, transition: "override", actor: office, to: "ASSIGNED", reason: "The worker needs to finish the rework." });
+    await schema.db.jobMaterials.create({ data: { jobId: job.id, budgetCents: 0, spentCents: 0, spentAt: new Date() } });
+    await schema.db.completionEvidence.create({ data: { jobId: job.id, workerId: worker.userId, cocNumber: "TEST-110", cocPath: `evidence/${job.id}/certificate.pdf`, declaration: "I did this work.", declaredAt: new Date(), submittedAt: new Date() } });
+    await transitionJob(schema.db, effects, { jobId: job.id, transition: "submit", actor: { userId: worker.userId, role: "TRADIE" } });
+    await createNotify(schema.db)("job.submitted", [customer.userId], { eventId: `job.submitted:${job.id}:${randomUUID()}`, payload: { jobId: job.id, jobNumber: job.jobNumber } });
+    await schema.db.notification.updateMany({ where: { userId: customer.userId, type: "job.submitted" }, data: { createdAt: new Date() } });
+    const send = mailer(), results = await Promise.all([run(send), run(send)]);
+    expect(results.reduce((sum, result) => sum + result.done, 0)).toBe(1);
+    expect(send).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ subject: "Jack’s finished. All good? · Please check within 48 hours" }), expect.any(String));
+    expect(await schema.db.notification.count({ where: { userId: customer.userId, type: "job.submitted", channelsSent: { has: "EMAIL" } } })).toBe(2);
     expect(await run(send)).toMatchObject({ due: 0, done: 0 });
   });
 

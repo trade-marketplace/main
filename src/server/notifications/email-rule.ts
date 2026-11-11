@@ -49,6 +49,11 @@ async function freshMessage(tx: Tx, event: NotificationEmailEvent, row: { id: st
   if (event === "licence.verified") return licenceFacts(tx, row.id, row.userId, to);
   const payload = jobPayload.safeParse(row.payload);
   if (!payload.success) return null;
+  // Coalesce existing notices for the same recipient/event/job, including ones already claimed.
+  // This order selects one delivery of fresh facts; it does not prove a producer transaction's origin.
+  const latest = await tx.notification.findFirst({ where: { userId: row.userId, type: event, payload: { path: ["jobId"], equals: payload.data.jobId } },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }], select: { id: true } });
+  if (latest?.id !== row.id) return null;
   const source = await tx.job.findUnique({ where: { id: payload.data.jobId }, select: JOB_DETAIL_SELECT });
   const view = source && customerJobView({ userId: row.userId, role: "CUSTOMER" }, source);
   if (!view || view.status !== (event === "job.priced" ? "PRICED" : "SUBMITTED")) return null;

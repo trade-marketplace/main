@@ -74,7 +74,7 @@ function store() {
   const source = { id, customerId: person, workerId: null, title: job.title, jobNumber: job.jobNumber, status: "PRICED", category: "ELECTRICAL", suburb: "Windsor", city: "Invercargill", priceCents: 37200, asap: false,
     createdAt: now, updatedAt: now, statusHistory: [], description: "A job", addressLine1: "1 Example Street", addressLine2: null, postcode: null, accessNotes: null,
     anyTime: true, timeWindows: [], bookedDate: null, bookedTime: null, photos: [], photosNeedCheck: false, worker: null, pricing: null };
-  const notification = { findMany: vi.fn(async (args: { where: { type: string } }) => args.where.type === "job.priced" ? [{ id }] : []), findUnique: vi.fn(async () => current), updateMany: vi.fn(async () => ({ count: 1 })) };
+  const notification = { findMany: vi.fn(async (args: { where: { type: string } }) => args.where.type === "job.priced" ? [{ id }] : []), findFirst: vi.fn(async () => ({ id })), findUnique: vi.fn(async () => current), updateMany: vi.fn(async () => ({ count: 1 })) };
   const tx = { notification, job: { findUnique: vi.fn(async () => source) } };
   const db = { ...tx, $transaction: vi.fn(async (fn: (value: typeof tx) => unknown) => fn(tx)), $executeRaw: vi.fn(async () => 1) };
   return { db: db as unknown as PrismaClient, notification, execute: db.$executeRaw };
