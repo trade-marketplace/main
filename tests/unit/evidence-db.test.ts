@@ -115,7 +115,11 @@ describe.skipIf(!testDatabaseUrl)("finish evidence transactions", () => {
   });
   it("signs photos only for the current job worker, its customer and office, excluding public-board workers", async () => {
     const f = await fixture(), other = await person("TRADIE"); await addPhoto(f);
-    for (const viewer of [f.viewer, { userId: f.customer.id, role: "CUSTOMER" as const }, { userId: f.office.id, role: "ADMIN" as const }]) expect(await evidencePhotoUrls(schema.db, viewer, f.job.id, f.deps)).toHaveLength(1);
+    for (const viewer of [f.viewer, { userId: f.office.id, role: "ADMIN" as const }]) expect(await evidencePhotoUrls(schema.db, viewer, f.job.id, f.deps)).toHaveLength(1);
+    const customer = { userId: f.customer.id, role: "CUSTOMER" as const };
+    expect(await evidencePhotoUrls(schema.db, customer, f.job.id, f.deps)).toBeNull();
+    expect(await sendForSignOff(schema.db, f.viewer, f.job.id, ready(), f.deps)).toEqual({ status: "sent" });
+    expect(await evidencePhotoUrls(schema.db, customer, f.job.id, f.deps)).toHaveLength(1);
     expect(await evidencePhotoUrls(schema.db, { userId: other.id, role: "TRADIE" }, f.job.id, f.deps)).toBeNull();
     await schema.db.job.update({ where: { id: f.job.id }, data: { status: "BOOKABLE" } });
     expect(await evidencePhotoUrls(schema.db, { userId: other.id, role: "TRADIE" }, f.job.id, f.deps)).toBeNull(); expect(await loadFinish(schema.db, f.viewer, f.job.id, f.deps)).toBeNull();

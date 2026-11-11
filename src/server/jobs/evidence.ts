@@ -108,8 +108,8 @@ export async function sendForSignOff(db: PrismaClient, viewer: JobViewer, jobId:
 export async function evidencePhotoUrls(db: PrismaClient, viewer: JobViewer, jobId: string, deps: Deps = {}) {
   if (!z.uuid().safeParse(jobId).success) return null;
   const source = await db.$transaction(async tx => {
-    const [person, job] = await Promise.all([tx.profile.findUnique({ where: { id: viewer.userId }, select: { role: true } }), tx.job.findUnique({ where: { id: jobId }, select: { customerId: true, workerId: true, status: true, evidence: { select: { photos: { select: { id: true, path: true }, orderBy: { position: "asc" } } } } } })]);
-    if (person?.role !== viewer.role || !job || !(viewer.role === "ADMIN" || viewer.role === "CUSTOMER" && job.customerId === viewer.userId || viewer.role === "TRADIE" && job.workerId === viewer.userId && ["ASSIGNED", "SUBMITTED", "COMPLETED", "CANCEL_REVIEW"].includes(job.status))) return null;
+    const [person, job] = await Promise.all([tx.profile.findUnique({ where: { id: viewer.userId }, select: { role: true } }), tx.job.findUnique({ where: { id: jobId }, select: { customerId: true, workerId: true, status: true, evidence: { select: { submittedAt: true, photos: { select: { id: true, path: true }, orderBy: { position: "asc" } } } } } })]);
+    if (person?.role !== viewer.role || !job || !(viewer.role === "ADMIN" || viewer.role === "CUSTOMER" && job.customerId === viewer.userId && Boolean(job.evidence?.submittedAt) || viewer.role === "TRADIE" && job.workerId === viewer.userId && ["ASSIGNED", "SUBMITTED", "COMPLETED", "CANCEL_REVIEW"].includes(job.status))) return null;
     return job.evidence?.photos ?? [];
   });
   if (!source) return null;
