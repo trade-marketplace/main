@@ -82,6 +82,17 @@ describe.skipIf(!testDatabaseUrl)("notification email delivery in PostgreSQL", (
     expect(send).toHaveBeenCalledExactlyOnceWith(expect.any(Object), `${notice.id}:EMAIL`);
   });
 
+  it.each(["job.priced", "job.submitted"] as const)("delivers %s once for a stored 200-character edited title", async event => {
+    const { job, notice } = await jobNotice(event), title = "a".repeat(200);
+    await schema.db.job.update({ where: { id: job.id }, data: { title } });
+    const send = mailer();
+    expect(await run(send)).toMatchObject({ due: 1, done: 1, skipped: 0, failed: 0 });
+    expect(send).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ subject: event === "job.priced" ? `Your price is ready · ${title} · $372.00` : "Jack’s finished. All good? · Please check within 48 hours" }), `${notice.id}:EMAIL`);
+    expect((await schema.db.notification.findUniqueOrThrow({ where: { id: notice.id } })).channelsSent).toContain("EMAIL");
+    expect(await run(send)).toMatchObject({ due: 0, done: 0 });
+    expect(send).toHaveBeenCalledTimes(1);
+  });
+
   it.each(["job.priced", "job.submitted"] as const)("skips %s when the customer has already acted before the scheduler", async event => {
     const { customer, job, notice } = await jobNotice(event);
     const effects = { audit: async () => {}, notify: async () => {} };

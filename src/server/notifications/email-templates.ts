@@ -8,7 +8,7 @@ import { TRADE_LABELS } from "@/lib/office-jobs";
 import { tokenColour } from "@/server/brand-colours";
 import { CONTACT_SENDER, type ContactEmail } from "@/server/contact";
 
-const job = { to: z.email(), jobId: z.uuid(), jobNumber: z.number().int().positive(), title: z.string().min(1).max(100) };
+const job = { to: z.email(), jobId: z.uuid(), jobNumber: z.number().int().positive(), title: z.string().min(1).max(200) };
 const inputs = {
   "job.priced": z.object({ ...job, priceCents: z.number().int().nonnegative() }).strict(),
   "job.submitted": z.object({ ...job, firstName: z.string().min(1).max(100), autoReleaseHours: z.number().int().positive() }).strict(),

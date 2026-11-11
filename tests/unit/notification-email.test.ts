@@ -36,6 +36,16 @@ describe("G05 notification email words and privacy", () => {
     expect(changed.html).not.toMatch(/workerGrossCents|holidayPay|onCost/);
   });
 
+  it.each([101, 200])("accepts supported edited job titles of %i characters in both customer emails", length => {
+    const title = "a".repeat(length);
+    const priced = notificationEmail("job.priced", { ...job, title, priceCents: 37200 });
+    expect(priced.subject).toBe(`Your price is ready · ${title} · $372.00`);
+    expect(priced.text).toContain(`Fixed price for ${title}, incl. GST. Saying no is free.`);
+    const submitted = notificationEmail("job.submitted", { ...job, title, firstName: "Jack", autoReleaseHours: 48 });
+    expect(submitted.subject).toBe("Jack’s finished. All good? · Please check within 48 hours");
+    expect(submitted.html).toContain(">Check &amp; rate</a>");
+  });
+
   it("keeps licence-checked words, Amber button and customer prices out of the tradie email", () => {
     const value = notificationEmail("licence.verified", { to: "tradie@example.test", trade: "ELECTRICAL" });
     expect(value.subject).toBe("Your licence is checked · Electrical · you can claim jobs now");
