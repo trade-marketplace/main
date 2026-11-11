@@ -19,6 +19,6 @@ export default async function WorkAreaPage({ searchParams }: { searchParams: Pro
   try { snapshot = await loadWorkArea(getDb(), viewer); } catch { /* Safe retry surface. */ }
   return <AccountSettings role="TRADIE" active="/profile/area">
     {destination.back && <TextLink href={destination.back}>Back to jobs</TextLink>}
-    <WorkArea key={viewer.userId} initial={snapshot} accessToken={publicMapboxToken()} />
+    <WorkArea key={viewer.userId} initial={snapshot} accessToken={publicMapboxToken()} next={destination.back} />
   </AccountSettings>;
 }

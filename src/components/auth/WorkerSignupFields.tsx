@@ -6,6 +6,7 @@ import { AddressField } from "@/components/forms/AddressField";
 import { ChipGroup } from "@/components/forms/ChoiceFields";
 import { TextField } from "@/components/forms/TextFields";
 import { Banner } from "@/components/overlays/Banner";
+import { Button } from "@/components/Button";
 import { SIGNUP_TRADES, type WorkerSignupField } from "@/lib/auth/worker-signup";
 import { searchSignupAreasAction } from "@/server/auth/actions";
 import type { SignupAreaResult, SignupAreaSuggestion } from "@/server/auth/work-area";
@@ -41,13 +42,16 @@ export function WorkerSignupFields({ values = {}, errors = {}, attempt, previewA
 }
 
 export type WorkerAreaValue = { baseSuburb: string; radiusKm: string | number; point: { lat: number; lng: number } | null };
-export function WorkerAreaFields({ value, onChange, errors = {}, attempt = 0, disabled, previewAreaState, previewSuggestions, search = searchSignupAreasAction }: {
+export function WorkerAreaFields({ value, onChange, errors = {}, attempt = 0, disabled, previewAreaState, previewSuggestions, search = searchSignupAreasAction, requireSelected = false }: {
   value: WorkerAreaValue; onChange: (value: WorkerAreaValue) => void; errors?: Partial<Record<WorkerSignupField, string>>; attempt?: number; disabled?: boolean;
   previewAreaState?: "loading" | "unavailable"; previewSuggestions?: SignupAreaSuggestion[]; search?: (query: string) => Promise<SignupAreaResult>;
+  requireSelected?: boolean;
 }) {
   const suburb = value.baseSuburb, radius = String(value.radiusKm);
   const chosen = value.point;
   const [lookup, setLookup] = useState<{ status: "idle" | "loading" | "ready" | "error"; result?: SignupAreaResult }>({ status: "idle" });
+  const [retry, setRetry] = useState(0);
+  const lastRetry = useRef(0);
   const request = useRef(0);
   const areaRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
@@ -56,7 +60,9 @@ export function WorkerAreaFields({ value, onChange, errors = {}, attempt = 0, di
 
   useEffect(() => {
     const sequence = ++request.current;
-    if (suburb.trim().length < 3 || chosen !== null || previewAreaState || previewSuggestions) return;
+    const retrying = retry !== lastRetry.current;
+    lastRetry.current = retry;
+    if (suburb.trim().length < 3 || chosen !== null && !retrying || previewAreaState && !retry || previewSuggestions) return;
     const timer = setTimeout(async () => {
       setLookup({ status: "loading" });
       try {
@@ -67,15 +73,17 @@ export function WorkerAreaFields({ value, onChange, errors = {}, attempt = 0, di
       }
     }, 300);
     return () => clearTimeout(timer);
-  }, [suburb, chosen, previewAreaState, previewSuggestions, search]);
+  }, [suburb, chosen, previewAreaState, previewSuggestions, search, retry]);
 
   const results = previewSuggestions ?? (lookup.result?.mode === "search" ? lookup.result.suggestions : []);
-  const status = previewAreaState === "unavailable" ? "error" : previewAreaState === "loading" ? "loading" : previewSuggestions ? "ready" : suburb.length < 3 ? "idle" : lookup.status;
+  const noMatches = requireSelected && lookup.status === "ready" && results.length === 0;
+  const status = previewAreaState === "unavailable" && !retry ? "error" : previewAreaState === "loading" && !retry ? "loading" : previewSuggestions ? "ready" : suburb.length < 3 ? "idle" : noMatches ? "error" : lookup.status;
   return <>
       <AddressField name="baseSuburb" label="Where do you work?" placeholder="Suburb or town" value={suburb} disabled={disabled} required maxLength={120}
-        error={errors.baseSuburb} ref={areaRef} suggestions={results} status={status} lookupError="Suburb search is unavailable. Type your suburb or town by hand."
+        error={errors.baseSuburb} ref={areaRef} suggestions={results} status={status} lookupError={noMatches ? "No suburb found. Try again or search another suburb." : requireSelected ? "Suburb search is unavailable. Try again to choose a suburb." : "Suburb search is unavailable. Type your suburb or town by hand."}
         onQueryChange={(query) => { onChange({ ...value, baseSuburb: query, point: null }); setLookup({ status: "idle" }); }}
         onSelect={(suggestion) => { const selected = results.find(place => place.id === suggestion.id); if (selected) onChange({ ...value, baseSuburb: selected.label, point: selected.point }); }} />
+      {requireSelected && status === "error" && <div><Button variant="tertiary" disabled={disabled} onClick={() => { setLookup({ status: "loading" }); setRetry(current => current + 1); }}>Try again</Button></div>}
       <input type="hidden" name="areaLat" value={chosen ? String(chosen.lat) : ""} />
       <input type="hidden" name="areaLng" value={chosen ? String(chosen.lng) : ""} />
       <ChipGroup key={`radius-${attempt}`} name="radiusKm" label="Travel radius" disabled={disabled} options={[10, 25, 50].map((km) => ({ value: String(km), label: `${km} km` }))}

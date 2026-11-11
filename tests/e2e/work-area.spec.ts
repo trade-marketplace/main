@@ -19,14 +19,27 @@ for (const viewport of VIEWPORTS) test(`every work area state fits and passes ax
   for (const state of [...WORK_AREA_STATES, "gallery"]) {
     await page.goto(at(state)); await expect(page.getByRole("heading", { name: "Work area", exact: true }).first()).toBeVisible();
     if (state === "saved") await expect(page.getByText("Saved.", { exact: true })).toBeVisible();
-    if (state === "field-error") await expect(page.getByText("Choose the suburb again, or type it by hand.")).toBeVisible();
-    if (state === "search-unavailable") await expect(page.getByText("Suburb search is unavailable. Type your suburb or town by hand.", { exact: true })).toBeVisible();
+    if (state === "field-error") await expect(page.getByText("Choose a suburb from the search results.")).toBeVisible();
+    if (state === "search-unavailable") await expect(page.getByText("Suburb search is unavailable. Try again to choose a suburb.", { exact: true })).toBeVisible();
     if (state === "paused") await expect(page.getByRole("switch")).toBeDisabled();
     if (state === "from-jobs") await expect(page.getByRole("link", { name: "Back to jobs", exact: true })).toBeVisible();
     if (state === "unavailable-off") await expect(page.getByText("You won’t get job alerts.", { exact: true })).toBeVisible();
     if (state === "load-error") await expect(page.getByRole("button", { name: "Try again", exact: true })).toBeVisible();
     expect(await fits(page), state).toBe(true); await expectNoA11yViolations(page);
   }
+});
+
+test("failed suburb lookup retries and can select a point without advertising manual entry", async ({ page }) => {
+  await page.goto(at("search-unavailable")); await page.getByRole("combobox").fill("Windsor");
+  await expect(page.getByText(/Type your suburb or town by hand/)).toHaveCount(0);
+  await page.getByRole("button", { name: "Try again", exact: true }).click();
+  await page.getByRole("combobox").focus(); await expect(page.getByRole("option", { name: "Windsor, Invercargill" })).toBeVisible();
+  await page.keyboard.press("ArrowDown"); await page.keyboard.press("Enter");
+  await page.getByRole("button", { name: "Save changes", exact: true }).click(); await expect(page.getByText("Saved.", { exact: true })).toBeVisible();
+  await page.getByRole("combobox").fill("No matches"); await page.getByRole("button", { name: "Try again", exact: true }).click();
+  await expect(page.getByText("No suburb found. Try again or search another suburb.", { exact: true })).toBeVisible();
+  await expect(page.getByRole("combobox")).toHaveValue("No matches");
+  await expectNoA11yViolations(page);
 });
 
 test("keyboard radius save, selected suburb validation, availability and failed saves preserve the draft", async ({ page }) => {
@@ -41,7 +54,7 @@ test("keyboard radius save, selected suburb validation, availability and failed 
   await expect(page.getByText("You won’t get job alerts.", { exact: true })).toBeVisible();
   await expect(page.getByRole("switch")).toBeFocused();
   await page.getByRole("combobox").fill("Windsor"); await save.click();
-  await expect(page.getByText("Choose the suburb again, or type it by hand.")).toBeVisible();
+  await expect(page.getByText("Choose a suburb from the search results.")).toBeVisible();
   await expect(page.getByRole("combobox")).toBeFocused();
   await expect(page.getByRole("option", { name: "Windsor, Invercargill" })).toBeVisible();
   await page.keyboard.press("ArrowDown"); await page.keyboard.press("Enter"); await save.click();
@@ -95,14 +108,22 @@ test.describe("real work area journey", () => {
     await expect(page.getByRole("heading", { name: "Welcome, Jack. Let’s get you working.", exact: true })).toBeVisible();
     await page.goto(`${app}/jobs?view=all&trade=electrical&distance=10`); await page.getByRole("link", { name: "Change it", exact: true }).click();
     await expect(page).toHaveURL(`${app}/profile/area?next=%2Fjobs%3Ftrade%3Delectrical%26distance%3D10%26view%3Dall`);
+    await page.getByRole("link", { name: "Notification settings", exact: true }).click();
+    await expect(page).toHaveURL(`${app}/profile/notifications?next=%2Fjobs%3Ftrade%3Delectrical%26distance%3D10%26view%3Dall`);
+    await page.getByRole("link", { name: "Back to jobs", exact: true }).click(); await expect(page).toHaveURL(`${app}/jobs?trade=electrical&distance=10&view=all`);
+    await page.getByRole("link", { name: "Change it", exact: true }).click(); await page.getByRole("region", { name: "Your trades", exact: true }).getByRole("link", { name: "Trades & licences", exact: true }).click();
+    await expect(page).toHaveURL(`${app}/profile/trades?next=%2Fjobs%3Ftrade%3Delectrical%26distance%3D10%26view%3Dall`);
+    await page.getByRole("link", { name: "Back to jobs", exact: true }).click(); await expect(page).toHaveURL(`${app}/jobs?trade=electrical&distance=10&view=all`);
+    await page.getByRole("link", { name: "Change it", exact: true }).click();
     await page.getByRole("link", { name: "Back to jobs", exact: true }).click(); await expect(page).toHaveURL(`${app}/jobs?trade=electrical&distance=10&view=all`);
     await db.query("UPDATE worker_profiles SET area_lat=NULL,area_lng=NULL WHERE user_id=$1", [me]);
     await page.reload(); await page.getByRole("link", { name: "Set your work area", exact: true }).click();
     await expect(page.getByRole("heading", { level: 1, name: "Work area", exact: true })).toBeVisible();
+    await expect(page.getByRole("switch")).toBeDisabled(); await expect(page.getByText("Save your work area before turning on job alerts.", { exact: true })).toBeVisible();
     await page.getByRole("link", { name: "Back to jobs", exact: true }).click(); await expect(page).toHaveURL(`${app}/jobs?trade=electrical&distance=10&view=all`);
     await page.goto(`${app}/profile/area`); await page.getByRole("link", { name: "Notification settings", exact: true }).click();
     await expect(page.getByRole("heading", { level: 1, name: "Notifications", exact: true })).toBeVisible(); await page.goBack();
-    await page.getByRole("link", { name: "Trades & licences", exact: true }).last().click();
+    await page.getByRole("region", { name: "Your trades", exact: true }).getByRole("link", { name: "Trades & licences", exact: true }).click();
     await expect(page.getByRole("heading", { level: 1, name: "Trades & licences", exact: true })).toBeVisible(); await page.goBack();
     await expect(page.getByRole("heading", { level: 1, name: "Work area", exact: true })).toBeVisible(); await expectNoA11yViolations(page);
   });
@@ -113,5 +134,20 @@ test.describe("real work area journey", () => {
     await page.goto(`${app}/profile/area`);
     await expect(page).toHaveURL(`${app}/`);
     await expect(page.getByRole("heading", { level: 1, name: "Work area", exact: true })).toHaveCount(0);
+  });
+  test("expired sessions recover and resend both area and availability saves without losing the draft", async ({ page }) => {
+    await login(page); await page.getByRole("radio", { name: "25 km", exact: true }).focus(); await page.keyboard.press("ArrowRight");
+    await page.context().clearCookies(); await page.getByRole("button", { name: "Save changes", exact: true }).click();
+    const recover = async () => {
+      await expect(page.getByRole("dialog", { name: "You’ve been logged out" })).toBeVisible();
+      await page.getByRole("button", { name: "Log in again", exact: true }).click(); await page.getByLabel("Password", { exact: true }).fill(SECURITY_PASSWORD);
+      await page.getByRole("button", { name: "Log in", exact: true }).click(); await expect(page.getByRole("dialog")).toHaveCount(0);
+      await expect(page.getByText("Saved.", { exact: true })).toBeVisible();
+    };
+    await recover(); await expect(page.getByRole("radio", { name: "50 km", exact: true })).toBeChecked();
+    expect((await db.query("SELECT area_radius_km FROM worker_profiles WHERE user_id=$1", [me])).rows[0].area_radius_km).toBe(50);
+    await page.context().clearCookies(); await page.getByRole("switch").press("Space"); await recover(); await expect(page.getByRole("switch")).not.toBeChecked();
+    expect((await db.query("SELECT available FROM worker_profiles WHERE user_id=$1", [me])).rows[0].available).toBe(false);
+    await expectNoA11yViolations(page);
   });
 });

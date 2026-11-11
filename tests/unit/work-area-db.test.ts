@@ -64,4 +64,15 @@ describe.skipIf(!testDatabaseUrl)("work area commands (Postgres)", () => {
     expect(snapshot?.trades.sort()).toEqual(["ELECTRICAL", "OTHER"]);
     expect(JSON.stringify(snapshot)).not.toContain("Private licence number");
   });
+  it("refuses enabling availability without a saved point, permits turning it off, then enables after an area save", async () => {
+    const viewer = await person();
+    await schema.db.workerProfile.update({ where: { userId: viewer.userId }, data: { areaLat: null, areaLng: null } });
+    expect(await setAvailable(schema.db, viewer, true)).toMatchObject({ ok: false, error: "invalid", fields: { baseSuburb: expect.any(String) } });
+    expect(await schema.db.auditLog.count({ where: { actorId: viewer.userId } })).toBe(0);
+    expect(await setAvailable(schema.db, viewer, false)).toMatchObject({ ok: true, snapshot: { available: false } });
+    expect(await setAvailable(schema.db, viewer, true)).toMatchObject({ ok: false, error: "invalid" });
+    expect(await schema.db.auditLog.count({ where: { actorId: viewer.userId } })).toBe(1);
+    await saveWorkArea(schema.db, viewer, input);
+    expect(await setAvailable(schema.db, viewer, true)).toMatchObject({ ok: true, snapshot: { available: true } });
+  });
 });

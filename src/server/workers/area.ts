@@ -38,6 +38,10 @@ export async function setAvailable(db: PrismaClient, viewer: AreaViewer, availab
   return db.$transaction(async tx => {
     const current = await loadWorkArea(tx, viewer);
     if (!current || current.paused) return { ok: false as const, error: "forbidden" as const };
+    if (available) {
+      const area = parseWorkArea(current);
+      if (!area.ok) return { ok: false as const, error: "invalid" as const, fields: area.fields };
+    }
     await tx.workerProfile.update({ where: { userId: viewer.userId }, data: { available } });
     await createAudit(tx)(viewer, "worker.availability_changed", { type: "worker_profiles", id: viewer.userId }, { available: current.available }, { available });
     return { ok: true as const, snapshot: { ...current, available } };
