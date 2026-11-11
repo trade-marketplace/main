@@ -173,4 +173,20 @@ test.describe("real work area journey", () => {
     expect((await db.query("SELECT available FROM worker_profiles WHERE user_id=$1", [me])).rows[0].available).toBe(false);
     await expectNoA11yViolations(page);
   });
+  test("expired suburb lookup recovers, retries the current query, and saves the selected point", async ({ page }) => {
+    test.skip(process.env.WORK_AREA_E2E_LOOKUP_FIXTURE !== "1", "Needs the external local Mapbox stand-in, never a live token.");
+    await login(page); await page.getByRole("radio", { name: "25 km", exact: true }).focus(); await page.keyboard.press("ArrowRight");
+    await page.context().clearCookies(); await page.getByRole("combobox").fill("Windsor");
+    await expect(page.getByRole("dialog", { name: "You’ve been logged out" })).toBeVisible();
+    await page.getByRole("button", { name: "Log in again", exact: true }).click(); await page.getByLabel("Password", { exact: true }).fill(SECURITY_PASSWORD);
+    await page.getByRole("button", { name: "Log in", exact: true }).click(); await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(page.getByRole("combobox")).toHaveValue("Windsor");
+    await expect(page.getByRole("radio", { name: "50 km", exact: true })).toBeChecked();
+    await expect(page.getByText("1 suggestions. Use up and down arrows, then Enter to choose.", { exact: true })).toBeVisible();
+    await page.getByRole("combobox").press("ArrowDown"); await expect(page.getByRole("option", { name: "Windsor, Invercargill", exact: true })).toBeVisible(); await page.keyboard.press("Enter");
+    await page.getByRole("button", { name: "Save changes", exact: true }).click(); await expect(page.getByText("Saved.", { exact: true })).toBeVisible();
+    expect((await db.query("SELECT base_suburb,area_radius_km,area_lat,area_lng FROM worker_profiles WHERE user_id=$1", [me])).rows[0]).toMatchObject({ base_suburb: "Windsor, Invercargill", area_radius_km: 50, area_lat: -46.4, area_lng: 168.36 });
+    await expect(page.getByRole("navigation", { name: "Account settings", exact: true }).getByRole("link", { name: "Notifications", exact: true })).toHaveAttribute("href", "/profile/notifications");
+    await expectNoA11yViolations(page);
+  });
 });

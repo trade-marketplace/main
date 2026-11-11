@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/Button";
 import { TextLink } from "@/components/TextLink";
@@ -24,11 +24,6 @@ import styles from "./work-area.module.css";
 type Props = { initial: WorkAreaSnapshot | null; accessToken?: string | null; save?: WorkAreaSave; setAvailable?: AvailabilitySave; preview?: WorkAreaState;
   search?: (query: string) => Promise<SignupAreaResult>; suggestions?: SignupAreaSuggestion[]; onRetry?: () => void; next?: string | null };
 
-const searchArea = async (query: string): Promise<SignupAreaResult> => {
-  const result = await searchWorkAreaAction(query);
-  return "mode" in result ? result : { mode: "manual", reason: "unavailable" };
-};
-
 export function WorkAreaLoading() {
   return <><h1 className={account.title}>Work area</h1><LoadingRegion loading label="Loading work area" skeleton={<div className={account.sections}>
     {[0, 1, 2, 3].map(item => <div className={`${account.card} ${styles.card}`} key={item}><Skeleton width="50%" height={24} /><Skeleton height={48} /></div>)}
@@ -39,10 +34,19 @@ export function WorkArea(props: Props) {
   return <ToastProvider><WorkAreaForm key={props.initial ? "loaded" : "error"} {...props} /></ToastProvider>;
 }
 
-function WorkAreaForm({ initial, accessToken = null, save = saveWorkAreaAction, setAvailable = setAvailableAction, preview, search = searchArea, suggestions, onRetry, next }: Props) {
+function WorkAreaForm({ initial, accessToken = null, save = saveWorkAreaAction, setAvailable = setAvailableAction, preview, search, suggestions, onRetry, next }: Props) {
   const id = useId();
   const router = useRouter(), toast = useToast(), form = useRef<HTMLFormElement>(null);
   const session = useOptionalSessionExpired();
+  const [lookupRound, setLookupRound] = useState(0);
+  const searchArea = useCallback(async (query: string): Promise<SignupAreaResult> => {
+    const result = await searchWorkAreaAction(query);
+    if ("mode" in result) return result;
+    // Retry the field's current query after reauthentication.
+    // Its existing request sequence discards any answer for an older query.
+    session?.check(result, { resend: () => setLookupRound(current => current + 1) });
+    return { mode: "manual", reason: "unavailable" };
+  }, [session]);
   const [saved, setSaved] = useState(initial);
   const [value, setValue] = useState<WorkAreaInput>(() => ({ baseSuburb: initial?.baseSuburb ?? "", point: initial?.point ?? null,
     radiusKm: preview === "changed" || preview === "saving" || preview === "error" ? 50 : initial?.radiusKm ?? 25 }));
@@ -102,7 +106,7 @@ function WorkAreaForm({ initial, accessToken = null, save = saveWorkAreaAction, 
       <form ref={form} className={account.form} aria-label="Work area" noValidate aria-busy={busy === "area" || preview === "saving"} onSubmit={event => { event.preventDefault(); void submit(); }}>
         {failure && <InlineError message="Couldn’t save." onRetry={online && !locked ? submit : undefined} />}
         <WorkerAreaFields value={value} onChange={next => { setValue(next); setErrors({}); }} errors={errors} disabled={locked} requireSelected
-          previewAreaState={preview === "search-unavailable" ? "unavailable" : undefined} previewSuggestions={suggestions} search={search} />
+          previewAreaState={preview === "search-unavailable" ? "unavailable" : undefined} previewSuggestions={suggestions} search={search ?? searchArea} lookupAttempt={lookupRound} />
         <AreaMap key={`${value.baseSuburb}-${value.radiusKm}-${value.point?.lat}-${value.point?.lng}`} value={value} accessToken={preview === "map-unavailable" ? null : accessToken} />
         <div><Button type="submit" loading={busy === "area" || preview === "saving"} disabled={locked || !changed}>Save changes</Button></div>
       </form>

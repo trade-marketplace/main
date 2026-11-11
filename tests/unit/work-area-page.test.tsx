@@ -1,10 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 import WorkAreaPage from "@/app/(app)/profile/area/page";
+import WorkAreaLoading from "@/app/(app)/profile/area/loading";
 import { requireUser } from "@/server/auth/guard";
 import { loadWorkArea } from "@/server/workers/area";
 
 vi.mock("@/server/auth/guard", () => ({ requireUser: vi.fn() }));
-vi.mock("@/components/account/WorkArea", () => ({ WorkArea: () => null }));
+vi.mock("@/components/account/WorkArea", () => ({ WorkArea: () => null, WorkAreaLoading: () => null }));
 vi.mock("@/server/db", () => ({ getDb: () => ({}) }));
 vi.mock("@/server/workers/area", () => ({ loadWorkArea: vi.fn(async () => null) }));
 describe("work area route", () => {
@@ -17,5 +18,9 @@ describe("work area route", () => {
     vi.mocked(requireUser).mockResolvedValue({ userId: "tradie", role: "TRADIE", email: "tradie@example.test", firstName: "Test", emailVerified: true });
     await WorkAreaPage({ searchParams: Promise.resolve({ next: "/jobs?view=all" }) });
     expect(requireUser).toHaveBeenLastCalledWith({ next: "/profile/area?next=%2Fjobs%3Fview%3Dall" });
+  });
+  it("keeps loading navigation inert until the page can preserve the board return", async () => {
+    vi.mocked(requireUser).mockResolvedValue({ userId: "tradie", role: "TRADIE", email: "tradie@example.test", firstName: "Test", emailVerified: true });
+    expect((await WorkAreaLoading()).props.inert).toBe(true);
   });
 });

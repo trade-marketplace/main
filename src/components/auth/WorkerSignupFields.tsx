@@ -42,10 +42,10 @@ export function WorkerSignupFields({ values = {}, errors = {}, attempt, previewA
 }
 
 export type WorkerAreaValue = { baseSuburb: string; radiusKm: string | number; point: { lat: number; lng: number } | null };
-export function WorkerAreaFields({ value, onChange, errors = {}, attempt = 0, disabled, previewAreaState, previewSuggestions, search = searchSignupAreasAction, requireSelected = false }: {
+export function WorkerAreaFields({ value, onChange, errors = {}, attempt = 0, lookupAttempt = 0, disabled, previewAreaState, previewSuggestions, search = searchSignupAreasAction, requireSelected = false }: {
   value: WorkerAreaValue; onChange: (value: WorkerAreaValue) => void; errors?: Partial<Record<WorkerSignupField, string>>; attempt?: number; disabled?: boolean;
   previewAreaState?: "loading" | "unavailable"; previewSuggestions?: SignupAreaSuggestion[]; search?: (query: string) => Promise<SignupAreaResult>;
-  requireSelected?: boolean;
+  requireSelected?: boolean; lookupAttempt?: number;
 }) {
   const suburb = value.baseSuburb, radius = String(value.radiusKm);
   const chosen = value.point;
@@ -73,7 +73,7 @@ export function WorkerAreaFields({ value, onChange, errors = {}, attempt = 0, di
       }
     }, 300);
     return () => clearTimeout(timer);
-  }, [suburb, chosen, previewAreaState, previewSuggestions, search, retry]);
+  }, [suburb, chosen, previewAreaState, previewSuggestions, search, retry, lookupAttempt]);
 
   const results = previewSuggestions ?? (lookup.result?.mode === "search" ? lookup.result.suggestions : []);
   const noMatches = requireSelected && lookup.status === "ready" && results.length === 0;

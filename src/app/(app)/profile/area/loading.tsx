@@ -5,5 +5,7 @@ import { requireUser } from "@/server/auth/guard";
 export default async function Loading() {
   const viewer = await requireUser({ next: "/profile/area" });
   if (viewer.role !== "TRADIE") notFound();
-  return <AccountSettings role="TRADIE" active="/profile/area"><WorkAreaLoading /></AccountSettings>;
+  // Loading boundaries have no searchParams. Keep this temporary navigation inert until
+  // the page can supply its validated return destination.
+  return <div inert><AccountSettings role="TRADIE" active="/profile/area"><WorkAreaLoading /></AccountSettings></div>;
 }
