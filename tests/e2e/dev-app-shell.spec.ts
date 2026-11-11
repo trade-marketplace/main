@@ -40,9 +40,19 @@ test.describe("/dev/components/app-shell", () => {
 
   for (const viewport of VIEWPORTS) {
     test(`${viewport.width}px: office photo and broken-photo avatars preserve the menu and Back journey`, async ({ page }) => {
+      test.setTimeout(60000);
       await page.setViewportSize(viewport);
       for (const state of ["photo", "photo-broken"]) {
         await page.goto(url(`?viewer=office&state=${state}`));
+        const narrow = viewport.width < 1024;
+        if (narrow) await page.getByRole("button", { name: "Office menu", exact: true }).click();
+        await page.getByRole(narrow ? "menuitem" : "link", { name: "All jobs", exact: true }).click();
+        await expect(page).toHaveURL(/at=%2Fadmin%2Fjobs/);
+        if (narrow) await page.getByRole("button", { name: "Office menu", exact: true }).click();
+        await expect(page.getByRole(narrow ? "menuitem" : "link", { name: "All jobs", exact: true })).toHaveAttribute("aria-current", "page");
+        if (narrow) await page.keyboard.press("Escape");
+        await page.goBack();
+        await expect(page).toHaveURL(new RegExp(`viewer=office&state=${state}$`));
         const account = page.getByRole("button", { name: "Account: Matt Larsen", exact: true });
         await account.press("Enter");
         const menu = page.getByRole("menu", { name: "Account", exact: true });

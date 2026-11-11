@@ -5,6 +5,7 @@ import { prerender } from "react-dom/static";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import AppLayout, { viewport as appViewport } from "@/app/(app)/layout";
+import AppShellPreview from "@/app/dev/components/app-shell/page";
 import { AppShell } from "@/components/app/AppShell";
 import { AppShellView, type ShellViewer } from "@/components/app/AppShellView";
 import {
@@ -83,6 +84,11 @@ afterEach(() => {
 });
 
 describe("the nav links", () => {
+  it.each([["/admin/jobs", "/admin/jobs"], ["https://example.test/admin/jobs", "/admin"], ["/admin-elsewhere", "/admin"]])("validates office preview navigation %s", async (at, expected) => {
+    const page = await AppShellPreview({ searchParams: Promise.resolve({ viewer: "office", state: "photo", at }) });
+    expect(page.props.preview.at).toBe(expected);
+  });
+
   const sitemap = JSON.parse(read("docs/design/sitemap.json")) as {
     pages: { route: string }[];
     navigation: Record<string, string[]>;

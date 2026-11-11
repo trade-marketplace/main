@@ -7,6 +7,9 @@ import { expectNoA11yViolations } from "./support/a11y";
 // Run against a throwaway local database and Auth/Storage adapters; never production credentials.
 const app = process.env.AVATAR_E2E_APP_URL;
 const cookieFile = process.env.AVATAR_E2E_COOKIE_FILE;
+if (app && !["localhost", "127.0.0.1", "[::1]"].includes(new URL(app).hostname)) {
+  throw new Error("AVATAR_E2E_APP_URL must use a loopback test server.");
+}
 
 test("saving a profile photo refreshes the real top bar and keeps it on navigation and Back", async ({ page, context }) => {
   test.skip(!app || !cookieFile, "Requires local avatar Auth/Storage fixtures and a throwaway database.");
