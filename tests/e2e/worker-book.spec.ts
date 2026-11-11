@@ -101,4 +101,25 @@ test.describe("real booking command journey", () => {
     await page.getByRole("link", { name: "Back", exact: true }).press("Enter"); await expect(page.getByRole("heading", { name: "Real booking job", exact: true })).toBeVisible(); await expectNoA11yViolations(page);
 
   });
+  test("customer editor reloads and repeatedly saves while retaining a past booking", async ({ page }) => {
+    const days = postingDays(new Date()), future = days[1].value, past = new Date(`${days[0].value}T00:00:00Z`); past.setUTCDate(past.getUTCDate() - 1); const pastDate = past.toISOString().slice(0, 10);
+    await db.query("BEGIN");
+    try {
+      await db.query("DELETE FROM job_time_windows WHERE job_id=$1", [id]);
+      await db.query("INSERT INTO job_time_windows(job_id,date,time_of_day) VALUES($1,$2,'MORNING'),($1,$2,'AFTERNOON'),($1,$3,'MORNING')", [id, future, pastDate]);
+      await db.query("UPDATE jobs SET any_time=false,booked_date=$2,booked_time='MORNING' WHERE id=$1", [id, pastDate]); await db.query("COMMIT");
+    } catch (error) { await db.query("ROLLBACK"); throw error; }
+    const auditCount = async () => (await db.query("SELECT count(*)::int AS count FROM audit_log WHERE record_id=$1 AND action='job.windows_updated'", [id])).rows[0].count as number;
+    const before = await auditCount(), next = `/jobs/${id}/windows?from=${encodeURIComponent(`/jobs/${id}`)}`;
+    await page.goto(`${app}/login?next=${encodeURIComponent(next)}`); await page.getByLabel("Email", { exact: true }).fill(SECURITY_USER.email); await page.getByLabel("Password", { exact: true }).fill(SECURITY_PASSWORD); await page.getByRole("button", { name: "Log in", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "When do you need it?", exact: true })).toBeVisible();
+    for (const save of [1, 2]) {
+      await expect(page.locator('fieldset[aria-invalid="true"]')).toHaveCount(0); await page.getByRole("button", { name: "Save changes", exact: true }).press("Enter"); await expect.poll(auditCount).toBe(before + save); await expect(page.getByRole("button", { name: "Save changes", exact: true })).toBeEnabled(); await expect(page.locator('fieldset[aria-invalid="true"]')).toHaveCount(0);
+      expect((await db.query("SELECT booked_date::text AS date,booked_time FROM jobs WHERE id=$1", [id])).rows[0]).toEqual({ date: pastDate, booked_time: "MORNING" });
+      expect((await db.query("SELECT count(*)::int AS count FROM job_time_windows WHERE job_id=$1 AND date=$2 AND time_of_day='MORNING'", [id, pastDate])).rows[0].count).toBe(1);
+      if (save === 1) { await page.reload(); await expect(page.getByRole("heading", { name: "When do you need it?", exact: true })).toBeVisible(); }
+    }
+    await expectNoA11yViolations(page); await page.getByRole("link", { name: "Back", exact: true }).press("Enter"); await expect(page.getByRole("heading", { name: "Real booking job", exact: true })).toBeVisible();
+  });
+
 });

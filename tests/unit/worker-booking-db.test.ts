@@ -1,7 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import type { Prisma, Role } from "@/generated/prisma/client";
-import type { JobTimeWindow } from "@/lib/job-time-windows";
+import { timeWindowsInRange, type JobTimeWindow } from "@/lib/job-time-windows";
+import { jobScheduleSchema } from "@/lib/job-draft";
+import { availableBookingWindows } from "@/lib/worker-booking";
 import type { Viewer } from "@/server/auth/viewer";
 import { bookJobWindow, loadBooking, requestOtherTimes } from "@/server/jobs/worker-booking";
 import { loadJobWindows, saveJobWindows } from "@/server/jobs/windows";
@@ -122,6 +124,36 @@ describe.skipIf(!testDatabaseUrl)("worker booking database", () => {
     expect(await notices(f.job.id)).toHaveLength(0); expect(await schema.db.auditLog.count({ where: { recordId: f.job.id } })).toBe(0);
     expect((await schema.db.job.findUniqueOrThrow({ where: { id: f.job.id } })).bookedDate).toBeNull();
     expect((await bookJobWindow(schema.db, f.worker, f.job.id, result.snapshot.windows[0], result.snapshot.revision, afterMidnight)).status).toBe("booked");
+  });
+
+  for (const retainedDate of ["2026-11-10", "2026-11-20"]) it(`keeps the raw ${retainedDate} booking while editable snapshots reload and save without range errors`, async () => {
+    const f = await fixture(), retained = { date: retainedDate, timeOfDay: "MORNING" as const };
+    await schema.db.jobTimeWindow.create({ data: { jobId: f.job.id, date: new Date(retainedDate), timeOfDay: retained.timeOfDay } });
+    const bookingNow = retainedDate < "2026-11-11" ? new Date("2026-11-10T00:00:00Z") : now;
+    const workerInitial = (await loadBooking(schema.db, f.worker, f.job.id, bookingNow))!;
+    expect((await bookJobWindow(schema.db, f.worker, f.job.id, retained, workerInitial.revision, bookingNow)).status).toBe("booked");
+    const initial = (await loadJobWindows(schema.db, f.customer, f.job.id, now))!, earlierView = (await loadJobWindows(schema.db, f.customer, f.job.id, bookingNow))!;
+    expect(initial.revision).toBe(earlierView.revision); expect(initial.schedule.timeWindows).not.toContainEqual(retained);
+    const workerBefore = (await loadBooking(schema.db, f.worker, f.job.id, now))!;
+    const choices = availableBookingWindows([], true, now), input = { asap: false, anyTime: false, timeWindows: choices };
+    const first = await saveJobWindows(schema.db, f.customer, f.job.id, input, initial.revision, now);
+    if (first.status !== "saved") throw Error("Expected saved future choices");
+    expect(first.snapshot.schedule.timeWindows).toEqual(choices); expect(jobScheduleSchema.safeParse(first.snapshot.schedule).success).toBe(true); expect(timeWindowsInRange(first.snapshot.schedule.timeWindows, now)).toBe(true);
+    expect(await schema.db.jobTimeWindow.count({ where: { jobId: f.job.id } })).toBe(22);
+    expect(await schema.db.jobTimeWindow.count({ where: { jobId: f.job.id, date: new Date(retainedDate), timeOfDay: retained.timeOfDay } })).toBe(1);
+    expect((await schema.db.job.findUniqueOrThrow({ where: { id: f.job.id } })).bookedDate?.toISOString().slice(0, 10)).toBe(retainedDate);
+    const reloaded = (await loadJobWindows(schema.db, f.customer, f.job.id, now))!; expect(reloaded).toEqual(first.snapshot);
+    const repeated = await saveJobWindows(schema.db, f.customer, f.job.id, reloaded.schedule, reloaded.revision, now);
+    expect(repeated).toMatchObject({ status: "saved", snapshot: { revision: reloaded.revision, schedule: reloaded.schedule } });
+    expect((await notices(f.job.id)).filter(n => n.type === "job.times_added")).toHaveLength(1);
+    const stale = await bookJobWindow(schema.db, f.worker, f.job.id, one, workerBefore.revision, now); expect(stale.status).toBe("changed");
+    if (stale.status !== "changed") throw Error("Expected current worker choices");
+    expect((await bookJobWindow(schema.db, f.worker, f.job.id, one, stale.snapshot.revision, now)).status).toBe("booked");
+    const customerStale = await saveJobWindows(schema.db, f.customer, f.job.id, reloaded.schedule, reloaded.revision, now);
+    expect(customerStale.status).toBe("changed");
+    if (customerStale.status !== "changed") throw Error("Expected current booking revision");
+    expect(jobScheduleSchema.safeParse(customerStale.snapshot.schedule).success).toBe(true); expect(timeWindowsInRange(customerStale.snapshot.schedule.timeWindows, now)).toBe(true);
+    expect((await saveJobWindows(schema.db, f.customer, f.job.id, customerStale.snapshot.schedule, customerStale.snapshot.revision, now)).status).toBe("saved");
   });
 
 });
