@@ -91,6 +91,8 @@ export const AUDIT_ACTIONS = {
   "worker.phone_confirmed": { record: "profiles" },
   "worker.identity_checked": { record: "worker_profiles" },
   "worker.trade_added": { record: "worker_profiles" },
+  "worker.area_updated": { record: "worker_profiles" },
+  "worker.availability_changed": { record: "worker_profiles" },
   "licence.rejected": { record: "licences", reason: "required" },
   "licence.expired": { record: "licences" },
   "worker.paused": { record: "worker_profiles", reason: "required" },

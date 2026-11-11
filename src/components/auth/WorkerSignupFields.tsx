@@ -23,33 +23,7 @@ export type WorkerSignupFieldsProps = {
 export function WorkerSignupFields({ values = {}, errors = {}, attempt, previewAreaState, previewSuggestions }: WorkerSignupFieldsProps) {
   const [trades, setTrades] = useState<string[]>(values.trades?.split(",").filter(Boolean) ?? []);
   const [licences, setLicences] = useState<Record<string, string>>(Object.fromEntries(SIGNUP_TRADES.map((trade) => [trade.value, values[`licence_${trade.value}`] ?? ""])));
-  const [suburb, setSuburb] = useState(values.baseSuburb ?? "");
-  const [radius, setRadius] = useState(values.radiusKm || "25");
-  const [chosen, setChosen] = useState<SignupAreaSuggestion | null>(values.areaLat && values.areaLng ? { id: "saved", label: values.baseSuburb, point: { lat: Number(values.areaLat), lng: Number(values.areaLng) } } : null);
-  const [lookup, setLookup] = useState<{ status: "idle" | "loading" | "ready" | "error"; result?: SignupAreaResult }>({ status: "idle" });
-  const request = useRef(0);
-  const areaRef = useRef<HTMLInputElement>(null);
-  useEffect(() => {
-    if (previewSuggestions) areaRef.current?.focus({ preventScroll: true });
-  }, [previewSuggestions]);
-
-  useEffect(() => {
-    const sequence = ++request.current;
-    if (suburb.trim().length < 3 || chosen?.label === suburb || previewAreaState || previewSuggestions) return;
-    const timer = setTimeout(async () => {
-      setLookup({ status: "loading" });
-      try {
-        const result = await searchSignupAreasAction(suburb);
-        if (sequence === request.current) setLookup({ status: result.mode === "search" ? "ready" : "error", result });
-      } catch {
-        if (sequence === request.current) setLookup({ status: "error" });
-      }
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [suburb, chosen, previewAreaState, previewSuggestions]);
-
-  const results = previewSuggestions ?? (lookup.result?.mode === "search" ? lookup.result.suggestions : []);
-  const status = previewAreaState === "unavailable" ? "error" : previewAreaState === "loading" ? "loading" : previewSuggestions ? "ready" : suburb.length < 3 ? "idle" : lookup.status;
+  const [area, setArea] = useState<WorkerAreaValue>({ baseSuburb: values.baseSuburb ?? "", radiusKm: values.radiusKm || "25", point: values.areaLat && values.areaLng ? { lat: Number(values.areaLat), lng: Number(values.areaLng) } : null });
   const onlyOther = trades.length === 1 && trades[0] === "OTHER";
 
   return (
@@ -60,15 +34,51 @@ export function WorkerSignupFields({ values = {}, errors = {}, attempt, previewA
         label={trade.licence.label} placeholder={trade.licence.example} value={licences[trade.value]} onChange={(event) => setLicences({ ...licences, [trade.value]: event.target.value })}
         maxLength={64} required error={errors[`licence_${trade.value}`]} autoComplete="off" />)}
       {onlyOther && <p className={styles.draftNote}>Other / general labour needs no licence. Confirm your email and phone before taking Other jobs.</p>}
-      <AddressField name="baseSuburb" label="Where do you work?" placeholder="Suburb or town" value={suburb} required maxLength={120}
-        error={errors.baseSuburb} ref={areaRef} suggestions={results} status={status} lookupError="Suburb search is unavailable. Type your suburb or town by hand."
-        onQueryChange={(query) => { setSuburb(query); setChosen(null); setLookup({ status: "idle" }); }}
-        onSelect={(suggestion) => setChosen(results.find((place) => place.id === suggestion.id) ?? null)} />
-      <input type="hidden" name="areaLat" value={chosen ? String(chosen.point.lat) : ""} />
-      <input type="hidden" name="areaLng" value={chosen ? String(chosen.point.lng) : ""} />
-      <ChipGroup key={`radius-${attempt}`} name="radiusKm" label="Travel radius" options={[10, 25, 50].map((km) => ({ value: String(km), label: `${km} km` }))}
-        value={radius} onChange={setRadius} required error={errors.radiusKm} />
+      <WorkerAreaFields value={area} onChange={setArea} errors={errors} attempt={attempt} previewAreaState={previewAreaState} previewSuggestions={previewSuggestions} />
       <Banner tone="brand" icon="verified_user">Browse jobs straight away. Confirm your email before taking a job. Restricted work also needs a licence checked by the office.</Banner>
     </div>
   );
+}
+
+export type WorkerAreaValue = { baseSuburb: string; radiusKm: string | number; point: { lat: number; lng: number } | null };
+export function WorkerAreaFields({ value, onChange, errors = {}, attempt = 0, disabled, previewAreaState, previewSuggestions, search = searchSignupAreasAction }: {
+  value: WorkerAreaValue; onChange: (value: WorkerAreaValue) => void; errors?: Partial<Record<WorkerSignupField, string>>; attempt?: number; disabled?: boolean;
+  previewAreaState?: "loading" | "unavailable"; previewSuggestions?: SignupAreaSuggestion[]; search?: (query: string) => Promise<SignupAreaResult>;
+}) {
+  const suburb = value.baseSuburb, radius = String(value.radiusKm);
+  const chosen = value.point;
+  const [lookup, setLookup] = useState<{ status: "idle" | "loading" | "ready" | "error"; result?: SignupAreaResult }>({ status: "idle" });
+  const request = useRef(0);
+  const areaRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (previewSuggestions) areaRef.current?.focus({ preventScroll: true });
+  }, [previewSuggestions]);
+
+  useEffect(() => {
+    const sequence = ++request.current;
+    if (suburb.trim().length < 3 || chosen !== null || previewAreaState || previewSuggestions) return;
+    const timer = setTimeout(async () => {
+      setLookup({ status: "loading" });
+      try {
+        const result = await search(suburb);
+        if (sequence === request.current) setLookup({ status: result.mode === "search" ? "ready" : "error", result });
+      } catch {
+        if (sequence === request.current) setLookup({ status: "error" });
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [suburb, chosen, previewAreaState, previewSuggestions, search]);
+
+  const results = previewSuggestions ?? (lookup.result?.mode === "search" ? lookup.result.suggestions : []);
+  const status = previewAreaState === "unavailable" ? "error" : previewAreaState === "loading" ? "loading" : previewSuggestions ? "ready" : suburb.length < 3 ? "idle" : lookup.status;
+  return <>
+      <AddressField name="baseSuburb" label="Where do you work?" placeholder="Suburb or town" value={suburb} disabled={disabled} required maxLength={120}
+        error={errors.baseSuburb} ref={areaRef} suggestions={results} status={status} lookupError="Suburb search is unavailable. Type your suburb or town by hand."
+        onQueryChange={(query) => { onChange({ ...value, baseSuburb: query, point: null }); setLookup({ status: "idle" }); }}
+        onSelect={(suggestion) => { const selected = results.find(place => place.id === suggestion.id); if (selected) onChange({ ...value, baseSuburb: selected.label, point: selected.point }); }} />
+      <input type="hidden" name="areaLat" value={chosen ? String(chosen.lat) : ""} />
+      <input type="hidden" name="areaLng" value={chosen ? String(chosen.lng) : ""} />
+      <ChipGroup key={`radius-${attempt}`} name="radiusKm" label="Travel radius" disabled={disabled} options={[10, 25, 50].map((km) => ({ value: String(km), label: `${km} km` }))}
+        value={radius} onChange={radiusKm => onChange({ ...value, radiusKm })} required error={errors.radiusKm} />
+  </>;
 }
