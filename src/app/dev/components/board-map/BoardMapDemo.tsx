@@ -7,14 +7,15 @@ import { ErrorState } from "@/components/feedback/ErrorState";
 import { OfflineBanner } from "@/components/feedback/OfflineBanner";
 import { LoadingRegion } from "@/components/feedback/LoadingRegion";
 import { countsInView } from "@/lib/board-map";
-import { compareBoardJobs, matchesBoardKind, type BoardPage, type BoardQuery, type BoardRequest, type BoardSource } from "@/lib/job-board";
+import { BOARD_PAGE_SIZE, compareBoardJobs, matchesBoardKind, type BoardPage, type BoardQuery, type BoardRequest, type BoardSource } from "@/lib/job-board";
 import styles from "./preview.module.css";
 
 function select(board: BoardPage, query: BoardQuery, request: BoardRequest = {}): BoardPage {
   const available = board.cards.filter(card => (query.trades === null || query.trades.includes(card.category)) && card.distanceKm <= (query.distance ?? 25)
     && (!query.saved || request.savedIds?.includes(card.id)) && (!query.estimated || card.alreadyEstimated) && (query.when === null || query.when.includes(card.asap ? "asap" : "flexible")));
   const cards = available.filter(card => matchesBoardKind(card, query.kind)).sort((a, b) => compareBoardJobs(a, b, query.sort));
-  return { ...board, cards, counts: { ...board.counts, ...countsInView(available) }, total: cards.length, nextCursor: null };
+  const cursor = Number(request.cursor ?? 0), start = Number.isSafeInteger(cursor) && cursor >= 0 ? cursor : 0, end = start + BOARD_PAGE_SIZE;
+  return { ...board, cards: cards.slice(start, end), counts: { ...board.counts, ...countsInView(available) }, total: cards.length, nextCursor: end < cards.length ? String(end) : null };
 }
 export function BoardMapDemo({ board, state, query }: { board: BoardPage; state: string; query: BoardQuery }) {
   const saved = useMemo(() => board.cards.slice(0, 3).map(card => card.id), [board]);

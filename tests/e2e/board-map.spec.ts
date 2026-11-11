@@ -36,6 +36,8 @@ for (const viewport of VIEWPORTS) test(`all board map states at ${viewport.width
       await page.getByRole("button", { name: "Zoom in", exact: true }).click(); await page.getByRole("button", { name: "Zoom out", exact: true }).click();
     }
     if (state === "ready") {
+      const more = page.getByRole("button", { name: "Load more jobs", exact: true }); await expect(more).toBeVisible(); await more.click(); await expect(more).toHaveCount(0);
+      await expect(page.getByRole("heading", { name: "24 jobs in view", exact: true })).toBeVisible();
       const examples = page.getByText("Pin examples. See each job for its offer and time left.", { exact: true });
       const legendClose = page.getByRole("button", { name: "Close map legend", exact: true });
       await expect(examples).toBeVisible();
@@ -104,7 +106,7 @@ test("chips, pan, zoom, empty recovery, provider fallback, retries and legend me
 
 // Only the provider is a stand-in. These journeys run the real route, reader, Auth, map kit and job page.
 const providerScript = `window.mapboxgl={supported:()=>true,Map:class{
- constructor(o){this.el=o.container;this.listeners={};this.b={west:168,south:-47,east:169,north:-46};this.z=10;this.timer=setTimeout(()=>this.emit('load'),0);}
+ constructor(o){this.el=o.container;this.listeners={};this.b={west:168,south:-47,east:169,north:-46};this.z=10;window.__boardMapFixture=this;this.timer=setTimeout(()=>this.emit('load'),0);}
  on(n,f){(this.listeners[n]??=[]).push(f)} off(n,f){this.listeners[n]=(this.listeners[n]??[]).filter(x=>x!==f)} emit(n){for(const f of this.listeners[n]??[])f()}
  fitBounds([[w,s],[e,n]]){this.b={west:w,south:s,east:e,north:n};this.emit('move')}
  project([lng,lat]){return{x:(lng-this.b.west)/(this.b.east-this.b.west)*this.el.clientWidth,y:(this.b.north-lat)/(this.b.north-this.b.south)*this.el.clientHeight}}
@@ -145,9 +147,9 @@ test.describe("real board map journeys", () => {
     await db.query("UPDATE settings SET bounty_amount_cents=4500,bounty_expiry_hours=36 WHERE id=1");
   });
   test.afterAll(async () => { if (db) await db.query("DELETE FROM jobs WHERE id=ANY($1::uuid[])", [Object.values(ids)]); await auth?.close(); await db?.end(); });
-  async function login(page: Page) {
+  async function login(page: Page, expected = 3) {
     await page.goto(`${app}/login?next=${encodeURIComponent(board)}`); await page.getByLabel("Email", { exact: true }).fill(SECURITY_TRADIE.email); await page.getByLabel("Password", { exact: true }).fill(SECURITY_PASSWORD);
-    await page.getByRole("button", { name: "Log in", exact: true }).click(); await expect(page).toHaveURL(`${app}${board}`); await expect(page.getByRole("heading", { name: "3 jobs in view", exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Log in", exact: true }).click(); await expect(page).toHaveURL(`${app}${board}`); await expect(page.getByRole("heading", { name: `${expected} jobs in view`, exact: true })).toBeVisible();
   }
   test("real map → keyboard pin → job → Back and Grid keep all filters at five widths", async ({ page }) => {
     await fakeProvider(page); await login(page);
@@ -180,5 +182,37 @@ test.describe("real board map journeys", () => {
     await page.unroute("https://api.mapbox.com/**"); await fakeProvider(page, true); await page.goto(`${app}${board}`);
     await expect(page.getByText("Map isn’t available right now.", { exact: true })).toBeVisible(); await expect(page.getByRole("list", { name: "Jobs in view", exact: true }).getByRole("link")).toHaveCount(3);
     await expectNoA11yViolations(page);
+  });
+  test("existing map pagination appends later pins, exhausts its cursor and keeps motion browser-only", async ({ page, context }) => {
+    const extra = Array.from({ length: 22 }, () => randomUUID()), later = `Map later ${tag}`;
+    let release: (() => void) | undefined;
+    try {
+      for (const [index, id] of extra.entries()) await db.query("INSERT INTO jobs(id,customer_id,category,title,description,address_line1,suburb,city,lat,lng,approx_lat,approx_lng,any_time) VALUES($1,$2,'OTHER',$3,'Private fixture','Private map street','Windsor','Invercargill',$4,$5,$6,$5,true)", [id, SECURITY_USER.id, `${later} ${index}`, centre.lat + index * .0001 - .0015, centre.lng, centre.lat + index * .0001]);
+      await fakeProvider(page);
+      const initialLoad = page.waitForResponse(response => response.request().method() === "POST" && new URL(response.url()).pathname === "/jobs", { timeout: 10_000 });
+      await login(page, 20); await initialLoad;
+      const rows = page.getByRole("list", { name: "Jobs in view", exact: true }), loadMore = page.getByRole("button", { name: /Load more jobs/ });
+      await expect(rows.getByRole("button")).toHaveCount(20); await expect(rows.getByRole("button", { name: new RegExp(`${later} 0,`) })).toHaveCount(0); await expect(loadMore).toBeEnabled();
+      await context.setOffline(true); await expect(loadMore).toBeDisabled(); await expect(rows.getByRole("button")).toHaveCount(20);
+      const reloaded = page.waitForResponse(response => response.request().method() === "POST" && new URL(response.url()).pathname === "/jobs", { timeout: 10_000 });
+      await context.setOffline(false); await reloaded; await expect(page.getByRole("status").filter({ hasText: "Loading your jobs" })).toHaveCount(0); await expect(loadMore).toBeEnabled();
+      const held = new Promise<void>(resolve => { release = resolve; }); let appendReads = 0, posts = 0;
+      page.on("request", request => { if (request.method() === "POST" && new URL(request.url()).pathname === "/jobs") posts++; });
+      await page.route(url => url.origin === new URL(app!).origin && url.pathname === "/jobs", async route => {
+        if (route.request().method() === "POST") { appendReads++; await held; } await route.continue();
+      });
+      await loadMore.click(); await expect.poll(() => appendReads).toBe(1); await expect(loadMore).toBeDisabled();
+      await expect(page.getByRole("status").filter({ hasText: "Loading more jobs" })).toHaveCount(1); await expect(rows.getByRole("button")).toHaveCount(20);
+      release?.(); await expect(rows.getByRole("button")).toHaveCount(25); await expect(loadMore).toHaveCount(0); await expect(page.getByRole("heading", { name: "25 jobs in view", exact: true })).toBeVisible();
+      await rows.getByRole("button", { name: new RegExp(`${later} 0,`) }).click();
+      await expect(page.locator("article[data-card-kind]").getByRole("link", { name: `${later} 0`, exact: true })).toBeVisible(); await expect(page.locator(`[data-map-pin="${extra[0]}"] button`)).toHaveCount(1);
+      await page.locator("article[data-card-kind]").getByRole("button", { name: /^Close / }).click();
+      const beforeMotion = posts;
+      await page.getByRole("button", { name: "Zoom in", exact: true }).click(); await page.getByRole("button", { name: "Zoom out", exact: true }).click();
+      await page.evaluate(() => { (window as unknown as { __boardMapFixture: { flyTo: (options: { center: number[] }) => void } }).__boardMapFixture.flyTo({ center: [170, -44] }); });
+      await expect(page.getByRole("heading", { name: "No jobs here. Zoom out.", exact: true })).toBeVisible();
+      await page.getByRole("button", { name: "Zoom out", exact: true }).first().click(); await expect(rows.getByRole("button")).toHaveCount(25);
+      expect(posts).toBe(beforeMotion); await expect(page).toHaveURL(`${app}${board}`); await expectNoA11yViolations(page);
+    } finally { release?.(); await context.setOffline(false); await db.query("DELETE FROM jobs WHERE id=ANY($1::uuid[])", [extra]); }
   });
 });

@@ -178,7 +178,10 @@ export function JobBoard({ initial, ownerId, source = LIVE_SOURCE, previewState,
             : meta?.blocked ? <EmptyState className={styles.empty} icon="verified_user" title={meta.blocked === "worker-paused" ? "Your account is paused" : meta.blocked === "work-area-required" ? "Set your work area" : "Get verified to see jobs"}
               message={meta.blocked === "email-required" ? "Confirm your email to continue." : meta.blocked === "worker-paused" ? "Contact us to get back to work." : meta.blocked === "work-area-required" ? "Contact us to set the area you work in." : "We need to check your ID before you can see jobs."}
               action={<Button href={contact}>Contact us</Button>} />
-            : query.view === "map" ? <BoardMap cards={board?.cards ?? []} counts={board?.counts} query={query} ownerId={ownerId} config={meta?.map} serverNow={Date.parse(board?.before ?? "") || 0} onKindChange={kind => update({ kind })} previewState={previewState} previewBasePath={pathname} />
+            : query.view === "map" ? <><BoardMap cards={board?.cards ?? []} counts={board?.counts} query={query} ownerId={ownerId} config={meta?.map} serverNow={Date.parse(board?.before ?? "") || 0} onKindChange={kind => update({ kind })} previewState={previewState} previewBasePath={pathname} />
+              {more && <LoadingRegion loading label="Loading more jobs" skeleton={<BoardMapSkeleton />} />}
+              {board?.nextCursor && <div className={styles.more}><Button variant="secondary" loading={more} disabled={!online ? "You’re offline" : false} onClick={() => load(true)}>Load more jobs</Button></div>}
+            </>
             : !board?.cards.length ? <div className={styles.empty}><EmptyState icon="search_off" title="No jobs match that." message="Try fewer filters."
               action={<Button onClick={() => meta && meta.distanceKm < meta.maxDistanceKm ? update({ distance: meta.maxDistanceKm }) : resetFilters()}>{meta && meta.distanceKm < meta.maxDistanceKm ? "Widen distance" : "Reset filters"}</Button>}
               secondaryAction={<TextLink href={alerts}>Alerts settings</TextLink>} /><p>Need to change your work area? <TextLink href={contact} inline>Contact us</TextLink>.</p></div>
