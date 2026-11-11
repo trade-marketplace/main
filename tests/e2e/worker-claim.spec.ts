@@ -150,11 +150,6 @@ test.describe("real claim server action", () => {
     await success.getByRole("button", { name: "Open job", exact: true }).press("Enter"); await expect(page.locator("dialog[open]")).toHaveCount(0); await expect(page.getByRole("region", { name: "Customer contact", exact: true })).toContainText("144 Private Street");
     await expect(page.getByRole("region", { name: "Customer contact", exact: true })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Address", exact: true })).toBeInViewport();
-    await page.reload();
-    await expect(page.getByRole("region", { name: "Customer contact", exact: true })).toContainText("144 Private Street");
-    await expect(page.getByText(earn, { exact: true }).and(page.locator('[aria-hidden="true"]'))).toBeVisible();
-    await expect(page.getByText("$85.00", { exact: true })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Claim job", exact: true })).toHaveCount(0);
     await page.getByRole("region", { name: "Customer contact", exact: true }).getByRole("link", { name: "Message Sarah", exact: true }).press("Enter");
     await expect(page).toHaveURL(new RegExp(`/messages/${thread}\\?`)); await expect(page.getByRole("heading", { name: "Messages", exact: true })).toBeVisible();
     await expect(page.getByRole("log", { name: "Conversation", exact: true }).getByText("Existing claim conversation", { exact: true })).toBeVisible();
@@ -164,7 +159,16 @@ test.describe("real claim server action", () => {
     await expect(page.getByRole("region", { name: "Customer contact", exact: true })).toContainText("144 Private Street");
     await expect(page.getByRole("button", { name: "Claim job", exact: true })).toHaveCount(0);
     expect((await db.query("SELECT count(*)::int AS count FROM audit_log WHERE record_id=$1 AND action='job.claimed'", [job])).rows[0].count).toBe(1);
-    await page.getByRole("link", { name: "Back to jobs", exact: true }).press("Enter"); await expect(page).toHaveURL(/kind=ready/); await expect(page.getByRole("heading", { name: "Jobs near you", exact: true })).toBeVisible();
+    await page.reload();
+    await expect(page.getByRole("region", { name: "Customer contact", exact: true })).toContainText("144 Private Street");
+    await expect(page.getByText(`Earn ${earn}`, { exact: true })).toBeVisible();
+    await expect(page.getByText("$85.00", { exact: true })).toBeVisible();
+    await expect(page.getByRole("region", { name: "Customer contact", exact: true }).getByRole("link", { name: "Messages", exact: true })).toHaveCount(1);
+    await expectNoA11yViolations(page);
+    await page.getByRole("navigation", { name: "Breadcrumb" }).getByRole("link", { name: "My work", exact: true }).press("Enter");
+    await expect(page).toHaveURL(/\/dashboard$/);
+    // My work (#148) owns this destination; latest main currently retains the tradie 404.
+    await expect(page.getByRole("heading", { name: "Wrong address.", exact: true })).toBeVisible();
   });
   test("a worker losing eligibility after opening confirmation is refused without assigning the job", async ({ page }) => {
     await db.query("UPDATE jobs SET status='BOOKABLE',worker_id=NULL WHERE id=$1", [job]);

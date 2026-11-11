@@ -42,6 +42,9 @@ export const AUDIT_ACTIONS = {
   "job.price_sent": { record: "jobs" },
   "job.paid": { record: "jobs" },
   "job.claimed": { record: "jobs" },
+  "job.on_my_way": { record: "jobs" },
+  "job.running_late": { record: "jobs" },
+  "job.customer_not_home": { record: "jobs" },
   "job.submitted": { record: "jobs" },
   "job.completed": { record: "jobs" },
   // By the sign-off timer when the customer didn't answer in 48 hours.
