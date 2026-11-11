@@ -22,9 +22,10 @@ function rawSchedule(job: Row) {
 }
 function snapshot(job: Row, now: Date): JobWindowsSnapshot {
   const raw = rawSchedule(job);
-  // Assigned jobs may retain an out-of-range booking for the database invariant. It is not an editable picker choice.
-  const schedule = job.status === "ASSIGNED" ? { ...raw, timeWindows: raw.timeWindows.filter(window => timeWindowsInRange([window], now)) } : raw;
-  return { id: job.id, jobNumber: job.jobNumber, title: job.title, editable: canEditJobWindows(job), revision: windowsRevision({ ...raw, booked: job.bookedDate && job.bookedTime ? { date: job.bookedDate.toISOString().slice(0, 10), timeOfDay: job.bookedTime } : null }), schedule };
+  // A retained booking can survive a return to BOOKABLE. Keep its raw row, not an out-of-range picker value.
+  const editable = canEditJobWindows(job), filterForPicker = job.status === "ASSIGNED" || (editable && Boolean(job.bookedDate && job.bookedTime));
+  const schedule = filterForPicker ? { ...raw, timeWindows: raw.timeWindows.filter(window => timeWindowsInRange([window], now)) } : raw;
+  return { id: job.id, jobNumber: job.jobNumber, title: job.title, editable, revision: windowsRevision({ ...raw, booked: job.bookedDate && job.bookedTime ? { date: job.bookedDate.toISOString().slice(0, 10), timeOfDay: job.bookedTime } : null }), schedule };
 }
 export async function loadJobWindows(db: PrismaClient, viewer: Viewer, id: string, now = new Date()) {
   if (viewer.role !== "CUSTOMER" || !z.uuid().safeParse(id).success) return null;

@@ -156,4 +156,21 @@ describe.skipIf(!testDatabaseUrl)("worker booking database", () => {
     expect((await saveJobWindows(schema.db, f.customer, f.job.id, customerStale.snapshot.schedule, customerStale.snapshot.revision, now)).status).toBe("saved");
   });
 
+  it("keeps an out-of-range booking editable after the job is returned to BOOKABLE", async () => {
+    const f = await fixture(), retained = { date: "2026-11-10", timeOfDay: "MORNING" as const }, bookingNow = new Date("2026-11-10T00:00:00Z");
+    await schema.db.jobTimeWindow.create({ data: { jobId: f.job.id, date: new Date(retained.date), timeOfDay: retained.timeOfDay } });
+    expect((await bookJobWindow(schema.db, f.worker, f.job.id, retained, (await loadBooking(schema.db, f.worker, f.job.id, bookingNow))!.revision, bookingNow)).status).toBe("booked");
+    // The existing office override retains booking fields when it returns a job to the board.
+    await schema.db.job.update({ where: { id: f.job.id }, data: { status: "BOOKABLE", workerId: null } });
+    const initial = (await loadJobWindows(schema.db, f.customer, f.job.id, now))!; expect(initial.editable).toBe(true); expect(initial.schedule.timeWindows).not.toContainEqual(retained);
+    const input = { asap: false, anyTime: false, timeWindows: [{ date: "2026-11-14", timeOfDay: "MORNING" as const }] };
+    const saved = await saveJobWindows(schema.db, f.customer, f.job.id, input, initial.revision, now);
+    if (saved.status !== "saved") throw Error("Expected saved bookable choices");
+    expect(saved.snapshot.schedule).toEqual(input); expect((await loadJobWindows(schema.db, f.customer, f.job.id, now))!).toEqual(saved.snapshot);
+    expect((await saveJobWindows(schema.db, f.customer, f.job.id, saved.snapshot.schedule, saved.snapshot.revision, now)).status).toBe("saved");
+    expect((await schema.db.job.findUniqueOrThrow({ where: { id: f.job.id } })).bookedDate?.toISOString().slice(0, 10)).toBe(retained.date);
+    expect(await schema.db.jobTimeWindow.count({ where: { jobId: f.job.id, date: new Date(retained.date), timeOfDay: retained.timeOfDay } })).toBe(1);
+    expect((await notices(f.job.id)).filter(n => n.type === "job.times_added")).toHaveLength(0);
+  });
+
 });
