@@ -19,15 +19,16 @@ import { jobTracker } from "@/lib/job-tracker";
 import { customerPriceDelayed } from "@/lib/customer-job-waiting";
 import type { CustomerJobView } from "@/server/views";
 import { CustomerWaitingActions, type WaitingActions } from "./CustomerWaitingActions";
+import { PriceReadyPanel, type PriceReadyActions } from "./customer/PriceReadyPanel";
 import styles from "./customer-job.module.css";
 
-type Props = { job: CustomerJobView; photos?: readonly ViewerPhoto[]; photosFailed?: boolean; photoLease?: { batchId: string; renewAfterMs: number } | null; back?: string; canEditWindows?: boolean; preview?: "offline" | "static"; initialAgeMs?: number; waitingPreview?: string; waitingActions?: WaitingActions; problemHref?: string };
+type Props = { job: CustomerJobView; photos?: readonly ViewerPhoto[]; photosFailed?: boolean; photoLease?: { batchId: string; renewAfterMs: number } | null; back?: string; canEditWindows?: boolean; preview?: "offline" | "static"; initialAgeMs?: number; waitingPreview?: string; waitingActions?: WaitingActions; problemHref?: string; previousPriceCents?: number | null; pricePreview?: string; priceActions?: PriceReadyActions };
 const trades = { ELECTRICAL: "Electrical", PLUMBING: "Plumbing", GAS: "Gas", CONSTRUCTION: "Construction", OTHER: "Other" } as const;
 const date = new Intl.DateTimeFormat("en-NZ", { timeZone: "UTC", weekday: "short", day: "numeric", month: "short" });
 const postedDate = new Intl.DateTimeFormat("en-NZ", { timeZone: "Pacific/Auckland", weekday: "short", day: "numeric", month: "short" });
 const time = { MORNING: "Morning", AFTERNOON: "Afternoon", EVENING: "Evening" } as const;
 
-export function CustomerJob({ job, photos = [], photosFailed = false, photoLease, back = "/", canEditWindows = false, preview, initialAgeMs = 0, waitingPreview, waitingActions, problemHref }: Props) {
+export function CustomerJob({ job, photos = [], photosFailed = false, photoLease, back = "/", canEditWindows = false, preview, initialAgeMs = 0, waitingPreview, waitingActions, problemHref, previousPriceCents = null, pricePreview, priceActions }: Props) {
   const router = useRouter();
   const browserOnline = useOnlineStatus();
   const online = browserOnline && preview !== "offline";
@@ -136,8 +137,9 @@ export function CustomerJob({ job, photos = [], photosFailed = false, photoLease
                 {job.status === "REVIEW" && customerPriceDelayed(ageMs) && <Banner tone="info" title="Taking a little longer than usual" className={styles.notice}>Still working on it. Thanks for your patience. We’ll message you.</Banner>}
                 <CustomerWaitingActions key={job.id} job={job} online={online} preview={waitingPreview} actions={waitingActions} onCancelled={() => setCancelFocusJob(job.id)} />
               </>}
+              {job.status === "PRICED" && <PriceReadyPanel key={job.id} job={job} previousPriceCents={previousPriceCents} online={online} preview={pricePreview} actions={priceActions} />}
               {panel.kind === "confirmed" && job.worker && <p className={styles.worker}>{job.worker.firstName}{job.worker.lastInitial ? ` ${job.worker.lastInitial}` : ""}</p>}
-              {panel.price && job.priceCents !== null && <PriceBlock audience="customer" priceCents={job.priceCents} />}
+              {panel.price && job.status !== "PRICED" && job.priceCents !== null && <PriceBlock audience="customer" priceCents={job.priceCents} />}
             </div>
             {tracker && <div className={styles.tracker}><Tracker {...tracker} /></div>}
           </div>
