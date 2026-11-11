@@ -16,6 +16,7 @@ const COPY: Readonly<Record<string, readonly [string, string]>> = {
   "job.priced": ["Your price is ready", "sell"],
   "job.paid": ["Payment received", "receipt_long"],
   "job.claimed": ["Tradie confirmed", "person_check"],
+  "job.times_added": ["New times added", "event_available"],
   "job.window_booked": ["Time booked", "event_available"],
   "job.on_my_way": ["On the way", "local_shipping"],
   "job.running_late": ["Running late", "schedule"],
@@ -62,6 +63,7 @@ export function inboxItem(row: Row): InboxItem {
   else if (row.type === "message.received" && identifier(payload.supportThreadId)) href = `/support/${encodeURIComponent(identifier(payload.supportThreadId)!)}`;
   else if (row.type === "message.received" && identifier(payload.officeJobId)) href = `/admin/jobs/${encodeURIComponent(identifier(payload.officeJobId)!)}`;
   else if (row.type === "message.received" && threadId) href = `/messages/${encodeURIComponent(threadId)}`;
+  else if (row.type === "job.times_added" && jobId) href = `/jobs/${encodeURIComponent(jobId)}/book`;
   else if (jobId) {
     if (row.type === "job.reschedule_requested" && payload.refreshWindows === true) href = `/jobs/${encodeURIComponent(jobId)}/windows`;
     else if (row.type === "problem_report.created") href = officeProblemJobHref(jobId, payload.reportId, null);

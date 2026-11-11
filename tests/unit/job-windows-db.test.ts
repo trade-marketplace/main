@@ -73,8 +73,9 @@ describe.skipIf(!testDatabaseUrl)("owned time-window refresh and expiry (databas
     expect((await saveJobWindows(schema.db, row.customer, row.id, fresh, before.revision, now)).status).toBe("changed");
     expect(await updatedAt(row.id)).toEqual(afterEdit);
   });
-  it("does not edit a job that was claimed or left BOOKABLE after the page loaded", async () => {
+  it("does not edit a job that left the editable statuses after the page loaded", async () => {
     const row = await job(["2026-11-04"]); const before = await load(row); await claim(row.id);
+    await schema.db.job.update({ where: { id: row.id }, data: { status: "SUBMITTED" } });
     expect(await saveJobWindows(schema.db, row.customer, row.id, fresh, before.revision, now)).toMatchObject({ status: "changed", snapshot: { editable: false } });
     expect((await load(row)).schedule.asap).toBe(false);
   });
