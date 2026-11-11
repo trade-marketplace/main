@@ -25,14 +25,19 @@ export function SignoffPanel({ job, data, online, problemHref, preview, action =
   const router = useRouter(), session = useOptionalSessionExpired(), reduced = usePrefersReducedMotion(), id = useId();
   const [rating, setRating] = useState<number | null>(preview === "rated" ? 4 : null), [selectedTags, setTags] = useState<string[]>(preview === "rated" ? ["On time", "Tidy"] : []), [comment, setComment] = useState("");
   const [revision, setRevision] = useState(job.updatedAt), [busy, setBusy] = useState(false), [failed, setFailed] = useState(preview === "error"), [changed, setChanged] = useState(false), [sorted, setSorted] = useState(preview === "sorted");
-  const [clock, setClock] = useState<number | null>(null), [brokenFiles, setBrokenFiles] = useState<string | null>(null);
+  const [clock, setClock] = useState<number | null>(null), [brokenFiles, setBrokenFiles] = useState<string | null>(null), [checkingFiles, setCheckingFiles] = useState(false);
   const pending = useRef(false), finished = useRef<ReturnType<typeof setTimeout> | null>(null), files = useRef<HTMLDivElement>(null), form = useRef<HTMLFormElement>(null);
   const fileKey = [data?.cocUrl, ...(data?.photos.map(photo => photo.url) ?? [])].join("|");
   const saving = busy || preview === "saving";
+  const failedFiles = Boolean(data?.filesUnavailable) || brokenFiles !== null || checkingFiles;
   useEffect(() => () => { if (finished.current) clearTimeout(finished.current); }, []);
   useEffect(() => { const timer = setInterval(() => setClock(Date.now()), 60_000); return () => clearInterval(timer); }, []);
   useEffect(() => {
-    const frame = requestAnimationFrame(() => { if ([...files.current?.querySelectorAll("img") ?? []].some(image => image.complete && image.naturalWidth === 0)) setBrokenFiles(fileKey); });
+    const frame = requestAnimationFrame(() => {
+      const images = [...files.current?.querySelectorAll("img") ?? []];
+      if (images.some(image => image.complete && image.naturalWidth === 0)) setBrokenFiles(fileKey);
+      else if (images.length && images.every(image => image.complete && image.naturalWidth > 0)) { setBrokenFiles(null); setCheckingFiles(false); }
+    });
     return () => cancelAnimationFrame(frame);
   }, [fileKey]);
   useEffect(() => {
@@ -42,10 +47,10 @@ export function SignoffPanel({ job, data, online, problemHref, preview, action =
     window.addEventListener("online", renew); document.addEventListener("visibilitychange", renew);
     return () => { clearInterval(timer); window.removeEventListener("online", renew); document.removeEventListener("visibilitychange", renew); };
   }, [data, online, preview, router]);
-  function retry() { setRevision(job.updatedAt); setChanged(false); setBrokenFiles(null); router.refresh(); }
+  function retry() { setRevision(job.updatedAt); setChanged(false); if (brokenFiles === fileKey) setCheckingFiles(true); setBrokenFiles(null); router.refresh(); }
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (pending.current || saving || !online || !data?.submittedAt || changed || sorted) return;
+    if (pending.current || saving || !online || !data?.submittedAt || failedFiles || changed || sorted) return;
     pending.current = true; setBusy(true); setFailed(false);
     const review: SignoffReview | undefined = rating === null ? undefined : { rating, tags: selectedTags as SignoffReview["tags"], comment };
     try {
@@ -64,7 +69,6 @@ export function SignoffPanel({ job, data, online, problemHref, preview, action =
   if (!data) return <Banner tone="alert" title="Can’t load the files." action={retryButton} />;
   if (sorted) return <div className={styles.sorted} role="status"><BoltFlash eventId={`sorted:${job.id}`} mark="check" size={92} /><p>Sorted.</p></div>;
   const hoursLeft = clock !== null && data.releaseAt ? Math.max(0, (new Date(data.releaseAt).getTime() - clock) / 3_600_000) : data.hoursLeft;
-  const failedFiles = data.filesUnavailable || brokenFiles === fileKey;
   const photos = data.photos.flatMap((photo, index) => photo.url ? [{ src: photo.url, alt: `Finished work · ${index + 1}` }] : []);
   return <div className={styles.panel}>
     <p className={styles.intro}>{job.worker?.firstName ?? "Your tradie"}’s finished. All good?</p>
@@ -72,7 +76,7 @@ export function SignoffPanel({ job, data, online, problemHref, preview, action =
       <h3 id={`${id}-evidence`}>Finished work</h3>
       {data.cocNumber && <div className={styles.certificate}><Icon name="description" fill decorative /><div><strong>Certificate of Compliance</strong><p>CoC {data.cocNumber} · {data.cocFileLabel}</p></div>{data.cocUrl && <TextLink href={data.cocUrl} target="_blank" rel="noopener noreferrer">View<span className={styles.srOnly}> Certificate of Compliance (opens in a new tab)</span></TextLink>}</div>}
       {failedFiles && <Banner tone="alert" title="Can’t load the files." action={retryButton} />}
-      {photos.length > 0 && brokenFiles !== fileKey && <div ref={files} onErrorCapture={event => { if (event.target instanceof HTMLImageElement) setBrokenFiles(fileKey); }}><PhotoGallery photos={photos} label={`Finished work · ${job.title}`} className={styles.photos} /></div>}
+      {photos.length > 0 && brokenFiles !== fileKey && <div ref={files} onErrorCapture={event => { if (event.target instanceof HTMLImageElement) setBrokenFiles(fileKey); }} onLoadCapture={() => { if ([...files.current?.querySelectorAll("img") ?? []].every(image => image.complete && image.naturalWidth > 0)) { setBrokenFiles(null); setCheckingFiles(false); } }}><PhotoGallery photos={photos} label={`Finished work · ${job.title}`} className={styles.photos} /></div>}
       {!data.cocNumber && !data.photos.length && <p className={styles.quiet}>No finished-work files yet.</p>}
       {data.notes && <p className={styles.notes}>{data.notes}</p>}
     </section>
@@ -85,7 +89,7 @@ export function SignoffPanel({ job, data, online, problemHref, preview, action =
       {failed && <Banner tone="alert" title="Couldn’t save. Try again." live action={<Button variant="tertiary" disabled={!online} onClick={() => form.current?.requestSubmit()}>Try again</Button>} />}
       {changed && <Banner tone="info" title="Job updated. Check it again." live action={retryButton} />}
       <div className={styles.actions}>
-        <Button type="submit" loading={saving} disabled={!online ? "You’re offline" : changed ? "Check the updated job first" : !data.submittedAt ? "Finished work isn’t available yet" : false}>Yes, all sorted</Button>
+        <Button type="submit" loading={saving} disabled={!online ? "You’re offline" : changed ? "Check the updated job first" : !data.submittedAt ? "Finished work isn’t available yet" : failedFiles}>Yes, all sorted</Button>
         {saving ? <Button variant="secondary" disabled>Something’s not right</Button> : <Button href={problemHref} variant="secondary">Something’s not right</Button>}
       </div>
     </form>

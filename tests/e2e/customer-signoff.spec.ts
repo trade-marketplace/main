@@ -32,7 +32,7 @@ for (const viewport of VIEWPORTS) test(`sign-off states fit ${viewport.width}px 
       else await expect(page.getByRole("textbox", { name: "Add a comment (optional)", exact: true })).toHaveCount(0);
       if (state === "hours-left") await expect(page.getByText("46h left", { exact: true })).toBeVisible();
       if (state === "paused") { await expect(page.getByText("Auto-release is paused while your report is open.", { exact: true })).toBeVisible(); await expect(page.getByText("No reply in 48 hours and we’ll mark it done.", { exact: true })).toHaveCount(0); }
-      if (state === "offline" || state === "empty") await expect(page.getByRole("button", { name: "Yes, all sorted", exact: true })).toHaveAttribute("aria-disabled", "true");
+      if (state === "offline" || state === "empty" || state === "files-unavailable") await expect(page.getByRole("button", { name: "Yes, all sorted", exact: true })).toHaveAttribute("aria-disabled", "true");
       if (state === "files-unavailable") await expect(page.getByText("Can’t load the files.", { exact: true })).toBeVisible();
     }
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
@@ -65,7 +65,7 @@ test.describe("real customer sign-off journey", () => {
   test.skip(!app || !database, "requires isolated local app and lane_a_129 database");
   test.describe.configure({ mode: "serial" });
   let db: pg.Client, auth: Server, storage: Server;
-  const secret = randomUUID(), customer = { id: randomUUID(), email: `${randomUUID()}@example.test` }, worker = { id: randomUUID(), email: `${randomUUID()}@example.test` };
+  const secret = randomUUID(), customer = { id: randomUUID(), email: `${randomUUID()}@example.test` }, worker = { id: randomUUID(), email: `${randomUUID()}@example.test` }, replacement = { id: randomUUID(), email: `${randomUUID()}@example.test` }, office = { id: randomUUID(), email: `${randomUUID()}@example.test` };
   const objects = new Map<string, { bytes: Buffer; type: string }>(), tokens = new Map<string, string>();
   test.beforeAll(async () => {
     const target = new URL(database!), host = new URL(app!);
@@ -88,7 +88,7 @@ test.describe("real customer sign-off journey", () => {
     });
     await new Promise<void>((resolve, reject) => { storage.once("error", reject); storage.listen(54511, "127.0.0.1", resolve); });
     db = new pg.Client({ connectionString: database }); await db.connect();
-    for (const [person, role, first, last] of [[customer, "CUSTOMER", "Sarah", "Thompson"], [worker, "TRADIE", "Jack", "Wilson"]] as const) {
+    for (const [person, role, first, last] of [[customer, "CUSTOMER", "Sarah", "Thompson"], [worker, "TRADIE", "Jack", "Wilson"], [replacement, "TRADIE", "Moana", "Wilson"], [office, "ADMIN", "Alex", "Office"]] as const) {
       await db.query("INSERT INTO auth.users(id,email) VALUES($1,$2)", [person.id, person.email]);
       await db.query("INSERT INTO profiles(id,email,role,first_name,last_name,email_verified_at,updated_at) VALUES($1,$2,$3,$4,$5,now(),now())", [person.id, person.email, role, first, last]);
     }
@@ -161,6 +161,85 @@ test.describe("real customer sign-off journey", () => {
       }
       await expectNoA11yViolations(page);
     } finally { await db.query("UPDATE settings SET auto_release_hours=$1 WHERE id=1", [previous]); }
+  });
+  for (const failure of ["signing", "photo"] as const) test(`${failure} failure refuses sign-off and retry preserves the draft review`, async ({ page, context }) => {
+    await context.addCookies(await sessionCookies(customer, secret, app!, "http://127.0.0.1:54510"));
+    const id = await create(), key = `documents/coc/${worker.id}/signoff.pdf`, certificate = objects.get(key)!;
+    const photoRoute = "**/storage/v1/object/sign/photos/**";
+    let actionCalls = 0, waitingForPhoto = false, releasePhoto = () => {};
+    const photoReady = new Promise<void>(resolve => { releasePhoto = resolve; });
+    page.on("request", request => { if (request.headers()["next-action"]) actionCalls++; });
+    if (failure === "signing") objects.delete(key);
+    else await page.route(photoRoute, route => route.abort());
+    try {
+      await page.goto(`${app}/jobs/${id}`);
+      await expect(page.getByText("Can’t load the files.", { exact: true })).toBeVisible();
+      const submit = page.getByRole("button", { name: "Yes, all sorted", exact: true });
+      await expect(submit).toHaveAttribute("aria-disabled", "true");
+      const star = page.getByRole("radio", { name: /^3 stars,/ }); await star.focus(); await star.press("Space");
+      await page.getByRole("checkbox", { name: "Tidy", exact: true }).check();
+      await page.getByRole("textbox", { name: "Add a comment (optional)", exact: true }).fill("Keep this draft.");
+      await submit.press("Enter");
+      const forceSubmit = () => page.getByRole("form", { name: /^Sign off / }).evaluate(form => (form as HTMLFormElement).requestSubmit());
+      await forceSubmit(); await page.waitForLoadState("networkidle");
+      expect((await db.query("SELECT status FROM jobs WHERE id=$1", [id])).rows).toEqual([{ status: "SUBMITTED" }]);
+      expect((await db.query("SELECT count(*) FROM reviews WHERE job_id=$1", [id])).rows[0].count).toBe("0");
+      expect((await db.query("SELECT count(*) FROM payouts WHERE job_id=$1", [id])).rows[0].count).toBe("0");
+      expect(actionCalls).toBe(0); await expect(page.locator(".tm-flash")).toHaveCount(0);
+      if (failure === "signing") objects.set(key, certificate);
+      else {
+        await page.unroute(photoRoute);
+        await page.route(photoRoute, async route => { waitingForPhoto = true; await photoReady; await route.continue(); });
+      }
+      await page.getByRole("button", { name: "Try again", exact: true }).click();
+      if (failure === "photo") {
+        await expect.poll(() => waitingForPhoto).toBe(true);
+        await expect(submit).toHaveAttribute("aria-disabled", "true");
+        await page.getByRole("button", { name: "Try again", exact: true }).click(); await forceSubmit();
+        expect((await db.query("SELECT count(*) FROM payouts WHERE job_id=$1", [id])).rows[0].count).toBe("0");
+        expect(actionCalls).toBe(0); await expect(page.locator(".tm-flash")).toHaveCount(0);
+        releasePhoto();
+      }
+      await expect(page.getByText("Can’t load the files.", { exact: true })).toHaveCount(0);
+      await expect(submit).not.toHaveAttribute("aria-disabled", "true");
+      await expect(star).toBeChecked(); await expect(page.getByRole("checkbox", { name: "Tidy", exact: true })).toBeChecked();
+      await expect(page.getByRole("textbox", { name: "Add a comment (optional)", exact: true })).toHaveValue("Keep this draft.");
+      await submit.press("Enter"); await expect(page.getByRole("heading", { name: "Sorted.", exact: true })).toBeVisible();
+      expect(actionCalls).toBe(1);
+      expect((await db.query("SELECT rating,tags,comment FROM reviews WHERE job_id=$1", [id])).rows).toEqual([{ rating: 3, tags: ["Tidy"], comment: "Keep this draft." }]);
+    } finally { objects.set(key, certificate); releasePhoto(); if (!page.isClosed()) await page.unroute(photoRoute); }
+  });
+  for (const change of ["worker", "evidence"] as const) test(`a stale ${change} replacement cannot inherit the old draft rating`, async ({ page, context }) => {
+    await context.addCookies(await sessionCookies(customer, secret, app!, "http://127.0.0.1:54510"));
+    const id = await create(); await page.goto(`${app}/jobs/${id}`);
+    const star = page.getByRole("radio", { name: /^4 stars,/ }); await star.focus(); await star.press("Space");
+    await page.getByRole("checkbox", { name: "Tidy", exact: true }).check();
+    await page.getByRole("textbox", { name: "Add a comment (optional)", exact: true }).fill("Review of the original work.");
+    const workerId = change === "worker" ? replacement.id : worker.id;
+    objects.set(`documents/coc/${workerId}/replacement.pdf`, objects.get(`documents/coc/${worker.id}/signoff.pdf`)!);
+    await db.query("BEGIN");
+    try {
+      // Sent evidence is immutable: use its existing FLAGGED → draft → resubmit path.
+      await db.query("UPDATE completion_evidence SET office_check='FLAGGED',check_note=$1,checked_by_id=$2,checked_at=now() WHERE job_id=$3", ["Fixture replacement work.", office.id, id]);
+      await db.query("UPDATE completion_evidence SET submitted_at=NULL WHERE job_id=$1", [id]);
+      await db.query("UPDATE jobs SET worker_id=$1,updated_at=now() WHERE id=$2", [workerId, id]);
+      await db.query("UPDATE completion_evidence SET worker_id=$1,coc_path=$2,notes=$3,updated_at=now() WHERE job_id=$4", [workerId, `coc/${workerId}/replacement.pdf`, "Replacement finished work.", id]);
+      await db.query("UPDATE completion_evidence SET submitted_at=now() WHERE job_id=$1", [id]);
+      await db.query("COMMIT");
+    } catch (error) { await db.query("ROLLBACK"); throw error; }
+    await page.getByRole("button", { name: "Yes, all sorted", exact: true }).click();
+    await expect(page.getByText("Replacement finished work.", { exact: true })).toBeVisible();
+    await expect(page.getByText(`${change === "worker" ? "Moana" : "Jack"}’s finished. All good?`, { exact: true })).toBeVisible();
+    await expect(page.getByRole("textbox", { name: "Add a comment (optional)", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("radio", { checked: true })).toHaveCount(0);
+    await expect(page.getByRole("checkbox", { name: "Tidy", exact: true })).not.toBeChecked();
+    await expect(page.locator(".tm-flash")).toHaveCount(0);
+    expect((await db.query("SELECT status FROM jobs WHERE id=$1", [id])).rows).toEqual([{ status: "SUBMITTED" }]);
+    expect((await db.query("SELECT count(*) FROM reviews WHERE job_id=$1", [id])).rows[0].count).toBe("0");
+    expect((await db.query("SELECT count(*) FROM payouts WHERE job_id=$1", [id])).rows[0].count).toBe("0");
+    await page.getByRole("button", { name: "Yes, all sorted", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "Sorted.", exact: true })).toBeVisible();
+    expect((await db.query("SELECT count(*) FROM reviews WHERE job_id=$1", [id])).rows[0].count).toBe("0");
   });
   for (const imageCertificate of [false, true]) test(`the owned signed ${imageCertificate ? "CoC image" : "PDF"} opens in a new tab`, async ({ page, context }) => {
     await context.addCookies(await sessionCookies(customer, secret, app!, "http://127.0.0.1:54510"));

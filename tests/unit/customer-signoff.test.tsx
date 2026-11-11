@@ -43,6 +43,7 @@ describe("customer please-check panel", () => {
   it("shows a retry for missing file links, retains notes and never adds an unavailable View link", () => {
     const html = render("files-unavailable", { ...data, cocUrl: null, photos: [{ id: "photo", url: null }], filesUnavailable: true });
     expect(html).toContain("Can’t load the files."); expect(html).toContain("Try again"); expect(html).toContain("Finished notes."); expect(html).not.toContain('target="_blank"');
+    expect(html).toMatch(/type="submit"[^>]*aria-disabled="true"/);
   });
   it("labels a permitted certificate image truthfully and keeps the same new-tab viewer", () => {
     const html = render("certificate-photo", { ...data, cocFileLabel: "Photo" });
