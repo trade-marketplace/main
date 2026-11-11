@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Button } from "@/components/Button";
 import { TextLink } from "@/components/TextLink";
@@ -27,8 +27,10 @@ export function BoardSkeleton({ count = 8 }: { count?: number }) {
   return <div className={styles.grid}>{Array.from({ length: count }, (_, i) => <div key={i} className={styles.skeletonCard}><Skeleton height="100%" /><Skeleton width="65%" height={14} /><Skeleton width="45%" height={12} /></div>)}</div>;
 }
 
-export type JobBoardProps = { initial: BoardResult; ownerId: string; source?: BoardSource; previewState?: string; initialSaved?: string[] };
-export function JobBoard({ initial, ownerId, source = LIVE_SOURCE, previewState, initialSaved = [] }: JobBoardProps) {
+export type JobBoardProps = { initial: BoardResult; ownerId: string; source?: BoardSource; previewState?: string; initialSaved?: string[];
+  /** A slim message above the heading, e.g. the setup checklist's "Finish setup (4/6)" (#132). */
+  notice?: ReactNode };
+export function JobBoard({ initial, ownerId, source = LIVE_SOURCE, previewState, initialSaved = [], notice }: JobBoardProps) {
   // Owner key at the route boundary remounts all state after an account switch. Stored data contains IDs only.
   const pathname = usePathname(), search = useSearchParams(), session = useOptionalSessionExpired();
   const urlQuery = parseBoardQuery(search), urlKey = boardHref(urlQuery);
@@ -130,6 +132,7 @@ export function JobBoard({ initial, ownerId, source = LIVE_SOURCE, previewState,
   const filtered = boardHref({ ...query, entry: "find-work", view: "grid" }) !== "/jobs";
   return <div className={styles.page} data-mode="trade">
     <OfflineBanner online={previewState === "offline" ? false : undefined} onRetry={() => load()} sticky={false} />
+    {notice}
     <div className={styles.heading}><div><h1>Jobs near you</h1><p>{board ? `${board.total} ${board.total === 1 ? "job" : "jobs"} · ${meta?.areaName}` : "Jobs near you"}</p></div>
       <SegmentedControl label="View" width="auto" value={query.view} onChange={view => update({ view })} items={[{ value: "grid", label: "Grid", icon: "grid_view" }, { value: "map", label: "Map", icon: "map" }]} controls="board-results" />
     </div>

@@ -1,10 +1,10 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, type ReactNode } from "react";
 import { JobBoard } from "@/components/jobs/JobBoard";
 import { BOARD_PAGE_SIZE, compareBoardJobs, matchesBoardKind, type BoardPage, type BoardSource } from "@/lib/job-board";
 
-export function BoardPreview({ board, state }: { board: BoardPage; state: string }) {
+export function BoardPreview({ board, state, notice }: { board: BoardPage; state: string; notice?: ReactNode }) {
   const saved = useMemo(() => board.cards.slice(0, 3).map(card => card.id), [board]);
   const source = useMemo<BoardSource>(() => ({
     async load(query, request = {}) {
@@ -17,5 +17,5 @@ export function BoardPreview({ board, state }: { board: BoardPage; state: string
     },
     async updates() { return { ok: true, count: state === "new-jobs" ? 3 : 0 }; },
   }), [board, state]);
-  return <JobBoard key={state} ownerId={board.meta.ownerId} initial={state === "error" ? { ok: false, error: "unavailable" } : { ok: true, board: { ...board, cards: board.cards.slice(0, BOARD_PAGE_SIZE), nextCursor: board.cards.length > BOARD_PAGE_SIZE ? String(BOARD_PAGE_SIZE) : null } }} previewState={state} initialSaved={saved} source={source} />;
+  return <JobBoard key={state} ownerId={board.meta.ownerId} initial={state === "error" ? { ok: false, error: "unavailable" } : { ok: true, board: { ...board, cards: board.cards.slice(0, BOARD_PAGE_SIZE), nextCursor: board.cards.length > BOARD_PAGE_SIZE ? String(BOARD_PAGE_SIZE) : null } }} previewState={state} initialSaved={saved} source={source} notice={notice} />;
 }
