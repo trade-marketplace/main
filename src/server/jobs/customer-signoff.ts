@@ -29,7 +29,7 @@ export async function loadCustomerSignoff(db: Pick<PrismaClient, "job" | "settin
   ]);
   const cocFileLabel = evidence?.cocPath?.endsWith(".pdf") ? "PDF" : evidence?.cocPath?.endsWith(".webp") ? "Photo" : "File";
   return { cocNumber: evidence?.cocNumber ?? null, cocUrl, cocFileLabel, photos, notes: evidence?.notes ?? null, submittedAt: evidence?.submittedAt?.toISOString() ?? null,
-    hoursLeft: signoffHoursLeft(evidence?.submittedAt ?? null, settings.autoReleaseHours, now), releaseAt: evidence?.submittedAt ? new Date(evidence.submittedAt.getTime() + settings.autoReleaseHours * 3_600_000).toISOString() : null, problemOpen: job.problems.length > 0,
+    autoReleaseHours: settings.autoReleaseHours, hoursLeft: signoffHoursLeft(evidence?.submittedAt ?? null, settings.autoReleaseHours, now), releaseAt: evidence?.submittedAt ? new Date(evidence.submittedAt.getTime() + settings.autoReleaseHours * 3_600_000).toISOString() : null, problemOpen: job.problems.length > 0,
     autoCompleted: job.status === "COMPLETED" && job.statusHistory[0]?.changedById === null, filesUnavailable: failed || Boolean(evidence?.cocNumber && !cocUrl), filesRenewAfterMs: Math.max(1000, (SIGNED_URL_SECONDS - 30) * 1000) };
 }
 

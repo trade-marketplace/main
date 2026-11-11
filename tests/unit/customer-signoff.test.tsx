@@ -8,7 +8,7 @@ import { customerJobView } from "@/server/views";
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 
 const job = customerJobView(VIEWERS.customer, exampleJob({ status: "SUBMITTED" }))!;
-const data: CustomerSignoff = { cocNumber: "2026-118734", cocUrl: "https://files.example.test/signed-certificate", cocFileLabel: "PDF", photos: [{ id: "photo", url: "https://files.example.test/signed-photo" }], notes: "Finished notes.", submittedAt: "2026-11-11T00:00:00Z", releaseAt: "2026-11-13T00:00:00Z", hoursLeft: 46, problemOpen: false, autoCompleted: false, filesUnavailable: false, filesRenewAfterMs: 270000 };
+const data: CustomerSignoff = { cocNumber: "2026-118734", cocUrl: "https://files.example.test/signed-certificate", cocFileLabel: "PDF", photos: [{ id: "photo", url: "https://files.example.test/signed-photo" }], notes: "Finished notes.", submittedAt: "2026-11-11T00:00:00Z", releaseAt: "2026-11-13T00:00:00Z", autoReleaseHours: 48, hoursLeft: 46, problemOpen: false, autoCompleted: false, filesUnavailable: false, filesRenewAfterMs: 270000 };
 function render(preview = "electrical", input = data) { return renderToStaticMarkup(<SignoffPanel job={job} data={input} online problemHref={`/jobs/${job.id}/problem?from=test`} preview={preview} />); }
 
 describe("customer please-check panel", () => {
@@ -30,6 +30,11 @@ describe("customer please-check panel", () => {
     expect(signoffReviewSchema.safeParse({ rating: 5, tags: [...SIGNOFF_REVIEW_TAGS], comment: "x".repeat(1000) }).success).toBe(true);
     for (const review of [{ rating: 0, tags: [] }, { rating: 5.5, tags: [] }, { rating: 3, tags: ["Made up"] }, { rating: 4, tags: [], comment: "x".repeat(1001) }]) expect(signoffReviewSchema.safeParse(review).success).toBe(false);
   });
+  it.each([[1, "1 hour"], [48, "48 hours"], [72, "72 hours"]])("describes the configured %s-hour deadline", (autoReleaseHours, duration) => {
+    const html = render("electrical", { ...data, autoReleaseHours: Number(autoReleaseHours) });
+    expect(html).toContain(`No reply in ${duration} and we’ll mark it done.`);
+    if (autoReleaseHours !== 48) expect(html).not.toContain("No reply in 48 hours");
+  });
   it("keeps notes as plain text, with no worker earnings, margins or materials displayed", () => {
     const html = render("photos", { ...data, notes: "<script>unsafe()</script>", cocNumber: null, cocUrl: null });
     expect(html).toContain("&lt;script&gt;"); expect(html).not.toContain("<script>");
@@ -43,9 +48,10 @@ describe("customer please-check panel", () => {
     const html = render("certificate-photo", { ...data, cocFileLabel: "Photo" });
     expect(html).toContain("CoC 2026-118734 · Photo"); expect(html).not.toContain("CoC 2026-118734 · PDF"); expect(html).toContain('target="_blank"');
   });
-  it("the completed panel adds the timer note only for automatic completion", () => {
+  it.each([1, 72])("the completed panel describes automatic completion without claiming the current %s-hour setting was used", autoReleaseHours => {
     const completed = { ...job, status: "COMPLETED" as const };
-    expect(renderToStaticMarkup(<CustomerJob job={completed} signoffData={{ ...data, autoCompleted: true }} preview="static" />)).toContain("We marked this done after 48 hours.");
-    expect(renderToStaticMarkup(<CustomerJob job={completed} signoffData={data} preview="static" />)).not.toContain("We marked this done after 48 hours.");
+    const html = renderToStaticMarkup(<CustomerJob job={completed} signoffData={{ ...data, autoReleaseHours, autoCompleted: true }} preview="static" />);
+    expect(html).toContain("We marked this done automatically."); expect(html).not.toMatch(/We marked this done after/);
+    expect(renderToStaticMarkup(<CustomerJob job={completed} signoffData={data} preview="static" />)).not.toContain("We marked this done automatically.");
   });
 });

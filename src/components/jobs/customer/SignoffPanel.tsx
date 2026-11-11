@@ -89,6 +89,6 @@ export function SignoffPanel({ job, data, online, problemHref, preview, action =
         {saving ? <Button variant="secondary" disabled>Something’s not right</Button> : <Button href={problemHref} variant="secondary">Something’s not right</Button>}
       </div>
     </form>
-    {data.problemOpen ? <p className={styles.countdown}>Auto-release is paused while your report is open.</p> : <div className={styles.countdown}><p>No reply in 48 hours and we’ll mark it done.</p>{hoursLeft !== null && hoursLeft < 48 && <p>{hoursLeft > 0 ? Math.ceil(hoursLeft) : 0}h left</p>}</div>}
+    {data.problemOpen ? <p className={styles.countdown}>Auto-release is paused while your report is open.</p> : <div className={styles.countdown}><p>No reply in {data.autoReleaseHours} {data.autoReleaseHours === 1 ? "hour" : "hours"} and we’ll mark it done.</p>{hoursLeft !== null && hoursLeft < 48 && <p>{hoursLeft > 0 ? Math.ceil(hoursLeft) : 0}h left</p>}</div>}
   </div>;
 }

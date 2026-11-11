@@ -140,7 +140,7 @@ export function CustomerJob({ job, photos = [], photosFailed = false, photoLease
               </>}
               {panel.kind === "confirmed" && job.worker && <p className={styles.worker}>{job.worker.firstName}{job.worker.lastInitial ? ` ${job.worker.lastInitial}` : ""}</p>}
               {job.status === "SUBMITTED" ? <SignoffPanel key={job.id} job={job} data={signoffData ?? null} online={online} problemHref={problemHref ?? `/jobs/${job.id}/problem?from=${encodeURIComponent(customerJobHref(job.id, returnTo))}`} preview={signoffPreview} action={signoffAction} /> : panel.price && job.priceCents !== null && <PriceBlock audience="customer" priceCents={job.priceCents} />}
-              {job.status === "COMPLETED" && signoffData?.autoCompleted && <p className={styles.message}>We marked this done after 48 hours.</p>}
+              {job.status === "COMPLETED" && signoffData?.autoCompleted && <p className={styles.message}>We marked this done automatically.</p>}
             </div>
             {tracker && <div className={styles.tracker}><Tracker {...tracker} /></div>}
           </div>

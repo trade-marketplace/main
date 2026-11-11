@@ -74,7 +74,7 @@ describe.skipIf(!testDatabaseUrl)("customer sign-off transactions", () => {
     const now = new Date(sent.submittedAt!.getTime() + 2 * 3_600_000);
     await schema.db.settings.update({ where: { id: 1 }, data: { autoReleaseHours: 72 } });
     const data = await loadCustomerSignoff(schema.db, customer, job.id, sign, now);
-    expect(data).toMatchObject({ cocNumber: "2026-118734", cocFileLabel: "PDF", notes: "All done.", hoursLeft: 70, problemOpen: false, autoCompleted: false, filesUnavailable: false });
+    expect(data).toMatchObject({ cocNumber: "2026-118734", cocFileLabel: "PDF", notes: "All done.", autoReleaseHours: 72, hoursLeft: 70, problemOpen: false, autoCompleted: false, filesUnavailable: false });
     expect(sign.mock.calls).toContainEqual(["documents", "documents/private-coc.pdf"]);
     expect(sign.mock.calls).toContainEqual(["photos", `evidence/${job.id}/private.webp`]);
     expect(Object.keys(data!)).not.toContain("cocPath"); expect(Object.keys(data!.photos[0])).toEqual(["id", "url"]);
@@ -101,6 +101,16 @@ describe.skipIf(!testDatabaseUrl)("customer sign-off transactions", () => {
     const { customer, worker, job, revision } = await fixture(); await evidence(job.id, worker.userId);
     expect(await signOffJob(schema.db, customer, job.id, revision)).toEqual({ status: "signed-off" });
     expect((await loadCustomerSignoff(schema.db, customer, job.id, async () => "signed"))?.autoCompleted).toBe(false);
+  });
+  it("preserves automatic-completion history when the current deadline setting changes", async () => {
+    const { customer, worker, job } = await fixture(); const sent = await evidence(job.id, worker.userId);
+    const now = new Date(sent.submittedAt!.getTime() + 2 * 3_600_000);
+    await schema.db.settings.update({ where: { id: 1 }, data: { autoReleaseHours: 1 } });
+    expect(await loadCustomerSignoff(schema.db, customer, job.id, async () => "signed", now)).toMatchObject({ autoReleaseHours: 1, hoursLeft: 0, releaseAt: new Date(sent.submittedAt!.getTime() + 3_600_000).toISOString(), autoCompleted: false });
+    await runScheduledRules(schema.db, { now, rules: SCHEDULER_RULES.filter(rule => rule.name === "auto-sign-off") });
+    await schema.db.settings.update({ where: { id: 1 }, data: { autoReleaseHours: 72 } });
+    expect(await loadCustomerSignoff(schema.db, customer, job.id, async () => "signed", now)).toMatchObject({ autoReleaseHours: 72, autoCompleted: true });
+    await schema.db.settings.update({ where: { id: 1 }, data: { autoReleaseHours: 48 } });
   });
   it.each([["coc/worker/certificate.webp", "Photo"], ["coc/legacy-document", "File"]])("labels existing CoC metadata %s without returning its private path", async (path, label) => {
     const { customer, worker, job } = await fixture(); await evidence(job.id, worker.userId, path);

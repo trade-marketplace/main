@@ -10,7 +10,7 @@ export type SignoffReview = z.infer<typeof signoffReviewSchema>;
 export type CustomerSignoff = {
   cocNumber: string | null; cocUrl: string | null; cocFileLabel: "PDF" | "Photo" | "File";
   photos: { id: string; url: string | null }[]; notes: string | null;
-  submittedAt: string | null; hoursLeft: number | null; releaseAt: string | null; problemOpen: boolean; autoCompleted: boolean;
+  submittedAt: string | null; autoReleaseHours: number; hoursLeft: number | null; releaseAt: string | null; problemOpen: boolean; autoCompleted: boolean;
   filesUnavailable: boolean; filesRenewAfterMs: number;
 };
 export type SignoffResult = { status: "signed-off" | "changed" | "forbidden" | "invalid" | "unavailable" };

@@ -22,7 +22,7 @@ for (const viewport of VIEWPORTS) test(`sign-off states fit ${viewport.width}px 
   for (const state of states) await test.step(state, async () => {
     expect((await page.goto(`${preview}/dev/components/customer-signoff?state=${state}`))?.status()).toBe(200);
     if (state === "loading") await expect(page.getByRole("status", { name: "Loading job", exact: true })).toBeVisible();
-    else if (state === "auto-completed") await expect(page.getByText("We marked this done after 48 hours.", { exact: true })).toBeVisible();
+    else if (state === "auto-completed") await expect(page.getByText("We marked this done automatically.", { exact: true })).toBeVisible();
     else if (state === "sorted") { await expect(page.getByRole("status").filter({ hasText: "Sorted." })).toBeVisible(); await expect(page.locator(".tm-flash")).toHaveAttribute("data-playing", "false"); }
     else if (state === "load-error") await expect(page.getByRole("button", { name: "Try again", exact: true })).toBeVisible();
     else if (state !== "recovery") {
@@ -130,7 +130,7 @@ test.describe("real customer sign-off journey", () => {
     await page.getByRole("button", { name: "Yes, all sorted", exact: true }).press("Enter");
     await expect(page.locator(".tm-flash")).toHaveAttribute("data-playing", "true");
     await expect(page.getByRole("heading", { name: "Sorted.", exact: true })).toBeVisible();
-    await expect(page.getByText("We marked this done after 48 hours.", { exact: true })).toHaveCount(0);
+    await expect(page.getByText("We marked this done automatically.", { exact: true })).toHaveCount(0);
     expect((await db.query("SELECT rating,tags,comment FROM reviews WHERE job_id=$1", [id])).rows).toEqual([{ rating: 5, tags: ["Tidy"], comment: "Thanks, all sorted." }]);
     expect((await db.query("SELECT status FROM payouts WHERE job_id=$1", [id])).rows).toEqual([{ status: "QUEUED" }]);
     await page.reload(); await expect(page.locator(".tm-flash")).toHaveCount(0); await expectNoA11yViolations(page);
@@ -148,6 +148,19 @@ test.describe("real customer sign-off journey", () => {
     expect((await db.query("SELECT status FROM problem_reports WHERE job_id=$1", [id])).rows).toEqual([{ status: "OPEN" }]); expect((await db.query("SELECT count(*) FROM payouts WHERE job_id=$1", [id])).rows[0].count).toBe("0");
     await page.getByRole("link", { name: "Back to job", exact: true }).click(); await expect(page).toHaveURL(`${app}${path}`); await expect(page.getByText("Auto-release is paused while your report is open.", { exact: true })).toBeVisible();
     await expectNoA11yViolations(page);
+  });
+  test("the active sentence follows the real one-hour and 72-hour settings", async ({ page, context }) => {
+    await context.addCookies(await sessionCookies(customer, secret, app!, "http://127.0.0.1:54510"));
+    const id = await create(), previous = (await db.query("SELECT auto_release_hours FROM settings WHERE id=1")).rows[0].auto_release_hours;
+    try {
+      for (const hours of [1, 72]) {
+        await db.query("UPDATE settings SET auto_release_hours=$1 WHERE id=1", [hours]);
+        await page.goto(`${app}/jobs/${id}`);
+        await expect(page.getByText(`No reply in ${hours} ${hours === 1 ? "hour" : "hours"} and we’ll mark it done.`, { exact: true })).toBeVisible();
+        await expect(page.getByText("No reply in 48 hours and we’ll mark it done.", { exact: true })).toHaveCount(0);
+      }
+      await expectNoA11yViolations(page);
+    } finally { await db.query("UPDATE settings SET auto_release_hours=$1 WHERE id=1", [previous]); }
   });
   for (const imageCertificate of [false, true]) test(`the owned signed ${imageCertificate ? "CoC image" : "PDF"} opens in a new tab`, async ({ page, context }) => {
     await context.addCookies(await sessionCookies(customer, secret, app!, "http://127.0.0.1:54510"));
