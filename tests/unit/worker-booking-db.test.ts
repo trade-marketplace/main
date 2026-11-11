@@ -59,7 +59,7 @@ describe.skipIf(!testDatabaseUrl)("worker booking database", () => {
     const f = await fixture(); await bookJobWindow(schema.db, f.worker, f.job.id, one, (await load(f)).revision, now);
     const before = await load(f);
     expect(await Promise.all([requestOtherTimes(schema.db, f.worker, f.job.id, now), requestOtherTimes(schema.db, f.worker, f.job.id, now)])).toEqual([{ status: "asked" }, { status: "asked" }]);
-    expect((await notices(f.job.id)).filter(n => n.type === "job.reschedule_requested")).toHaveLength(1); expect((await load(f)).booked).toEqual(before.booked);
+    const requested = (await notices(f.job.id)).filter(n => n.type === "job.reschedule_requested"); expect(requested).toHaveLength(1); expect(requested[0].payload).toEqual({ jobId: f.job.id, jobNumber: f.job.jobNumber }); expect(inboxItem(requested[0]).href).toBe(`/jobs/${f.job.id}`); expect((await load(f)).booked).toEqual(before.booked);
   });
   for (const first of ["customer", "worker"] as const) it(`serializes ${first}-first save/booking race and returns changed to the second`, async () => {
     const f = await fixture(), worker = await load(f), customer = (await loadJobWindows(schema.db, f.customer, f.job.id))!;

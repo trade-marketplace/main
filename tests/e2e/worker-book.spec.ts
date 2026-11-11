@@ -92,5 +92,13 @@ test.describe("real booking command journey", () => {
     expect((await db.query("SELECT count(*)::int AS count FROM notifications WHERE type='job.window_booked' AND payload->>'jobId'=$1", [id])).rows[0].count).toBe(2);
     expect((await db.query("SELECT booked_time FROM jobs WHERE id=$1", [id])).rows[0].booked_time).toBe("AFTERNOON");
     const missing = await page.request.get(`${app}/jobs/${randomUUID()}/book`); expect([200, 404]).toContain(missing.status()); expect(await missing.text()).toContain("Wrong address.");
+    await page.context().clearCookies(); await page.goto(`${app}/login?next=%2Fnotifications`); await page.getByLabel("Email", { exact: true }).fill(SECURITY_USER.email); await page.getByLabel("Password", { exact: true }).fill(SECURITY_PASSWORD); await page.getByRole("button", { name: "Log in", exact: true }).click(); await expect(page).toHaveURL(`${app}/notifications`);
+    const requestNotice = (await db.query("SELECT id FROM notifications WHERE type='job.reschedule_requested' AND payload->>'jobId'=$1", [id])).rows[0];
+    await page.getByRole("button", { name: /New time requested/ }).and(page.locator(`[id="${requestNotice.id}"]`)).press("Enter"); await expect(page).toHaveURL(url => url.pathname === `/jobs/${id}`); await expect(page.getByRole("heading", { name: "Real booking job", exact: true })).toBeVisible();
+    await page.getByRole("link", { name: "Time windows", exact: true }).press("Enter"); await expect(page.getByRole("heading", { name: "When do you need it?", exact: true })).toBeVisible(); await expect(page.getByRole("button", { name: "Save changes", exact: true })).toBeEnabled(); await expectNoA11yViolations(page);
+    await page.getByRole("button", { name: "Any time", exact: true }).press("Enter"); await page.getByRole("button", { name: "Save changes", exact: true }).press("Enter"); await expect.poll(async () => (await db.query("SELECT any_time FROM jobs WHERE id=$1", [id])).rows[0].any_time).toBe(true);
+    expect((await db.query("SELECT booked_time FROM jobs WHERE id=$1", [id])).rows[0].booked_time).toBe("AFTERNOON");
+    await page.getByRole("link", { name: "Back", exact: true }).press("Enter"); await expect(page.getByRole("heading", { name: "Real booking job", exact: true })).toBeVisible(); await expectNoA11yViolations(page);
+
   });
 });
