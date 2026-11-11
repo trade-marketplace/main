@@ -17,7 +17,13 @@ test("work area previews remain guarded on production", async ({ page }) => {
 for (const viewport of VIEWPORTS) test(`every work area state fits and passes axe at ${viewport.width}px`, async ({ page }) => {
   test.setTimeout(180_000); await page.setViewportSize(viewport);
   for (const state of [...WORK_AREA_STATES, "gallery"]) {
-    await page.goto(at(state)); await expect(page.getByRole("heading", { name: "Work area", exact: true }).first()).toBeVisible();
+    await page.goto(at(state));
+    if (state === "loading") {
+      const status = page.getByRole("status").filter({ hasText: "Loading work area" });
+      await expect(status).toHaveCount(1); expect(await status.evaluate(element => element.closest("[inert]") === null)).toBe(true);
+      await expect(page.getByRole("navigation", { name: "Account settings", exact: true })).toHaveCount(0);
+      await page.keyboard.press("Tab"); expect(await page.evaluate(() => document.activeElement?.closest("[inert]") === null)).toBe(true);
+    } else await expect(page.getByRole("heading", { name: "Work area", exact: true }).first()).toBeVisible();
     if (state === "saved") await expect(page.getByText("Saved.", { exact: true })).toBeVisible();
     if (state === "field-error") await expect(page.getByText("Choose a suburb from the search results.")).toBeVisible();
     if (state === "search-unavailable") await expect(page.getByText("Suburb search is unavailable. Try again to choose a suburb.", { exact: true })).toBeVisible();
@@ -117,7 +123,9 @@ test.describe("real work area journey", () => {
     await page.getByRole("link", { name: "Change it", exact: true }).click();
     await page.getByRole("link", { name: "Back to jobs", exact: true }).click(); await expect(page).toHaveURL(`${app}/jobs?trade=electrical&distance=10&view=all`);
     await db.query("UPDATE worker_profiles SET area_lat=NULL,area_lng=NULL WHERE user_id=$1", [me]);
-    await page.reload(); await page.getByRole("link", { name: "Set your work area", exact: true }).click();
+    await page.reload(); await expect(page.getByText("Choose your suburb and travel radius.", { exact: true })).toBeVisible();
+    await expect(page.getByText("Contact us to set the area you work in.", { exact: true })).toHaveCount(0);
+    await page.getByRole("link", { name: "Set your work area", exact: true }).click();
     await expect(page.getByRole("heading", { level: 1, name: "Work area", exact: true })).toBeVisible();
     await expect(page.getByRole("switch")).toBeDisabled(); await expect(page.getByText("Save your work area before turning on job alerts.", { exact: true })).toBeVisible();
     await page.getByRole("link", { name: "Back to jobs", exact: true }).click(); await expect(page).toHaveURL(`${app}/jobs?trade=electrical&distance=10&view=all`);

@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import { WorkArea } from "@/components/account/WorkArea";
+import { WorkArea, WorkAreaLoadingPage } from "@/components/account/WorkArea";
 import { AccountSettings } from "@/components/account/AccountSettings";
 import { WorkerSignupFields } from "@/components/auth/WorkerSignupFields";
 import { parseWorkArea, workAreaChanged, type WorkAreaSnapshot } from "@/lib/account/work-area";
@@ -65,5 +65,13 @@ describe("work area", () => {
       const html = renderToStaticMarkup(<AccountSettings role="TRADIE" next={next}>Content</AccountSettings>);
       expect(html).toContain('href="/profile/notifications"'); expect(html).toContain('href="/profile/trades"'); expect(html).not.toContain("?next=");
     }
+  });
+  it("keeps temporary navigation inert with a separate accessible loading status", () => {
+    const [frame, heading, announcement] = WorkAreaLoadingPage().props.children;
+    expect(frame.props.inert).toBe(true);
+    expect(frame.props["aria-hidden"]).toBe("true");
+    expect(heading.type).toBe("h1"); expect(heading.props.children).toBe("Work area");
+    expect(announcement.props.message).toBe("Loading work area");
+    expect(renderToStaticMarkup(announcement)).toContain('role="status"');
   });
 });

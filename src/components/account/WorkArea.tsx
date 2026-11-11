@@ -16,8 +16,10 @@ import { parseWorkArea, workAreaChanged, WORK_AREA_SELECTION_ERROR, type Availab
 import { tradeLabel } from "@/lib/account/trades";
 import { workAreaBounds } from "@/lib/map/mapbox";
 import { boardSettingsRoute } from "@/lib/job-board";
+import { MOTION_MS } from "@/lib/motion/timings";
 import { searchWorkAreaAction, saveWorkAreaAction, setAvailableAction } from "@/server/workers/area-actions";
 import type { SignupAreaResult, SignupAreaSuggestion } from "@/server/auth/work-area";
+import { AccountSettings } from "./AccountSettings";
 import account from "./account.module.css";
 import styles from "./work-area.module.css";
 
@@ -28,6 +30,14 @@ export function WorkAreaLoading() {
   return <><h1 className={account.title}>Work area</h1><LoadingRegion loading label="Loading work area" skeleton={<div className={account.sections}>
     {[0, 1, 2, 3].map(item => <div className={`${account.card} ${styles.card}`} key={item}><Skeleton width="50%" height={24} /><Skeleton height={48} /></div>)}
   </div>} /></>;
+}
+
+export function WorkAreaLoadingPage() {
+  return <>
+    <div inert aria-hidden="true"><AccountSettings role="TRADIE" active="/profile/area"><WorkAreaLoading /></AccountSettings></div>
+    <h1 className={account.srOnly}>Work area</h1>
+    <LiveMessage message="Loading work area" delay={MOTION_MS.m15Delay} />
+  </>;
 }
 
 export function WorkArea(props: Props) {
