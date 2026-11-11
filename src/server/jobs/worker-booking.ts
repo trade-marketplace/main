@@ -13,7 +13,9 @@ type Row = Prisma.JobGetPayload<{ select: typeof SELECT }>;
 function snapshot(job: Row, now: Date): BookingSnapshot {
   const timeWindows = job.timeWindows.map(window => ({ date: window.date.toISOString().slice(0, 10), timeOfDay: window.timeOfDay }));
   const booked = job.bookedDate && job.bookedTime ? { date: job.bookedDate.toISOString().slice(0, 10), timeOfDay: job.bookedTime } : null;
-  return { id: job.id, title: job.title, suburb: job.suburb, customerFirstName: job.customer.firstName, anyTime: job.anyTime, windows: availableBookingWindows(timeWindows, job.anyTime, now), booked, revision: windowsRevision({ asap: job.asap, anyTime: job.anyTime, timeWindows, booked }) };
+  const windows = availableBookingWindows(timeWindows, job.anyTime, now);
+  const schedule = { asap: job.asap, anyTime: job.anyTime, timeWindows, booked };
+  return { id: job.id, title: job.title, suburb: job.suburb, customerFirstName: job.customer.firstName, anyTime: job.anyTime, windows, booked, revision: `${windowsRevision(schedule)}:${windowsRevision({ ...schedule, timeWindows: windows })}` };
 }
 const permitted = (viewer: Viewer, id: string) => viewer.role === "TRADIE" && z.uuid().safeParse(id).success;
 export async function loadBooking(db: PrismaClient, viewer: Viewer, id: string, now = new Date()) {

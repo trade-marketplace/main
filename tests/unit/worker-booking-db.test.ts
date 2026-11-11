@@ -111,4 +111,17 @@ describe.skipIf(!testDatabaseUrl)("worker booking database", () => {
     }
   });
 
+  for (const anyTime of [false, true]) it(`refreshes ${anyTime ? "Any time" : "explicit"} choices across Auckland midnight without a manual reload`, async () => {
+    const f = await fixture(anyTime), beforeMidnight = new Date("2026-11-11T10:59:00Z"), afterMidnight = new Date("2026-11-11T11:01:00Z");
+    const expiring = { date: "2026-11-11", timeOfDay: "MORNING" as const };
+    if (!anyTime) await schema.db.jobTimeWindow.create({ data: { jobId: f.job.id, date: new Date(expiring.date), timeOfDay: expiring.timeOfDay } });
+    const before = (await loadBooking(schema.db, f.worker, f.job.id, beforeMidnight))!; expect(before.windows).toContainEqual(expiring);
+    const result = await bookJobWindow(schema.db, f.worker, f.job.id, expiring, before.revision, afterMidnight);
+    expect(result.status).toBe("changed"); if (result.status !== "changed") throw Error("Expected refreshed choices");
+    expect(result.snapshot.windows).not.toContainEqual(expiring); expect(result.snapshot.revision).not.toBe(before.revision);
+    expect(await notices(f.job.id)).toHaveLength(0); expect(await schema.db.auditLog.count({ where: { recordId: f.job.id } })).toBe(0);
+    expect((await schema.db.job.findUniqueOrThrow({ where: { id: f.job.id } })).bookedDate).toBeNull();
+    expect((await bookJobWindow(schema.db, f.worker, f.job.id, result.snapshot.windows[0], result.snapshot.revision, afterMidnight)).status).toBe("booked");
+  });
+
 });

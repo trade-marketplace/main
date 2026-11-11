@@ -16,7 +16,7 @@ for (const width of [320, 390, 768, 1024, 1440]) test(`booking states at ${width
     else await expect(page.getByRole("heading", { name: "Pick a time", exact: true })).toBeVisible();
     if (state === "any-time") { await expect(page.getByRole("radio")).toHaveCount(21); await expect(page.getByText("Any time works for Sarah.")).toBeVisible(); }
     if (state === "none-left") { await expect(page.getByRole("radio")).toHaveCount(0); await expect(page.getByText("None of Sarah’s times are left.")).toBeVisible(); }
-    if (state === "changed") await expect(page.getByText("Sarah changed the times. Pick again.")).toBeVisible();
+    if (state === "changed") await expect(page.getByText("The times changed. Pick again.")).toBeVisible();
     if (state === "asked") await expect(page.getByText("Sarah’s been asked for more times.")).toBeVisible();
     if (state === "booked") await expect(page.getByText("Booked: Thu 12 Nov · Morning")).toBeVisible();
     if (state === "offline") await expect(page.getByRole("button", { name: "Suggest other times", exact: true })).toHaveAttribute("aria-disabled", "true");
@@ -41,6 +41,8 @@ test("keyboard booking, rescheduling, requests and Back preserve the job journey
   await expect(page.getByRole("heading", { name: "Sub wiring", exact: true })).toBeVisible(); await expect(page.getByRole("status").filter({ hasText: "Booked Thu 12 Nov · Morning" })).toBeVisible();
   await page.getByRole("link", { name: "Book a time", exact: true }).press("Enter"); await page.getByRole("link", { name: "Back to job", exact: true }).press("Enter"); await expect(page.getByRole("heading", { name: "Sub wiring", exact: true })).toBeVisible();
   await page.goto(`${preview}/dev/components/worker-book?state=booked`); await page.getByRole("group", { name: "Fri 13 Nov" }).getByRole("radio", { name: "Evening" }).check(); await page.getByRole("button", { name: "Change to Fri 13 Nov · Evening" }).click(); await expect(page.getByRole("status").filter({ hasText: "Changed to Fri 13 Nov · Evening" })).toBeVisible();
+  await page.goto(`${preview}/dev/components/worker-book?state=changed`); await page.getByRole("group", { name: "Thu 12 Nov" }).getByRole("radio", { name: "Morning" }).check(); await page.getByRole("button", { name: "Book Thu 12 Nov · Morning", exact: true }).click();
+  await expect(page.getByText("The times changed. Pick again.")).toBeVisible(); await expect(page.getByRole("radio")).toHaveCount(1); await page.getByRole("group", { name: "Sun 15 Nov" }).getByRole("radio", { name: "Morning" }).check(); await page.getByRole("button", { name: "Book Sun 15 Nov · Morning", exact: true }).click(); await expect(page.getByRole("heading", { name: "Sub wiring", exact: true })).toBeVisible();
   await page.goto(`${preview}/dev/components/worker-book?state=pick`); await page.getByRole("button", { name: "Suggest other times" }).click(); await expect(page.getByText("Sarah’s been asked for more times.")).toBeVisible(); await expectNoA11yViolations(page);
 });
 test.describe("real booking command journey", () => {
