@@ -1,4 +1,6 @@
 import { randomUUID } from "node:crypto";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import { expect, test } from "@playwright/test";
 import pg from "pg";
 import { startAuthStub, sessionCookies } from "../../scripts/screenshots/auth-stub";
@@ -66,6 +68,7 @@ test("an avatar that fails before hydration still becomes initials", async ({ pa
 });
 
 const app = process.env.CUSTOMER_CONFIRMED_E2E_APP_URL, database = process.env.CUSTOMER_CONFIRMED_E2E_DATABASE_URL;
+const runFixture = promisify(execFile);
 test.describe("real customer confirmed job", () => {
   test.skip(!app || !database, "requires isolated local app and lane_a_127 database");
   test.describe.configure({ mode: "serial" });
@@ -82,7 +85,32 @@ test.describe("real customer confirmed job", () => {
   });
   test.afterAll(async () => { await db?.end(); if (auth) await new Promise<void>(resolve => auth.close(() => resolve())); });
   const create = async (assigned: boolean) => {
-    const id = randomUUID(); await db.query("INSERT INTO jobs(id,customer_id,worker_id,category,status,price_cents,title,description,address_line1,suburb,city,any_time,updated_at) VALUES($1,$2,$3,'OTHER',$4::job_status,10000,'Confirmed journey','Move the couch upstairs.','1 Example Street','Windsor','Invercargill',true,now())", [id, customer.id, assigned ? worker.id : null, assigned ? "ASSIGNED" : "BOOKABLE"]); return id;
+    const id = randomUUID(); await db.query("INSERT INTO jobs(id,customer_id,category,status,price_cents,title,description,address_line1,suburb,city,any_time,updated_at) VALUES($1,$2,'OTHER','BOOKABLE',10000,'Confirmed journey','Move the couch upstairs.','1 Example Street','Windsor','Invercargill',true,now())", [id, customer.id]);
+    if (assigned) {
+      await db.query("BEGIN");
+      try {
+        await db.query("SELECT set_config('app.actor_id',$1,true)", [worker.id]);
+        await db.query("UPDATE jobs SET status='ASSIGNED',worker_id=$1 WHERE id=$2", [worker.id, id]);
+        await db.query("INSERT INTO audit_log(id,actor_id,action,record_type,record_id,before,after) VALUES($1,$2,'job.claimed','jobs',$3,$4,$5)", [randomUUID(), worker.id, id, JSON.stringify({ workerId: null, status: "BOOKABLE" }), JSON.stringify({ workerId: worker.id, status: "ASSIGNED" })]);
+        await db.query("COMMIT");
+      } catch (error) { await db.query("ROLLBACK"); throw error; }
+    }
+    return id;
+  };
+  const sendUpdate = async (jobId: string, type: string, payload: Record<string, string | number> = {}) => {
+    await runFixture(process.execPath, ["--conditions=react-server", "--import", "tsx", "--input-type=module", "-e", `
+      import { createDatabaseClient } from './src/server/database-client.ts';
+      import { createNotify } from './src/server/notifications/notify.ts';
+      const target = new URL(process.env.CUSTOMER_CONFIRMED_E2E_DATABASE_URL);
+      if (target.hostname !== '127.0.0.1' || target.pathname !== '/lane_a_127' || target.search) throw Error('Local Lane A fixtures only');
+      const client = createDatabaseClient(target.href);
+      try { await client.$transaction(async tx => {
+        const [jobId, type, rawPayload, workerId, customerId] = process.argv.slice(1);
+        const action = type === 'job.reschedule_requested' ? 'job.times_requested' : type;
+        const audit = await tx.auditLog.create({ data: { actorId: workerId, action, recordType: 'jobs', recordId: jobId, after: { sent: true } } });
+        await createNotify(tx)(type, [customerId], { eventId: action + ':' + audit.id, payload: { jobId, ...JSON.parse(rawPayload) } });
+      }); } finally { await client.$disconnect(); }
+    `, jobId, type, JSON.stringify(payload), worker.id, customer.id], { cwd: process.cwd(), env: process.env });
   };
   test("owned updates refresh without a revision change; assigned Add times preserves its return and current editing restriction", async ({ page, context }) => {
     test.setTimeout(60_000);
@@ -92,10 +120,10 @@ test.describe("real customer confirmed job", () => {
     await expect(page.getByRole("heading", { name: "Jack W", exact: true })).toBeVisible();
     await expect(page.getByRole("link", { name: "Call Jack", exact: true })).toHaveAttribute("href", "tel:+64210000002");
     const revision = (await db.query("SELECT updated_at FROM jobs WHERE id=$1", [id])).rows[0].updated_at;
-    await db.query("INSERT INTO notifications(id,user_id,type,payload) VALUES($1,$2,'job.running_late',$3)", [randomUUID(), customer.id, JSON.stringify({ jobId: id, lateMinutes: 30 })]);
+    await sendUpdate(id, "job.running_late", { lateMinutes: 30 });
     await expect(page.getByText("Running late · 30 min", { exact: true })).toBeVisible({ timeout: 25_000 });
     expect((await db.query("SELECT updated_at FROM jobs WHERE id=$1", [id])).rows[0].updated_at).toEqual(revision);
-    await db.query("INSERT INTO notifications(id,user_id,type,payload) VALUES($1,$2,'job.reschedule_requested',$3)", [randomUUID(), customer.id, JSON.stringify({ jobId: id })]);
+    await sendUpdate(id, "job.reschedule_requested");
     await page.reload();
     await page.getByRole("link", { name: "Add times", exact: true }).click();
     await expect(page).toHaveURL(`${app}/jobs/${id}/windows?from=${encodeURIComponent(path)}`);

@@ -15,7 +15,11 @@ function database({ category = "ELECTRICAL", status = "VERIFIED", expires = "202
   const findFirst = vi.fn().mockResolvedValue({ category, worker: { id: VIEWERS.worker.userId, role: "TRADIE", avatarPath: "private-avatar-path", workerTrades: [{ trade: "ELECTRICAL", licence: { status, checkedById: VIEWERS.office.userId, checkedAt: new Date("2026-11-01"), expiresOn: new Date(expires) } }] } });
   const aggregate = vi.fn().mockResolvedValue({ _avg: { rating: reviews ? 4.75 : null }, _count: { _all: reviews } });
   const findMany = vi.fn().mockResolvedValue([{ id: "update", type: "job.running_late", createdAt: now, payload: { lateMinutes: 30, private: "never-forwarded" } }]);
-  return { db: { job: { findFirst }, review: { aggregate }, notification: { findMany } } as unknown as Parameters<typeof loadCustomerWorkerCard>[0], findFirst, aggregate, findMany };
+  const assignments = vi.fn().mockResolvedValue([{ id: "claim", createdAt: new Date(now.getTime() - 1000), after: { workerId: VIEWERS.worker.userId }, action: "job.claimed", actorId: VIEWERS.worker.userId }]);
+  const history = vi.fn().mockResolvedValue({ createdAt: new Date(now.getTime() - 500) });
+  const repeated = vi.fn().mockResolvedValue(0);
+  const audits = vi.fn(input => input.where.actorId ? Promise.resolve([{ id: "event", action: "job.running_late" }]) : assignments());
+  return { db: { job: { findFirst }, review: { aggregate }, notification: { findMany }, auditLog: { findMany: audits, count: repeated }, jobStatusHistory: { findFirst: history } } as unknown as Parameters<typeof loadCustomerWorkerCard>[0], findFirst, aggregate, findMany, assignments, history, repeated };
 }
 describe("customer worker card", () => {
   it.each(Object.keys(CUSTOMER_WORKER_LICENCE_LABELS) as (keyof typeof CUSTOMER_WORKER_LICENCE_LABELS)[])("uses the exact checked-licence line for %s", trade => {
@@ -65,5 +69,17 @@ describe("customer worker card", () => {
     expect(await loadCustomerWorkerCard(db, VIEWERS.office, job.id)).toBeNull();
     expect(await loadCustomerWorkerCard(db, VIEWERS.customer, "not-an-id")).toBeNull();
     expect(findFirst).not.toHaveBeenCalled();
+  });
+  it("hides updates when assignment proof is missing, belongs to another worker or is tied", async () => {
+    for (const rows of [[], [{ createdAt: now, after: { workerId: VIEWERS.office.userId } }], [{ createdAt: now, after: { workerId: VIEWERS.worker.userId } }, { createdAt: now, after: { workerId: VIEWERS.office.userId } }]]) {
+      const { db, assignments, findMany } = database(); assignments.mockResolvedValue(rows);
+      expect(await loadCustomerWorkerCard(db, VIEWERS.customer, job.id, async () => null, now)).toMatchObject({ updates: [], askedForTimes: false });
+      expect(findMany).not.toHaveBeenCalled();
+    }
+  });
+  it("does not guess a claim's time when clock-timestamp history is missing", async () => {
+    const { db, history, findMany } = database(); history.mockResolvedValue(null);
+    expect(await loadCustomerWorkerCard(db, VIEWERS.customer, job.id, async () => null, now)).toMatchObject({ updates: [], askedForTimes: false });
+    expect(findMany).not.toHaveBeenCalled();
   });
 });
