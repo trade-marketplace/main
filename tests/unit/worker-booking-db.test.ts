@@ -48,10 +48,11 @@ describe.skipIf(!testDatabaseUrl)("worker booking database", () => {
     const other = await fixture(); await schema.db.job.update({ where: { id: other.job.id }, data: { status: "SUBMITTED" } });
     expect(await load(other)).toBeNull(); expect(await bookJobWindow(schema.db, other.worker, other.job.id, one, "old", now)).toEqual({ status: "forbidden" }); expect(await requestOtherTimes(schema.db, other.worker, other.job.id, now)).toEqual({ status: "forbidden" });
   });
-  it("permits any-time choices and rejects past dates there too", async () => {
+  it("permits the seven-day Any time choices and refuses past or forged later dates", async () => {
     const f = await fixture(true), before = await load(f); expect(before.windows).toHaveLength(21);
-    expect((await bookJobWindow(schema.db, f.worker, f.job.id, { ...one, date: "2026-11-10" }, before.revision, now)).status).toBe("invalid");
+    for (const date of ["2026-11-10", "2026-11-18", "2027-11-11"]) expect((await bookJobWindow(schema.db, f.worker, f.job.id, { ...one, date }, before.revision, now)).status).toBe("invalid");
     expect((await bookJobWindow(schema.db, f.worker, f.job.id, { ...one, timeOfDay: "EVENING" }, before.revision, now)).status).toBe("booked");
+    expect((await bookJobWindow(schema.db, f.worker, f.job.id, { date: "2026-11-17", timeOfDay: "EVENING" }, (await load(f)).revision, now)).status).toBe("booked");
   });
   it("asks once per hour, even simultaneously, and keeps the booking", async () => {
     const f = await fixture(); await bookJobWindow(schema.db, f.worker, f.job.id, one, (await load(f)).revision, now);

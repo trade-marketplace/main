@@ -34,7 +34,7 @@ export async function bookJobWindow(db: PrismaClient, viewer: Viewer, id: string
     if (before.revision !== revision) return { status: "changed", snapshot: before };
     if (!parsed.success) return { status: "invalid" };
     const window: JobTimeWindow = parsed.data;
-    if (window.date < postingDateRange(now).today || !(job.anyTime || before.windows.some(offered => timeWindowKey(offered) === timeWindowKey(window)))) return { status: "invalid" };
+    if (window.date < postingDateRange(now).today || !before.windows.some(offered => timeWindowKey(offered) === timeWindowKey(window))) return { status: "invalid" };
     const rescheduled = before.booked !== null;
     if (before.booked && timeWindowKey(before.booked) === timeWindowKey(window)) return { status: "booked", window, rescheduled: false };
     await tx.job.update({ where: { id }, data: { bookedDate: new Date(`${window.date}T00:00:00Z`), bookedTime: window.timeOfDay } });

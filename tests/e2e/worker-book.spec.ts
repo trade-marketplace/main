@@ -25,6 +25,14 @@ for (const width of [320, 390, 768, 1024, 1440]) test(`booking states at ${width
     if (process.env.BOOK_SCREENSHOTS_DIR && [390, 1440].includes(width)) await page.screenshot({ path: `${process.env.BOOK_SCREENSHOTS_DIR}/${state}-${width}.png`, fullPage: true });
   });
 });
+test("persistent assigned-job entry preview is fully rendered at every width", async ({ page }) => {
+  test.setTimeout(120_000);
+  for (const width of [320, 390, 768, 1024, 1440]) {
+    await page.setViewportSize({ width, height: 900 }); await page.goto(`${preview}/dev/components/worker-book?view=entry`);
+    await expect(page.getByRole("heading", { name: "Sub wiring", exact: true })).toBeVisible(); await expect(page.getByRole("link", { name: "Book a time", exact: true })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true); await expectNoA11yViolations(page);
+  }
+});
 test("keyboard booking, rescheduling, requests and Back preserve the job journey", async ({ page }) => {
   await page.goto(`${preview}/dev/components/worker-book?state=pick`);
   const morning = page.getByRole("group", { name: "Thu 12 Nov" }).getByRole("radio", { name: "Morning" });
