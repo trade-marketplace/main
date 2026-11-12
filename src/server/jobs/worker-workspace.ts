@@ -5,9 +5,11 @@ import { WORKSPACE_STATUSES, type WorkspaceView } from "@/lib/worker-workspace";
 import { payoutTotal } from "@/lib/earnings";
 import { calculatePayout } from "@/server/payouts/calculate";
 import { workerJobView, type JobViewer } from "@/server/views";
+import { loadWorkerExtras } from "./worker-extras";
+import type { WorkerExtra } from "@/lib/worker-extras";
 import { WORKER_CLAIM_SELECT } from "./worker-claim-reader";
 
-export async function loadWorkspace(db: Pick<PrismaClient, "job" | "settings" | "jobStatusHistory">, viewer: JobViewer, jobId: string): Promise<WorkspaceView | null> {
+export async function loadWorkspace(db: Pick<PrismaClient, "job" | "settings" | "jobStatusHistory" | "profile" | "variation">, viewer: JobViewer, jobId: string): Promise<(WorkspaceView & { extras: WorkerExtra[] }) | null> {
   if (viewer.role !== "TRADIE" || !z.uuid().safeParse(jobId).success) return null;
   const source = await db.job.findUnique({ where: { id: jobId }, select: {
     ...WORKER_CLAIM_SELECT, variations: { where: { status: { in: ["REQUESTED", "PRICED", "APPROVED"] } }, select: { status: true, minutes: true } },
@@ -16,9 +18,10 @@ export async function loadWorkspace(db: Pick<PrismaClient, "job" | "settings" | 
   if (!source || source.workerId !== viewer.userId || !(WORKSPACE_STATUSES as readonly string[]).includes(source.status)) return null;
   const safe = workerJobView(viewer, source);
   if (!safe?.assignedToYou || !safe.address || !safe.customer) return null;
-  const [settings, claim] = await Promise.all([
+  const [settings, claim, extras] = await Promise.all([
     db.settings.findUnique({ where: { id: 1 }, select: { autoReleaseHours: true } }),
     db.jobStatusHistory.findFirst({ where: { jobId, toStatus: "ASSIGNED" }, orderBy: { createdAt: "desc" }, select: { createdAt: true } }),
+    loadWorkerExtras(db, viewer, jobId),
   ]);
   const autoReleaseHours = settings?.autoReleaseHours ?? 48;
   // Match Earnings: actual stored pay wins; otherwise use its existing calculator with approved extras.
@@ -37,6 +40,6 @@ export async function loadWorkspace(db: Pick<PrismaClient, "job" | "settings" | 
     accessNotes: safe.address.accessNotes, bookedDate: safe.bookedDate, bookedTime: safe.bookedTime,
     budgetCents: source.materials?.budgetCents ?? source.pricing?.materialsCents ?? null, extraWorkOpen: source.variations.some(extra => extra.status === "REQUESTED" || extra.status === "PRICED"), claimedAt: claim?.createdAt.toISOString() ?? null,
     signOffDeadline: source.evidence?.submittedAt ? new Date(source.evidence.submittedAt.getTime() + autoReleaseHours * 3_600_000).toISOString() : null,
-    autoReleaseHours, payout: source.payouts[0]?.status ?? null,
+    autoReleaseHours, payout: source.payouts[0]?.status ?? null, extras,
   };
 }

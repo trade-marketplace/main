@@ -1,0 +1,10 @@
+.fields { display: grid; gap: var(--trade-space-5); min-width: 0; }
+.photos { min-width: 0; margin: 0; padding: 0; border: 0; }
+.photos legend { margin-bottom: var(--trade-space-2); font-weight: 700; }
+.card { display: grid; gap: var(--trade-space-3); min-width: 0; padding: var(--trade-space-5); border: 1px solid var(--trade-line); border-radius: var(--trade-radius-card); background: var(--trade-surface); overflow-wrap: anywhere; }
+.card p { margin: 0; }
+.title { margin: 0; font-size: var(--trade-fs-body); }
+.actions { display: flex; flex-wrap: wrap; gap: var(--trade-space-3); }
+.gallery { display: grid; gap: var(--trade-space-5); padding: var(--trade-space-5); }
+.drawer.drawer { max-width: 100vw; }
+@media (max-width: 599px) { .drawer.drawer { margin: 0; inset: auto 0 0; width: 100%; height: auto; max-height: 95dvh; border-radius: var(--trade-radius-card) var(--trade-radius-card) 0 0; } .drawer.drawer > div { max-height: 95dvh; } .actions > * { flex: 1 1 auto; } .card { padding: var(--trade-space-4); } }

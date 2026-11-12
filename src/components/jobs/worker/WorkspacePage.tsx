@@ -9,5 +9,5 @@ export async function WorkspacePage({ viewer, id }: { viewer: JobViewer; id: str
   try { job = await loadWorkspace(getDb(), viewer, id); }
   catch { return <WorkspaceLoadError />; }
   if (!job) notFound();
-  return <Workspace key={`${viewer.userId}:${id}`} job={job} />;
+  return <Workspace key={`${viewer.userId}:${id}`} job={job} extras={job.extras} />;
 }
