@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { Icon } from "@/components/Icon";
@@ -9,7 +10,8 @@ import { boardSettingsRoute } from "@/lib/job-board";
 
 import styles from "./account.module.css";
 
-export function AccountSettings({ role, children, active = "/profile/security", next }: { role: AppRole; children: ReactNode; active?: string; next?: string | null }) {
+export function AccountSettings({ role, children, active = "/profile/security", next, pendingReturn }: { role: AppRole; children: ReactNode; active?: string; next?: string | null; pendingReturn?: boolean }) {
+  const preview = usePathname()?.startsWith("/dev/") === true;
   const links = [
     ["Profile", "/profile", "person"],
     ["Security", "/profile/security", "lock"],
@@ -18,9 +20,9 @@ export function AccountSettings({ role, children, active = "/profile/security", 
     ["Delete account", "/profile/delete", "delete"],
   ];
   const returnPages = ["/profile/area", "/profile/trades", "/profile/payroll", "/profile/notifications"];
-  // Ready consuming routes pass null for no return. An omitted value is a loading boundary that cannot
-  // safely build its links yet; keep its temporary menus inert until the route resolves the query.
-  const returnPending = role === "TRADIE" && returnPages.includes(active) && next === undefined;
+  // Completed profile routes pass null for no return; their loading boundaries cannot safely build links
+  // yet. Existing component previews have no unresolved route query, and opt in only when showing loading.
+  const returnPending = role === "TRADIE" && returnPages.includes(active) && (pendingReturn ?? (next === undefined && !preview));
   // Only these destinations consume a board return. Every other account link retains its existing route.
   const destination = (path: string) => role === "TRADIE" && returnPages.includes(path) ? boardSettingsRoute(path, next).href : path;
   return <div className={styles.page}>

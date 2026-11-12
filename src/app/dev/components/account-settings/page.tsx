@@ -20,7 +20,7 @@ export default async function AccountSettingsPreview({ searchParams }: { searchP
   const loading = state === "loading-trades" || state === "loading-payroll" || state === "loading-notifications";
   const active = state === "loading-trades" ? "/profile/trades" : state === "loading-payroll" ? "/profile/payroll" : state === "loading-notifications" ? "/profile/notifications" : "/profile/area";
   return <AppShellView viewer={{ role: "TRADIE", firstName: "Jack", lastName: "Wilson", email: "worker@demo.test", emailVerified: true, counts: { messages: 0, notifications: 0 } }} testMode preview={{ at: "/profile/area", base: "/dev/components/account-settings" }}>
-    <AccountSettings role="TRADIE" active={active} next={loading ? undefined : back}>
+    <AccountSettings role="TRADIE" active={active} next={loading ? undefined : back} pendingReturn={loading}>
       {back && <TextLink href={back}>Back to jobs</TextLink>}
       {state === "loading-trades" ? <TradesLoading /> : state === "loading-payroll" ? <PayrollLoading /> : state === "loading-notifications" ? <><h1 className={account.title}>Notifications</h1><PreferencesLoading /></> : <WorkAreaDemo state="ready" network={false} />}
     </AccountSettings>

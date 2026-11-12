@@ -55,6 +55,7 @@ test.describe("real filtered board settings hops", () => {
   async function choose(page: Page, label: string, keyboard: boolean) {
     if ((page.viewportSize()?.width ?? 1440) < 1024) {
       const summary = page.locator("summary").filter({ hasText: "Account settings" });
+      await expect.poll(async () => summary.evaluate(element => element.closest("[inert], [aria-hidden=true]") === null), { timeout: 20_000 }).toBe(true);
       if (keyboard) await summary.press("Enter"); else await summary.click();
     }
     const link = page.getByRole("navigation", { name: "Account settings", exact: true }).getByRole("link", { name: label, exact: true });
@@ -112,6 +113,13 @@ test.describe("real filtered board settings hops", () => {
       await page.setViewportSize({ width, height: 900 });
       await page.goto(`${app}/profile/area?next=${encodeURIComponent(back)}`);
       await expect(page.getByRole("heading", { name: "Work area", exact: true })).toBeVisible();
+      // Prove the client handlers are hydrated before holding a reader: an unhydrated anchor would do a
+      // full document navigation and Playwright's click would wait on the very lock this test is holding.
+      const save = page.getByRole("button", { name: "Save changes", exact: true });
+      await page.getByRole("radio", { name: "50 km", exact: true }).click();
+      await expect(save).not.toHaveAttribute("aria-disabled", "true");
+      await page.getByRole("radio", { name: "25 km", exact: true }).click();
+      await expect(save).toHaveAttribute("aria-disabled", "true");
       const locker = new pg.Client({ connectionString: database }); await locker.connect();
       try {
         await locker.query("BEGIN");
@@ -127,10 +135,34 @@ test.describe("real filtered board settings hops", () => {
         await expect(page).toHaveURL(`${app}/profile/payroll?next=${encodeURIComponent(back)}`);
       } finally { await locker.query("ROLLBACK"); await locker.end(); }
       await expect(page.getByRole("heading", { name: "Bank & tax", exact: true })).toBeVisible();
+      await expect(page.getByText("Your bank and IRD details are encrypted and only used for payroll.", { exact: true })).toBeVisible();
       await choose(page, "Notifications", true);
       await expect(page).toHaveURL(`${app}/profile/notifications?next=${encodeURIComponent(back)}`);
       await page.getByRole("link", { name: "Back to jobs", exact: true }).click();
       await expect(page).toHaveURL(`${app}${back}`);
+    }
+  });
+  test("existing completed tradie previews retain keyboard and screen-reader settings navigation", async ({ page }) => {
+    test.setTimeout(240_000);
+    await page.goto(`${app}/login?next=%2Fprofile%2Farea`);
+    await page.getByLabel("Email", { exact: true }).fill(SECURITY_TRADIE.email);
+    await page.getByLabel("Password", { exact: true }).fill(SECURITY_PASSWORD);
+    await page.getByRole("button", { name: "Log in", exact: true }).click();
+    await expect(page).toHaveURL(`${app}/profile/area`, { timeout: 20_000 });
+    for (const viewport of VIEWPORTS) {
+      await page.setViewportSize(viewport);
+      for (const route of ["work-area?state=ready", "trades-licences", "payroll?state=missing", "notification-preferences?mode=trade"]) {
+        await page.goto(`${app}/dev/components/${route}`);
+        if (viewport.width < 1024) await page.locator("summary").filter({ hasText: "Account settings" }).press("Enter");
+        const nav = page.getByRole("navigation", { name: "Account settings", exact: true });
+        await expect(nav).toBeVisible();
+        await expect(nav.getByRole("link", { name: "Security", exact: true })).toHaveAttribute("href", "/profile/security");
+        expect(await fits(page)).toBe(true); await expectNoA11yViolations(page);
+        await nav.getByRole("link", { name: "Security", exact: true }).press("Enter");
+        await expect(page).toHaveURL(`${app}/profile/security`);
+        await expect(page.getByRole("heading", { level: 1, name: "Security", exact: true })).toBeVisible();
+        if (viewport.width < 1024) await expect(page.locator("details").filter({ has: page.locator("summary").filter({ hasText: "Account settings" }) })).not.toHaveAttribute("open", "");
+      }
     }
   });
 });

@@ -1,5 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { usePathname } from "next/navigation";
 
 import { AccountSettings } from "@/components/account/AccountSettings";
 import { boardSettingsRoute } from "@/lib/job-board";
@@ -12,6 +13,7 @@ import PayrollLoadingPage from "@/app/(app)/profile/payroll/loading";
 import NotificationsLoadingPage from "@/app/(app)/profile/notifications/loading";
 
 const viewer = { userId: "tradie", role: "TRADIE", email: "tradie@example.test", firstName: "Jack", emailVerified: true };
+vi.mock("next/navigation", async importOriginal => ({ ...await importOriginal<typeof import("next/navigation")>(), usePathname: vi.fn(() => "/profile/area") }));
 vi.mock("@/server/auth/guard", () => ({ requireRole: vi.fn(async () => viewer), requireUser: vi.fn(async () => viewer) }));
 vi.mock("@/server/db", () => ({ getDb: () => ({}) }));
 vi.mock("@/server/account/trades", () => ({ loadTrades: vi.fn(async () => null) }));
@@ -24,6 +26,7 @@ vi.mock("@/components/account/NotificationPreferences", () => ({ NotificationPre
 vi.mock("@/components/account/WorkArea", () => ({ WorkArea: () => null }));
 
 describe("account settings board return", () => {
+  beforeEach(() => { vi.mocked(usePathname).mockReturnValue("/profile/area"); });
   const back = "/jobs?kind=bounty&distance=10";
   const destinations = ["/profile/area", "/profile/trades", "/profile/payroll", "/profile/notifications"];
   it("carries the canonical destination in both menus, only to the four consuming pages", () => {
@@ -49,6 +52,16 @@ describe("account settings board return", () => {
       expect(ready).not.toContain("?next=");
     }
     expect(renderToStaticMarkup(<AccountSettings role="CUSTOMER" active="/profile/notifications">Loading</AccountSettings>)).not.toContain('inert=""');
+  });
+  it("keeps existing completed previews interactive and permits explicit loading previews", () => {
+    for (const [pathname, active] of [["/dev/components/work-area", "/profile/area"], ["/dev/components/trades-licences", "/profile/trades"], ["/dev/components/payroll", "/profile/payroll"], ["/dev/components/notification-preferences", "/profile/notifications"]]) {
+      vi.mocked(usePathname).mockReturnValue(pathname);
+      const ready = renderToStaticMarkup(<AccountSettings role="TRADIE" active={active}>Ready</AccountSettings>);
+      expect(ready).not.toContain('inert=""');
+      expect(ready).not.toContain("?next=");
+      const loading = renderToStaticMarkup(<AccountSettings role="TRADIE" active={active} pendingReturn>Loading</AccountSettings>);
+      expect(loading.match(/inert=""/g)).toHaveLength(2);
+    }
   });
   for (const [name, LoadingPage] of [["Trades", TradesLoadingPage], ["Payroll", PayrollLoadingPage], ["Notifications", NotificationsLoadingPage]] as const) {
     it(`${name}'s real loading boundary cannot expose context-free navigation`, async () => {

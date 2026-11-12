@@ -6,7 +6,7 @@ import { WorkerSignupFields } from "@/components/auth/WorkerSignupFields";
 import { parseWorkArea, workAreaChanged, type WorkAreaSnapshot } from "@/lib/account/work-area";
 import { boardSettingsRoute } from "@/lib/job-board";
 
-vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }), usePathname: () => "/profile/area" }));
 const initial: WorkAreaSnapshot = { baseSuburb: "Invercargill", radiusKm: 25, point: { lat: -46.4132, lng: 168.3538 }, available: true, paused: false, trades: ["OTHER"] };
 describe("work area", () => {
   it("leaves Save off until the suburb, selected point or radius changes", () => {
