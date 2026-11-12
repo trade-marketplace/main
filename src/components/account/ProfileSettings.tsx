@@ -137,6 +137,7 @@ function ProfileForm({ initial, email, pendingEmail, avatarUrl = null, action = 
 }
 
 function PhotoRow({ name, initialUrl, upload, online }: { name: string; initialUrl: string | null; upload: AvatarUpload; online: boolean }) {
+  const router = useRouter();
   const toast = useToast();
   const input = useRef<HTMLInputElement>(null);
   const [url, setUrl] = useState(initialUrl);
@@ -155,7 +156,7 @@ function PhotoRow({ name, initialUrl, upload, online }: { name: string; initialU
         setProblem(null);
         const answer = await upload(file);
         setBusy(false);
-        if (answer.ok) { setUrl(answer.url); toast.show({ message: "Saved." }); }
+        if (answer.ok) { setUrl(answer.url); toast.show({ message: "Saved." }); router.refresh(); }
         else setProblem(answer.message);
       }} />
     </div>

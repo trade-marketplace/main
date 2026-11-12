@@ -28,7 +28,7 @@ for (const viewport of VIEWPORTS) test(`customer job panels and recovery states 
     if (state === "empty") { await expect(page.getByText("No photos yet.", { exact: true })).toBeVisible(); await expect(page.getByText("Time to be arranged", { exact: true })).toBeVisible(); }
     if (state === "offline") await expect(page.getByText("You’re offline.", { exact: true })).toBeVisible();
     if (state === "photos-error") await expect(page.getByText("Can’t load photos.", { exact: true })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Time windows", exact: true })).toHaveCount(["booked", "status-gallery"].includes(state) ? 1 : 0);
+    await expect(page.getByRole("link", { name: "Time windows", exact: true })).toHaveCount(state === "status-gallery" ? 2 : ["booked", "assigned"].includes(state) ? 1 : 0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await expectNoA11yViolations(page);
     if ([390, 1440].includes(viewport.width) && ["ready", "empty", "cancelled", "loading", "error", "offline", "photos-error", "status-gallery"].includes(state)) await page.screenshot({ path: `/tmp/122-${state}-${viewport.width}.png`, fullPage: true });

@@ -194,7 +194,7 @@
   background: transparent;
   cursor: pointer;
 }
-.avatar {
+.avatar.avatar {
   display: grid;
   place-items: center;
   width: 36px;
@@ -210,8 +210,9 @@
 .avatarBtn:hover .avatar,
 .avatarBtn[aria-expanded="true"] .avatar { background: rgb(255 255 255 / 10%); }
 
-.menuName { font-size: var(--trade-fs-body); }
-.menuEmail { overflow-wrap: anywhere; }
+.menuIdentity { display: grid; grid-template-columns: 36px minmax(0, 1fr); align-items: center; gap: var(--trade-space-3); }
+.menuName { display: block; font-size: var(--trade-fs-body); }
+.menuEmail { display: block; font-size: var(--trade-fs-caption); color: var(--trade-text-2); overflow-wrap: anywhere; }
 
 /* ---- Count badge (.tm-count) ---- */
 .count {

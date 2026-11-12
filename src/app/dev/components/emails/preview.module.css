@@ -1,0 +1,4 @@
+.page { max-width: 648px; margin: 0 auto; padding: var(--trade-space-6) var(--trade-space-4); }
+.title { margin: 0 0 var(--trade-space-4); font-family: var(--trade-font-heading); }
+.links { display: flex; flex-wrap: wrap; gap: var(--trade-space-4); margin-bottom: var(--trade-space-6); }
+.frame { display: block; width: 600px; max-width: 100%; height: 680px; border: 0; background: var(--trade-paper); }
