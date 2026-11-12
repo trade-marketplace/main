@@ -14,6 +14,21 @@ When an e2e test fails there, the run's **Artifacts** has `playwright-report` (k
 `index.html` to see each failure with its screenshot and trace. UI PRs also get screenshots of every changed screen
 posted as a comment; see "Screenshots on UI PRs" below.
 
+## Whole job flow (local opt-in, #191)
+
+`tests/e2e/whole-flow-signed-in.spec.ts` follows one newly posted job through the real customer, office and tradie screens, then checks queued payroll, role privacy, history, notifications and audit actors. Use Node 22, installed Chromium, and a disposable **localhost `lane_d_191`** database. The test owns app port 3140 and local service ports 55440–55443; leave them free. It starts/stops the built app itself, using the existing Auth/Storage stand-ins and an in-process address-search response; its network guard refuses outside service traffic. The card exception calls the existing webhook event handler with a fake success event and replay; Stripe keys and email remain off.
+
+```bash
+export DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:54329/lane_d_191
+export DIRECT_URL="$DATABASE_URL"
+npx prisma migrate deploy
+ALLOW_SEED=1 NEXT_PUBLIC_SUPABASE_URL= SUPABASE_SECRET_KEY= SUPABASE_SERVICE_ROLE_KEY= npx prisma db seed
+NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:55440 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_screenshots_stub npm run build
+WHOLE_FLOW_E2E_APP_URL=http://127.0.0.1:3140 WHOLE_FLOW_E2E_DATABASE_URL="$DATABASE_URL" npx playwright test --config tests/e2e/support/whole-flow.config.ts --repeat-each=3
+```
+
+Set `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` if Chromium is installed outside Playwright's cache. Seed once; each run posts its own job and preserves that business history. An observed product bug has an issue-linked `fixme` annotation and skips only the affected nested step (`test.fixme()` would skip the entire journey); all remaining steps still execute. Do not insert missing business rows or change job statuses to conceal a bug. Ordinary CI skips this spec without the opt-in variables; dedicated CI provisioning is tracked in #567. After fixture testing, stop its processes and run a normal build with the Supabase variables blank.
+
 ## Unit tests (Vitest)
 
 For logic without a browser: job status rules, pricing maths, who-sees-what, env parsing, formatting.

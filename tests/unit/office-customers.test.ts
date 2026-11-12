@@ -1,0 +1,10 @@
+import { describe, expect, it } from "vitest";
+import { customerJobsHref, customerMobileSearch, customersHref, parseCustomersQuery } from "@/lib/office/customers";
+import { officeCustomerId, officeJobsSearch, parseOfficeJobsQuery, isFiltered } from "@/lib/office-jobs";
+const id = "24100000-0000-4000-8000-000000000001";
+describe("office customer list URL state", () => {
+  it("bounds input and defaults to newest Joined", () => { expect(parseCustomersQuery({ q: " x ", page: "-1", sort: "email.desc" })).toEqual({ q: "x", page: 1, sort: { key: "joined", direction: "desc" } }); expect(parseCustomersQuery({ q: "x".repeat(100), page: "999999999999" }).q).toHaveLength(80); expect(parseCustomersQuery({ page: "999999999999" }).page).toBe(1000000); });
+  it("round-trips sorting, search and page and links only to the customer scope", () => { const query = { q: "Sarah Taylor", sort: { key: "jobs", direction: "desc" as const }, page: 2 }; expect(customersHref(query)).toBe("/admin/customers?q=Sarah+Taylor&sort=jobs.desc&page=2"); expect(customerJobsHref(id)).toBe(`/admin/jobs?customer=${id}`); });
+  it("normalizes national mobile searches without treating a name as a phone", () => { expect(customerMobileSearch("021 123 4567")).toBe("64211234567"); expect(customerMobileSearch("+64 21 123 4567")).toBe("64211234567"); expect(customerMobileSearch("Sarah 21")).toBeNull(); });
+  it("validates and preserves the All jobs scope alongside every existing filter; ignores malformed ids", () => { const query = parseOfficeJobsQuery({ customer: id.toUpperCase(), status: "active", q: "door", page: "2", sort: "job.asc" }); expect(query.customer).toBe(id); expect(isFiltered(query)).toBe(true); expect(officeJobsSearch(query)).toContain(`customer=${id}`); expect(officeJobsSearch(query)).toContain("status=active"); expect(officeJobsSearch(query)).toContain("page=2"); expect(parseOfficeJobsQuery({ customer: "bad" })).not.toHaveProperty("customer"); expect(officeCustomerId("bad")).toBeUndefined(); });
+});

@@ -147,3 +147,5 @@
   max-width: 720px;
 }
 .pairMap { height: 200px; border-radius: var(--trade-radius-job-tile); }
+
+.hookControls { display: flex; flex-wrap: wrap; gap: var(--trade-space-2); }
