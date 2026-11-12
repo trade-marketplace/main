@@ -19,6 +19,8 @@ import { BOARD_TRADES, BOARD_WHEN, BoardUpdateRequests, boardAlertsRoute, boardS
   type BoardKind, type BoardPage, type BoardQuery, type BoardResult, type BoardSource } from "@/lib/job-board";
 import { loadJobBoardAction, newBoardJobsAction } from "@/server/jobs/board-actions";
 import styles from "./board.module.css";
+import phoneStyles from "./phone-map.module.css";
+import { PhoneMap } from "./PhoneMap";
 
 const LIVE_SOURCE: BoardSource = { load: loadJobBoardAction, updates: newBoardJobsAction };
 const kindItems: { value: BoardKind; label: string }[] = [{ value: "all", label: "All jobs" }, { value: "ready", label: "Ready to claim" }, { value: "estimate", label: "Needs a quote" }, { value: "bounty", label: "Quote bounty" }];
@@ -141,14 +143,14 @@ export function JobBoard({ initial, ownerId, source = LIVE_SOURCE, previewState,
   const contact = `/contact?next=${encodeURIComponent(returnTo)}`;
   const alerts = boardAlertsRoute(returnTo).href;
   const filtered = boardHref({ ...query, entry: "find-work", view: "grid" }) !== "/jobs";
-  return <div className={styles.page} data-mode="trade">
+  return <div className={styles.page + (query.view === "map" && !previewState ? " " + phoneStyles.boardPage : "")} data-mode="trade">
     <OfflineBanner online={previewState === "offline" ? false : undefined} onRetry={() => load()} sticky={false} />
     {notice}
-    <div className={styles.heading}><div><h1>Jobs near you</h1><p>{board ? `${board.total} ${board.total === 1 ? "job" : "jobs"} · ${meta?.areaName}` : "Jobs near you"}</p></div>
+    <div className={styles.heading} data-board-header><div><h1>Jobs near you</h1><p>{board ? `${board.total} ${board.total === 1 ? "job" : "jobs"} · ${meta?.areaName}` : "Jobs near you"}</p></div>
       <SegmentedControl label="View" width="auto" value={query.view} onChange={view => update({ view })} items={[{ value: "grid", label: "Grid", icon: "grid_view" }, { value: "map", label: "Map", icon: "map" }]} controls="board-results" />
     </div>
-    <div className={styles.layout}>
-      <aside className={styles.sidebar} aria-label="Job filters"><button className={styles.filterToggle} type="button" aria-expanded={filtersOpen} aria-controls="job-filters" onClick={() => setFiltersOpen(value => !value)}>Filters</button><div id="job-filters" className={styles.filters} data-open={filtersOpen}>
+    <div className={styles.layout} data-board-layout>
+      <aside data-board-filters className={styles.sidebar} aria-label="Job filters"><button className={styles.filterToggle} type="button" aria-expanded={filtersOpen} aria-controls="job-filters" onClick={() => setFiltersOpen(value => !value)}>Filters</button><div id="job-filters" className={styles.filters} data-open={filtersOpen}>
         <fieldset><legend>Show</legend><CheckboxField label={`Already quoted${board ? ` (${board.counts.estimated})` : ""}`} checked={query.estimated} onChange={event => update({ estimated: event.target.checked })} />
           <CheckboxField label={`Saved${board ? ` (${board.counts.saved})` : ""}`} checked={query.saved} onChange={event => update({ saved: event.target.checked })} /></fieldset>
         <fieldset><legend>Trade</legend>{(meta?.trades ?? []).map(trade => <CheckboxField key={trade.trade} label={`${trade.label}${trade.reason ? ` · ${trade.reason}` : ""}`} disabled={!trade.allowed}
@@ -167,7 +169,7 @@ export function JobBoard({ initial, ownerId, source = LIVE_SOURCE, previewState,
       </div></aside>
       <section id="board-results" className={styles.results} aria-label="Jobs">
         {query.view !== "map" && <Tabs label="Job kind" items={kindItems.map(item => ({ ...item, count: board?.counts[item.value] }))} value={query.kind} onChange={kind => update({ kind })} controls="board-cards" />}
-        <div className={styles.toolbar}><span>{meta ? `Within ${meta.distanceKm} km of ${meta.areaName}` : ""}</span><SelectField label="Sort by" value={query.sort} onChange={event => update({ sort: event.target.value as BoardQuery["sort"] })}>
+        <div className={styles.toolbar} data-board-toolbar><span>{meta ? `Within ${meta.distanceKm} km of ${meta.areaName}` : ""}</span><SelectField label="Sort by" value={query.sort} onChange={event => update({ sort: event.target.value as BoardQuery["sort"] })}>
           <option value="nearest">Nearest</option><option value="newest">Newest</option><option value="earn">Highest pay</option></SelectField></div>
         {storageError && <InlineError message="Couldn’t save your jobs on this browser. Check your browser storage and try again." />}
         {error && !cacheChanged && <InlineError message="Can’t load your jobs. Check your connection and try again." onRetry={() => load()} />}
@@ -175,12 +177,12 @@ export function JobBoard({ initial, ownerId, source = LIVE_SOURCE, previewState,
         <div id="board-cards"><LoadingRegion loading={busy || !hydrated} label="Loading your jobs" skeleton={query.view === "map" ? <BoardMapSkeleton /> : <BoardSkeleton />}>
           {cacheChanged ? <ErrorState className={styles.empty} title="Can’t load your jobs" message="Check your connection and try again." onRetry={() => load()} />
             : !result.ok ? <ErrorState className={styles.empty} title={result.error === "forbidden" ? "Trade account required" : "Can’t load your jobs"} message="Check your connection and try again." onRetry={() => load()} />
-            : meta?.blocked ? <EmptyState className={styles.empty} icon="verified_user" title={meta.blocked === "worker-paused" ? "Your account is paused" : meta.blocked === "work-area-required" ? "Set your work area" : "Get verified to see jobs"}
+            : meta?.blocked ? <><div className={query.view === "map" && meta.blocked === "worker-paused" ? phoneStyles.desktop : undefined}><EmptyState className={styles.empty} icon="verified_user" title={meta.blocked === "worker-paused" ? "Your account is paused" : meta.blocked === "work-area-required" ? "Set your work area" : "Get verified to see jobs"}
               message={meta.blocked === "email-required" ? "Confirm your email to continue." : meta.blocked === "worker-paused" ? "Contact us to get back to work." : meta.blocked === "work-area-required" ? "Choose your suburb and travel radius." : "We need to check your ID before you can see jobs."}
-              action={<Button href={meta.blocked === "work-area-required" ? boardSettingsRoute("/profile/area", returnTo).href : contact}>{meta.blocked === "work-area-required" ? "Set your work area" : "Contact us"}</Button>} />
-            : query.view === "map" ? <><BoardMap cards={board?.cards ?? []} counts={board?.counts} query={query} ownerId={ownerId} config={meta?.map} serverNow={Date.parse(board?.before ?? "") || 0} onKindChange={kind => update({ kind })} previewState={previewState} previewBasePath={pathname} />
-              {more && <LoadingRegion loading label="Loading more jobs" skeleton={<BoardMapSkeleton />} />}
-              {board?.nextCursor && <div className={styles.more}><Button variant="secondary" loading={more} disabled={!online ? "You’re offline" : false} onClick={() => load(true)}>Load more jobs</Button></div>}
+              action={<Button href={meta.blocked === "work-area-required" ? boardSettingsRoute("/profile/area", returnTo).href : contact}>{meta.blocked === "work-area-required" ? "Set your work area" : "Contact us"}</Button>} /></div>{query.view === "map" && meta.blocked === "worker-paused" && <PhoneMap cards={[]} query={query} config={meta.map} serverNow={Date.parse(board?.before ?? "") || 0} onKindChange={kind => update({kind})} />}</>
+            : query.view === "map" ? <><BoardMap cards={board?.cards ?? []} counts={board?.counts} query={query} ownerId={ownerId} config={meta?.map} serverNow={Date.parse(board?.before ?? "") || 0} onKindChange={kind => update({ kind })} previewState={previewState} previewBasePath={pathname} onLoadMore={board?.nextCursor ? () => load(true) : undefined} loadingMore={more} />
+              {more && <div className={!previewState ? phoneStyles.desktop : undefined}><LoadingRegion loading label="Loading more jobs" skeleton={<BoardMapSkeleton />} /></div>}
+              {board?.nextCursor && <div className={styles.more + (!previewState ? " " + phoneStyles.desktop : "")}><Button variant="secondary" loading={more} disabled={!online ? "You’re offline" : false} onClick={() => load(true)}>Load more jobs</Button></div>}
             </>
             : !board?.cards.length ? <div className={styles.empty}><EmptyState icon="search_off" title="No jobs match that." message="Try fewer filters."
               action={<Button onClick={() => meta && meta.distanceKm < meta.maxDistanceKm ? update({ distance: meta.maxDistanceKm }) : resetFilters()}>{meta && meta.distanceKm < meta.maxDistanceKm ? "Widen distance" : "Reset filters"}</Button>}
