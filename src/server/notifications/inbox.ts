@@ -10,6 +10,7 @@ const SELECT = { id: true, type: true, payload: true, createdAt: true, readAt: t
 type Row = Prisma.NotificationGetPayload<{ select: typeof SELECT }>;
 
 const COPY: Readonly<Record<string, readonly [string, string]>> = {
+  "job.evidence_flagged": ["Fix and resend", "assignment_return"],
   "problem_report.created": ["Problem reported", "report"],
   "job.posted": ["Job posted", "task_alt"],
   "job.details_updated": ["Job updated", "edit"],
@@ -66,6 +67,7 @@ export function inboxItem(row: Row): InboxItem {
   else if (row.type === "message.received" && identifier(payload.officeJobId)) href = `/admin/jobs/${encodeURIComponent(identifier(payload.officeJobId)!)}`;
   else if (row.type === "message.received" && threadId) href = `/messages/${encodeURIComponent(threadId)}`;
   else if (row.type === "job.times_added" && jobId) href = `/jobs/${encodeURIComponent(jobId)}/book`;
+  else if (row.type === "job.evidence_flagged" && jobId) href = `/jobs/${encodeURIComponent(jobId)}/complete`;
   else if (jobId) {
     if (row.type === "job.reschedule_requested" && payload.refreshWindows === true) href = `/jobs/${encodeURIComponent(jobId)}/windows`;
     else if (row.type === "problem_report.created") href = officeProblemJobHref(jobId, payload.reportId, null);
