@@ -17,11 +17,15 @@ export function AccountSettings({ role, children, active = "/profile/security", 
     ...(role === "CUSTOMER" ? [["Addresses", "/profile/addresses", "home"], ["Payments", "/profile/payments", "credit_card"]] : [["Trades & licences", "/profile/trades", "verified"], ["Work area", "/profile/area", "near_me"], ["Bank & tax", "/profile/payroll", "account_balance"]]),
     ["Delete account", "/profile/delete", "delete"],
   ];
+  const returnPages = ["/profile/area", "/profile/trades", "/profile/payroll", "/profile/notifications"];
+  // Ready consuming routes pass null for no return. An omitted value is a loading boundary that cannot
+  // safely build its links yet; keep its temporary menus inert until the route resolves the query.
+  const returnPending = role === "TRADIE" && returnPages.includes(active) && next === undefined;
   // Only these destinations consume a board return. Every other account link retains its existing route.
-  const destination = (path: string) => role === "TRADIE" && ["/profile/area", "/profile/trades", "/profile/payroll", "/profile/notifications"].includes(path) ? boardSettingsRoute(path, next).href : path;
+  const destination = (path: string) => role === "TRADIE" && returnPages.includes(path) ? boardSettingsRoute(path, next).href : path;
   return <div className={styles.page}>
     <div className={styles.layout}>
-      <details className={styles.mobileNav} onClick={event => {
+      <details className={styles.mobileNav} inert={returnPending} aria-hidden={returnPending || undefined} onClick={event => {
         if (!(event.target as HTMLElement).closest("a")) return;
         event.currentTarget.open = false;
         if (event.detail === 0) event.currentTarget.querySelector("summary")?.focus();
@@ -33,7 +37,7 @@ export function AccountSettings({ role, children, active = "/profile/security", 
           </Link>)}
         </nav>
       </details>
-      <nav aria-label="Account settings" className={`${styles.nav} ${styles.desktopNav}`}>
+      <nav aria-label="Account settings" className={`${styles.nav} ${styles.desktopNav}`} inert={returnPending} aria-hidden={returnPending || undefined}>
         {links.map(([label, href, icon]) => <Link href={destination(href)} key={href} aria-current={href === active ? "page" : undefined}>
           <Icon name={icon} size="sm" decorative />{label}
         </Link>)}

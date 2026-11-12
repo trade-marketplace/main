@@ -14,14 +14,23 @@ const fits = (page: Page) => page.evaluate(() => document.documentElement.scroll
 test.describe("account settings return previews", () => {
   test.skip(!preview, "Needs the guarded local account settings previews.");
   for (const viewport of VIEWPORTS) test(`${viewport.width}px: with and without return`, async ({ page }) => {
+    test.setTimeout(120_000);
     await page.setViewportSize(viewport);
-    for (const state of ["with-return", "without-return"]) {
+    for (const state of ["with-return", "without-return", "loading-trades", "loading-payroll", "loading-notifications"]) {
       await page.goto(`${preview}/dev/components/account-settings?state=${state}`);
-      await expect(page.getByRole("heading", { name: "Work area", exact: true })).toBeVisible();
+      const heading = state === "loading-trades" ? "Trades & licences" : state === "loading-payroll" ? "Bank & tax" : state === "loading-notifications" ? "Notifications" : "Work area";
+      await expect(page.getByRole("heading", { name: heading, exact: true })).toBeVisible();
       await expect(page.getByRole("link", { name: "Back to jobs", exact: true })).toHaveCount(state === "with-return" ? 1 : 0);
-      if (viewport.width < 1024) await page.locator("summary").filter({ hasText: "Account settings" }).click();
       const nav = page.getByRole("navigation", { name: "Account settings", exact: true });
-      await expect(nav.getByRole("link", { name: "Security", exact: true })).toHaveAttribute("href", "/profile/security");
+      if (state.startsWith("loading-")) {
+        await expect(nav).toHaveCount(0);
+        await expect(page.locator('nav[aria-label="Account settings"][inert]')).toHaveCount(1);
+        await page.keyboard.press("Tab");
+        expect(await page.evaluate(() => document.activeElement?.closest("[inert]") === null)).toBe(true);
+      } else {
+        if (viewport.width < 1024) await page.locator("summary").filter({ hasText: "Account settings" }).click();
+        await expect(nav.getByRole("link", { name: "Security", exact: true })).toHaveAttribute("href", "/profile/security");
+      }
       expect(await fits(page)).toBe(true);
       await expectNoA11yViolations(page);
     }
@@ -90,6 +99,38 @@ test.describe("real filtered board settings hops", () => {
       await choose(page, "Bank & tax", true);
       await expect(page).toHaveURL(`${app}/profile/payroll`);
       await expect(page.getByRole("link", { name: "Back to jobs", exact: true })).toHaveCount(0);
+    }
+  });
+  test("a slow Payroll hop preserves its return until settings navigation is ready", async ({ page }) => {
+    test.setTimeout(180_000);
+    await page.goto(`${app}/login?next=%2Fprofile%2Farea`);
+    await page.getByLabel("Email", { exact: true }).fill(SECURITY_TRADIE.email);
+    await page.getByLabel("Password", { exact: true }).fill(SECURITY_PASSWORD);
+    await page.getByRole("button", { name: "Log in", exact: true }).click();
+    await expect(page).toHaveURL(`${app}/profile/area`, { timeout: 20_000 });
+    for (const width of [390, 1440]) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto(`${app}/profile/area?next=${encodeURIComponent(back)}`);
+      await expect(page.getByRole("heading", { name: "Work area", exact: true })).toBeVisible();
+      const locker = new pg.Client({ connectionString: database }); await locker.connect();
+      try {
+        await locker.query("BEGIN");
+        // Block only this throwaway database's payroll reader so the real route streams its loading boundary.
+        await locker.query("LOCK TABLE payroll_details IN ACCESS EXCLUSIVE MODE");
+        await choose(page, "Bank & tax", false);
+        await expect.poll(async () => (await db.query("SELECT count(*)::int AS waiting FROM pg_stat_activity WHERE datname=current_database() AND wait_event_type='Lock' AND query ILIKE '%payroll_details%'")).rows[0].waiting).toBeGreaterThan(0);
+        // Depending on the streamed segment, Next can also hide the old surface while the reader waits.
+        // Neither that surface nor the temporary fallback may expose a context-free settings destination.
+        await expect(page.getByRole("navigation", { name: "Account settings", exact: true })).toHaveCount(0, { timeout: 20_000 });
+        await page.keyboard.press("Tab");
+        expect(await page.evaluate(() => document.activeElement?.closest('nav[aria-label="Account settings"]') === null)).toBe(true);
+        await expect(page).toHaveURL(`${app}/profile/payroll?next=${encodeURIComponent(back)}`);
+      } finally { await locker.query("ROLLBACK"); await locker.end(); }
+      await expect(page.getByRole("heading", { name: "Bank & tax", exact: true })).toBeVisible();
+      await choose(page, "Notifications", true);
+      await expect(page).toHaveURL(`${app}/profile/notifications?next=${encodeURIComponent(back)}`);
+      await page.getByRole("link", { name: "Back to jobs", exact: true }).click();
+      await expect(page).toHaveURL(`${app}${back}`);
     }
   });
 });
