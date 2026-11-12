@@ -43,6 +43,19 @@ test("pin selection, horizontal cards, keyboard sheet and job/Back/List keep the
  await page.getByRole("link",{name:"List",exact:true}).click();await expect(page).toHaveURL(/state=grid&kind=bounty/);await page.getByRole("link",{name:"Map",exact:true}).click();await expect(page).toHaveURL(/state=peek&kind=bounty/);
  await expectNoA11yViolations(page);
 });
+test("filter replacements reconcile the selected card and pin while retaining surviving selection",async({page})=>{
+ await page.setViewportSize({width:390,height:1000});await page.goto(route("peek"));
+ const cards=page.getByRole("region",{name:"Jobs near you",exact:true}),selected=cards.locator('a[data-selected="true"]'),chips=page.getByRole("list",{name:"Map job kind",exact:true});
+ await expect(selected).toHaveAttribute("data-bounty","true");
+ for(const kind of["Claim","All","Estimate","Bounty"]){
+  const previous=await selected.getAttribute("data-card-id");await chips.getByRole("button",{name:new RegExp("^"+kind)}).click();await expect(selected).toHaveCount(1);
+  if(kind==="All")await expect(selected).toHaveAttribute("data-card-id",previous!);
+  else await expect(selected).not.toHaveAttribute("data-card-id",previous!);
+  await expect(selected).toHaveAttribute("data-bounty",kind==="Bounty"?"true":"false");
+  const pin=page.locator('button[data-pin-kind][aria-expanded="true"]');await expect(pin).toHaveCount(1);expect(await pin.getAttribute("aria-label")).toContain(await selected.locator("strong").innerText());
+ }
+ await expectNoA11yViolations(page);
+});
 test("touch swipe centres its pin and dragging the handle opens the full list",async({page})=>{
  await page.setViewportSize({width:390,height:844});await page.goto(route("peek"));const cards=page.getByRole("region",{name:"Jobs near you",exact:true});
  const before=await cards.locator('a[data-selected="true"]').getAttribute("data-card-id"),box=await cards.boundingBox();const cdp=await page.context().newCDPSession(page);

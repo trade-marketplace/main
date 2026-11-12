@@ -53,6 +53,8 @@ export function PhoneMap({ cards, counts, query, config, serverNow, onKindChange
   const bounds = viewport?.bounds ?? camera, unavailable = previewState === "map-unavailable" || failed || !fake && !provider?.accessToken;
   const shown = unavailable ? all : cardsInsideBounds(all,bounds);
   const [selectedId, setSelectedId] = useState<string | null>(previewState === "card-selected" ? all[1]?.id ?? all[0]?.id ?? null : all[0]?.id ?? null);
+  const nextSelection = shown.some(card => card.id === selectedId) ? selectedId : shown[0]?.id ?? null;
+  if (nextSelection !== selectedId) setSelectedId(nextSelection);
   const map = useRef<HTMLDivElement>(null), strip = useRef<HTMLDivElement>(null), items = useRef(new Map<string,HTMLAnchorElement>()), pendingScroll = useRef<ReturnType<typeof setTimeout> | null>(null), suppressScroll = useRef(false), scrollRelease = useRef<ReturnType<typeof setTimeout> | null>(null), dragStart = useRef<number | null>(null), sheetDragged = useRef(false), keyboardSelection = useRef(false);
   useEffect(()=>{if(previewState==="card-selected"&&selectedId)items.current.get(selectedId)?.scrollIntoView({block:"nearest",inline:"center",behavior:"instant"});},[previewState,selectedId]);
   const [size,setSize] = useState<{width:number;height:number}|null>(null);
