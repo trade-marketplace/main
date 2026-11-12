@@ -1,0 +1,4 @@
+.section { display: grid; gap: var(--trade-space-4); min-width: 0; }
+.hint { margin: 0; color: var(--trade-text-2); font-size: var(--trade-fs-small); }
+.jobNumber { display: block; }
+.amount { font-weight: 600; font-variant-numeric: tabular-nums; }
