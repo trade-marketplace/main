@@ -52,6 +52,15 @@ describe.skipIf(!testDatabaseUrl)("office reviews transactions and public visibi
     expect(await showReview(schema.db, f.office, old.review.id)).toEqual({ status: "shown" });
     expect(await schema.db.review.findUniqueOrThrow({ where: { id: old.review.id } })).toMatchObject({ rating: 3, comment: "An older review.", editableUntil: old.review.editableUntil, createdAt: old.review.createdAt });
   });
+  it("lists the oldest unresolved report first even when review creation order differs", async () => {
+    const f = await fixture(), name = `ReportQueue${randomUUID()}`;
+    await schema.db.profile.update({ where: { id: f.worker.userId }, data: { firstName: name } });
+    await schema.db.review.update({ where: { id: f.first.review.id }, data: { createdAt: new Date(Date.now() - 2 * 86400000), reportedAt: new Date(Date.now() - 86400000) } });
+    const reported = await listReviews(schema.db, f.office, { tab: "reported", q: name, page: 1 });
+    expect(reported?.rows.map(row => row.id)).toEqual([f.first.review.id, f.second.review.id]);
+    const all = await listReviews(schema.db, f.office, { tab: "all", q: name, page: 1 });
+    expect(all?.rows.map(row => row.id)).toEqual([f.second.review.id, f.first.review.id]);
+  });
   it("pages 25 rows at a time and clamps a page past the end", async () => {
     const f = await fixture(), name = `Paging${randomUUID()}`;
     await schema.db.profile.update({ where: { id: f.worker.userId }, data: { firstName: name } });
