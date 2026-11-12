@@ -41,6 +41,7 @@ test("preview keyboard search, edit, default and delete retain focus and support
   await expect(page.getByRole("option", { name: "12 Dee Street, Central, Invercargill 9810", exact: true })).toBeVisible();
   await dialog.getByRole("combobox").press("ArrowDown"); await page.keyboard.press("Enter");
   await context.setOffline(true); await expect(dialog.getByRole("button", { name: "Save", exact: true })).toHaveAttribute("aria-disabled", "true");
+  await expect(page.getByText("You’re offline.", { exact: true })).toHaveCount(1);
   await expect(dialog.getByLabel("Label", { exact: true })).toHaveValue("Garage"); await context.setOffline(false);
   await dialog.getByRole("button", { name: "Save", exact: true }).press("Enter");
   await expect(page.getByRole("dialog")).toHaveCount(0); await expect(add).toBeFocused();
@@ -118,6 +119,7 @@ test.describe("actual customer saved addresses", () => {
     expect(JSON.stringify(audits)).not.toContain("Local Test Street"); await expectNoA11yViolations(page);
   });
   test("a response lost after commit reuses the same create key on retry", async ({ page }) => {
+    const auditsBefore = (await db.query("SELECT count(*)::int AS count FROM audit_log WHERE actor_id=$1 AND action='address.saved' AND after->>'label'='Committed retry'", [SECURITY_USER.id])).rows[0].count;
     await login(page); await page.getByRole("button", { name: "Add address", exact: true }).click(); await fill(page, "Committed retry", "78 Local Test Street");
     let dropped = false;
     await page.route("**/profile/addresses", async route => {
@@ -125,20 +127,39 @@ test.describe("actual customer saved addresses", () => {
       return route.continue();
     });
     await page.getByRole("dialog").getByRole("button", { name: "Save", exact: true }).click();
-    await expect(page.getByText("Couldn’t save your addresses. Try again.", { exact: true })).toBeVisible();
+    await expect(page.getByText("Couldn’t save your addresses. Try again.", { exact: true }).first()).toBeVisible();
     expect((await db.query("SELECT count(*)::int AS count FROM addresses WHERE user_id=$1", [SECURITY_USER.id])).rows[0].count).toBe(1);
     await expect(page.getByRole("dialog").getByLabel("Label", { exact: true })).toHaveValue("Committed retry");
     await page.getByRole("dialog").getByRole("button", { name: "Save", exact: true }).click(); await expect(page.getByRole("dialog")).toHaveCount(0);
     await expect(page.getByRole("article", { name: "Committed retry", exact: true })).toHaveCount(1);
     expect((await db.query("SELECT count(*)::int AS count FROM addresses WHERE user_id=$1", [SECURITY_USER.id])).rows[0].count).toBe(1);
-    expect((await db.query("SELECT count(*)::int AS count FROM audit_log WHERE actor_id=$1 AND action='address.saved' AND after->>'label'='Committed retry'", [SECURITY_USER.id])).rows[0].count).toBe(1);
+    expect((await db.query("SELECT count(*)::int AS count FROM audit_log WHERE actor_id=$1 AND action='address.saved' AND after->>'label'='Committed retry'", [SECURITY_USER.id])).rows[0].count).toBe(auditsBefore + 1);
+  });
+  test("a response lost after deleting returns the current list on retry", async ({ page }) => {
+    const auditsBefore = (await db.query("SELECT count(*)::int AS count FROM audit_log WHERE actor_id=$1 AND action='address.deleted' AND before->>'label'='Delete retry'", [SECURITY_USER.id])).rows[0].count;
+    await login(page); await page.getByRole("button", { name: "Add address", exact: true }).click(); await fill(page, "Delete retry", "90 Local Test Street");
+    await page.getByRole("dialog").getByRole("button", { name: "Save", exact: true }).click(); await expect(page.getByRole("dialog")).toHaveCount(0);
+    await page.getByRole("article", { name: "Delete retry", exact: true }).getByRole("button", { name: "Delete", exact: true }).click();
+    let dropped = false;
+    await page.route("**/profile/addresses", async route => {
+      if (!dropped && route.request().method() === "POST") { dropped = true; await route.fetch(); return route.abort("failed"); }
+      return route.continue();
+    });
+    const dialog = page.getByRole("alertdialog");
+    await dialog.getByRole("button", { name: "Delete", exact: true }).click();
+    await expect(dialog.getByText("Couldn’t save your addresses. Try again.", { exact: true }).first()).toBeVisible();
+    expect((await db.query("SELECT count(*)::int AS count FROM addresses WHERE user_id=$1", [SECURITY_USER.id])).rows[0].count).toBe(0);
+    await dialog.getByRole("button", { name: "Delete", exact: true }).click(); await expect(dialog).toHaveCount(0);
+    await expect(page.getByText("No saved addresses yet.", { exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Add address", exact: true })).toBeFocused();
+    expect((await db.query("SELECT count(*)::int AS count FROM audit_log WHERE actor_id=$1 AND action='address.deleted' AND before->>'label'='Delete retry'", [SECURITY_USER.id])).rows[0].count).toBe(auditsBefore + 1);
   });
   test("a failed request retains the draft and retry creates one address; wrong-role route exposes no customer data", async ({ page }) => {
     await login(page); await page.getByRole("button", { name: "Add address", exact: true }).click(); await fill(page, "Retry", "56 Local Test Street");
     let failed = false;
     await page.route("**/profile/addresses", route => { if (!failed && route.request().method() === "POST") { failed = true; return route.abort("failed"); } return route.continue(); });
     await page.getByRole("dialog").getByRole("button", { name: "Save", exact: true }).click();
-    await expect(page.getByText("Couldn’t save your addresses. Try again.", { exact: true })).toBeVisible();
+    await expect(page.getByText("Couldn’t save your addresses. Try again.", { exact: true }).first()).toBeVisible();
     await expect(page.getByRole("dialog").getByLabel("Label", { exact: true })).toHaveValue("Retry");
     await page.getByRole("dialog").getByRole("button", { name: "Save", exact: true }).click(); await expect(page.getByRole("dialog")).toHaveCount(0);
     expect((await db.query("SELECT count(*)::int AS count FROM addresses WHERE user_id=$1", [SECURITY_USER.id])).rows[0].count).toBe(1);

@@ -75,7 +75,11 @@ export async function deleteAddress(db: PrismaClient, viewer: AddressViewer, id:
   if (!z.uuid().safeParse(id).success) return { ok: false, error: "invalid" };
   return write(db, viewer, async (tx, rows) => {
     const old = rows.find(row => row.id === id);
-    if (!old) return { ok: false, error: "forbidden" };
+    if (!old) {
+      // A committed delete may have lost its response. Missing rows are a safe no-op; foreign rows still deny.
+      const exists = await tx.address.findUnique({ where: { id: id as string }, select: { id: true } });
+      return exists ? { ok: false, error: "forbidden" } : result(tx, viewer.userId);
+    }
     await tx.address.delete({ where: { id: old.id } });
     await createAudit(tx)(viewer, "address.deleted", { type: "profiles", id: viewer.userId }, snapshot(old), null);
     const remaining = rows.filter(row => row.id !== old.id);

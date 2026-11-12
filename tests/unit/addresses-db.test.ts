@@ -55,6 +55,11 @@ describe.skipIf(!testDatabaseUrl)("saved addresses transactions", () => {
     const me = await person(), first = await add(me), second = await add(me, "Rental"), third = await add(me, "Work");
     expect((await deleteAddress(schema.db, me, first.id)).ok).toBe(true);
     expect((await listAddresses(schema.db, me)).filter(row => row.isDefault).map(row => row.id)).toEqual([third.id]);
+    const auditCount = await schema.db.auditLog.count({ where: { actorId: me.userId } });
+    const retry = await deleteAddress(schema.db, me, first.id);
+    expect(retry).toMatchObject({ ok: true });
+    if (retry.ok) expect(retry.addresses.map(row => row.id)).toEqual([third.id, second.id]);
+    expect(await schema.db.auditLog.count({ where: { actorId: me.userId } })).toBe(auditCount);
     await deleteAddress(schema.db, me, third.id);
     expect((await listAddresses(schema.db, me))[0]).toMatchObject({ id: second.id, isDefault: true });
     await deleteAddress(schema.db, me, second.id); expect(await listAddresses(schema.db, me)).toEqual([]);

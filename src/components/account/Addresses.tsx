@@ -103,7 +103,7 @@ function AddressList({ initial, source = live, search = searchJobAddressesAction
   if (preview === "loading") return <AddressesLoading headingLevel={headingLevel} />;
   return <div ref={root} className={styles.page}>
     <div className={styles.heading}><Heading className={account.title}>Addresses</Heading>{addresses.length > 0 && !loadError && add}</div>
-    <OfflineBanner online={!offline} sticky={false} />
+    <OfflineBanner online={preview === "offline" ? false : undefined} sticky={false} />
     {addresses.length >= MAX_SAVED_ADDRESSES && <p className={account.hint}>You can save up to 10 addresses.</p>}
     {failure && !dialog && <InlineError message={errors[failure.error]} />}
     {loadError ? <ErrorState title="Couldn’t load your addresses." onRetry={() => receive(source.list, () => undefined)} /> : !addresses.length ? <EmptyState icon="home" title="No saved addresses yet." action={add} />
