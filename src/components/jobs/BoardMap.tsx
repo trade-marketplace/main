@@ -19,13 +19,13 @@ import { PhoneMap } from "./PhoneMap";
 import phoneStyles from "./phone-map.module.css";
 
 type Props = { cards: readonly BoardCard[]; counts?: BoardCounts; query: BoardQuery; ownerId: string; config?: BoardMapConfig; serverNow: number;
-  onKindChange: (kind: BoardKind) => void; previewState?: string; previewBasePath?: string; mapLabel?: string; onLoadMore?: () => void; loadingMore?: boolean };
+  onKindChange: (kind: BoardKind) => void; previewState?: string; previewBasePath?: string; mapLabel?: string; onLoadMore?: () => void; loadingMore?: boolean; loading?: boolean };
 const KINDS = [{ value: "all", label: "All" }, { value: "ready", label: "Claim" }, { value: "estimate", label: "Estimate" }, { value: "bounty", label: "Bounty" }] as const;
 const subscribeLegendStorage = (notify: () => void) => { window.addEventListener("storage", notify); return () => window.removeEventListener("storage", notify); };
 const unrememberedLegend = () => false;
 
 /** The board owns its safe facts, URL filters and saved preference; the kit owns the map. */
-export function BoardMap({ cards, counts, query, ownerId, config, serverNow, onKindChange, previewState, previewBasePath, mapLabel, onLoadMore, loadingMore }: Props) {
+export function BoardMap({ cards, counts, query, ownerId, config, serverNow, onKindChange, previewState, previewBasePath, mapLabel, onLoadMore, loadingMore, loading }: Props) {
   const id = useId(), fake = Boolean(previewState);
   const desktopSection = useRef<HTMLElement>(null);
   const [desktopVisible, setDesktopVisible] = useState(Boolean(previewState));
@@ -61,8 +61,8 @@ export function BoardMap({ cards, counts, query, ownerId, config, serverNow, onK
       : <ul className={styles.rows} aria-label="Jobs in view">{shown.map(card => <li key={card.id}><MapRow card={card} job={cardToMapJob(card)} listOnly={view.unavailable} serverNow={serverNow}
           hot={view.hotId === card.id || view.selectedId === card.id} selected={view.selectedId === card.id} href={jobHref(card.id)} onHover={view.onHover} onFocus={view.onFocus} onSelect={view.select} /></li>)}</ul>;
   };
-  return <div className={phoneStyles.responsive}><section ref={desktopSection} className={styles.board + (!previewState ? " " + phoneStyles.desktop : "")} aria-labelledby={id + "-heading"}>
-    <div className={styles.head}><h2 id={id + "-heading"}>{mapLabel && <span className={styles.srOnly}>{mapLabel}: </span>}{visibleCards.length} {visibleCards.length === 1 ? "job" : "jobs"} in view</h2></div>
+  return <div className={phoneStyles.responsive}><section ref={desktopSection} className={styles.board + (!previewState ? " " + phoneStyles.desktop : "")} aria-labelledby={loading ? undefined : id + "-heading"} aria-label={loading ? "Jobs map" : undefined}>
+    {loading ? <><BoardMapSkeleton /><span role="status" className={styles.srOnly}>Loading your jobs</span></> : <><div className={styles.head}><h2 id={id + "-heading"}>{mapLabel && <span className={styles.srOnly}>{mapLabel}: </span>}{visibleCards.length} {visibleCards.length === 1 ? "job" : "jobs"} in view</h2></div>
     <QuickFilters className={styles.chips} label="Map job kind" value={query.kind} onChange={onKindChange} wrap items={KINDS.map(kind => ({ ...kind, count: chipCounts[kind.value], ...(kind.value === "bounty" ? { tone: "gold" as const } : {}) }))} />
     {unavailable && <Banner tone="info" live>Map isn’t available right now.</Banner>}
     {!previewState && provider?.accessToken && !desktopVisible ? <BoardMapSkeleton /> : <MapListLayout jobs={allJobs} mapbox={provider ?? undefined} bounds={initialCamera ?? undefined} serverNow={serverNow} idPrefix={id}
@@ -71,7 +71,8 @@ export function BoardMap({ cards, counts, query, ownerId, config, serverNow, onK
       legend={{ open: !(legendDismissed || rememberedLegend), onDismiss: () => { setLegendClosed(true); rememberClosedLegend(ownerId); }, note: "Pin examples. See each job for its offer and time left." }}
       presentation={{ classes: styles, renderList, illustrated: fake, unavailable, fitBounds: fitAll, initialHotId: previewState === "row-hover" ? allJobs[0]?.id : null,
         initialLocation: previewState === "no-location" ? "denied" : "idle", mapLabel, onUnavailable: () => setFailed(true) }} />}
-  </section>{!previewState && <PhoneMap cards={cards} counts={counts} query={query} config={config} serverNow={serverNow} onKindChange={onKindChange} onLoadMore={onLoadMore} loadingMore={loadingMore} />}</div>;
+    </>}
+  </section>{!previewState && <PhoneMap cards={cards} counts={counts} query={query} config={config} serverNow={serverNow} onKindChange={onKindChange} onLoadMore={onLoadMore} loadingMore={loadingMore} loading={loading} />}</div>;
 }
 
 type RowProps = { card: BoardCard; job: MapJob | null; listOnly: boolean; serverNow: number; hot: boolean; selected: boolean; href: string; onHover: (id: string | null) => void; onFocus: (id: string | null) => void; onSelect: (id: string) => void };

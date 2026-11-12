@@ -143,6 +143,7 @@ export function JobBoard({ initial, ownerId, source = LIVE_SOURCE, previewState,
   const contact = `/contact?next=${encodeURIComponent(returnTo)}`;
   const alerts = boardAlertsRoute(returnTo).href;
   const filtered = boardHref({ ...query, entry: "find-work", view: "grid" }) !== "/jobs";
+  const keepPhoneMap = query.view === "map" && !previewState && result.ok && !cacheChanged && !meta?.blocked;
   return <div className={styles.page + (query.view === "map" && !previewState ? " " + phoneStyles.boardPage : "")} data-mode="trade">
     <OfflineBanner online={previewState === "offline" ? false : undefined} onRetry={() => load()} sticky={false} />
     {notice}
@@ -174,13 +175,13 @@ export function JobBoard({ initial, ownerId, source = LIVE_SOURCE, previewState,
         {storageError && <InlineError message="Couldn’t save your jobs on this browser. Check your browser storage and try again." />}
         {error && !cacheChanged && <InlineError message="Can’t load your jobs. Check your connection and try again." onRetry={() => load()} />}
         {newCount > 0 && <div className={styles.newJobs}><Button size="sm" onClick={() => load()} disabled={!online ? "You’re offline" : busy}>{newCount} new {newCount === 1 ? "job" : "jobs"}</Button></div>}
-        <div id="board-cards"><LoadingRegion loading={busy || !hydrated} label="Loading your jobs" skeleton={query.view === "map" ? <BoardMapSkeleton /> : <BoardSkeleton />}>
+        <div id="board-cards"><LoadingRegion loading={(busy || !hydrated) && !keepPhoneMap} label="Loading your jobs" skeleton={query.view === "map" ? <BoardMapSkeleton /> : <BoardSkeleton />}>
           {cacheChanged ? <ErrorState className={styles.empty} title="Can’t load your jobs" message="Check your connection and try again." onRetry={() => load()} />
             : !result.ok ? <ErrorState className={styles.empty} title={result.error === "forbidden" ? "Trade account required" : "Can’t load your jobs"} message="Check your connection and try again." onRetry={() => load()} />
             : meta?.blocked ? <><div className={query.view === "map" && meta.blocked === "worker-paused" ? phoneStyles.desktop : undefined}><EmptyState className={styles.empty} icon="verified_user" title={meta.blocked === "worker-paused" ? "Your account is paused" : meta.blocked === "work-area-required" ? "Set your work area" : "Get verified to see jobs"}
               message={meta.blocked === "email-required" ? "Confirm your email to continue." : meta.blocked === "worker-paused" ? "Contact us to get back to work." : meta.blocked === "work-area-required" ? "Choose your suburb and travel radius." : "We need to check your ID before you can see jobs."}
               action={<Button href={meta.blocked === "work-area-required" ? boardSettingsRoute("/profile/area", returnTo).href : contact}>{meta.blocked === "work-area-required" ? "Set your work area" : "Contact us"}</Button>} /></div>{query.view === "map" && meta.blocked === "worker-paused" && <PhoneMap cards={[]} query={query} config={meta.map} serverNow={Date.parse(board?.before ?? "") || 0} onKindChange={kind => update({kind})} />}</>
-            : query.view === "map" ? <><BoardMap cards={board?.cards ?? []} counts={board?.counts} query={query} ownerId={ownerId} config={meta?.map} serverNow={Date.parse(board?.before ?? "") || 0} onKindChange={kind => update({ kind })} previewState={previewState} previewBasePath={pathname} onLoadMore={board?.nextCursor ? () => load(true) : undefined} loadingMore={more} />
+            : query.view === "map" ? <><BoardMap cards={board?.cards ?? []} counts={board?.counts} query={query} ownerId={ownerId} config={meta?.map} serverNow={Date.parse(board?.before ?? "") || 0} onKindChange={kind => update({ kind })} previewState={previewState} previewBasePath={pathname} onLoadMore={board?.nextCursor ? () => load(true) : undefined} loadingMore={more} loading={busy || !hydrated} />
               {more && <div className={!previewState ? phoneStyles.desktop : undefined}><LoadingRegion loading label="Loading more jobs" skeleton={<BoardMapSkeleton />} /></div>}
               {board?.nextCursor && <div className={styles.more + (!previewState ? " " + phoneStyles.desktop : "")}><Button variant="secondary" loading={more} disabled={!online ? "You’re offline" : false} onClick={() => load(true)}>Load more jobs</Button></div>}
             </>

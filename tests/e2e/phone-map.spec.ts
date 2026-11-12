@@ -103,6 +103,21 @@ test.describe("real phone map availability and job journey",()=>{
   await phone.getByRole("switch",{name:"You’re available",exact:true}).tap();await expect(phone.getByRole("switch",{name:"Not available",exact:true})).not.toBeChecked();
   await expect.poll(async()=>Boolean((await db.query("SELECT available FROM worker_profiles WHERE user_id=$1",[SECURITY_TRADIE.id])).rows[0].available)).toBe(false);
   expect(Number((await db.query("SELECT count(*) FROM audit_log WHERE actor_id=$1 AND action='worker.availability_changed'",[SECURITY_TRADIE.id])).rows[0].count)).toBe(auditBefore+1);
+  // Hold a real board action so the loading shell, provider and local state are observable.
+  await phone.getByRole("button",{name:"Show list",exact:true}).click();
+  const cameraBefore=await page.evaluate(()=>(window as unknown as {__boardMapFixture:{b:unknown}}).__boardMapFixture.b);
+  let releaseFilter!:()=>void;const filterGate=new Promise<void>(resolve=>{releaseFilter=resolve;});let heldFilter=false;
+  await page.route(app+"/jobs**",async route=>{if(route.request().method()==="POST"&&!heldFilter){heldFilter=true;await filterGate;}await route.continue();});
+  try{
+   await phone.getByRole("list",{name:"Map job kind",exact:true}).getByRole("button",{name:/^Claim/}).click();
+   await expect(phone.getByRole("status",{name:"Loading your jobs",exact:true})).toBeVisible();
+   expect(await mapCreates()).toBe(3);expect(await liveMaps()).toBe(1);
+   await expect(phone.getByRole("switch",{name:"Not available",exact:true})).not.toBeChecked();await expect(phone.getByRole("button",{name:"Show map",exact:true})).toBeVisible();
+   expect(await page.evaluate(()=>(window as unknown as {__boardMapFixture:{b:unknown}}).__boardMapFixture.b)).toEqual(cameraBefore);
+  }finally{releaseFilter();}
+  await expect(phone.getByRole("status",{name:"Loading your jobs",exact:true})).toHaveCount(0);
+  await expect(phone.locator(`a[data-card-id="${job}"]`)).toHaveAttribute("data-selected","true");expect(await mapCreates()).toBe(3);expect(await liveMaps()).toBe(1);
+  await page.unroute(app+"/jobs**");const restoredFilter=page.waitForResponse(response=>response.request().method()==="POST"&&new URL(response.url()).pathname==="/jobs");await phone.getByRole("list",{name:"Map job kind",exact:true}).getByRole("button",{name:/^All/}).click();await restoredFilter;await expect(phone.getByRole("status",{name:"Loading your jobs",exact:true})).toHaveCount(0);expect(await mapCreates()).toBe(3);
   await page.reload();await expect(phone.getByRole("switch",{name:"Not available",exact:true})).not.toBeChecked();await expect(phone.getByText("You won’t get job alerts.",{exact:true})).toBeVisible();
   for(const width of[320,390,768,1024,1440]){
    await page.setViewportSize({width,height:1000});await page.goto(app+board);await expect.poll(liveMaps).toBe(1);expect(await page.evaluate(()=>(window as unknown as {__phoneMapCreates:number}).__phoneMapCreates)).toBe(1);
