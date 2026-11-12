@@ -2,7 +2,7 @@
 // card and legend drop onto it unchanged. Decorative roads and parks only (web.css .w-map), no network, no token.
 import type { ReactNode } from "react";
 
-import { KIND_NAMES } from "@/lib/map/pins";
+import { KIND_NAMES, type MapJob } from "@/lib/map/pins";
 
 import { PinSample } from "./MapPin";
 import styles from "./map.module.css";
@@ -48,17 +48,19 @@ const LEGEND = [
   { kind: "bounty", sample: "$30", text: "Go quote in person. $30 on the spot. 24h." },
 ] as const;
 
+export type MapLegendItem = { kind: MapJob["kind"]; sample: string; text: string; label?: string };
+
 /** What each pin means (D03: bottom-left of the map on wide screens). */
-export function MapLegend({ className, card = false }: { className?: string; card?: boolean }) {
+export function MapLegend({ className, card = false, items = LEGEND }: { className?: string; card?: boolean; items?: readonly MapLegendItem[] }) {
   return (
     <ul className={cx(styles.legend, card && styles.legendCard, className)} aria-label="What the pins mean">
-      {LEGEND.map((item) => (
+      {items.map((item) => (
         <li key={item.kind} className={styles.legendItem}>
           <span className={styles.legendSwatch}>
             <PinSample kind={item.kind} text={item.sample} />
           </span>
           <span className={styles.legendText}>
-            <b>{item.kind === "bounty" ? "Quote bounty" : KIND_NAMES[item.kind]}</b>
+            <b>{("label" in item && item.label) || (item.kind === "bounty" ? "Quote bounty" : KIND_NAMES[item.kind])}</b>
             <span>{item.text}</span>
           </span>
         </li>
