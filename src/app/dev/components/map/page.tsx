@@ -16,6 +16,7 @@ import { guardDevPage } from "@/server/dev-pages";
 
 import { DEMO_YOU, demoClaimPair, demoJobs, type DemoJob } from "./demo-jobs";
 import styles from "./preview.module.css";
+import { MapHooksDemo } from "./MapHooksDemo";
 
 export const metadata: Metadata = {
   title: "Map pins (dev)",
@@ -42,6 +43,7 @@ export default async function MapComponentsPage({ searchParams }: { searchParams
   guardDevPage();
 
   const params = await searchParams;
+  if (params.hooks === "controlled") return <MapHooksDemo jobs={demoJobs(renderTime())} serverNow={renderTime()} />;
   const mode: Mode = isMode(params.mode) ? params.mode : PAGE_DEFAULT_MODE;
   const state: MapListState = isState(params.state) ? params.state : "ready";
   const now = renderTime();
