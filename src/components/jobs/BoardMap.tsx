@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useId, useMemo, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { Button } from "@/components/Button";
 import { QuickFilters } from "@/components/data/QuickFilters";
@@ -27,6 +27,14 @@ const unrememberedLegend = () => false;
 /** The board owns its safe facts, URL filters and saved preference; the kit owns the map. */
 export function BoardMap({ cards, counts, query, ownerId, config, serverNow, onKindChange, previewState, previewBasePath, mapLabel, onLoadMore, loadingMore }: Props) {
   const id = useId(), fake = Boolean(previewState);
+  const desktopSection = useRef<HTMLElement>(null);
+  const [desktopVisible, setDesktopVisible] = useState(Boolean(previewState));
+  useEffect(() => {
+    if (previewState) return;
+    const element = desktopSection.current; if (!element) return;
+    const observer = new ResizeObserver(entries => setDesktopVisible(entries.some(entry => entry.contentRect.width > 0)));
+    observer.observe(element); return () => observer.disconnect();
+  }, [previewState]);
   const token = config?.accessToken ?? null, name = config?.workArea?.name, lat = config?.workArea?.centre?.lat, lng = config?.workArea?.centre?.lng, radius = config?.workArea?.radiusKm;
   const provider = useMemo<MapboxConfig | null>(() => name?.trim() && typeof lat === "number" && Number.isFinite(lat) && typeof lng === "number" && Number.isFinite(lng) && typeof radius === "number" && Number.isFinite(radius) && radius > 0
     ? { accessToken: token, workArea: { name, centre: { lat, lng }, radiusKm: radius } } : null, [token, name, lat, lng, radius]);
@@ -53,16 +61,16 @@ export function BoardMap({ cards, counts, query, ownerId, config, serverNow, onK
       : <ul className={styles.rows} aria-label="Jobs in view">{shown.map(card => <li key={card.id}><MapRow card={card} job={cardToMapJob(card)} listOnly={view.unavailable} serverNow={serverNow}
           hot={view.hotId === card.id || view.selectedId === card.id} selected={view.selectedId === card.id} href={jobHref(card.id)} onHover={view.onHover} onFocus={view.onFocus} onSelect={view.select} /></li>)}</ul>;
   };
-  return <div className={phoneStyles.responsive}><section className={styles.board + (!previewState ? " " + phoneStyles.desktop : "")} aria-labelledby={id + "-heading"}>
+  return <div className={phoneStyles.responsive}><section ref={desktopSection} className={styles.board + (!previewState ? " " + phoneStyles.desktop : "")} aria-labelledby={id + "-heading"}>
     <div className={styles.head}><h2 id={id + "-heading"}>{mapLabel && <span className={styles.srOnly}>{mapLabel}: </span>}{visibleCards.length} {visibleCards.length === 1 ? "job" : "jobs"} in view</h2></div>
     <QuickFilters className={styles.chips} label="Map job kind" value={query.kind} onChange={onKindChange} wrap items={KINDS.map(kind => ({ ...kind, count: chipCounts[kind.value], ...(kind.value === "bounty" ? { tone: "gold" as const } : {}) }))} />
     {unavailable && <Banner tone="info" live>Map isn’t available right now.</Banner>}
-    <MapListLayout jobs={allJobs} mapbox={provider ?? undefined} bounds={initialCamera ?? undefined} serverNow={serverNow} idPrefix={id}
+    {!previewState && provider?.accessToken && !desktopVisible ? <BoardMapSkeleton /> : <MapListLayout jobs={allJobs} mapbox={provider ?? undefined} bounds={initialCamera ?? undefined} serverNow={serverNow} idPrefix={id}
       selectedId={selectedId} onSelect={setSelectedId} jobHref={job => jobHref(job.id)} onViewChange={reportView}
       locationNote="Showing your work area." approxRadiusMetres={config?.approxRadiusMetres}
       legend={{ open: !(legendDismissed || rememberedLegend), onDismiss: () => { setLegendClosed(true); rememberClosedLegend(ownerId); }, note: "Pin examples. See each job for its offer and time left." }}
       presentation={{ classes: styles, renderList, illustrated: fake, unavailable, fitBounds: fitAll, initialHotId: previewState === "row-hover" ? allJobs[0]?.id : null,
-        initialLocation: previewState === "no-location" ? "denied" : "idle", mapLabel, onUnavailable: () => setFailed(true) }} />
+        initialLocation: previewState === "no-location" ? "denied" : "idle", mapLabel, onUnavailable: () => setFailed(true) }} />}
   </section>{!previewState && <PhoneMap cards={cards} counts={counts} query={query} config={config} serverNow={serverNow} onKindChange={onKindChange} onLoadMore={onLoadMore} loadingMore={loadingMore} />}</div>;
 }
 

@@ -16,7 +16,7 @@ import { QuickFilters } from "@/components/data/QuickFilters";
 import { cardToMapJob, cardsInsideBounds, scaleBounds } from "@/lib/board-map";
 import { boardHref, boardJobHref, type BoardCard, type BoardCounts, type BoardKind, type BoardMapConfig, type BoardQuery } from "@/lib/job-board";
 import { boundsAround, estimatePinWidth, groupOverlappingPins, keepInside, pinText, projectPoint, type Bounds, type MapJob } from "@/lib/map/pins";
-import { workAreaBounds } from "@/lib/map/mapbox";
+import { workAreaBounds, type MapboxConfig } from "@/lib/map/mapbox";
 import { phoneCardIndex, phoneCentredBounds, phoneFrameBounds, phoneMapCards, phonePinId } from "@/lib/phone-map";
 import type { AvailabilitySave, WorkAreaResult } from "@/lib/account/work-area";
 import { setAvailableAction } from "@/server/workers/area-actions";
@@ -40,14 +40,17 @@ type Props = { cards: readonly BoardCard[]; counts?: BoardCounts; query: BoardQu
 const KINDS = [{value:"all",label:"All"},{value:"ready",label:"Claim"},{value:"bounty",label:"Bounty"},{value:"estimate",label:"Estimate"}] as const;
 export function PhoneMap({ cards, counts, query, config, serverNow, onKindChange, previewState, jobHref, listHref, initialAvailability, saveAvailable = setAvailableAction, onRetry, embedded, onLoadMore, loadingMore }: Props) {
   const id = useId(), fake = Boolean(previewState), online = useOnlineStatus() && previewState !== "offline";
+  const token=config?.accessToken??null, areaName=config?.workArea?.name, latitude=config?.workArea?.centre?.lat, longitude=config?.workArea?.centre?.lng, radius=config?.workArea?.radiusKm;
+  const provider=useMemo<MapboxConfig|undefined>(()=>areaName?.trim()&&typeof latitude==="number"&&Number.isFinite(latitude)&&typeof longitude==="number"&&Number.isFinite(longitude)&&typeof radius==="number"&&Number.isFinite(radius)&&radius>0
+    ?{accessToken:token,workArea:{name:areaName,centre:{lat:latitude,lng:longitude},radiusKm:radius}}:undefined,[token,areaName,latitude,longitude,radius]);
   const [availability, setAvailability] = useState(initialAvailability), [readError, setReadError] = useState(false), [saveError, setSaveError] = useState(false);
   const [saving, setSaving] = useState(previewState === "saving-available"), [requests] = useState(() => new PhoneAvailabilityRequests());
   const [expanded, setExpanded] = useState(previewState === "sheet-up"), [failed, setFailed] = useState(false), [viewport, setViewport] = useState<MapboxViewport | null>(null);
   const all = useMemo(() => phoneMapCards(cards), [cards]);
   const jobs = useMemo(() => all.flatMap(card => { const job = cardToMapJob(card); return job ? [job] : []; }), [all]);
-  const fit = useMemo(() => {const bounds=boundsAround(jobs.map(job => job.point));return bounds?phoneFrameBounds(bounds):config?workAreaBounds(config.workArea):null;}, [jobs, config]);
+  const fit = useMemo(() => {const bounds=boundsAround(jobs.map(job => job.point));return bounds?phoneFrameBounds(bounds):provider?workAreaBounds(provider.workArea):null;}, [jobs, provider]);
   const [camera, setCamera] = useState<Bounds | null>(() => previewState === "no-jobs-in-view" && fit ? { ...fit, north:fit.north+1,south:fit.south+1 } : fit);
-  const bounds = viewport?.bounds ?? camera, unavailable = previewState === "map-unavailable" || failed || !fake && !config?.accessToken;
+  const bounds = viewport?.bounds ?? camera, unavailable = previewState === "map-unavailable" || failed || !fake && !provider?.accessToken;
   const shown = unavailable ? all : cardsInsideBounds(all,bounds);
   const [selectedId, setSelectedId] = useState<string | null>(previewState === "card-selected" ? all[1]?.id ?? all[0]?.id ?? null : all[0]?.id ?? null);
   const map = useRef<HTMLDivElement>(null), strip = useRef<HTMLDivElement>(null), items = useRef(new Map<string,HTMLAnchorElement>()), pendingScroll = useRef<ReturnType<typeof setTimeout> | null>(null), suppressScroll = useRef(false), scrollRelease = useRef<ReturnType<typeof setTimeout> | null>(null), dragStart = useRef<number | null>(null), sheetDragged = useRef(false), keyboardSelection = useRef(false);
@@ -74,7 +77,7 @@ export function PhoneMap({ cards, counts, query, config, serverNow, onKindChange
   const byId=new Map(placed.map(item=>[item.job.id,item]));
   const pixels=placed.map(({job,at})=>({id:job.id,x:at.x/100*(size?.width??1),y:at.y/100*(size?.height??1),width:estimatePinWidth(pinText(job,null),job.kind!=="claim"),bounty:job.kind==="bounty"}));
   const groups=size?groupOverlappingPins(pixels,selectedId):pixels.map(pixel=>({lead:pixel,members:[pixel]}));
-  const pins=<>{fake&&config&&camera&&<YouAreHere {...(projectPoint(config.workArea.centre,camera)??{x:50,y:50})}/>}{groups.map(group=>{
+  const pins=<>{fake&&provider&&camera&&<YouAreHere {...(projectPoint(provider.workArea.centre,camera)??{x:50,y:50})}/>}{groups.map(group=>{
     const point=size?{...keepInside(group.lead,size.width,size.height),unit:"px" as const}:byId.get(group.lead.id)!.at;
     return group.members.length===1?<MapPin key={group.lead.id} job={byId.get(group.lead.id)!.job} position={point} serverNow={serverNow} selected={selectedId===group.lead.id} hot={selectedId===group.lead.id} onSelect={pinId=>select(pinId)}/>
       :<ClusterPin key={"cluster-"+group.lead.id} atPin count={group.members.length} bounties={group.members.filter(item=>item.bounty).length} position={point} onZoom={()=>setCamera(boundsAround(group.members.map(item=>byId.get(item.id)!.job.point),.3,.0002))}/>;
@@ -83,7 +86,7 @@ export function PhoneMap({ cards, counts, query, config, serverNow, onKindChange
   const rootClass=styles.phone+(embedded?" "+styles.embedded:"");
   return <section className={rootClass} data-phone-map data-expanded={expanded} aria-label={embedded?previewState+" nearby jobs map":"Nearby jobs map"} onPointerDownCapture={()=>{keyboardSelection.current=false;}} onKeyDownCapture={event=>{keyboardSelection.current=event.key==="Enter"||event.key===" ";}}>
     <h1 className={styles.srOnly}>Jobs near you</h1>
-    <div className={styles.map} ref={map}>{!unavailable&&(fake?<MapSurface label={embedded?previewState+" map of nearby jobs":"Map of nearby jobs"}>{pins}</MapSurface>:config&&size&&size.width>0?<MapboxSurface config={config} bounds={camera??undefined} label={embedded?previewState+" map of nearby jobs":"Map of nearby jobs"} locationNote="Showing your work area." onViewChange={setViewport} onFailure={()=>setFailed(true)}>{pins}</MapboxSurface>:null)}
+    <div className={styles.map} ref={map}>{!unavailable&&(fake?<MapSurface label={embedded?previewState+" map of nearby jobs":"Map of nearby jobs"}>{pins}</MapSurface>:provider&&size&&size.width>0?<MapboxSurface config={provider} bounds={camera??undefined} label={embedded?previewState+" map of nearby jobs":"Map of nearby jobs"} locationNote="Showing your work area." onViewChange={setViewport} onFailure={()=>setFailed(true)}>{pins}</MapboxSurface>:null)}
       {fake&&!unavailable&&<div className={styles.mapControls}><Button size="sm" width="auto" variant="secondary" onClick={()=>camera&&setCamera(scaleBounds(camera,.5))} aria-label="Zoom in"><Icon name="add" decorative/></Button><Button size="sm" width="auto" variant="secondary" onClick={()=>camera&&setCamera(scaleBounds(camera,2))} aria-label="Zoom out"><Icon name="remove" decorative/></Button></div>}
     </div>
     <div className={styles.floating}><div className={styles.available} data-available={availability?.available} aria-busy={saving||!availability}>

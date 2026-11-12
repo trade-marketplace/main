@@ -63,14 +63,14 @@ test("availability sends once, remains browseable off, and rolls back a failed s
 });
 
 const providerScript = `window.mapboxgl={supported:()=>true,Map:class{
- constructor(o){this.el=o.container;this.listeners={};this.b={west:168,south:-47,east:169,north:-46};this.z=10;window.__boardMapFixture=this;this.timer=setTimeout(()=>this.emit('load'),0);}
+ constructor(o){this.el=o.container;window.__phoneLiveMaps=(window.__phoneLiveMaps||0)+1;window.__phoneMapCreates=(window.__phoneMapCreates||0)+1;this.listeners={};this.b={west:168,south:-47,east:169,north:-46};this.z=10;window.__boardMapFixture=this;this.timer=setTimeout(()=>this.emit('load'),0);}
  on(n,f){(this.listeners[n]??=[]).push(f)} off(n,f){this.listeners[n]=(this.listeners[n]??[]).filter(x=>x!==f)} emit(n){for(const f of this.listeners[n]??[])f()}
  fitBounds([[w,s],[e,n]]){this.b={west:w,south:s,east:e,north:n};this.emit('move')}
  project([lng,lat]){return{x:(lng-this.b.west)/(this.b.east-this.b.west)*this.el.clientWidth,y:(this.b.north-lat)/(this.b.north-this.b.south)*this.el.clientHeight}}
  getBounds(){return{getNorth:()=>this.b.north,getSouth:()=>this.b.south,getEast:()=>this.b.east,getWest:()=>this.b.west}} getZoom(){return this.z}
  scale(f){const b=this.b,x=(b.east+b.west)/2,y=(b.north+b.south)/2,w=(b.east-b.west)*f/2,h=(b.north-b.south)*f/2;this.b={west:x-w,east:x+w,south:y-h,north:y+h};this.emit('move')}
  zoomIn(){this.z++;this.scale(.5)} zoomOut(){this.z--;this.scale(2)} flyTo({center:[x,y]}){const w=(this.b.east-this.b.west)/2,h=(this.b.north-this.b.south)/2;this.b={west:x-w,east:x+w,south:y-h,north:y+h};this.emit('move')}
- resize(){this.emit('resize')} remove(){clearTimeout(this.timer);this.listeners={};this.el.replaceChildren()}
+ resize(){this.emit('resize')} remove(){window.__phoneLiveMaps--;clearTimeout(this.timer);this.listeners={};this.el.replaceChildren()}
 }};`;
 const app=process.env.PHONE_MAP_E2E_APP_URL,database=process.env.PHONE_MAP_E2E_DATABASE_URL;
 test.describe("real phone map availability and job journey",()=>{
@@ -94,13 +94,18 @@ test.describe("real phone map availability and job journey",()=>{
   await page.setViewportSize({width:390,height:1000});await page.route("https://api.mapbox.com/**",route=>route.fulfill({contentType:route.request().url().endsWith(".css")?"text/css":"application/javascript",body:route.request().url().endsWith(".css")?"":providerScript}));
   await page.goto(`${app}/login?next=${encodeURIComponent(board)}`);await page.getByLabel("Email",{exact:true}).fill(SECURITY_TRADIE.email);await page.getByLabel("Password",{exact:true}).fill(SECURITY_PASSWORD);await page.getByRole("button",{name:"Log in",exact:true}).click();await expect(page).toHaveURL(app+board);
   const phone=page.getByRole("region",{name:"Nearby jobs map",exact:true});await expect(phone).toBeVisible();await expect(phone.getByRole("switch",{name:"You’re available",exact:true})).toBeChecked();
+  const liveMaps=()=>page.evaluate(()=>(window as unknown as {__phoneLiveMaps:number}).__phoneLiveMaps);
+  const mapCreates=()=>page.evaluate(()=>(window as unknown as {__phoneMapCreates:number}).__phoneMapCreates);
+  await expect.poll(liveMaps).toBe(1);expect(await page.evaluate(()=>(window as unknown as {__phoneMapCreates:number}).__phoneMapCreates)).toBe(1);
+  await page.setViewportSize({width:1024,height:1000});await expect(phone).toBeHidden();await expect.poll(liveMaps).toBe(1);await expect(page.getByRole("region",{name:"Map of jobs in view",exact:true})).toBeVisible();await expect.poll(mapCreates).toBe(2);await expect.poll(liveMaps).toBe(1);
+  await page.setViewportSize({width:390,height:1000});await expect(phone).toBeVisible();await expect.poll(mapCreates).toBe(3);await expect.poll(liveMaps).toBe(1);
   const auditBefore=Number((await db.query("SELECT count(*) FROM audit_log WHERE actor_id=$1 AND action='worker.availability_changed'",[SECURITY_TRADIE.id])).rows[0].count);
   await phone.getByRole("switch",{name:"You’re available",exact:true}).tap();await expect(phone.getByRole("switch",{name:"Not available",exact:true})).not.toBeChecked();
   await expect.poll(async()=>Boolean((await db.query("SELECT available FROM worker_profiles WHERE user_id=$1",[SECURITY_TRADIE.id])).rows[0].available)).toBe(false);
   expect(Number((await db.query("SELECT count(*) FROM audit_log WHERE actor_id=$1 AND action='worker.availability_changed'",[SECURITY_TRADIE.id])).rows[0].count)).toBe(auditBefore+1);
   await page.reload();await expect(phone.getByRole("switch",{name:"Not available",exact:true})).not.toBeChecked();await expect(phone.getByText("You won’t get job alerts.",{exact:true})).toBeVisible();
   for(const width of[320,390,768,1024,1440]){
-   await page.setViewportSize({width,height:1000});await page.goto(app+board);
+   await page.setViewportSize({width,height:1000});await page.goto(app+board);await expect.poll(liveMaps).toBe(1);expect(await page.evaluate(()=>(window as unknown as {__phoneMapCreates:number}).__phoneMapCreates)).toBe(1);
    if(width<768){
     const pin=phone.locator('button[data-pin-kind="claim"]');await pin.focus();await pin.press("Enter");const card=phone.locator(`a[data-card-id="${job}"]`);await expect(card).toBeFocused();await card.press("Enter");
    }else{
