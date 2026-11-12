@@ -21,17 +21,18 @@ import type { CustomerJobView } from "@/server/views";
 import type { CustomerSignoff } from "@/lib/customer-signoff";
 import { SignoffPanel, type SignoffAction } from "./customer/SignoffPanel";
 import { CustomerWaitingActions, type WaitingActions } from "./CustomerWaitingActions";
+import { PriceReadyPanel, type PriceReadyActions } from "./customer/PriceReadyPanel";
 import { ConfirmedPanel } from "./customer/ConfirmedPanel";
 import type { CustomerWorkerCard } from "@/lib/customer-worker-card";
 import styles from "./customer-job.module.css";
 
-type Props = { job: CustomerJobView; photos?: readonly ViewerPhoto[]; photosFailed?: boolean; photoLease?: { batchId: string; renewAfterMs: number } | null; back?: string; canEditWindows?: boolean; preview?: "offline" | "static"; initialAgeMs?: number; waitingPreview?: string; waitingActions?: WaitingActions; problemHref?: string; workerCard?: CustomerWorkerCard | null; confirmedWindowsHref?: string; signoffData?: CustomerSignoff | null; signoffPreview?: string; signoffAction?: SignoffAction };
+type Props = { job: CustomerJobView; photos?: readonly ViewerPhoto[]; photosFailed?: boolean; photoLease?: { batchId: string; renewAfterMs: number } | null; back?: string; canEditWindows?: boolean; preview?: "offline" | "static"; initialAgeMs?: number; waitingPreview?: string; waitingActions?: WaitingActions; problemHref?: string; workerCard?: CustomerWorkerCard | null; confirmedWindowsHref?: string; signoffData?: CustomerSignoff | null; signoffPreview?: string; signoffAction?: SignoffAction; previousPriceCents?: number | null; pricePreview?: string; priceActions?: PriceReadyActions };
 const trades = { ELECTRICAL: "Electrical", PLUMBING: "Plumbing", GAS: "Gas", CONSTRUCTION: "Construction", OTHER: "Other" } as const;
 const date = new Intl.DateTimeFormat("en-NZ", { timeZone: "UTC", weekday: "short", day: "numeric", month: "short" });
 const postedDate = new Intl.DateTimeFormat("en-NZ", { timeZone: "Pacific/Auckland", weekday: "short", day: "numeric", month: "short" });
 const time = { MORNING: "Morning", AFTERNOON: "Afternoon", EVENING: "Evening" } as const;
 
-export function CustomerJob({ job, photos = [], photosFailed = false, photoLease, back = "/", canEditWindows = false, preview, initialAgeMs = 0, waitingPreview, waitingActions, problemHref, workerCard, confirmedWindowsHref, signoffData, signoffPreview, signoffAction }: Props) {
+export function CustomerJob({ job, photos = [], photosFailed = false, photoLease, back = "/", canEditWindows = false, preview, initialAgeMs = 0, waitingPreview, waitingActions, problemHref, workerCard, confirmedWindowsHref, signoffData, signoffPreview, signoffAction, previousPriceCents = null, pricePreview, priceActions }: Props) {
   const router = useRouter();
   const browserOnline = useOnlineStatus();
   const online = browserOnline && preview !== "offline";
@@ -140,8 +141,9 @@ export function CustomerJob({ job, photos = [], photosFailed = false, photoLease
                 {job.status === "REVIEW" && customerPriceDelayed(ageMs) && <Banner tone="info" title="Taking a little longer than usual" className={styles.notice}>Still working on it. Thanks for your patience. We’ll message you.</Banner>}
                 <CustomerWaitingActions key={job.id} job={job} online={online} preview={waitingPreview} actions={waitingActions} onCancelled={() => setCancelFocusJob(job.id)} />
               </>}
+              {job.status === "PRICED" && <PriceReadyPanel key={job.id} job={job} previousPriceCents={previousPriceCents} online={online} preview={pricePreview} actions={priceActions} onDeclined={() => setCancelFocusJob(job.id)} />}
               {panel.kind === "confirmed" && job.worker && <ConfirmedPanel job={job} card={workerCard} back={returnTo} online={online} preview={Boolean(preview)} windowsHref={confirmedWindowsHref} />}
-              {job.status === "SUBMITTED" ? <SignoffPanel key={`${job.id}:${job.worker?.id ?? ""}:${signoffData?.evidenceRevision ?? ""}`} job={job} data={signoffData ?? null} online={online} problemHref={problemHref ?? `/jobs/${job.id}/problem?from=${encodeURIComponent(customerJobHref(job.id, returnTo))}`} preview={signoffPreview} action={signoffAction} /> : panel.price && job.priceCents !== null && <PriceBlock audience="customer" priceCents={job.priceCents} />}
+              {job.status === "SUBMITTED" ? <SignoffPanel key={`${job.id}:${job.worker?.id ?? ""}:${signoffData?.evidenceRevision ?? ""}`} job={job} data={signoffData ?? null} online={online} problemHref={problemHref ?? `/jobs/${job.id}/problem?from=${encodeURIComponent(customerJobHref(job.id, returnTo))}`} preview={signoffPreview} action={signoffAction} /> : panel.price && job.status !== "PRICED" && job.priceCents !== null && <PriceBlock audience="customer" priceCents={job.priceCents} />}
               {job.status === "COMPLETED" && signoffData?.autoCompleted && <p className={styles.message}>We marked this done automatically.</p>}
             </div>
             {tracker && <div className={styles.tracker}><Tracker {...tracker} /></div>}

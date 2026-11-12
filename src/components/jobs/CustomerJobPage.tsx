@@ -10,12 +10,12 @@ import { firebaseWebConfig } from "@/server/notifications/push-config";
 import { CustomerJob, CustomerJobLoading } from "./CustomerJob";
 import { PostedJob } from "./PostedJob";
 
-export function CustomerJobPage({ job, viewer, posted, back, canEditWindows }: { job: CustomerJobView; viewer: JobViewer & { emailVerified: boolean }; posted: boolean; back: string; canEditWindows: boolean }) {
+export function CustomerJobPage({ job, viewer, posted, back, canEditWindows }: { job: CustomerJobView & { previousPriceCents?: number | null }; viewer: JobViewer & { emailVerified: boolean }; posted: boolean; back: string; canEditWindows: boolean }) {
   return posted ? <PostedJob job={job} ownerId={viewer.userId} push={viewer.emailVerified ? firebaseWebConfig() : null} /> :
-    <Suspense fallback={<CustomerJobLoading />}><CustomerJobPhotos job={job} viewer={viewer} back={back} canEditWindows={canEditWindows} /></Suspense>;
+    <Suspense fallback={<CustomerJobLoading />}><CustomerJobPhotos job={job} viewer={viewer} back={back} canEditWindows={canEditWindows} previousPriceCents={job.previousPriceCents ?? null} /></Suspense>;
 }
 
-async function CustomerJobPhotos({ job, viewer, back, canEditWindows }: { job: CustomerJobView; viewer: JobViewer; back: string; canEditWindows: boolean }) {
+async function CustomerJobPhotos({ job, viewer, back, canEditWindows, previousPriceCents }: { job: CustomerJobView; viewer: JobViewer; back: string; canEditWindows: boolean; previousPriceCents: number | null }) {
   const [photos, signoffData, workerCard] = await Promise.all([
     loadCustomerJobPhotos(job, viewer),
     // Do not pair a stale worker name with a concurrent replacement's finished-work files.
@@ -24,5 +24,5 @@ async function CustomerJobPhotos({ job, viewer, back, canEditWindows }: { job: C
     // must not pair one person's signed photo/licence with another person's name and phone.
     (async () => { try { return job.worker ? await loadCustomerWorkerCard(getDb(), viewer, job.id, undefined, undefined, job.worker.id) : null; } catch { return null; } })(),
   ]);
-  return <CustomerJob job={job} {...photos} back={back} canEditWindows={canEditWindows} signoffData={signoffData} workerCard={workerCard} />;
+  return <CustomerJob job={job} {...photos} back={back} canEditWindows={canEditWindows} signoffData={signoffData} workerCard={workerCard} previousPriceCents={previousPriceCents} />;
 }

@@ -14,7 +14,10 @@ export async function loadCustomerJobPage(db: Pick<PrismaClient, "job">, viewer:
   if (!row) return { state: "not-found" as const };
   const job = customerJobView(viewer, row);
   if (!job) return { state: "not-found" as const };
-  return { state: "ready" as const, job, canEditWindows: canEditJobWindows(row) };
+  // send-price only accepts REVIEW / QUOTE_BOUNTY; there is currently no PRICED re-price command.
+  // Keep the optional presentation field on the page's job too, so the existing route can pass it through.
+  const previousPriceCents: number | null = null;
+  return { state: "ready" as const, job: { ...job, previousPriceCents }, previousPriceCents, canEditWindows: canEditJobWindows(row) };
 }
 
 export async function loadCustomerJobPhotos(job: CustomerJobView, viewer: JobViewer,

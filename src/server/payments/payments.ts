@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto";
 
 import type Stripe from "stripe";
 
-import type { PaymentKind, PrismaClient } from "@/generated/prisma/client";
+import type { PaymentKind, Prisma, PrismaClient } from "@/generated/prisma/client";
 import {
   type PaymentErrorCode,
   type PaymentFailure,
@@ -14,6 +14,7 @@ import {
   payPath,
 } from "@/lib/payments/results";
 import { createAudit } from "@/server/audit/audit";
+import { databaseSchema } from "@/server/database-client";
 import { customerJobListView, JOB_SUMMARY_SELECT } from "@/server/views/jobs";
 import { startVariationPayment, prepareVariationPayment } from "./variation-payment";
 
@@ -128,8 +129,70 @@ async function retirePayment(
 }
 
 /**
+ * The job's row lock, shared with declining a price and every status change. A waiting payment is retired under
+ * it, and a PaymentIntent is only made under it, so neither can slip past the other (#516).
+ */
+async function lockJobRow(db: PrismaClient, tx: Prisma.TransactionClient, jobId: string): Promise<void> {
+  const relation = `"${databaseSchema(db).replaceAll('"', '""')}".jobs`;
+  await tx.$queryRawUnsafe(`SELECT id FROM ${relation} WHERE id = $1::uuid FOR UPDATE`, jobId);
+}
+
+/** "retired": nothing can be charged any more. "paying": Stripe has, or is taking, the money. "unverified": we couldn't ask Stripe. */
+export type RetireJobPaymentsResult = "retired" | "paying" | "unverified";
+
+/**
+ * Call under the job's row lock, before a priced job stops being payable (the customer says no to the price).
+ * Every checkout that could still take the job's price is cancelled at Stripe first, and only then marked FAILED
+ * here, so the customer can never be charged after being told that saying no is free (#516). A failed card's
+ * PaymentIntent can still be confirmed, so those are cancelled too. If Stripe already has the money, or is taking
+ * it, nothing is cancelled and the caller must leave the job as it is: the webhook will record the payment.
+ */
+export async function retireJobPayments(
+  tx: Prisma.TransactionClient,
+  intents: PaymentIntentsApi | null,
+  actor: { userId: string },
+  jobId: string,
+  reason: string,
+): Promise<RetireJobPaymentsResult> {
+  const waiting = await tx.payment.findMany({
+    where: { jobId, kind: "JOB", status: { in: ["PENDING", "FAILED"] } },
+    orderBy: { createdAt: "asc" },
+    select: { id: true, status: true, providerPaymentId: true },
+  });
+  for (const payment of waiting) {
+    if (payment.providerPaymentId) {
+      if (!intents) return "unverified";
+      let current: Stripe.PaymentIntent;
+      try {
+        current = await intents.retrieve(payment.providerPaymentId);
+      } catch (error) {
+        console.error("Payments: couldn't check a PaymentIntent before retiring its payment.", error);
+        return "unverified";
+      }
+      if (current.status === "succeeded" || current.status === "processing") return "paying";
+      if (current.status !== "canceled") {
+        try {
+          if ((await intents.cancel(current.id)).status !== "canceled") return "paying";
+        } catch (error) {
+          // Stripe refuses to cancel one that was confirmed in the meantime: the money is on its way.
+          console.error("Payments: couldn't cancel a PaymentIntent before retiring its payment.", error);
+          return "paying";
+        }
+      }
+    }
+    if (payment.status === "PENDING") {
+      await tx.payment.update({ where: { id: payment.id }, data: { status: "FAILED", failureReason: reason } });
+      await createAudit(tx)(actor, "payment.failed", { type: "payments", id: payment.id }, { status: "PENDING" }, { status: "FAILED" });
+    }
+  }
+  return "retired";
+}
+
+/**
  * Gets the card form ready for one payment: the PaymentIntent's client secret. Only the job's customer.
  * Reuses the PaymentIntent already saved on the row; makes one (with the row's idempotency key) if there isn't.
+ * Runs under the job's row lock, and re-reads the payment and the job there: once the customer has said no to the
+ * price (which retires the payment under the same lock), no PaymentIntent can be made for it (#516).
  */
 export async function preparePayment(
   db: PrismaClient,
@@ -137,50 +200,58 @@ export async function preparePayment(
   customerId: string,
   paymentId: string,
 ): Promise<PreparePaymentResult> {
-  const payment = await db.payment.findFirst({
+  const found = await db.payment.findFirst({
     where: { id: paymentId, job: { customerId } },
-    include: { job: { select: { id: true, jobNumber: true, status: true } } },
+    select: { kind: true, jobId: true },
   });
-  if (!payment) return paymentFailure("not-found");
-  if (payment.kind === "VARIATION") return prepareVariationPayment(db, intents, customerId, paymentId);
-  if (payment.status === "PAID" || payment.status === "REFUNDED" || payment.status === "PARTIALLY_REFUNDED") {
-    return { ok: true, paid: true };
-  }
-  if (payment.status === "FAILED") return paymentFailure("not-payable");
-  if (payment.kind === "JOB" && payment.job.status !== "PRICED") return paymentFailure("not-payable");
+  if (!found) return paymentFailure("not-found");
+  if (found.kind === "VARIATION") return prepareVariationPayment(db, intents, customerId, paymentId);
 
-  if (payment.providerPaymentId) {
-    const existing = await intents.retrieve(payment.providerPaymentId);
-    if (existing.status === "succeeded") return { ok: true, paid: true };
-    if (existing.status === "canceled") {
-      await db.payment.updateMany({ where: { id: payment.id, status: "PENDING" }, data: { status: "FAILED", failureReason: "Cancelled." } });
-      return paymentFailure("not-payable");
+  return db.$transaction(async (tx): Promise<PreparePaymentResult> => {
+    await lockJobRow(db, tx, found.jobId);
+    const payment = await tx.payment.findFirst({
+      where: { id: paymentId, job: { customerId } },
+      include: { job: { select: { id: true, jobNumber: true, status: true } } },
+    });
+    if (!payment) return paymentFailure("not-found");
+    if (payment.status === "PAID" || payment.status === "REFUNDED" || payment.status === "PARTIALLY_REFUNDED") {
+      return { ok: true, paid: true };
     }
-    if (existing.client_secret) return { ok: true, paid: false, clientSecret: existing.client_secret };
-  }
+    if (payment.status === "FAILED") return paymentFailure("not-payable");
+    if (payment.kind === "JOB" && payment.job.status !== "PRICED") return paymentFailure("not-payable");
 
-  const intent = await intents.create(
-    {
-      amount: payment.amountCents,
-      currency: PAYMENT_CURRENCY,
-      // Cards, Apple Pay and Google Pay, as switched on in the Stripe dashboard.
-      automatic_payment_methods: { enabled: true },
-      description: `Trade Marketplace TM-${payment.job.jobNumber}`,
-      // Ids only: no names, addresses or job details go to Stripe.
-      metadata: { paymentId: payment.id, jobId: payment.job.id, kind: payment.kind },
-    },
-    { idempotencyKey: payment.idempotencyKey },
-  );
-  if (!intent.client_secret) return paymentFailure("unavailable");
+    if (payment.providerPaymentId) {
+      const existing = await intents.retrieve(payment.providerPaymentId);
+      if (existing.status === "succeeded") return { ok: true, paid: true };
+      if (existing.status === "canceled") {
+        await tx.payment.updateMany({ where: { id: payment.id, status: "PENDING" }, data: { status: "FAILED", failureReason: "Cancelled." } });
+        return paymentFailure("not-payable");
+      }
+      if (existing.client_secret) return { ok: true, paid: false, clientSecret: existing.client_secret };
+    }
 
-  await db.payment.updateMany({
-    where: { id: payment.id, providerPaymentId: null },
-    data: { providerPaymentId: intent.id, livemode: intent.livemode },
-  });
-  return { ok: true, paid: false, clientSecret: intent.client_secret };
+    const intent = await intents.create(
+      {
+        amount: payment.amountCents,
+        currency: PAYMENT_CURRENCY,
+        // Cards, Apple Pay and Google Pay, as switched on in the Stripe dashboard.
+        automatic_payment_methods: { enabled: true },
+        description: `Trade Marketplace TM-${payment.job.jobNumber}`,
+        // Ids only: no names, addresses or job details go to Stripe.
+        metadata: { paymentId: payment.id, jobId: payment.job.id, kind: payment.kind },
+      },
+      { idempotencyKey: payment.idempotencyKey },
+    );
+    if (!intent.client_secret) return paymentFailure("unavailable");
+
+    await tx.payment.updateMany({
+      where: { id: payment.id, providerPaymentId: null },
+      data: { providerPaymentId: intent.id, livemode: intent.livemode },
+    });
+    return { ok: true, paid: false, clientSecret: intent.client_secret };
+  }, { timeout: 30_000 });
 }
 
-/** Everything the checkout page shows about one payment. Customers see the total and GST, never margins. */
 export type CheckoutView = {
   paymentId: string;
   jobId: string;
