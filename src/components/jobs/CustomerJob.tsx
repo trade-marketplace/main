@@ -28,16 +28,18 @@ import type { CustomerExtra } from "@/lib/customer-extras";
 import { ExtraWorkCard, type ExtraWorkActions } from "./customer/ExtraWorkCard";
 import styles from "./customer-job.module.css";
 
+import { ReviewCard, type ReviewAction } from "./customer/ReviewCard";
+import type { CustomerReview } from "@/lib/customer-review";
 import { CancelJobDialog, type CancelAction } from "./customer/CancelJobDialog";
 import { canCancelJob, cancelRevision, CANCEL_REQUESTED_MESSAGE, type CancelFacts } from "@/lib/customer-cancel";
 
-type Props = { cancelFacts?: CancelFacts | null; cancelPreview?: string; cancelAction?: CancelAction; extras?: readonly CustomerExtra[]; extrasFailed?: boolean; extraPreview?: string; extraActions?: ExtraWorkActions; job: CustomerJobView; photos?: readonly ViewerPhoto[]; photosFailed?: boolean; photoLease?: { batchId: string; renewAfterMs: number } | null; back?: string; canEditWindows?: boolean; preview?: "offline" | "static"; initialAgeMs?: number; waitingPreview?: string; waitingActions?: WaitingActions; problemHref?: string; workerCard?: CustomerWorkerCard | null; confirmedWindowsHref?: string; signoffData?: CustomerSignoff | null; signoffPreview?: string; signoffAction?: SignoffAction; previousPriceCents?: number | null; pricePreview?: string; priceActions?: PriceReadyActions };
+type Props = { reviewData?: CustomerReview | null; reviewPreview?: string; reviewAction?: ReviewAction; cancelFacts?: CancelFacts | null; cancelPreview?: string; cancelAction?: CancelAction; extras?: readonly CustomerExtra[]; extrasFailed?: boolean; extraPreview?: string; extraActions?: ExtraWorkActions; job: CustomerJobView; photos?: readonly ViewerPhoto[]; photosFailed?: boolean; photoLease?: { batchId: string; renewAfterMs: number } | null; back?: string; canEditWindows?: boolean; preview?: "offline" | "static"; initialAgeMs?: number; waitingPreview?: string; waitingActions?: WaitingActions; problemHref?: string; workerCard?: CustomerWorkerCard | null; confirmedWindowsHref?: string; signoffData?: CustomerSignoff | null; signoffPreview?: string; signoffAction?: SignoffAction; previousPriceCents?: number | null; pricePreview?: string; priceActions?: PriceReadyActions };
 const trades = { ELECTRICAL: "Electrical", PLUMBING: "Plumbing", GAS: "Gas", CONSTRUCTION: "Construction", OTHER: "Other" } as const;
 const date = new Intl.DateTimeFormat("en-NZ", { timeZone: "UTC", weekday: "short", day: "numeric", month: "short" });
 const postedDate = new Intl.DateTimeFormat("en-NZ", { timeZone: "Pacific/Auckland", weekday: "short", day: "numeric", month: "short" });
 const time = { MORNING: "Morning", AFTERNOON: "Afternoon", EVENING: "Evening" } as const;
 
-export function CustomerJob({ job, photos = [], photosFailed = false, photoLease, back = "/", canEditWindows = false, preview, initialAgeMs = 0, waitingPreview, waitingActions, problemHref, workerCard, confirmedWindowsHref, signoffData, signoffPreview, signoffAction, previousPriceCents = null, pricePreview, priceActions, extras = [], extrasFailed, extraPreview, extraActions, cancelFacts, cancelPreview, cancelAction }: Props) {
+export function CustomerJob({ job, photos = [], photosFailed = false, photoLease, back = "/", canEditWindows = false, preview, initialAgeMs = 0, waitingPreview, waitingActions, problemHref, workerCard, confirmedWindowsHref, signoffData, signoffPreview, signoffAction, previousPriceCents = null, pricePreview, priceActions, extras = [], extrasFailed, extraPreview, extraActions, cancelFacts, cancelPreview, cancelAction, reviewData, reviewPreview, reviewAction }: Props) {
   const router = useRouter();
   const browserOnline = useOnlineStatus();
   const online = browserOnline && preview !== "offline";
@@ -157,6 +159,7 @@ export function CustomerJob({ job, photos = [], photosFailed = false, photoLease
             {tracker && <div className={styles.tracker}><Tracker {...tracker} /></div>}
           </div>
           {job.status === "ASSIGNED" && <ExtraWorkCard key={`${job.id}:${job.worker?.id ?? ""}`} extras={extras} failed={extrasFailed} name={job.worker?.firstName ?? "Your tradie"} online={online} preview={extraPreview} actions={extraActions} />}
+          {job.status === "COMPLETED" && reviewData !== undefined && <ReviewCard jobId={job.id} data={reviewData} online={online} preview={reviewPreview} action={reviewAction} />}
           <div className={`${styles.card} ${styles.help}`}><TextLink href={problemHref ?? `/jobs/${job.id}/problem?from=${encodeURIComponent(customerJobHref(job.id, returnTo))}`}>Report a problem</TextLink><TextLink href="/help">Need a hand?</TextLink></div>
         </aside>
       </div>
