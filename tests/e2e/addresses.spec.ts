@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { expect, test, type Page } from "@playwright/test";
 import pg from "pg";
 import { ADDRESS_STATES } from "../../src/lib/account/addresses";
@@ -39,7 +40,11 @@ test("preview keyboard search, edit, default and delete retain focus and support
   await dialog.getByLabel("Label", { exact: true }).fill("Garage");
   await dialog.getByRole("combobox", { name: "Address", exact: true }).fill("12 Dee");
   await expect(page.getByRole("option", { name: "12 Dee Street, Central, Invercargill 9810", exact: true })).toBeVisible();
-  await dialog.getByRole("combobox").press("ArrowDown"); await page.keyboard.press("Enter");
+  await dialog.getByRole("button", { name: "Save", exact: true }).press("Enter");
+  await expect(dialog.getByText("Enter the suburb.")).toBeVisible();
+  await expect(dialog.getByLabel("Suburb", { exact: true })).toBeFocused();
+  await dialog.getByRole("combobox").focus(); await dialog.getByRole("combobox").press("ArrowDown"); await page.keyboard.press("Enter");
+  await expect(dialog.getByText("Enter the suburb.")).toHaveCount(0);
   await context.setOffline(true); await expect(dialog.getByRole("button", { name: "Save", exact: true })).toHaveAttribute("aria-disabled", "true");
   await expect(page.getByText("You’re offline.", { exact: true })).toHaveCount(1);
   await expect(dialog.getByLabel("Label", { exact: true })).toHaveValue("Garage"); await context.setOffline(false);
@@ -59,6 +64,11 @@ test("preview keyboard search, edit, default and delete retain focus and support
   await page.getByRole("dialog").getByLabel("City", { exact: true }).fill("Invercargill");
   await page.getByRole("dialog").getByRole("button", { name: "Save", exact: true }).press("Enter");
   await expect(page.getByRole("article", { name: "Address", exact: true }).getByText("23 Manual Street")).toBeVisible();
+  await page.goto(`${preview}/dev/components/addresses?state=error`);
+  await page.getByRole("button", { name: "Try again", exact: true }).click();
+  await expect(page.getByRole("article", { name: "Home", exact: true })).toBeVisible();
+  await expectNoA11yViolations(page);
+  await expect(page.getByText("Saved.", { exact: true })).toHaveCount(0);
 });
 
 test.describe("actual customer saved addresses", () => {
@@ -118,18 +128,43 @@ test.describe("actual customer saved addresses", () => {
     const audits = (await db.query("SELECT before,after FROM audit_log WHERE actor_id=$1 AND action LIKE 'address.%'", [SECURITY_USER.id])).rows;
     expect(JSON.stringify(audits)).not.toContain("Local Test Street"); await expectNoA11yViolations(page);
   });
+  test("legacy PIN and unknown provenance expose manual fields, preserve label edits and drop stale points on correction", async ({ page }) => {
+    const fixtures = [{ id: randomUUID(), label: "Legacy PIN", source: "PIN", lat: -46.41, lng: 168.35 }, { id: randomUUID(), label: "Legacy unknown", source: null, lat: null, lng: null }];
+    for (const [index, item] of fixtures.entries()) await db.query("INSERT INTO addresses(id,user_id,label,line1,suburb,city,postcode,lat,lng,location_source,is_default) VALUES($1,$2,$3,'12 Legacy Test Street','Central','Invercargill','9810',$4,$5,$6,$7)", [item.id, SECURITY_USER.id, item.label, item.lat, item.lng, item.source, index === 0]);
+    await login(page);
+    for (const item of fixtures) {
+      await page.getByRole("article", { name: item.label, exact: true }).getByRole("button", { name: "Edit", exact: true }).click();
+      let dialog = page.getByRole("dialog");
+      await expect(dialog.getByLabel("Suburb", { exact: true })).toHaveValue("Central");
+      await expect(dialog.getByLabel("City", { exact: true })).toHaveValue("Invercargill");
+      await expect(dialog.getByLabel("Postcode", { exact: true })).toHaveValue("9810");
+      await dialog.getByLabel("Label", { exact: true }).fill(`${item.label} renamed`); await dialog.getByRole("button", { name: "Save", exact: true }).click(); await expect(dialog).toHaveCount(0);
+      expect((await db.query("SELECT location_source,lat,lng FROM addresses WHERE id=$1", [item.id])).rows[0]).toEqual({ location_source: item.source, lat: item.lat, lng: item.lng });
+      await page.getByRole("article", { name: `${item.label} renamed`, exact: true }).getByRole("button", { name: "Edit", exact: true }).click();
+      dialog = page.getByRole("dialog"); await dialog.getByLabel("Suburb", { exact: true }).fill("Windsor");
+      await expect(dialog.getByRole("combobox")).toHaveValue("12 Legacy Test Street");
+      await expect(dialog.getByLabel("City", { exact: true })).toHaveValue("Invercargill");
+      await expect(dialog.getByLabel("Postcode", { exact: true })).toHaveValue("9810");
+      await expectNoA11yViolations(page);
+      await dialog.getByRole("button", { name: "Save", exact: true }).click(); await expect(dialog).toHaveCount(0);
+      expect((await db.query("SELECT line1,suburb,city,postcode,location_source,lat,lng FROM addresses WHERE id=$1", [item.id])).rows[0]).toEqual({ line1: "12 Legacy Test Street", suburb: "Windsor", city: "Invercargill", postcode: "9810", location_source: "TYPED", lat: null, lng: null });
+    }
+    await page.reload(); await expect(page.getByRole("article")).toHaveCount(2);
+    for (const item of fixtures) await expect(page.getByRole("article", { name: `${item.label} renamed`, exact: true })).toContainText("Windsor, Invercargill, 9810");
+  });
   test("a response lost after commit reuses the same create key on retry", async ({ page }) => {
     const auditsBefore = (await db.query("SELECT count(*)::int AS count FROM audit_log WHERE actor_id=$1 AND action='address.saved' AND after->>'label'='Committed retry'", [SECURITY_USER.id])).rows[0].count;
     await login(page); await page.getByRole("button", { name: "Add address", exact: true }).click(); await fill(page, "Committed retry", "78 Local Test Street");
-    let dropped = false;
+    let deliver = false;
     await page.route("**/profile/addresses", async route => {
-      if (!dropped && route.request().method() === "POST") { dropped = true; await route.fetch(); return route.abort("failed"); }
+      if (!deliver && route.request().method() === "POST") { await route.fetch(); return route.abort("failed"); }
       return route.continue();
     });
     await page.getByRole("dialog").getByRole("button", { name: "Save", exact: true }).click();
     await expect(page.getByText("Couldn’t save your addresses. Try again.", { exact: true }).first()).toBeVisible();
     expect((await db.query("SELECT count(*)::int AS count FROM addresses WHERE user_id=$1", [SECURITY_USER.id])).rows[0].count).toBe(1);
     await expect(page.getByRole("dialog").getByLabel("Label", { exact: true })).toHaveValue("Committed retry");
+    deliver = true;
     await page.getByRole("dialog").getByRole("button", { name: "Save", exact: true }).click(); await expect(page.getByRole("dialog")).toHaveCount(0);
     await expect(page.getByRole("article", { name: "Committed retry", exact: true })).toHaveCount(1);
     expect((await db.query("SELECT count(*)::int AS count FROM addresses WHERE user_id=$1", [SECURITY_USER.id])).rows[0].count).toBe(1);
@@ -140,15 +175,16 @@ test.describe("actual customer saved addresses", () => {
     await login(page); await page.getByRole("button", { name: "Add address", exact: true }).click(); await fill(page, "Delete retry", "90 Local Test Street");
     await page.getByRole("dialog").getByRole("button", { name: "Save", exact: true }).click(); await expect(page.getByRole("dialog")).toHaveCount(0);
     await page.getByRole("article", { name: "Delete retry", exact: true }).getByRole("button", { name: "Delete", exact: true }).click();
-    let dropped = false;
+    let deliver = false;
     await page.route("**/profile/addresses", async route => {
-      if (!dropped && route.request().method() === "POST") { dropped = true; await route.fetch(); return route.abort("failed"); }
+      if (!deliver && route.request().method() === "POST") { await route.fetch(); return route.abort("failed"); }
       return route.continue();
     });
     const dialog = page.getByRole("alertdialog");
     await dialog.getByRole("button", { name: "Delete", exact: true }).click();
     await expect(dialog.getByText("Couldn’t save your addresses. Try again.", { exact: true }).first()).toBeVisible();
     expect((await db.query("SELECT count(*)::int AS count FROM addresses WHERE user_id=$1", [SECURITY_USER.id])).rows[0].count).toBe(0);
+    deliver = true;
     await dialog.getByRole("button", { name: "Delete", exact: true }).click(); await expect(dialog).toHaveCount(0);
     await expect(page.getByText("No saved addresses yet.", { exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "Add address", exact: true })).toBeFocused();
@@ -156,11 +192,12 @@ test.describe("actual customer saved addresses", () => {
   });
   test("a failed request retains the draft and retry creates one address; wrong-role route exposes no customer data", async ({ page }) => {
     await login(page); await page.getByRole("button", { name: "Add address", exact: true }).click(); await fill(page, "Retry", "56 Local Test Street");
-    let failed = false;
-    await page.route("**/profile/addresses", route => { if (!failed && route.request().method() === "POST") { failed = true; return route.abort("failed"); } return route.continue(); });
+    let deliver = false;
+    await page.route("**/profile/addresses", route => !deliver && route.request().method() === "POST" ? route.abort("failed") : route.continue());
     await page.getByRole("dialog").getByRole("button", { name: "Save", exact: true }).click();
     await expect(page.getByText("Couldn’t save your addresses. Try again.", { exact: true }).first()).toBeVisible();
     await expect(page.getByRole("dialog").getByLabel("Label", { exact: true })).toHaveValue("Retry");
+    deliver = true;
     await page.getByRole("dialog").getByRole("button", { name: "Save", exact: true }).click(); await expect(page.getByRole("dialog")).toHaveCount(0);
     expect((await db.query("SELECT count(*)::int AS count FROM addresses WHERE user_id=$1", [SECURITY_USER.id])).rows[0].count).toBe(1);
     await page.context().clearCookies(); await login(page, true); await page.goto(`${app}/profile/addresses`);

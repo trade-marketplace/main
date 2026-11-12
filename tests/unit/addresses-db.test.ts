@@ -134,6 +134,8 @@ describe.skipIf(!testDatabaseUrl)("saved addresses transactions", () => {
     expect((await saveAddress(schema.db, me, { ...addressInput(legacy), label: "Legacy" })).ok).toBe(true);
     expect((await listAddresses(schema.db, me))[0]).toMatchObject({ locationSource: "PIN", lat: -46.41, lng: 168.35, label: "Legacy" });
     expect(await saveAddress(schema.db, me, { ...addressInput(legacy), line1: "Changed street" })).toMatchObject({ ok: false, error: "invalid" });
+    expect((await saveAddress(schema.db, me, { ...addressInput(legacy), suburb: "Central", locationSource: "TYPED", point: null })).ok).toBe(true);
+    expect((await listAddresses(schema.db, me))[0]).toMatchObject({ line1: legacy.line1, suburb: "Central", city: legacy.city, postcode: legacy.postcode, locationSource: "TYPED", lat: null, lng: null });
   });
   it("rolls back a default change when its audit cannot be written", async () => {
     const me = await person(), first = await add(me), second = await add(me, "Rental");

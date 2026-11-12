@@ -1,18 +1,15 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { withRole } from "@/server/auth/guard";
 import { getDb } from "@/server/db";
 import { deleteAddress, listAddresses, saveAddress, setDefaultAddress } from "./addresses";
 import type { AddressResult } from "@/lib/account/addresses";
 
 async function changed(run: () => Promise<AddressResult>): Promise<AddressResult> {
-  try {
-    const result = await run();
-    // A cache failure after commit must not report a failed save and invite a duplicate create.
-    if (result.ok) { try { revalidatePath("/profile/addresses"); } catch { /* The returned authoritative list is still current. */ } }
-    return result;
-  } catch { return { ok: false, error: "unavailable" }; }
+  // The authenticated page is dynamic; return its authoritative rows without a route refresh that can
+  // replace an open dialog or its focus target. A later page request reads directly from the database.
+  try { return await run(); }
+  catch { return { ok: false, error: "unavailable" }; }
 }
 
 export const listAddressesAction = withRole(["CUSTOMER"], async viewer => {

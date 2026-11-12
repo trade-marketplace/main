@@ -2,11 +2,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { listAddressesAction, saveAddressAction, deleteAddressAction, setDefaultAddressAction } from "@/server/account/address-actions";
 import { getViewer } from "@/server/auth/viewer";
 import { deleteAddress, listAddresses, saveAddress, setDefaultAddress } from "@/server/account/addresses";
-import { revalidatePath } from "next/cache";
 
 vi.mock("@/server/auth/viewer", () => ({ getViewer: vi.fn() }));
 vi.mock("@/server/db", () => ({ getDb: () => ({ local: true }) }));
-vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/server/account/addresses", () => ({ listAddresses: vi.fn(async () => []), saveAddress: vi.fn(async () => ({ ok: true, addresses: [] })), deleteAddress: vi.fn(async () => ({ ok: true, addresses: [] })), setDefaultAddress: vi.fn(async () => ({ ok: true, addresses: [] })) }));
 const me = { userId: "23700000-0000-4000-8000-000000000001", role: "CUSTOMER" as const, firstName: "Sarah", email: "customer@example.test", emailVerified: true };
 describe("customer address action boundary", () => {
@@ -27,8 +25,7 @@ describe("customer address action boundary", () => {
     vi.mocked(getViewer).mockResolvedValue(null);
     expect(await saveAddressAction({})).toMatchObject({ ok: false, error: "session-expired" });
   });
-  it("preserves committed success when revalidation fails and keeps service errors private", async () => {
-    vi.mocked(revalidatePath).mockImplementationOnce(() => { throw Error("Cache unavailable"); });
+  it("returns the command result and keeps service errors private", async () => {
     expect(await saveAddressAction({})).toEqual({ ok: true, addresses: [] });
     vi.mocked(saveAddress).mockRejectedValueOnce(Error("Private street must not escape"));
     expect(await saveAddressAction({})).toEqual({ ok: false, error: "unavailable" });

@@ -70,20 +70,20 @@ function AddressList({ initial, source = live, search = searchJobAddressesAction
   function open(mode: "add" | "edit" | "delete", address?: SavedAddress) {
     if (pending || offline || mode === "add" && addresses.length >= MAX_SAVED_ADDRESSES) return;
     sequence.current++; createRequest.current = null; setSelected(address); setInput(addressInput(address)); setFields({}); setFailure(null); setLookup({ status: "idle", suggestions: [] });
-    setManual(address?.locationSource === "TYPED"); setDialog(mode);
+    setManual(Boolean(address && address.locationSource !== "SEARCH")); setDialog(mode);
   }
   function closeDialog(removed = false) {
     setRestoreSelector(removed || dialog === "add" || !selected ? "[data-address-add]" : `[data-address-id="${selected.id}"] [data-address-action="${dialog === "edit" ? "edit" : "delete"}"]`);
     setDialog(null);
   }
-  async function receive(run: () => Promise<AddressResult>, after: (rows: SavedAddress[]) => void) {
+  async function receive(run: () => Promise<AddressResult>, after: (rows: SavedAddress[]) => void, notifySaved = true) {
     if (pending || offline || inFlight.current) return;
     inFlight.current = true; setBusy(true); setFailure(null);
     let answer: AddressResult;
     try { answer = await run(); } catch { answer = { ok: false, error: "unavailable" }; }
     inFlight.current = false; setBusy(false);
     if (session?.check(answer)) return;
-    if (answer.ok) { setAddresses(answer.addresses); setLoadError(false); after(answer.addresses); toast.show({ message: "Saved." }); }
+    if (answer.ok) { setAddresses(answer.addresses); setLoadError(false); after(answer.addresses); if (notifySaved) toast.show({ message: "Saved." }); }
     else { setFailure(answer); setFields(answer.fields ?? {}); requestAnimationFrame(() => form.current?.querySelector<HTMLElement>("[aria-invalid=true]")?.focus()); }
   }
   function save() {
@@ -95,9 +95,13 @@ function AddressList({ initial, source = live, search = searchJobAddressesAction
   }
   function pick(suggestion: Suggestion) {
     sequence.current++; setManual(false); setLookup({ status: "idle", suggestions: [] });
+    setFields(old => ({ label: old.label, line2: old.line2 }));
     setInput(old => ({ ...old, line1: suggestion.line1, suburb: suggestion.suburb, city: suggestion.city, postcode: suggestion.postcode ?? "", locationSource: "SEARCH", point: suggestion.point }));
   }
-  const change = (key: keyof AddressInput, value: string) => setInput(old => ({ ...old, [key]: value }));
+  const change = (key: keyof AddressInput, value: string) => setInput(old => {
+    const manualLocation = old.locationSource === null && (key === "suburb" || key === "city" || key === "postcode") && old[key] !== value;
+    return { ...old, [key]: value, ...(manualLocation ? { locationSource: "TYPED" as const, point: null } : {}) };
+  });
   const add = <Button data-address-add onClick={() => open("add")} disabled={offline ? "You’re offline" : addresses.length >= MAX_SAVED_ADDRESSES ? "You can save up to 10 addresses." : pending} width="auto">Add address</Button>;
 
   if (preview === "loading") return <AddressesLoading headingLevel={headingLevel} />;
@@ -106,7 +110,7 @@ function AddressList({ initial, source = live, search = searchJobAddressesAction
     <OfflineBanner online={preview === "offline" ? false : undefined} sticky={false} />
     {addresses.length >= MAX_SAVED_ADDRESSES && <p className={account.hint}>You can save up to 10 addresses.</p>}
     {failure && !dialog && <InlineError message={errors[failure.error]} />}
-    {loadError ? <ErrorState title="Couldn’t load your addresses." onRetry={() => receive(source.list, () => undefined)} /> : !addresses.length ? <EmptyState icon="home" title="No saved addresses yet." action={add} />
+    {loadError ? <ErrorState title="Couldn’t load your addresses." onRetry={() => receive(source.list, () => undefined, false)} /> : !addresses.length ? <EmptyState icon="home" title="No saved addresses yet." action={add} />
       : <div className={styles.list}>{addresses.map(address => {
         const lines = addressLines(address);
         return <article key={address.id} className={account.card} aria-labelledby={`${id}-${address.id}`} data-address-id={address.id} tabIndex={-1}>
@@ -128,7 +132,7 @@ function AddressList({ initial, source = live, search = searchJobAddressesAction
         <TextField label="Label" placeholder="Home" value={input.label} maxLength={40} error={fields.label} readOnly={pending} onChange={event => change("label", event.target.value)} />
         <AddressField label="Address" autoComplete="street-address" value={input.locationSource === "SEARCH" ? [input.line1, input.suburb, input.city].filter(Boolean).join(", ") : input.line1} required maxLength={200} readOnly={pending}
           suggestions={lookup.suggestions} status={lookup.status} error={fields.line1 ?? fields.point ?? fields.locationSource} onQueryChange={value => {
-            sequence.current++; setLookup({ status: "idle", suggestions: [] }); setInput(old => ({ ...old, line1: value, suburb: "", city: "", postcode: "", locationSource: "TYPED", point: null }));
+            sequence.current++; setManual(true); setLookup({ status: "idle", suggestions: [] }); setInput(old => ({ ...old, line1: value, suburb: "", city: "", postcode: "", locationSource: "TYPED", point: null }));
           }} onSelect={option => { const found = lookup.suggestions.find(value => value.id === option.id); if (found) pick(found); }} />
         <TextField label="Unit or flat" autoComplete="address-line2" value={input.line2} maxLength={200} error={fields.line2} readOnly={pending} onChange={event => change("line2", event.target.value)} />
         {manual && <>
