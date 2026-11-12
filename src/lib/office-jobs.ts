@@ -55,6 +55,8 @@ export const SORT_KEYS = ["job", "customer", "tradie", "price", "updated"] as co
 export type SortKey = (typeof SORT_KEYS)[number];
 
 export type OfficeJobsQuery = {
+  /** Optional customer scope from the read-only Customers table. */
+  customer?: string;
   status: StatusGroup;
   trade: Trade | "all";
   /** A city, matched case-insensitively, or "all". */
@@ -74,6 +76,8 @@ function read(params: Params, key: string): string {
   return (Array.isArray(value) ? value[0] : value)?.trim() ?? "";
 }
 
+export const officeCustomerId = (value: string | undefined): string | undefined => value && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value) ? value.toLowerCase() : undefined;
+
 const has = <T extends string>(record: Record<T, unknown>, value: string): value is T => Object.hasOwn(record, value);
 
 /** The list's state from the URL. Anything unknown or malformed falls back to the default, never an error. */
@@ -83,8 +87,9 @@ export function parseOfficeJobsQuery(params: Params): OfficeJobsQuery {
   const date = read(params, "date");
   const region = read(params, "region").slice(0, 80);
   const [sortKey, direction] = read(params, "sort").split(".");
-  const page = Number(read(params, "page"));
+  const page = Number(read(params, "page")), customer = officeCustomerId(read(params, "customer"));
   return {
+    ...(customer ? { customer } : {}),
     status: has(STATUS_GROUPS, status) ? status : "all",
     trade: has(TRADE_LABELS, trade) ? trade : "all",
     region: region && region.toLowerCase() !== "all" ? region : "all",
@@ -112,6 +117,7 @@ export function officeJobsSearch(query: OfficeJobsQuery, { page = query.page }: 
   for (const key of ["status", "trade", "region", "date"] as const) {
     if (query[key] !== OFFICE_JOBS_DEFAULTS[key]) params.set(key, query[key]);
   }
+  if (officeCustomerId(query.customer)) params.set("customer", officeCustomerId(query.customer)!);
   if (query.q) params.set("q", query.q);
   if (query.sort) params.set("sort", `${query.sort.key}.${query.sort.direction}`);
   if (page > 1) params.set("page", String(page));
@@ -121,7 +127,7 @@ export function officeJobsSearch(query: OfficeJobsQuery, { page = query.page }: 
 
 /** True when any filter or the search narrows the list (so an empty list means "nothing matches", not "no jobs"). */
 export function isFiltered(query: OfficeJobsQuery): boolean {
-  return Boolean(query.q) || (["status", "trade", "region", "date"] as const).some((key) => query[key] !== OFFICE_JOBS_DEFAULTS[key]);
+  return Boolean(officeCustomerId(query.customer)) || Boolean(query.q) || (["status", "trade", "region", "date"] as const).some((key) => query[key] !== OFFICE_JOBS_DEFAULTS[key]);
 }
 
 /** "TM-1005": how every screen and the customer's receipt show a job number. */

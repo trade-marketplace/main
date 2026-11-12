@@ -24,6 +24,7 @@ import {
 import type { OfficeJobRow, OfficeJobsPage } from "@/server/office/jobs";
 
 import styles from "./all-jobs.module.css";
+import dataStyles from "@/components/data/data.module.css";
 
 /** Wait this long after the last key before searching, so typing doesn't send a request per letter. */
 export const SEARCH_DELAY_MS = 300;
@@ -131,7 +132,7 @@ export function AllJobs({ query, data }: AllJobsProps) {
   const clearAll = () => {
     typed.current = false;
     setQ("");
-    go({ status: "all", trade: "all", region: "all", date: "all", q: "" });
+    go({ status: "all", trade: "all", region: "all", date: "all", q: "", customer: undefined });
   };
 
   return (
@@ -166,6 +167,7 @@ export function AllJobs({ query, data }: AllJobsProps) {
         onChange={changeFilters}
         onClear={clearAll}
       />
+      {query.customer && <div><button type="button" className={dataStyles.chipButton} aria-label={`Remove customer filter: ${page?.customerLabel ?? "—"}`} onClick={() => go({ customer: undefined })}><span className={dataStyles.chip} data-on><span className={dataStyles.chipLabel}>Customer: {page?.customerLabel ?? "—"}</span><Icon name="close" size="sm" decorative className={dataStyles.chipIcon} /></span></button></div>}
       <DataTable
         caption="All jobs"
         columns={COLUMNS}

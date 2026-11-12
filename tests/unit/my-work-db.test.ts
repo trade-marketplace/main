@@ -135,6 +135,26 @@ describe.skipIf(!testDatabaseUrl)("My work owner-scoped PostgreSQL reads", () =>
     expect(JSON.stringify(data)).not.toMatch(/0211234567|Private quote note|customerId|workerId|priceCents|materialsCents|minutes|margin/); expect(JSON.stringify(data)).not.toContain(foreign.id);
     await expect(loadMyQuotes(schema.db, customer)).rejects.toMatchObject({ digest: expect.stringContaining("404") });
   });
+  it("keeps a later-taken quote minimal while a claimable quoted job remains readable", async () => {
+    const me=await person(), other=await person(), customer=await person("CUSTOMER");
+    const row=await job(customer.userId,null,"REVIEW","Safe quote history");
+    const quote=await schema.db.estimate.create({data:{jobId:row.id,workerId:me.userId,minutes:90,note:"Private own quote note"}});
+    await schema.db.estimate.create({data:{jobId:row.id,workerId:other.userId,minutes:150,note:"Private other quote note"}});
+    await schema.db.job.update({where:{id:row.id},data:{status:"BOOKABLE",workerId:null}});
+    const claimable=await loadMyQuotes(schema.db,me);
+    const visible={id:quote.id,jobId:row.id,title:"Safe quote history",suburb:"Windsor",sentAt:quote.createdAt.toISOString()};
+    expect(claimable).toEqual({total:1,rows:[{...visible,outcome:"Priced",canOpen:true}]});
+    await schema.db.job.update({where:{id:row.id},data:{status:"ASSIGNED",workerId:other.userId}});
+    const taken=await loadMyQuotes(schema.db,me);
+    expect(taken).toEqual({total:1,rows:[{...visible,outcome:"Not taken",canOpen:false}]});
+    const keys=["id","jobId","title","suburb","sentAt","outcome","canOpen"].sort();
+    for(const data of[claimable,taken]){
+      expect(Object.keys(data.rows[0]).sort()).toEqual(keys);
+      const payload=JSON.stringify(data);expect(payload).not.toMatch(/Private street|Private description|Private own quote note|Private other quote note|customerId|workerId|priceCents|materialsCents|minutes|margin/);
+      expect(payload).not.toContain(customer.userId);expect(payload).not.toContain(other.userId);
+    }
+    await expect(loadMyQuotes(schema.db,customer)).rejects.toMatchObject({digest:expect.stringContaining("404")});
+  });
   it("caps quote rows at fifty newest while counting the full owner history", async () => {
     const me = await person(), customer = await person("CUSTOMER"); const ids: string[] = [];
     for (let index = 0; index < 52; index++) {

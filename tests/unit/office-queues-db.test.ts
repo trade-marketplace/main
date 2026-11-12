@@ -114,7 +114,7 @@ describe.skipIf(!testDatabaseUrl)("office queues with real PostgreSQL", () => {
     let data = await readOfficeQueues(schema.db, f.office, parseQueueQuery({ tab: "signoff" }), now);
     expect(data.rows.map(row => row.jobId)).toEqual([override.job.id, f.job.id]);
     expect(data.rows[0]).toMatchObject({ overdue: false, context: "—" });
-    expect(data.rows[1]).toMatchObject({ waiting: "10h", overdue: false, href: `/admin/jobs/${f.job.id}` });
+    expect(data.rows[1]).toMatchObject({ waiting: "10h", overdue: false, href: `/admin/signoff/${f.job.id}` });
     const report = await schema.db.problemReport.create({ data: { jobId: f.job.id, reportedById: f.customer.userId, topic: "Work not finished", details: "The latch needs checking." } });
     data = await readOfficeQueues(schema.db, f.office, parseQueueQuery({ tab: "signoff" }), now);
     expect(data.rows.find(row => row.jobId === f.job.id)).toMatchObject({ context: "Problems", overdue: false });

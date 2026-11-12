@@ -2,12 +2,14 @@ import "server-only";
 
 import { randomUUID } from "node:crypto";
 import type { PrismaClient } from "@/generated/prisma/client";
+import type { CustomerExtra } from "@/lib/customer-extras";
+import { loadCustomerExtras } from "./customer-extras";
 import { canEditJobWindows } from "@/lib/job-windows";
 import { getUploadService, type SignedPhoto } from "@/server/files/service";
 import { JOB_DETAIL_SELECT, customerJobView, type CustomerJobView, type JobViewer } from "@/server/views";
 
 /** Keep ORM rows and Storage paths on the server; the page receives only #95's customer DTO and signed links. */
-export async function loadCustomerJobPage(db: Pick<PrismaClient, "job">, viewer: JobViewer, id: string) {
+export async function loadCustomerJobPage(db: Pick<PrismaClient, "job"> & Partial<Pick<PrismaClient, "variation">>, viewer: JobViewer, id: string) {
   let row;
   try { row = await db.job.findUnique({ where: { id }, select: JOB_DETAIL_SELECT }); }
   catch { return { state: "error" as const }; }
@@ -17,7 +19,12 @@ export async function loadCustomerJobPage(db: Pick<PrismaClient, "job">, viewer:
   // send-price only accepts REVIEW / QUOTE_BOUNTY; there is currently no PRICED re-price command.
   // Keep the optional presentation field on the page's job too, so the existing route can pass it through.
   const previousPriceCents: number | null = null;
-  return { state: "ready" as const, job: { ...job, previousPriceCents }, previousPriceCents, canEditWindows: canEditJobWindows(row) };
+  let extras: CustomerExtra[] = [], extrasFailed = false;
+  if (job.status === "ASSIGNED") {
+    try { if (!db.variation) throw new Error("Extra work unavailable"); extras = await loadCustomerExtras({ variation: db.variation }, viewer, id); }
+    catch { extrasFailed = true; }
+  }
+  return { state: "ready" as const, job: { ...job, previousPriceCents, extras, extrasFailed }, previousPriceCents, canEditWindows: canEditJobWindows(row) };
 }
 
 export async function loadCustomerJobPhotos(job: CustomerJobView, viewer: JobViewer,

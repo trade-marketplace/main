@@ -78,7 +78,13 @@ export function boardJobHref(id: string, back: unknown): string {
 }
 /** Keep the canonical board destination through a settings page's independent login guard (alerts, setup checklist #132). */
 export function boardSettingsRoute(path: string, value: unknown): { href: string; back: string | null } {
-  const back = typeof value === "string" && value.startsWith("/jobs") ? boardReturn(value) : null;
+  let back: string | null = null;
+  if (typeof value === "string" && value.length <= 4096 && value.startsWith("/jobs")) {
+    try {
+      const url = new URL(value, "https://board.invalid");
+      if (url.origin === "https://board.invalid" && url.pathname === "/jobs") back = boardReturn(value);
+    } catch { /* Invalid destinations have no return context. */ }
+  }
   return { href: back ? `${path}?next=${encodeURIComponent(back)}` : path, back };
 }
 export const boardAlertsRoute = (value: unknown) => boardSettingsRoute("/profile/notifications", value);

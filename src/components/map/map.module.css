@@ -431,3 +431,10 @@
 .listOnly .grid { grid-template-areas: "list"; grid-template-columns: minmax(0, 1fr); height: auto; }
 .listOnly .listArea { overflow: visible; border-right: 0; }
 .listOnly .legendInList { display: grid; }
+
+/* Caller-owned legend controls; original uncontrolled legends retain their exact markup. */
+.legendInList.controlledLegend { position: relative; }
+.legendOnMap.controlledLegend { position: absolute; }
+.controlledLegend > ul { padding-top: var(--trade-space-6); }
+.legendDismiss { position: absolute; right: var(--trade-space-1); top: var(--trade-space-1); }
+.controlledLegend > p { margin: 0; padding: 0 var(--trade-space-4) var(--trade-space-3); }

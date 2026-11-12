@@ -80,7 +80,7 @@ test.describe("real My work journeys", () => {
     await login(page); await expect(page).toHaveTitle(/My work/);
     await page.getByRole("heading", { name: title("own"), exact: true }).locator("..").press("Enter");
     await expect(page.getByRole("heading", { name: title("own"), exact: true }).first()).toBeVisible();
-    await page.getByRole("main").getByRole("link", { name: "Back to jobs", exact: true }).click(); await expect(page).toHaveURL(`${app}/dashboard`);
+    await page.getByRole("main").getByRole("link", { name: "My work", exact: true }).click(); await expect(page).toHaveURL(`${app}/dashboard`);
     await page.getByRole("link", { name: "See all paid", exact: true }).click(); await expect(page.getByRole("heading", { name: "Earnings", exact: true })).toBeVisible();
     await page.goBack(); await expect(page).toHaveURL(`${app}/dashboard`);
     await page.getByRole("tab", { name: /^Quotes/ }).click(); await expect(page).toHaveURL(`${app}/dashboard?tab=quotes`);
@@ -89,8 +89,15 @@ test.describe("real My work journeys", () => {
     await page.setViewportSize({ width: 390, height: 844 }); await page.getByRole("tab", { name: "Jobs", exact: true }).click();
     await page.getByRole("tablist", { name: "Work columns", exact: true }).getByRole("tab", { name: /^On now/ }).click();
     await page.getByRole("heading", { name: title("booked"), exact: true }).locator("..").click(); await expect(page.getByRole("heading", { name: title("booked"), exact: true }).first()).toBeVisible();
-    await page.getByRole("main").getByRole("link", { name: "Back to jobs", exact: true }).click(); await expect(page).toHaveURL(`${app}/dashboard?column=on-now`);
+    await page.getByRole("main").getByRole("link", { name: "My work", exact: true }).click(); await expect(page).toHaveURL(`${app}/dashboard?column=on-now`);
     await expect(page.getByRole("tab", { name: /^On now/ })).toHaveAttribute("aria-selected", "true"); await expectNoA11yViolations(page);
+  });
+  test("readable quote history returns to its same Quotes tab", async ({ page }) => {
+    await login(page); await page.goto(`${app}/dashboard?tab=quotes`);
+    const quote=page.getByRole("link",{name:title("waiting"),exact:true});await quote.focus();await quote.press("Enter");
+    await expect(page).toHaveURL(`${app}/jobs/${ids.waiting}?from=%2Fdashboard%3Ftab%3Dquotes`);await expect(page.getByRole("heading",{name:title("waiting"),exact:true})).toBeVisible();
+    await page.getByRole("main").getByRole("link",{name:"Back to jobs",exact:true}).click();await expect(page).toHaveURL(`${app}/dashboard?tab=quotes`);
+    await expect(page.getByRole("tab",{name:/^Quotes/})).toHaveAttribute("aria-selected","true");await expectNoA11yViolations(page);
   });
   test("restricted own quote history has no refused link and never widens the job read boundary", async ({ page }) => {
     await login(page); await page.goto(`${app}/dashboard?tab=quotes`);
