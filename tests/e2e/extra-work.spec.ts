@@ -1,12 +1,26 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { expectNoA11yViolations } from "./support/a11y";
 import { VIEWPORTS } from "./support/viewports";
 import { randomUUID } from "node:crypto";
 import pg from "pg";
 import { startAuthStub, sessionCookies } from "../../scripts/screenshots/auth-stub";
 
+// Preserve failed-retry traces without recording every successful state navigation in the CI budget.
+test.use({ trace: "on-first-retry" });
+
 const preview = process.env.EXTRA_WORK_PREVIEW_URL || process.env.POSTED_PREVIEW_E2E_URL || "http://127.0.0.1:3101";
 const states = ["waiting-office", "priced-card", "dialog", "photo-open", "decline-confirm", "declining", "declined", "paying", "pay-error", "changed", "approved", "offline", "error", "loading", "empty"];
+async function settleShortMotion(page: Page) {
+  await page.evaluate(async () => {
+    await document.fonts.ready;
+    // Audit the painted state after entry/hover transitions, without waiting on timers or infinite skeletons.
+    const transitions = document.getAnimations().filter(animation => {
+      const end = animation.effect?.getComputedTiming().endTime;
+      return typeof end === "number" && end > 0 && end <= 1000;
+    });
+    await Promise.all(transitions.map(animation => animation.finished.catch(() => {})));
+  });
+}
 test("extra work previews stay guarded on the normal production app", async ({ request, baseURL }) => {
   expect((await request.get(`${baseURL}/dev/components/extra-work`)).status()).toBe(404);
 });
@@ -22,8 +36,9 @@ for (const viewport of VIEWPORTS) test(`extra work states fit ${viewport.width}p
     if (state === "waiting-office") await expect(page.getByText("Jack asked for extra work. We’re pricing it.", { exact: true })).toBeVisible();
     if (state === "loading") await expect(page.getByRole("status", { name: "Loading extra work", exact: true })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await settleShortMotion(page);
     await expectNoA11yViolations(page);
-    if ([390, 1440].includes(viewport.width)) await page.screenshot({ path: test.info().outputPath(`${state}-${viewport.width}.png`), fullPage: true });
+    if (process.env.EXTRA_WORK_SCREENSHOTS === "1" && [390, 1440].includes(viewport.width)) await page.screenshot({ path: test.info().outputPath(`${state}-${viewport.width}.png`), fullPage: true });
   });
 });
 
@@ -45,6 +60,7 @@ test("keyboard dialog focuses its heading, closes back to Have a look, and confi
   await confirm.getByRole("button", { name: "Decline", exact: true }).press("Enter");
   await expect(page.getByRole("heading", { name: "Extra work declined.", exact: true })).toBeVisible();
   await expect(page.getByRole("status").filter({ hasText: "Declined. Jack’s been told." })).toBeVisible();
+  await settleShortMotion(page);
   await expectNoA11yViolations(page);
 });
 test("photo viewer closes back to the dialog and Approve opens checkout with Back", async ({ page }) => {
