@@ -35,6 +35,8 @@ type ActionRule = { readonly record: AuditRecordType; readonly reason?: "require
 export const AUDIT_ACTIONS = {
   // Jobs. The status machine (#93) names the transition when there is one; `job.status_changed` is for the rest.
   "job.posted": { record: "jobs" },
+  "job.window_booked": { record: "jobs" },
+  "job.times_requested": { record: "jobs" },
   "job.windows_updated": { record: "jobs" },
   "job.details_updated": { record: "jobs" },
   "job.priced": { record: "jobs" },
