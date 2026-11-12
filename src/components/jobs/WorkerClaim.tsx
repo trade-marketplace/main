@@ -112,6 +112,7 @@ export function WorkerClaim({ job: initial, back, failure: initialFailure, photo
         {short && points ? <PointsLocked points={points} /> : null}
         {short ? <><Button variant="hero" width="full" disabled icon="lock">Claim job</Button><Button href="/jobs?kind=estimate" width="full" icon="bolt">Quote jobs to unlock</Button></>
         : <Button variant={job.assignedToYou ? "secondary" : "hero"} width="full" disabled={lost || Boolean(failure) || offline || short} onClick={() => job.assignedToYou ? openOwnedJob() : setConfirm(true)}>{job.assignedToYou ? "Open job" : "Claim job"}</Button>}
+        {job.assignedToYou && <Button href={`/jobs/${job.id}/book`} width="full">Book a time</Button>}
       </aside>
     </div>
     <Dialog open={confirm || success} onClose={() => { setConfirm(false); setSuccess(false); }} dismissible={!saving} role={success ? "dialog" : "alertdialog"} title={<span ref={dialogTitleRef}>{success ? "It’s yours." : "Take this job?"}</span>} eyebrow={success ? undefined : `${job.title} · TM-${job.jobNumber}`} size="sm" footer={success ? <><Button variant="secondary" onClick={openOwnedJob}>Open job</Button><Button href={messageHref}>Message {job.customerFirstName}</Button></> : <><Button variant="secondary" onClick={() => setConfirm(false)} disabled={saving}>Not now</Button><Button loading={saving} disabled={offline} onClick={() => void take()}>Yes, it’s mine</Button></>}>

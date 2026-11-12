@@ -147,7 +147,7 @@ test.describe("customer My jobs signed-in journeys", () => {
   test("another customer gets their own empty list; a worker never sees customer titles or prices", async ({ page }) => {
     await signIn(page, foreign); const response = await page.goto(`${app}/dashboard`); expect(response?.status()).toBe(200);
     await expect(page.getByRole("heading", { name: "Nothing on yet." })).toBeVisible(); expect(await response!.text()).not.toContain("Customer list tap");
-    await signIn(page, worker); const denied = await page.goto(`${app}/dashboard`); expect(denied?.status()).toBe(404); expect(await denied!.text()).not.toContain("Customer list tap");
+    await signIn(page, worker); const work = await page.goto(`${app}/dashboard`); expect(work?.status()).toBe(200); await expect(page.getByRole("heading", { name: "My work", exact: true })).toBeVisible(); expect(await work!.text()).not.toContain("Customer list tap");
   });
   test("an expired list session goes through actual log-in and returns from the job to the same list", async ({ page }) => {
     await signIn(page); await page.goto(`${app}/dashboard?q=tap&page=2`);

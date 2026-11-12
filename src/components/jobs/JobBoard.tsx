@@ -14,7 +14,7 @@ import { ErrorState, InlineError } from "@/components/feedback/ErrorState";
 import { LoadingRegion } from "@/components/feedback/LoadingRegion";
 import { OfflineBanner, useOnlineStatus } from "@/components/feedback/OfflineBanner";
 import { Skeleton } from "@/components/feedback/Skeleton";
-import { BOARD_TRADES, BOARD_WHEN, BoardUpdateRequests, boardAlertsRoute, boardCardTag, boardCardWhen, boardDistanceLabel, boardHref, boardJobHref, boardSelectionKey, DEFAULT_BOARD_QUERY, parseBoardQuery, parseSavedJobs, savedJobsKey,
+import { BOARD_TRADES, BOARD_WHEN, BoardUpdateRequests, boardAlertsRoute, boardSettingsRoute, boardCardTag, boardCardWhen, boardDistanceLabel, boardHref, boardJobHref, boardSelectionKey, DEFAULT_BOARD_QUERY, parseBoardQuery, parseSavedJobs, savedJobsKey,
   type BoardKind, type BoardPage, type BoardQuery, type BoardResult, type BoardSource } from "@/lib/job-board";
 import { loadJobBoardAction, newBoardJobsAction } from "@/server/jobs/board-actions";
 import styles from "./board.module.css";
@@ -165,12 +165,12 @@ export function JobBoard({ initial, ownerId, source = LIVE_SOURCE, previewState,
           {cacheChanged ? <ErrorState className={styles.empty} title="Can’t load your jobs" message="Check your connection and try again." onRetry={() => load()} />
             : !result.ok ? <ErrorState className={styles.empty} title={result.error === "forbidden" ? "Trade account required" : "Can’t load your jobs"} message="Check your connection and try again." onRetry={() => load()} />
             : meta?.blocked ? <EmptyState className={styles.empty} icon="verified_user" title={meta.blocked === "worker-paused" ? "Your account is paused" : meta.blocked === "work-area-required" ? "Set your work area" : "Get verified to see jobs"}
-              message={meta.blocked === "email-required" ? "Confirm your email to continue." : meta.blocked === "worker-paused" ? "Contact us to get back to work." : meta.blocked === "work-area-required" ? "Contact us to set the area you work in." : "We need to check your ID before you can see jobs."}
-              action={<Button href={contact}>Contact us</Button>} />
+              message={meta.blocked === "email-required" ? "Confirm your email to continue." : meta.blocked === "worker-paused" ? "Contact us to get back to work." : meta.blocked === "work-area-required" ? "Choose your suburb and travel radius." : "We need to check your ID before you can see jobs."}
+              action={<Button href={meta.blocked === "work-area-required" ? boardSettingsRoute("/profile/area", returnTo).href : contact}>{meta.blocked === "work-area-required" ? "Set your work area" : "Contact us"}</Button>} />
             : query.view === "map" ? <div className={styles.boundary}><h2>Map</h2><TextLink href={href({ ...query, view: "grid" })}>Back to jobs</TextLink></div>
             : !board?.cards.length ? <div className={styles.empty}><EmptyState icon="search_off" title="No jobs match that." message="Try fewer filters."
               action={<Button onClick={() => meta && meta.distanceKm < meta.maxDistanceKm ? update({ distance: meta.maxDistanceKm }) : resetFilters()}>{meta && meta.distanceKm < meta.maxDistanceKm ? "Widen distance" : "Reset filters"}</Button>}
-              secondaryAction={<TextLink href={alerts}>Alerts settings</TextLink>} /><p>Need to change your work area? <TextLink href={contact} inline>Contact us</TextLink>.</p></div>
+              secondaryAction={<TextLink href={alerts}>Alerts settings</TextLink>} /><p>Need to change your work area? <TextLink href={boardSettingsRoute("/profile/area", returnTo).href} inline>Change it</TextLink>.</p></div>
             : <><div className={styles.grid}>{board.cards.map(card => <div key={card.id} className={styles.card}>
               <JobTile href={previewState ? `/dev/components/job-board?state=detail${query.entry === "all" ? "&view=all" : ""}&from=${encodeURIComponent(returnTo)}` : boardJobHref(card.id, returnTo)} title={card.title} photo={card.photoUrl}
                 meta={`${boardDistanceLabel(card.distanceKm)} · ${card.suburb}`} tag={boardCardTag(card)} saved={saved.includes(card.id)} onSavedChange={value => save(card.id, value)} shape="tall" headingLevel={2} />

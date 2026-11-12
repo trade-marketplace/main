@@ -1,0 +1,14 @@
+.canvas { min-height: 80dvh; color: var(--trade-text); background: var(--trade-surface); }
+.page { width: 100%; max-width: 640px; margin-inline: auto; padding: var(--trade-space-6); display: grid; gap: var(--trade-space-5); }
+.page > a { justify-self: start; }
+.page h1 { font-family: var(--trade-font-heading); font-variation-settings: var(--trade-display-axes); font-size: var(--trade-fs-heading); line-height: var(--trade-lh-heading); margin: 0; }
+.subtitle { margin: var(--trade-space-2) 0 0; color: var(--trade-text-2); overflow-wrap: anywhere; }
+.body { display: grid; gap: var(--trade-space-4); }
+.body > p { margin: 0; font-size: var(--trade-fs-small); }
+.windows { display: grid; gap: var(--trade-space-5); }
+.day > legend { text-transform: uppercase; font-size: var(--trade-fs-caption); letter-spacing: .06em; }
+.day > div { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.day label { min-width: 0; }
+.actions { display: grid; gap: var(--trade-space-3); padding-top: var(--trade-space-5); }
+.srOnly { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+@media (max-width: 599px) { .page { padding: var(--trade-space-5) var(--trade-inset-browse); min-height: calc(100dvh - 160px); grid-template-rows: auto auto 1fr auto; align-content: start; } .body { align-content: start; } }

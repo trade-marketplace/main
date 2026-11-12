@@ -12,22 +12,42 @@ import type { Viewer } from "@/server/auth/viewer";
 import { paymentsInTestMode as stripeTestMode } from "@/server/payments/stripe";
 import { unreadProblemThreadCount } from "@/server/messages/service";
 import { pointBalance } from "@/server/points/ledger";
+import { getAvatarService } from "@/server/account/avatar-store";
 
-export type ShellExtras = { lastName: string | null; unreadNotifications: number; unreadMessages?: number; points?: number };
+export type ShellExtras = { lastName: string | null; avatarPath?: string | null; unreadNotifications: number; unreadMessages?: number; points?: number };
 
 /** Where the extras come from. Swapped for a fake in tests, so no test talks to a database. */
-export type ShellSources = { findExtras: (userId: string) => Promise<ShellExtras | null> };
+export type ShellSources = {
+  findExtras: (userId: string) => Promise<ShellExtras | null>;
+  avatarUrl?: (userId: string, path: string | null) => Promise<string | null>;
+};
+
+/** A photo is optional: neither a Storage exception nor a slow signing request can hold up navigation. */
+export async function shellAvatarUrl(userId: string, path: string | null, sign: NonNullable<ShellSources["avatarUrl"]> = (id, value) => getAvatarService().avatarUrl(id, value)): Promise<string | null> {
+  if (!path) return null;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      Promise.resolve().then(() => sign(userId, path)),
+      new Promise<null>(resolve => { timer = setTimeout(() => resolve(null), 1500); }),
+    ]);
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 /** The name and notification count, alongside unread shared problem threads for this current participant. */
 export async function findShellExtras(userId: string): Promise<ShellExtras | null> {
   const db = getDb();
   const [row, unreadMessages, points] = await Promise.all([db.profile.findUnique({
     where: { id: userId },
-    select: { lastName: true, _count: { select: { notifications: { where: { readAt: null } } } } },
+    select: { lastName: true, avatarPath: true, _count: { select: { notifications: { where: { readAt: null } } } } },
   }), unreadProblemThreadCount(db, userId),
     // Points are a nice-to-have in the header: if they can't be read, the name and badges still show.
     pointBalance(db, userId).catch(() => undefined)]);
-  return row ? { lastName: row.lastName, unreadNotifications: row._count.notifications, unreadMessages, points } : null;
+  return row ? { lastName: row.lastName, avatarPath: row.avatarPath, unreadNotifications: row._count.notifications, unreadMessages, points } : null;
 }
 
 /**
@@ -49,6 +69,7 @@ export async function loadShellViewer(viewer: Viewer | null, sources: ShellSourc
     role: viewer.role,
     firstName: viewer.firstName,
     lastName: extras?.lastName ?? null,
+    avatarUrl: await shellAvatarUrl(viewer.userId, extras?.avatarPath ?? null, sources.avatarUrl),
     email: viewer.email,
     emailVerified: viewer.emailVerified,
     counts: { notifications: extras?.unreadNotifications ?? 0, messages: extras?.unreadMessages ?? 0 },

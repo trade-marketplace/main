@@ -63,11 +63,11 @@ describe("customer job frame", () => {
 });
 
 describe("owned customer page read", () => {
-  it("offers window editing only for unclaimed BOOKABLE owner rows, across every status and claim state", async () => {
+  it("offers window editing for BOOKABLE and ASSIGNED owner rows, across every status and claim state", async () => {
     for (const status of JOB_STATUSES) for (const workerId of [null, VIEWERS.worker.userId]) {
       // A missing/redacted worker DTO is never evidence that the original row is unclaimed.
       const row = exampleJob({ status, workerId, worker: null, anyTime: true, bookedDate: null, bookedTime: null });
-      const expected = status === "BOOKABLE" && workerId === null;
+      const expected = status === "BOOKABLE" || status === "ASSIGNED";
       expect(canEditJobWindows(row)).toBe(expected);
       const result = await loadCustomerJobPage(database(row), VIEWERS.customer, row.id);
       expect(result.state).toBe("ready");

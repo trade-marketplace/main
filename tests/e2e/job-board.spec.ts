@@ -134,7 +134,7 @@ test.describe("signed-in eligible board", () => {
     await page.goto(`${app}/jobs?trade=electrical&distance=10`); await expect(page.getByRole("heading", { name: "No jobs match that.", exact: true })).toBeVisible();
     await page.getByRole("link", { name: "Alerts settings", exact: true }).click(); await expect(page.getByRole("heading", { name: "Notifications", exact: true })).toBeVisible();
     await page.getByRole("link", { name: "Back to jobs", exact: true }).click(); await expect(page).toHaveURL(/trade=electrical&distance=10/);
-    await page.getByRole("link", { name: "Contact us", exact: true }).click(); await expect(page.getByRole("heading", { name: "Get in touch", exact: true })).toBeVisible();
+    await page.getByRole("link", { name: "Change it", exact: true }).click(); await expect(page.getByRole("heading", { name: "Work area", exact: true })).toBeVisible();
     await page.getByRole("link", { name: "Back to jobs", exact: true }).click(); await expect(page).toHaveURL(/trade=electrical&distance=10/);
     await expectNoA11yViolations(page);
     await page.goto(`${app}/jobs/${jobId(1)}?from=/jobs&from=/jobs`);

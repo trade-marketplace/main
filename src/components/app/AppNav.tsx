@@ -14,14 +14,14 @@
 // Counts (M20): the badge pops when the number goes up, never when it goes down. Screen readers hear the count as
 // part of the link's name ("Messages, 3 unread"), not the badge.
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { type ReactNode, Suspense, useRef } from "react";
 
 import { Button, IconButton } from "@/components/Button";
 import { Icon } from "@/components/Icon";
 import { Wordmark } from "@/components/Wordmark";
 import { Menu, MenuItem, MenuSeparator } from "@/components/overlays/Menu";
-import { initials } from "@/lib/cards";
+import { Avatar } from "@/components/media/Avatar";
 import { useTabIndicator } from "@/lib/motion/hooks";
 import { logOutAction } from "@/server/auth/actions";
 
@@ -93,26 +93,26 @@ function PathAndView({ render }: { render: (location: Location) => ReactNode }) 
 }
 
 /** The avatar and its menu: who's signed in, Account, Payments (customers), Notification settings, Help, Log out. */
-export function AccountMenu({ viewer, defaultOpen, compact = false }: { viewer: ShellViewer; defaultOpen?: boolean; compact?: boolean }) {
+export function AccountMenu({ viewer, defaultOpen, compact = false, preview = false }: { viewer: ShellViewer; defaultOpen?: boolean; compact?: boolean; preview?: boolean }) {
   const formRef = useRef<HTMLFormElement>(null);
+  const router = useRouter();
   const name = fullName(viewer.firstName, viewer.lastName);
   return (
     <>
       <Menu
         label="Account"
         defaultOpen={defaultOpen}
+        onOpenChange={open => { if (open && compact && !preview && viewer.avatarUrl && navigator.onLine) router.refresh(); }}
         trigger={(props) => compact ? <IconButton {...props} icon="menu" label={`Account: ${name}`} className={styles.navBtn} /> : (
           <button type="button" {...props} className={styles.avatarBtn} aria-label={`Account: ${name}`}>
-            <span className={styles.avatar} aria-hidden="true">
-              {initials(name)}
-            </span>
+            <Avatar name={name} src={viewer.avatarUrl} decorative className={styles.avatar} />
           </button>
         )}
         header={
-          <>
-            <b className={styles.menuName}>{name}</b>
-            <span className={styles.menuEmail}>{viewer.email}</span>
-          </>
+          <div className={styles.menuIdentity}>
+            <Avatar name={name} src={viewer.avatarUrl} decorative className={styles.avatar} />
+            <div><b className={styles.menuName}>{name}</b><span className={styles.menuEmail}>{viewer.email}</span></div>
+          </div>
         }
       >
         {accountMenuItems(viewer.role).map((item) => (
@@ -186,12 +186,12 @@ export function AppHeader({ viewer, preview }: NavProps) {
         )}
         {viewer.points !== undefined && <PointsBalance points={viewer.points} />}
         <NotificationBell count={viewer.counts.notifications} allHref={previewHref(preview, NOTIFICATIONS_PATH)} preview={Boolean(preview)} defaultOpen={preview?.notificationsOpen} />
-        <AccountMenu viewer={viewer} defaultOpen={preview?.menuOpen} />
+        <AccountMenu viewer={viewer} defaultOpen={preview?.menuOpen} preview={Boolean(preview)} />
       </div>
     </header>
     <WithLocation preview={preview} render={({ pathname }) => isFullScreenFlow(pathname) ? null : (
       <header className={styles.mobileHeader}>
-        <AccountMenu viewer={viewer} compact defaultOpen={preview?.menuOpen} />
+        <AccountMenu viewer={viewer} compact defaultOpen={preview?.menuOpen} preview={Boolean(preview)} />
         <Link href={previewHref(preview, "/")} className={styles.logo} aria-label="Trade Marketplace home"><Wordmark label={null} className={styles.logoMark} /></Link>
         <div className={styles.mobileEnd}>
           {viewer.points !== undefined && <PointsBalance points={viewer.points} />}

@@ -24,6 +24,8 @@ export type ShellViewer = {
   role: AppRole;
   firstName: string;
   lastName: string | null;
+  /** A short-lived private photo link; the Storage path remains on the server. */
+  avatarUrl?: string | null;
   /** Shown only to its owner, in their avatar menu. */
   email: string;
   /** False until they confirm their email: a banner asks them to (#102). Posting and claiming check it too. */
