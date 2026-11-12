@@ -19,6 +19,7 @@ for(const width of[320,390])test(`every phone map state at ${width}px`,async({pa
   if(state==="map-unavailable")await expect(page.getByText("Map isn’t available right now.",{exact:true})).toBeVisible();
   if(state==="loading")await expect(page.getByRole("status",{name:"Loading your jobs",exact:true})).toBeVisible();
   if(state==="error")await expect(page.getByRole("button",{name:"Try again",exact:true})).toBeVisible();
+  const controlled=await map.getByRole("button",{name:/^Show (list|map)$/}).getAttribute("aria-controls");expect(await page.evaluate(id=>Boolean(id&&document.getElementById(id)),controlled),state).toBe(true);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),state).toBe(true);await expectNoA11yViolations(page);
  }
 });
@@ -64,6 +65,13 @@ test("phone map fits above navigation when setup notice appears and disappears",
   const before=await phone.boundingBox();await page.getByRole("button",{name:"Hide setup notice",exact:true}).click();
   await expect.poll(async()=> (await phone.boundingBox())!.height-before!.height).toBeGreaterThan(20);await expect.poll(fits).toBeLessThanOrEqual(1);
   await page.getByRole("button",{name:"Show setup notice",exact:true}).click();await expect.poll(fits).toBeLessThanOrEqual(1);await expectNoA11yViolations(page);
+ }
+});
+test("zero-result kind filter resets without claiming jobs are outside the viewport",async({page})=>{
+ for(const width of[320,390]){
+  await page.setViewportSize({width,height:1000});await page.goto(route("peek","&emptyBounty=1"));const phone=page.getByRole("region",{name:"Nearby jobs map",exact:true});
+  await phone.getByRole("list",{name:"Map job kind",exact:true}).getByRole("button",{name:"Bounty 0",exact:true}).click();await expect(phone.getByRole("heading",{name:"No jobs match that.",exact:true})).toBeVisible();await expect(phone.getByRole("heading",{name:"No jobs here. Zoom out.",exact:true})).toHaveCount(0);
+  await phone.getByRole("button",{name:"Reset filters",exact:true}).press("Enter");await expect(phone.getByRole("region",{name:"Jobs near you",exact:true}).locator("a").first()).toBeVisible();await expect(phone.getByRole("heading",{name:"No jobs match that.",exact:true})).toHaveCount(0);await expect(phone.getByRole("list",{name:"Map job kind",exact:true}).getByRole("button",{name:/^All/})).toHaveAttribute("aria-pressed","true");await expectNoA11yViolations(page);
  }
 });
 test("empty phone map Zoom out restores the job sheet by keyboard",async({page})=>{
@@ -138,6 +146,9 @@ test.describe("real phone map availability and job journey",()=>{
   const liveMaps=()=>page.evaluate(()=>(window as unknown as {__phoneLiveMaps:number}).__phoneLiveMaps);
   const mapCreates=()=>page.evaluate(()=>(window as unknown as {__phoneMapCreates:number}).__phoneMapCreates);
   await expect.poll(liveMaps).toBe(1);expect(await page.evaluate(()=>(window as unknown as {__phoneMapCreates:number}).__phoneMapCreates)).toBe(1);
+  await phone.getByRole("list",{name:"Map job kind",exact:true}).getByRole("button",{name:"Bounty 0",exact:true}).click();await expect(phone.getByRole("heading",{name:"No jobs match that.",exact:true})).toBeVisible();await expect(phone.getByRole("heading",{name:"No jobs here. Zoom out.",exact:true})).toHaveCount(0);
+  const resetFilters=phone.getByRole("link",{name:"Reset filters",exact:true});await expect(resetFilters).toHaveAttribute("href","/jobs?view=all&layout=map");await resetFilters.click();await expect(page).toHaveURL(app+"/jobs?view=all&layout=map");await expect(phone.locator(`a[data-card-id="${job}"]`)).toBeVisible();expect(await mapCreates()).toBe(1);expect(await liveMaps()).toBe(1);
+  await page.goto(app+board);await expect(phone.getByRole("switch",{name:"You’re available",exact:true})).toBeChecked();await expect.poll(liveMaps).toBe(1);expect(await mapCreates()).toBe(1);
   // Manual movement never changes the React bounds request; resetting must remain observable each time.
   for(let round=0;round<2;round++){
    const fitsBefore=await page.evaluate(()=>(window as unknown as {__phoneFits:number}).__phoneFits);
@@ -197,7 +208,7 @@ test.describe("real phone map availability and job journey",()=>{
    await page.setViewportSize({width:390,height:1000});await page.goto(noMap+board);await expect(phone.getByText("Map isn’t available right now.",{exact:true})).toBeVisible();await phone.locator(`a[data-card-id="${job}"]`).click();await expect(page.getByRole("heading",{name:title,exact:true})).toBeVisible();await page.getByRole("main").getByRole("link",{name:"Back to jobs",exact:true}).click();await expect(page).toHaveURL(noMap+board);await expectNoA11yViolations(page);
   }
   await page.setViewportSize({width:390,height:1000});await db.query("UPDATE worker_profiles SET paused_at=now() WHERE user_id=$1",[SECURITY_TRADIE.id]);
-  try{await page.goto(app+board);await expect(phone.getByRole("switch",{name:"Not available",exact:true})).toBeDisabled();}finally{await db.query("UPDATE worker_profiles SET paused_at=NULL WHERE user_id=$1",[SECURITY_TRADIE.id]);}
+  try{await page.goto(app+board);await expect(phone.getByRole("switch",{name:"Not available",exact:true})).toBeDisabled();await expect(phone.getByRole("heading",{name:"Your account is paused",exact:true})).toBeVisible();await expect(phone.getByRole("link",{name:"Contact us",exact:true})).toBeVisible();await expect(phone.getByRole("link",{name:"Reset filters",exact:true})).toHaveCount(0);}finally{await db.query("UPDATE worker_profiles SET paused_at=NULL WHERE user_id=$1",[SECURITY_TRADIE.id]);}
 
  });
 });

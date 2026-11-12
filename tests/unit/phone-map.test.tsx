@@ -1,3 +1,4 @@
+import type { ComponentProps } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { previewMapBoard } from "@/app/dev/components/board-map/preview-data";
 import { DEFAULT_BOARD_QUERY } from "@/lib/job-board";
@@ -38,6 +39,13 @@ describe("phone map",()=>{
   const render=(cards:typeof board.cards)=>renderToStaticMarkup(<PhoneMap cards={cards} query={{...DEFAULT_BOARD_QUERY,view:"map"}} config={board.meta.map} serverNow={now} previewState="peek" initialAvailability={{available:true,paused:false}} onKindChange={()=>{}}/>);
   const mixed=render([missingTiming,missingPay,valid]);expect([...mixed.matchAll(/data-selected="true" data-card-id="([^"]+)"/g)].map(match=>match[1])).toEqual([valid.id]);expect(mixed).toContain("Pay pending");expect(mixed).toContain("Quote in person");
   const legacyOnly=render([missingTiming,missingPay]);expect(legacyOnly).not.toContain('data-selected="true"');expect(legacyOnly).toContain("Missing pay");expect(legacyOnly).toContain("Missing timing");
+ });
+ it("distinguishes filter-empty and paused reads while preserving loading and error precedence",()=>{
+  const render=(change:Partial<ComponentProps<typeof PhoneMap>>={})=>renderToStaticMarkup(<PhoneMap cards={[]} query={{...DEFAULT_BOARD_QUERY,kind:"bounty",view:"map",entry:"all",distance:5}} serverNow={0} previewState="peek" initialAvailability={{available:true,paused:false}} onKindChange={()=>{}} {...change}/>);
+  const empty=render();expect(empty).toContain("No jobs match that.");expect(empty).toContain("Try fewer filters.");expect(empty).toContain('href="/jobs?view=all&amp;layout=map"');expect(empty).not.toContain("No jobs here. Zoom out.");
+  const paused=render({initialAvailability:{available:false,paused:true}});expect(paused).toContain("Your account is paused");expect(paused).toContain("Contact us to get back to work.");expect(paused).toContain("Contact us");expect(paused).not.toContain("Reset filters");
+  const loading=render({loading:true});expect(loading).toContain("Loading your jobs");expect(loading).not.toContain("No jobs match that.");
+  const error=render({previewState:"error"});expect(error).toContain("Can’t load your jobs");expect(error).toContain("Try again");expect(error).not.toContain("No jobs match that.");
  });
  it("calls the availability action only once while a save is in flight",async()=>{
   const requests=new PhoneAvailabilityRequests();let finish!:(result:WorkAreaResult)=>void;const write=vi.fn(()=>new Promise<WorkAreaResult>(resolve=>{finish=resolve;}));
