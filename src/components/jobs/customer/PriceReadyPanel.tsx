@@ -31,8 +31,10 @@ function usePriceReveal(id: string) {
   }, () => false);
 }
 
-export function PriceReadyPanel({ job, previousPriceCents = null, online, preview, actions }: {
+export function PriceReadyPanel({ job, previousPriceCents = null, online, preview, actions, onDeclined }: {
   job: CustomerJobView; previousPriceCents?: number | null; online: boolean; preview?: string; actions?: PriceReadyActions;
+  /** Called once the job has closed, before the page refreshes, so the page can move focus to its new status. */
+  onDeclined?: () => void;
 }) {
   const router = useRouter(), session = useOptionalSessionExpired(), pending = useRef(false);
   const trigger = useRef<HTMLSpanElement>(null);
@@ -83,7 +85,11 @@ export function PriceReadyPanel({ job, previousPriceCents = null, online, previe
     try {
       const result = await (actions?.decline ?? declineCustomerPriceAction)(job.id, revision, reason);
       if (session?.check(result)) { setDialog(false); return; }
-      if ("status" in result && ["declined", "changed"].includes(result.status)) { setDialog(false); router.refresh(); }
+      if ("status" in result && ["declined", "changed"].includes(result.status)) {
+        // This panel unmounts when the job closes, so the dialog can't hand focus back to its opener.
+        if (result.status === "declined") onDeclined?.();
+        setDialog(false); router.refresh();
+      }
       else setDeclineError(true);
     } catch { setDeclineError(true); }
     finally { pending.current = false; setBusy(null); }
