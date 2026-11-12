@@ -10,6 +10,7 @@ import {
   DATE_RANGES,
   jobNumberFromSearch,
   jobNumberLabel,
+  officeCustomerId,
   OFFICE_JOBS_EXPORT_LIMIT,
   OFFICE_JOBS_PAGE_SIZE,
   type OfficeJobsQuery,
@@ -46,10 +47,13 @@ export type OfficeJobsPage = {
   page: number;
   /** Every city a job is in, for the Region filter. */
   regions: string[];
+  /** Present only while scoped to a customer. */
+  customerLabel?: string;
 };
 
 /** Just the parts of Prisma these reads use, so tests pass a fake and nothing connects to a database. */
 export type OfficeJobsDatabase = {
+  profile?: Pick<PrismaClient["profile"], "findUnique">;
   job: Pick<PrismaClient["job"], "findMany" | "count">;
 };
 
@@ -81,6 +85,8 @@ export function updatedLabel(updatedAt: Date, now: Date): string {
 /** The database filter for the list's state. Exported for tests. */
 export function officeJobsWhere(query: OfficeJobsQuery, now: Date): Prisma.JobWhereInput {
   const and: Prisma.JobWhereInput[] = [];
+  const customer = officeCustomerId(query.customer);
+  if (customer) and.push({ customerId: customer });
   const statuses = STATUS_GROUPS[query.status].statuses;
   if (statuses) and.push({ status: { in: [...statuses] } });
   if (query.trade !== "all") and.push({ category: query.trade });
@@ -182,7 +188,10 @@ export async function listOfficeJobs(
   const lastPage = Math.max(1, Math.ceil(total / OFFICE_JOBS_PAGE_SIZE));
   const page = Math.min(query.page, lastPage);
   const jobs = await findJobs(db, where, query.sort, (page - 1) * OFFICE_JOBS_PAGE_SIZE, OFFICE_JOBS_PAGE_SIZE);
-  return { rows: jobs.flatMap(job => { const visible = officeJobListView(viewer, job); return visible ? [toRow(visible, now)] : []; }), total, page, regions };
+  const customer = officeCustomerId(query.customer);
+  const person = customer && db.profile ? await db.profile.findUnique({ where: { id: customer }, select: { firstName: true, lastName: true } }) : null;
+  const customerLabel = person ? `${shortName(person)}${person.lastName?.trim() ? "." : ""}` : "—";
+  return { rows: jobs.flatMap(job => { const visible = officeJobListView(viewer, job); return visible ? [toRow(visible, now)] : []; }), total, page, regions, ...(customer ? { customerLabel } : {}) };
 }
 
 /** Every job matching the list's state (no paging), for Export CSV. At most OFFICE_JOBS_EXPORT_LIMIT rows. */

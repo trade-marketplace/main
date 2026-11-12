@@ -26,7 +26,7 @@ import styles from "./finish-job.module.css";
 
 type DocumentState = { url: string; name: string; size?: number; status: UploadStatus; error?: string };
 type UploadKind = "photo" | "coc" | "receipt";
-type Props = { job: FinishView; preview?: FinishState; embedded?: boolean;
+type Props = { job: FinishView & { officeNote?: string | null }; preview?: FinishState; embedded?: boolean;
   save?: (id: string, fields: FinishFields) => Promise<FinishResult | AuthFailure>;
   send?: (id: string, fields: FinishFields) => Promise<FinishResult | AuthFailure>;
   remove?: (id: string, photo: string) => Promise<FinishResult | AuthFailure>;
@@ -137,6 +137,7 @@ function FinishContent({ job, preview, embedded, save = saveFinishDraftAction, s
   return <section className={styles.canvas} data-mode="trade" aria-label={embedded ? `Finish ${preview}` : undefined}><div className={styles.page}>
     {!embedded && <nav aria-label="Breadcrumb" className={styles.breadcrumb}><TextLink href={jobHref}>{job.title}</TextLink><Icon name="chevron_right" size="sm" decorative /><span>Finish job</span></nav>}{heading}
     <OfflineBanner online={preview === "offline" ? false : undefined} sticky={false} />
+    {job.officeNote && !sent && <Banner tone="alert">The office sent this back: {job.officeNote}</Banner>}
     {sent ? <section className={`${styles.card} ${styles.sent}`} aria-label={region("Sent for sign-off")}><BoltFlash eventId={eventId} mark="bolt" size={96} /><h2>Sent for sign-off</h2>{cleanupError && <Banner tone="alert" action={<Button variant="tertiary" onClick={() => { if (clearReason()) setCleanupError(false); }}>Try again</Button>}>Sent, but this browser’s draft couldn’t be cleared.</Banner>}<Tracker {...tracker} /><TextLink href={jobHref}>Back to the job</TextLink></section> : <>
       {job.readOnly && <Banner tone="good">Sent for sign-off</Banner>}
       {job.readOnly && cleanupError && <Banner tone="alert" action={<Button variant="tertiary" onClick={() => { if (clearReason()) setCleanupError(false); }}>Try again</Button>}>Sent, but this browser’s draft couldn’t be cleared.</Banner>}

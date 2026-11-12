@@ -141,7 +141,7 @@ export async function readOfficeQueues(db: QueueDatabase, viewer: JobViewer, que
       const sent = job.evidence?.submittedAt, due = sent ? new Date(sent.getTime() + current.autoReleaseHours * HOUR) : null;
       const context = job.problems.length ? "Problems" : due ? new Intl.DateTimeFormat("en-NZ", { timeZone: "Pacific/Auckland", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }).format(due) : "—";
       const row = rowView(viewer, job, job.id, sent ?? job.statusHistory[0]?.createdAt ?? job.createdAt, "signoff", now, context, current.autoReleaseHours);
-      return row ? [{ ...row, overdue: !job.problems.length && row.overdue }] : [];
+      return row ? [{ ...row, href: `/admin/signoff/${job.id}`, overdue: !job.problems.length && row.overdue }] : [];
     });
   } else {
     const where = queueJobWhere(query.tab, now), statuses: JobStatus[] = query.tab === "price" ? PRICE_STATUSES : query.tab === "cancel" ? ["CANCEL_REVIEW"] : ["BOOKABLE"];

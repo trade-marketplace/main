@@ -32,7 +32,7 @@ function WorkspaceContent({ job, preview, embedded, send = sendJobUpdateAction, 
   const [copied, setCopied] = useState(false), [copyError, setCopyError] = useState(false), [clock, setClock] = useState<number | null>(null);
   useEffect(() => { const timer = setInterval(() => setClock(Date.now()), 60_000); return () => clearInterval(timer); }, []);
   const offline = !online || preview === "offline", sending = Boolean(busy) || preview === "sending", active = job.status === "ASSIGNED";
-  const tracker = jobTracker(job.status, "tradie", { extraWork: job.extraWorkOpen, customerFirstName: job.customer.firstName, evidence: job.category === "ELECTRICAL" ? "coc" : "photos", payout: job.payout });
+  const tracker = jobTracker(job.status, "tradie", { extraWork: job.extraWorkOpen, customerFirstName: job.customer.firstName, evidence: job.category === "ELECTRICAL" ? "coc" : "photos", payout: job.payout, autoReleaseHours: job.autoReleaseHours });
   const claim = claimDateLabel(job.claimedAt), jobNumber = `TM-${job.jobNumber}`, booked = Boolean(job.bookedDate && job.bookedTime);
   const hasBudget = job.budgetCents !== null && job.budgetCents > 0;
   const bookHref = `/jobs/${job.id}/book`, finishHref = `/jobs/${job.id}/complete`;
@@ -75,7 +75,7 @@ function WorkspaceContent({ job, preview, embedded, send = sendJobUpdateAction, 
         {active && <section className={styles.card} aria-label={embedded ? region("Updates") : undefined} aria-labelledby={embedded ? undefined : `${id}-updates`}><h2 id={`${id}-updates`} className={styles.cardTitle}>Updates</h2>{error && <Banner tone="alert" live action={<Button variant="tertiary" disabled={offline || sending} onClick={() => last && void update(last.kind, last.lateMinutes)}>Try again</Button>}>Couldn’t send this update. Try again.</Banner>}{wait > 0 && <Banner tone="alert" live>Too many tries. {tryAgainText(wait)}</Banner>}<div className={styles.updates}><Button variant="secondary" loading={busy === "on-my-way" || preview === "sending"} disabled={offline || sending} onClick={() => void update("on-my-way")} icon="local_shipping">I’m on my way</Button><Menu defaultOpen={preview === "late-menu"} align="start" trigger={props => <Button variant="secondary" disabled={offline || sending} loading={busy === "running-late"} icon="schedule" {...props}>Running late</Button>}>{[15, 30, 60].map(minutes => <MenuItem key={minutes} onSelect={() => void update("running-late", minutes)} disabled={offline || sending}>{minutes} min</MenuItem>)}</Menu><TextLink href={bookHref}>Need to reschedule</TextLink><Button variant="secondary" disabled={offline || sending} loading={busy === "customer-not-home"} onClick={() => void update("customer-not-home")} icon="door_front">Customer not home</Button></div></section>}
         <section className={styles.card} aria-label={region("Job details")}><h2 className={styles.cardTitle}>The job</h2><p>{job.description}</p></section>
       </div>
-      {tracker && <aside className={styles.card} aria-label={region("Job progress")}><Tracker {...tracker} steps={tracker.steps.map(step => step.label === "Customer signs off" ? { ...step, note: `or ${job.autoReleaseHours} hours` } : step)} /></aside>}
+      {tracker && <aside className={styles.card} aria-label={region("Job progress")}><Tracker {...tracker} /></aside>}
     </div>
   </div></section>;
 }
