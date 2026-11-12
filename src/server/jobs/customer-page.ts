@@ -1,5 +1,7 @@
 import "server-only";
 
+import { loadCustomerReview } from "./customer-review";
+import type { CustomerReview } from "@/lib/customer-review";
 import { randomUUID } from "node:crypto";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { canEditJobWindows } from "@/lib/job-windows";
@@ -17,7 +19,9 @@ export async function loadCustomerJobPage(db: Pick<PrismaClient, "job">, viewer:
   // send-price only accepts REVIEW / QUOTE_BOUNTY; there is currently no PRICED re-price command.
   // Keep the optional presentation field on the page's job too, so the existing route can pass it through.
   const previousPriceCents: number | null = null;
-  return { state: "ready" as const, job: { ...job, previousPriceCents }, previousPriceCents, canEditWindows: canEditJobWindows(row) };
+  let reviewData: CustomerReview | null = null;
+  if (job.status === "COMPLETED") { try { reviewData = await loadCustomerReview(db, viewer, id); } catch { /* Keep the frame; the review card offers retry without mistaking a failed read for an absent review. */ } }
+  return { state: "ready" as const, job: { ...job, previousPriceCents, reviewData }, previousPriceCents, canEditWindows: canEditJobWindows(row) };
 }
 
 export async function loadCustomerJobPhotos(job: CustomerJobView, viewer: JobViewer,

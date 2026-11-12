@@ -108,6 +108,7 @@ export const AUDIT_ACTIONS = {
 
   // Sign-off, reviews and support.
   "review.posted": { record: "reviews" },
+  "review.edited": { record: "reviews" },
   "evidence.approved": { record: "completion_evidence" },
   "evidence.flagged": { record: "completion_evidence", reason: "required" },
   "review.hidden": { record: "reviews", reason: "required" },

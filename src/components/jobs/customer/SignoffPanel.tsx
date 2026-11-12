@@ -5,20 +5,18 @@ import { Button } from "@/components/Button";
 import { Icon } from "@/components/Icon";
 import { TextLink } from "@/components/TextLink";
 import { useOptionalSessionExpired } from "@/components/auth/SessionExpired";
-import { ChipGroup } from "@/components/forms/ChoiceFields";
-import { TextAreaField } from "@/components/forms/TextFields";
 import { PhotoGallery } from "@/components/media/PhotoGallery";
-import { StarInput } from "@/components/media/Stars";
 import { BoltFlash } from "@/components/motion/BoltFlash";
 import { Banner } from "@/components/overlays/Banner";
-import { SIGNOFF_REVIEW_TAGS, type CustomerSignoff, type SignoffReview } from "@/lib/customer-signoff";
+import type { CustomerSignoff, SignoffReview } from "@/lib/customer-signoff";
 import { usePrefersReducedMotion } from "@/lib/motion/hooks";
 import { signOffJobAction } from "@/server/jobs/customer-signoff-actions";
 import type { CustomerJobView } from "@/server/views";
+import { ReviewFields } from "./ReviewFields";
 import styles from "./signoff.module.css";
 
 export type SignoffAction = typeof signOffJobAction;
-const tags = SIGNOFF_REVIEW_TAGS.map(value => ({ value, label: value }));
+
 export function SignoffPanel({ job, data, online, problemHref, preview, action = signOffJobAction }: {
   job: CustomerJobView; data: CustomerSignoff | null; online: boolean; problemHref: string; preview?: string; action?: SignoffAction;
 }) {
@@ -82,9 +80,7 @@ export function SignoffPanel({ job, data, online, problemHref, preview, action =
     </section>
     <form ref={form} onSubmit={submit} className={styles.form} aria-label={`Sign off ${job.title}`}>
       <fieldset disabled={saving || !online || changed} className={styles.review}>
-        <StarInput name={`rating-${id}`} value={rating} onChange={setRating} label={`Rate ${job.worker?.firstName ?? "your tradie"}`} className={styles.stars} />
-        <ChipGroup label="Review tags" hideLabel multiple value={selectedTags} onChange={setTags} options={tags} disabled={rating === null} className={styles.tags} />
-        {rating !== null && <TextAreaField label="Add a comment (optional)" value={comment} onChange={event => setComment(event.target.value)} maxLength={1000} rows={3} />}
+        <ReviewFields name={`rating-${id}`} workerName={job.worker?.firstName ?? "your tradie"} rating={rating} onRating={setRating} selectedTags={selectedTags} onTags={setTags} comment={comment} onComment={setComment} starsClassName={styles.stars} tagsClassName={styles.tags} />
       </fieldset>
       {failed && <Banner tone="alert" title="Couldn’t save. Try again." live action={<Button variant="tertiary" disabled={!online} onClick={() => form.current?.requestSubmit()}>Try again</Button>} />}
       {changed && <Banner tone="info" title="Job updated. Check it again." live action={retryButton} />}

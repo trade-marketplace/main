@@ -1,0 +1,14 @@
+.card { padding: var(--trade-space-6); border: 1px solid var(--trade-line); border-radius: var(--trade-radius-card); background: var(--trade-surface); box-shadow: var(--trade-shadow-category); min-width: 0; display: grid; gap: var(--trade-space-4); }
+.card p { text-wrap: pretty; }
+.heading { margin: 0; font-family: var(--trade-font-heading); font-variation-settings: var(--trade-display-axes); font-size: var(--trade-fs-heading); font-weight: 800; line-height: 1.3; text-wrap: balance; overflow-wrap: anywhere; }
+.eyebrow, .until { margin: 0; color: var(--trade-text-2); font-size: var(--trade-fs-small); text-wrap: pretty; }
+.form, .fields, .posted { display: grid; gap: var(--trade-space-4); margin: 0; min-width: 0; }
+.fields { border: 0; padding: 0; }
+.stars { text-align: center; }
+.stars > div { justify-content: center; flex-wrap: wrap; }
+.tags > div { justify-content: center; }
+.postedTags { display: flex; flex-wrap: wrap; gap: var(--trade-space-2); list-style: none; padding: 0; margin: 0; }
+.postedTags li { padding: var(--trade-space-1) var(--trade-space-3); border: 1px solid var(--trade-line); border-radius: var(--trade-radius-pill); background: var(--trade-surface); font-size: var(--trade-fs-small); overflow-wrap: anywhere; }
+.comment { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; text-wrap: pretty; }
+.actions { display: flex; flex-wrap: wrap; gap: var(--trade-space-3); align-items: center; }
+.saved { color: var(--trade-success); }
