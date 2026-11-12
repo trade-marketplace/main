@@ -1,0 +1,17 @@
+.list { display: grid; gap: var(--trade-space-4); }
+.dialog h2 { text-wrap: balance; }
+.card { background: var(--trade-surface); border: 1px solid var(--trade-line); border-radius: var(--trade-radius-card); padding: var(--trade-space-6); display: grid; gap: var(--trade-space-4); min-width: 0; }
+.card h2, .card p, .body p, .footer p { margin: 0; }
+.heading { font-family: var(--trade-font-heading); font-size: var(--trade-fs-subheading); font-weight: 750; }
+.body, .footer { display: grid; gap: var(--trade-space-4); min-width: 0; }
+.description { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.6; }
+.photos > li { grid-row: auto !important; grid-column: auto !important; }
+.photos > li > button { height: 100%; aspect-ratio: auto; }
+.photos { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: 12.5rem; }
+.cost { border-top: 1px solid var(--trade-line); padding-top: var(--trade-space-4); display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--trade-space-3); }
+.amount { font-family: var(--trade-font-heading); font-size: var(--trade-fs-title); font-weight: 800; }
+.note { color: var(--trade-text-2); font-size: var(--trade-fs-small); line-height: 1.5; }
+.buttons { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--trade-space-3); }
+.buttons > * { flex: 1 1 auto; }
+.status { color: var(--trade-forest); font-weight: 700; }
+@media (max-width: 599.98px) { .card { padding: var(--trade-space-5); } .photos { grid-template-rows: 9rem; } .buttons { flex-direction: column-reverse; } }

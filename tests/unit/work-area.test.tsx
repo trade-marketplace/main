@@ -6,7 +6,7 @@ import { WorkerSignupFields } from "@/components/auth/WorkerSignupFields";
 import { parseWorkArea, workAreaChanged, type WorkAreaSnapshot } from "@/lib/account/work-area";
 import { boardSettingsRoute } from "@/lib/job-board";
 
-vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }), usePathname: () => "/profile/area" }));
 const initial: WorkAreaSnapshot = { baseSuburb: "Invercargill", radiusKm: 25, point: { lat: -46.4132, lng: 168.3538 }, available: true, paused: false, trades: ["OTHER"] };
 describe("work area", () => {
   it("leaves Save off until the suburb, selected point or radius changes", () => {
@@ -58,10 +58,11 @@ describe("work area", () => {
     const html = renderToStaticMarkup(<AccountSettings role="TRADIE" active="/profile/area" next="/jobs?trade=electrical&distance=10">Content</AccountSettings>);
     expect(html.match(/href="\/profile\/notifications\?next=%2Fjobs%3Ftrade%3Delectrical%26distance%3D10"/g)).toHaveLength(2);
     expect(html.match(/href="\/profile\/trades\?next=%2Fjobs%3Ftrade%3Delectrical%26distance%3D10"/g)).toHaveLength(2);
-    for (const path of ["/profile", "/profile/security", "/profile/area", "/profile/payroll", "/profile/delete"]) expect(html).toContain(`href="${path}"`);
+    for (const path of ["/profile/area", "/profile/payroll"]) expect(html.match(new RegExp(`href="${path}\\?next=%2Fjobs%3Ftrade%3Delectrical%26distance%3D10"`, "g"))).toHaveLength(2);
+    for (const path of ["/profile", "/profile/security", "/profile/delete"]) expect(html).toContain(`href="${path}"`);
   });
   it("keeps all default sidebar links bare and rejects an external next destination", () => {
-    for (const next of [undefined, "https://evil.test/jobs"]) {
+    for (const next of [undefined, "https://evil.test/jobs", "//evil.test/jobs", "/jobs" + "?".repeat(4097), "/jobs/foreign", "/jobs\\\\evil.test"]) {
       const html = renderToStaticMarkup(<AccountSettings role="TRADIE" next={next}>Content</AccountSettings>);
       expect(html).toContain('href="/profile/notifications"'); expect(html).toContain('href="/profile/trades"'); expect(html).not.toContain("?next=");
     }

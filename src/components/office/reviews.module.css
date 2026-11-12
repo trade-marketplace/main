@@ -1,0 +1,11 @@
+.page { display: grid; gap: var(--trade-space-4); min-width: 0; max-width: var(--trade-content-max); }
+.title { margin: 0; font-family: var(--trade-font-heading); font-weight: 900; font-variation-settings: var(--trade-display-axes); font-size: var(--trade-fs-price); line-height: var(--trade-lh-price); }
+.comment { display: grid; gap: var(--trade-space-2); min-width: 0; max-width: 28rem; overflow-wrap: anywhere; }
+.comment p { margin: 0; white-space: pre-wrap; }
+.clamped { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.comment button { justify-self: start; }
+.tags { display: flex; flex-wrap: wrap; gap: var(--trade-space-1); }
+.tag { padding: var(--trade-space-1) var(--trade-space-2); border-radius: var(--trade-radius-field); background: var(--trade-tint); font-size: var(--trade-fs-caption); overflow-wrap: anywhere; }
+.context { color: var(--trade-text-2); font-size: var(--trade-fs-small); }
+.actions { display: flex; flex-wrap: wrap; gap: var(--trade-space-2); }
+.gallery { display: grid; gap: var(--trade-space-8); }

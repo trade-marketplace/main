@@ -8,6 +8,8 @@
 // Every job's point must come from jobPinFor() (#97): unclaimed jobs only ever have their approximate pin here.
 import { type KeyboardEvent, type RefObject, useEffect, useMemo, useRef, useState } from "react";
 
+import { IconButton } from "@/components/Button";
+import { InteractiveMapListLayout, type MapListPresentation } from "./InteractiveMapListLayout";
 import { Icon } from "@/components/Icon";
 import {
   type Bounds,
@@ -28,7 +30,7 @@ import type { Point } from "@/lib/geo/distance";
 
 import { MapCard } from "./MapCard";
 import { ApproxArea, ClusterPin, MapPin, pinLook, type Position, useBountyRemaining } from "./MapPin";
-import { MapLegend, MapSurface, YouAreHere } from "./MapSurface";
+import { MapLegend, type MapLegendItem, MapSurface, YouAreHere } from "./MapSurface";
 import { MapboxSurface, type MapboxServices, type MapboxViewport } from "./MapboxSurface";
 import type { MapboxConfig } from "@/lib/map/mapbox";
 import styles from "./map.module.css";
@@ -43,6 +45,15 @@ export type MapListLayoutProps = {
   /** Offline test/preview adapter; production uses the pinned Mapbox loader and browser location. */
   mapboxServices?: MapboxServices;
   jobs: readonly MapJob[];
+  /** Optional caller hooks; omitting them preserves the original kit. */
+  jobHref?: (job: MapJob) => string;
+  selectedId?: string | null;
+  onSelect?: (id: string | null) => void;
+  onViewChange?: (bounds: Bounds) => void;
+  legend?: { open: boolean; onDismiss: () => void; note?: string; items?: readonly MapLegendItem[] };
+  locationNote?: string;
+  /** Caller presentation slots for the board, without duplicating kit pins, cards or legend. */
+  presentation?: MapListPresentation;
   /** What the map shows at first. Default: fits every job. */
   bounds?: Bounds;
   /** Render time (epoch ms), for bounty countdowns. */
@@ -64,8 +75,13 @@ export type MapListLayoutProps = {
   idPrefix?: string;
 };
 
-export function MapListLayout({
+export function MapListLayout(props: MapListLayoutProps) {
+  return props.presentation ? <InteractiveMapListLayout {...props} presentation={props.presentation} /> : <DefaultMapListLayout {...props} />;
+}
+
+function DefaultMapListLayout({
   jobs,
+  jobHref, selectedId: controlledId, onSelect, onViewChange, legend, locationNote,
   mapbox,
   mapboxServices,
   bounds: initialBounds,
@@ -94,15 +110,31 @@ export function MapListLayout({
   const listOnly = !!mapbox && (!mapbox.accessToken || mapFailed);
   const bounds = viewport?.bounds ?? cameraBounds;
   const [hotId, setHotId] = useState<string | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(initialSelectedId);
+  const [ownSelectedId, setOwnSelectedId] = useState<string | null>(initialSelectedId);
+  const selectedId = controlledId === undefined ? ownSelectedId : controlledId;
+  const setSelectedId = (id: string | null) => { if (controlledId === undefined) setOwnSelectedId(id); onSelect?.(id); };
   const mapRef = useRef<HTMLDivElement>(null);
+  const layoutRef = useRef<HTMLDivElement>(null);
   const size = useElementSize(mapRef, !listOnly);
   const returnFocus = useRef<HTMLElement | null>(null);
   const showAllRef = useRef<HTMLButtonElement>(null);
+  const previousControlledId = useRef(controlledId);
+  useEffect(() => {
+    if (controlledId && previousControlledId.current !== controlledId) {
+      const active = document.activeElement;
+      if (active instanceof HTMLElement && active !== document.body && !mapRef.current?.contains(active)) {
+        returnFocus.current = active;
+        requestAnimationFrame(() => layoutRef.current?.querySelector<HTMLAnchorElement>("article[data-card-kind] a[href]")?.focus());
+      }
+    }
+    previousControlledId.current = controlledId;
+  }, [controlledId]);
   // The cluster that was pressed is gone once zoomed in: keep focus on the map, on "Show all jobs".
   useEffect(() => {
     if (zoomed) showAllRef.current?.focus();
   }, [zoomed]);
+
+  useEffect(() => { if (!mapbox && cameraBounds) onViewChange?.(cameraBounds); }, [mapbox, cameraBounds, onViewChange]);
 
   const ready = state === "ready";
   const placed = useMemo(() => {
@@ -168,7 +200,7 @@ export function MapListLayout({
     groups.find((g) => g.members.length === 1 && g.lead.job.precision === "approximate" && hotOrSelected(g.lead.job.id))?.lead;
 
   return (
-    <div className={cx(styles.layout, listOnly && styles.listOnly)} onKeyDown={onKeyDown}>
+    <div ref={layoutRef} className={cx(styles.layout, listOnly && styles.listOnly)} onKeyDown={onKeyDown}>
       <div className={styles.grid}>
         <div className={styles.listArea}>
           <div className={styles.listHead}>
@@ -200,6 +232,7 @@ export function MapListLayout({
                     hot={hotOrSelected(job.id)}
                     selected={selectedId === job.id}
                     controls={selectedId === job.id ? cardId : undefined}
+                    href={listOnly ? jobHref?.(job) : undefined}
                     onHotChange={setHotId}
                     onSelect={select}
                   />
@@ -215,14 +248,14 @@ export function MapListLayout({
           )}
           {listOnly && selected && (
             <div className={styles.listCard}>
-              <MapCard job={selected} serverNow={serverNow} id={cardId} headingLevel={headingLevel === 2 ? 3 : 4} onClose={close} />
+              <MapCard job={selected} serverNow={serverNow} href={jobHref?.(selected)} id={cardId} headingLevel={headingLevel === 2 ? 3 : 4} onClose={close} />
             </div>
           )}
-          <MapLegend className={styles.legendInList} />
+          {(!legend || legend.open) && (legend ? <div className={cx(styles.legendInList, styles.controlledLegend)}><MapLegend items={legend.items} /><span className={styles.legendDismiss}><IconButton icon="close" label="Close map legend" onClick={legend.onDismiss} /></span>{legend.note && <p>{legend.note}</p>}</div> : <MapLegend className={styles.legendInList} />)}
         </div>
 
         {!listOnly && <div className={styles.mapArea} ref={mapRef}>
-          <ProviderSurface config={mapbox} services={mapboxServices} bounds={cameraBounds} label={`Map of ${title}`} onViewChange={(view) => setProviderView({ key: providerKey, loader: mapboxServices?.load, view })} onFailure={() => setFailedProvider({ key: providerKey, loader: mapboxServices?.load })}>
+          <ProviderSurface config={mapbox} services={mapboxServices} bounds={cameraBounds} label={`Map of ${title}`} locationNote={locationNote} onViewChange={(view) => { setProviderView({ key: providerKey, loader: mapboxServices?.load, view }); onViewChange?.(view.bounds); }} onFailure={() => setFailedProvider({ key: providerKey, loader: mapboxServices?.load })}>
             {you && bounds && <YouDot you={you} bounds={bounds} />}
             {ringFor && <ApproxArea position={ringFor.pos} widthPct={areaPct} />}
             {(!mapbox || (viewport && size)) && groups.map(({ lead, members }, i) =>
@@ -261,10 +294,10 @@ export function MapListLayout({
               Show all jobs
             </button>
           )}
-          {ready && <MapLegend card className={styles.legendOnMap} />}
+          {ready && (!legend || legend.open) && (legend ? <div className={cx(styles.legendOnMap, styles.controlledLegend)}><MapLegend card items={legend.items} /><span className={styles.legendDismiss}><IconButton icon="close" label="Close map legend" onClick={legend.onDismiss} /></span>{legend.note && <p>{legend.note}</p>}</div> : <MapLegend card className={styles.legendOnMap} />)}
           {selected && (
             <div className={styles.cardSlot}>
-              <MapCard job={selected} serverNow={serverNow} id={cardId} headingLevel={headingLevel === 2 ? 3 : 4} onClose={close} />
+              <MapCard job={selected} serverNow={serverNow} href={jobHref?.(selected)} id={cardId} headingLevel={headingLevel === 2 ? 3 : 4} onClose={close} />
             </div>
           )}
         </div>}
@@ -281,6 +314,7 @@ function ProviderSurface({ config, services, children, ...props }: {
   label: string;
   onViewChange: (view: MapboxViewport) => void;
   onFailure: () => void;
+  locationNote?: string;
 }) {
   return config ? <MapboxSurface config={config} services={services} {...props}>{children}</MapboxSurface>
     : <MapSurface label={props.label}>{children}</MapSurface>;
@@ -297,16 +331,23 @@ type JobRowProps = {
   hot: boolean;
   selected: boolean;
   controls?: string;
+  href?: string;
   onHotChange: (id: string | null) => void;
   onSelect: (id: string, from: HTMLElement | null) => void;
 };
 
 /** A list row. Long titles and suburbs are cut with "…" and shown whole in a tooltip (and in the button's name). */
-function JobRow({ job, serverNow, hot, selected, controls, onHotChange, onSelect }: JobRowProps) {
+function JobRow({ job, serverNow, hot, selected, controls, href, onHotChange, onSelect }: JobRowProps) {
   const remaining = useBountyRemaining(job, serverNow);
   const caption = jobCaption(job);
   const offer = jobOffer(job, remaining);
   const expired = job.kind === "bounty" && remaining !== null && isExpired(remaining);
+  const content = <>
+      <span className={cx(styles.rowMark, expired ? styles.expired : pinLook(job, remaining))} aria-hidden="true" />
+      <span className={styles.rowText} aria-hidden="true"><span className={cx(styles.rowTitle, styles.truncate)}>{job.title}</span><span className={cx(styles.caption, styles.truncate)}>{caption}</span></span>
+      <span className={styles.rowOffer} aria-hidden="true">{offer}</span>
+    </>;
+  if (href) return <a className={styles.row} href={href} aria-label={pinName(job, remaining)} title={job.title}>{content}</a>;
   return (
     <button
       type="button"

@@ -7,6 +7,20 @@ const labels = (status: Parameters<typeof jobTracker>[0], audience: Parameters<t
   jobTracker(status, audience, options)?.steps.map((s) => s.label);
 
 describe("jobTracker", () => {
+  it.each([[1, "1 hour"], [48, "48 hours"], [72, "72 hours"]] as const)("uses the configured %i-hour window for both audiences", (autoReleaseHours, wording) => {
+    expect(jobTracker("SUBMITTED", "customer", { autoReleaseHours })?.steps.find(step => step.label === "Please check")?.note).toBe(`Within ${wording}`);
+    for (const status of ["ASSIGNED", "SUBMITTED"] as const) expect(jobTracker(status, "tradie", { autoReleaseHours })?.steps.find(step => step.label === "Customer signs off")?.note).toBe(`or ${wording}`);
+  });
+
+  it("uses neutral wording when the configured hours are not available", () => {
+    expect(jobTracker("SUBMITTED", "customer")?.steps.find(step => step.label === "Please check")?.note).toBe("Soon after you check");
+    expect(jobTracker("SUBMITTED", "tradie")?.steps.find(step => step.label === "Customer signs off")?.note).toBe("or automatically");
+  });
+
+  it("does not label a completed job's historical sign-off window with today's setting", () => {
+    expect(jobTracker("COMPLETED", "tradie", { autoReleaseHours: 72 })?.steps.find(step => step.label === "Customer signs off")?.note).toBe("or automatically");
+  });
+
   it("shows the customer's whole journey before they pay, with the price step now", () => {
     expect(jobTracker("REVIEW", "customer")).toMatchObject({ current: 1 });
     expect(labels("REVIEW", "customer")).toEqual(["Posted", "Getting your price", "Accept & pay", "Tradie on the way", "Sorted"]);

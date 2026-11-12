@@ -38,7 +38,7 @@ function spendOf(job: Source, fields: FinishFields) { return (job.materials?.bud
 async function saveSpend(tx: Prisma.TransactionClient, id: string, spentCents: number) {
   return tx.jobMaterials.upsert({ where: { jobId: id }, create: { jobId: id, budgetCents: 0, spentCents, spentAt: new Date() }, update: { spentCents, spentAt: new Date() } });
 }
-export async function loadFinish(db: PrismaClient, viewer: JobViewer, jobId: string, deps: Deps = {}): Promise<FinishView | null> {
+export async function loadFinish(db: PrismaClient, viewer: JobViewer, jobId: string, deps: Deps = {}): Promise<(FinishView & { officeNote?: string | null }) | null> {
   if (!z.uuid().safeParse(jobId).success || viewer.role !== "TRADIE") return null;
   const loaded = await db.$transaction(async tx => {
     const job = await own(tx, viewer, jobId); if (!job) return null;
@@ -54,6 +54,7 @@ export async function loadFinish(db: PrismaClient, viewer: JobViewer, jobId: str
   const sign = async (bucket: string, path: string) => storeFor(deps).signedUrl(bucket, path, SIGNED_URL_SECONDS);
   const photos = await Promise.all((job.evidence?.photos ?? []).map(async (photo, index) => ({ id: photo.id, src: await sign(PHOTO_BUCKET, photo.path), name: `Photo ${index + 1}` })));
   return { id: job.id, ownerId: viewer.userId, title: job.title, customerFirstName: job.customer.firstName, category: job.category, autoReleaseHours: settings?.autoReleaseHours ?? 48,
+    officeNote: job.evidence?.officeCheck === "FLAGGED" && !job.evidence.submittedAt ? job.evidence.checkNote : null,
     rule, fields: { ...fieldsOf(job), reason }, photos, budgetCents: job.materials?.budgetCents ?? 0, extraWorkOpen: job.variations.length > 0, readOnly: job.status === "SUBMITTED" || Boolean(job.evidence?.submittedAt),
     cocDocument: job.evidence?.cocPath ? { url: await sign(DOCUMENT_BUCKET, job.evidence.cocPath), name: "CoC document" } : null,
     receipt: job.materials?.receiptPath ? { url: await sign(DOCUMENT_BUCKET, job.materials.receiptPath), name: "Receipt" } : null };

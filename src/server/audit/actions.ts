@@ -90,6 +90,9 @@ export const AUDIT_ACTIONS = {
   "evidence_rule.updated": { record: "trade_evidence_rules" },
 
   // People.
+  "address.saved": { record: "profiles" },
+  "address.deleted": { record: "profiles" },
+  "address.default_changed": { record: "profiles" },
   "office_user.added": { record: "profiles" },
   "office_user.removed": { record: "profiles" },
   "licence.verified": { record: "licences" },
