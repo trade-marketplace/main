@@ -6,11 +6,14 @@ import { PhoneMap } from "@/components/jobs/PhoneMap";
 import { PHONE_MAP_STATES } from "@/lib/phone-map";
 import { matchesBoardKind, type BoardPage, type BoardQuery } from "@/lib/job-board";
 import styles from "./preview.module.css";
-export function PhoneMapDemo({board,query:initialQuery,state:initialState,failSave}:{board:BoardPage;query:BoardQuery;state:string;failSave:boolean}) {
+export function PhoneMapDemo({board,query:initialQuery,state:initialState,failSave,legacyPins}:{board:BoardPage;query:BoardQuery;state:string;failSave:boolean;legacyPins?:"mixed"|"empty"}) {
  const [query,setQuery]=useState(initialQuery),[state,setState]=useState(initialState),[calls,setCalls]=useState(0);
  const changeKind=(kind:BoardQuery["kind"])=>{setQuery(previous=>({...previous,kind}));const url=new URL(location.href);url.searchParams.set("kind",kind);history.replaceState(null,"",url.pathname+url.search);};
  const back=()=>"/dev/components/phone-map?state="+state+"&kind="+query.kind;
- const cards=board.cards.filter(card=>matchesBoardKind(card,query.kind));
+ const bounty=board.cards.filter(card=>card.status==="QUOTE_BOUNTY"),ready=board.cards.filter(card=>card.status==="BOOKABLE");
+ const legacy=[{...bounty[0],point:bounty[1].point,bounty:undefined},{...ready[0],point:ready[1].point,earnCents:null}];
+ const sample=legacyPins?legacyPins==="empty"?legacy:[...legacy,bounty[1],ready[1]]:board.cards;
+ const cards=sample.filter(card=>matchesBoardKind(card,query.kind));
  const show=(example:string,embedded=false)=><PhoneMap key={example} cards={embedded&&example==="chips-bounty"?board.cards.filter(card=>card.status==="QUOTE_BOUNTY"):cards} counts={board.counts} query={embedded&&example==="chips-bounty"?{...query,kind:"bounty"}:query} config={board.meta.map} serverNow={Date.parse(board.before)} previewState={example} embedded={embedded}
   initialAvailability={{available:example!=="available-off",paused:example==="paused"}} onKindChange={changeKind}
   jobHref={id=>"/dev/components/phone-map?state=detail&job="+encodeURIComponent(id)+"&back="+encodeURIComponent(back())} listHref={"/dev/components/phone-map?state=grid&kind="+query.kind}

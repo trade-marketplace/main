@@ -32,6 +32,13 @@ describe("phone map",()=>{
   const html=renderToStaticMarkup(<PhoneMap cards={[card]} query={{...DEFAULT_BOARD_QUERY,view:"map"}} serverNow={now} previewState="peek" initialAvailability={{available:true,paused:false}} onKindChange={()=>{}}/>);
   expect(html).not.toContain("Exact private card");expect(html).toContain("No jobs here. Zoom out.");
  });
+ it("keeps legacy cards readable while selecting only a card with a corresponding pin",()=>{
+  const now=Date.parse("2026-11-11T05:00:00Z"),board=previewMapBoard("ready",now),valid=board.cards.find(card=>card.status==="BOOKABLE")!;
+  const missingPay={...valid,id:"missing-pay",title:"Missing pay",earnCents:null},missingTiming={...board.cards.find(card=>card.status==="QUOTE_BOUNTY")!,id:"missing-timing",title:"Missing timing",point:valid.point,bounty:undefined};
+  const render=(cards:typeof board.cards)=>renderToStaticMarkup(<PhoneMap cards={cards} query={{...DEFAULT_BOARD_QUERY,view:"map"}} config={board.meta.map} serverNow={now} previewState="peek" initialAvailability={{available:true,paused:false}} onKindChange={()=>{}}/>);
+  const mixed=render([missingTiming,missingPay,valid]);expect([...mixed.matchAll(/data-selected="true" data-card-id="([^"]+)"/g)].map(match=>match[1])).toEqual([valid.id]);expect(mixed).toContain("Pay pending");expect(mixed).toContain("Quote in person");
+  const legacyOnly=render([missingTiming,missingPay]);expect(legacyOnly).not.toContain('data-selected="true"');expect(legacyOnly).toContain("Missing pay");expect(legacyOnly).toContain("Missing timing");
+ });
  it("calls the availability action only once while a save is in flight",async()=>{
   const requests=new PhoneAvailabilityRequests();let finish!:(result:WorkAreaResult)=>void;const write=vi.fn(()=>new Promise<WorkAreaResult>(resolve=>{finish=resolve;}));
   const first=requests.save(true,false,write);expect(await requests.save(true,false,write)).toBeNull();expect(write).toHaveBeenCalledExactlyOnceWith(false);

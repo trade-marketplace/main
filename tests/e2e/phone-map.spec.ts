@@ -56,6 +56,18 @@ test("filter replacements reconcile the selected card and pin while retaining su
  }
  await expectNoA11yViolations(page);
 });
+test("legacy cards remain readable without receiving a selection for a missing pin",async({page})=>{
+ await page.setViewportSize({width:390,height:1000});await page.goto(route("peek","&legacyPins=mixed"));
+ const cards=page.getByRole("region",{name:"Jobs near you",exact:true}),selected=cards.locator('a[data-selected="true"]');
+ await expect(cards.locator('a[data-bounty="true"]').first()).toHaveAttribute("data-selected","false");await expect(selected).toHaveCount(1);
+ const matching=async()=>{const pin=page.locator('button[data-pin-kind][aria-expanded="true"]');await expect(pin).toHaveCount(1);expect(await pin.getAttribute("aria-label")).toContain(await selected.locator("strong").innerText());};await matching();
+ await page.getByRole("list",{name:"Map job kind",exact:true}).getByRole("button",{name:/^Claim/}).click();await expect(cards.locator("a").first()).toHaveAttribute("data-selected","false");await expect(selected).toHaveCount(1);await matching();
+ for(const kind of["Bounty","All"]){await page.getByRole("list",{name:"Map job kind",exact:true}).getByRole("button",{name:new RegExp("^"+kind)}).click();await expect(selected).toHaveAttribute("data-bounty","true");await matching();}
+ await selected.focus();await page.keyboard.press("ArrowLeft");await expect(selected).toBeFocused();await matching();
+ await cards.locator("a").first().evaluate(element=>element.scrollIntoView({block:"nearest",inline:"start"}));await expect(selected).toHaveCount(1);await matching();
+ await page.goto(route("peek","&legacyPins=empty"));await expect(cards.locator("a")).toHaveCount(2);await expect(selected).toHaveCount(0);await expect(page.locator('button[data-pin-kind][aria-expanded="true"]')).toHaveCount(0);
+ await page.getByRole("list",{name:"Map job kind",exact:true}).getByRole("button",{name:/^Claim/}).click();await expect(cards.locator("a")).toHaveCount(1);await cards.locator("a").focus();await page.keyboard.press("ArrowRight");await expect(selected).toHaveCount(0);await page.getByRole("list",{name:"Map job kind",exact:true}).getByRole("button",{name:/^All/}).click();await expect(cards.locator("a")).toHaveCount(2);await expect(selected).toHaveCount(0);await expectNoA11yViolations(page);
+});
 test("touch swipe centres its pin and dragging the handle opens the full list",async({page})=>{
  await page.setViewportSize({width:390,height:844});await page.goto(route("peek"));const cards=page.getByRole("region",{name:"Jobs near you",exact:true});
  const before=await cards.locator('a[data-selected="true"]').getAttribute("data-card-id"),box=await cards.boundingBox();const cdp=await page.context().newCDPSession(page);

@@ -53,7 +53,8 @@ export function PhoneMap({ cards, counts, query, config, serverNow, onKindChange
   const bounds = viewport?.bounds ?? camera, unavailable = previewState === "map-unavailable" || failed || !fake && !provider?.accessToken;
   const shown = unavailable ? all : cardsInsideBounds(all,bounds);
   const [selectedId, setSelectedId] = useState<string | null>(previewState === "card-selected" ? all[1]?.id ?? all[0]?.id ?? null : all[0]?.id ?? null);
-  const nextSelection = shown.some(card => card.id === selectedId) ? selectedId : shown[0]?.id ?? null;
+  const pinIds = new Set(jobs.map(job => job.id)), selectable = shown.filter(card => pinIds.has(card.id));
+  const nextSelection = selectable.some(card => card.id === selectedId) ? selectedId : selectable[0]?.id ?? null;
   if (nextSelection !== selectedId) setSelectedId(nextSelection);
   const map = useRef<HTMLDivElement>(null), strip = useRef<HTMLDivElement>(null), items = useRef(new Map<string,HTMLAnchorElement>()), pendingScroll = useRef<ReturnType<typeof setTimeout> | null>(null), suppressScroll = useRef(false), scrollRelease = useRef<ReturnType<typeof setTimeout> | null>(null), dragStart = useRef<number | null>(null), sheetDragged = useRef(false), keyboardSelection = useRef(false);
   useEffect(()=>{if(previewState==="card-selected"&&selectedId)items.current.get(selectedId)?.scrollIntoView({block:"nearest",inline:"center",behavior:"instant"});},[previewState,selectedId]);
@@ -71,7 +72,7 @@ export function PhoneMap({ cards, counts, query, config, serverNow, onKindChange
   };
   const reduced = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const select = (pinId:string, scroll=true) => {
-    setSelectedId(pinId);const job=jobs.find(item=>item.id===pinId);
+    const job=jobs.find(item=>item.id===pinId);if(!job)return;setSelectedId(pinId);
     if(job && bounds)setCamera(phoneCentredBounds(job.point,bounds));
     if(scroll){if(keyboardSelection.current)requestAnimationFrame(()=>items.current.get(pinId)?.focus({preventScroll:true}));suppressScroll.current=true;if(scrollRelease.current)clearTimeout(scrollRelease.current);scrollRelease.current=setTimeout(()=>{suppressScroll.current=false;},700);items.current.get(pinId)?.scrollIntoView({block:"nearest",inline:"center",behavior:reduced()?"instant":"smooth"});}
   };
@@ -105,8 +106,8 @@ export function PhoneMap({ cards, counts, query, config, serverNow, onKindChange
       {(loading||previewState==="loading")?<div role="status" aria-label="Loading your jobs" className={styles.empty}><Skeleton width="70%" height={20}/><Skeleton height={104}/></div>:previewState==="error"?<div className={styles.empty}><h3>Can’t load your jobs</h3><Button variant="secondary" onClick={onRetry}>Try again</Button></div>:<>
         {unavailable&&<p role="status" className={styles.mapError}>Map isn’t available right now.</p>}
         {!shown.length?<div className={styles.empty}><h3>No jobs here. Zoom out.</h3><Button variant="secondary" onClick={()=>setCamera(fit)}>Zoom out</Button></div>:<div id={id+"-cards"} ref={strip} className={styles.cards} role="region" aria-label={embedded?previewState+" jobs near you":"Jobs near you"} aria-roledescription="carousel"
-          onKeyDown={event=>{if(event.key!=="ArrowLeft"&&event.key!=="ArrowRight")return;event.preventDefault();const index=phoneCardIndex(shown,selectedId),next=phonePinId(shown,Math.max(0,Math.min(shown.length-1,index+(event.key==="ArrowRight"?1:-1))));if(next){select(next);items.current.get(next)?.focus({preventScroll:true});}}}
-          onScroll={()=>{if(expanded||suppressScroll.current)return;if(pendingScroll.current)clearTimeout(pendingScroll.current);pendingScroll.current=setTimeout(()=>{const element=strip.current;if(!element)return;const nearest=shown.reduce((best,card)=>Math.abs((items.current.get(card.id)?.offsetLeft??0)-element.scrollLeft)<Math.abs((items.current.get(best.id)?.offsetLeft??0)-element.scrollLeft)?card:best,shown[0]);if(nearest&&nearest.id!==selectedId)select(nearest.id,false);},140);}}>
+          onKeyDown={event=>{if(event.key!=="ArrowLeft"&&event.key!=="ArrowRight")return;event.preventDefault();const index=phoneCardIndex(selectable,selectedId),next=phonePinId(selectable,Math.max(0,Math.min(selectable.length-1,index+(event.key==="ArrowRight"?1:-1))));if(next){select(next);items.current.get(next)?.focus({preventScroll:true});}}}
+          onScroll={()=>{if(expanded||suppressScroll.current||!selectable.length)return;if(pendingScroll.current)clearTimeout(pendingScroll.current);pendingScroll.current=setTimeout(()=>{const element=strip.current;if(!element)return;const nearest=selectable.reduce((best,card)=>Math.abs((items.current.get(card.id)?.offsetLeft??0)-element.scrollLeft)<Math.abs((items.current.get(best.id)?.offsetLeft??0)-element.scrollLeft)?card:best,selectable[0]);if(nearest&&nearest.id!==selectedId)select(nearest.id,false);},140);}}>
           {shown.map(card=><PhoneJobCard key={card.id} card={card} job={cardToMapJob(card)} selected={selectedId===card.id} serverNow={serverNow} href={jobHref?.(card.id)??boardJobHref(card.id,boardHref(query))} anchorRef={element=>{if(element)items.current.set(card.id,element);else items.current.delete(card.id);}}/>) }{onLoadMore&&<div className={styles.moreCard}><Button variant="secondary" loading={loadingMore} disabled={!online?"You’re offline":false} onClick={onLoadMore}>Load more jobs</Button></div>}</div>}
       </>}
     </div>
