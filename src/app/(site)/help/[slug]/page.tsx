@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getViewer } from "@/server/auth/viewer";
+import { siteViewer } from "@/components/site/SiteShell";
 import { notFound } from "next/navigation";
 import { HelpCentre } from "@/components/help/HelpCentre";
 import { helpState } from "@/lib/help";
@@ -18,6 +18,6 @@ export default async function HelpArticlePage({ params, searchParams }: Props) {
   const [{ slug }, query, articles] = await Promise.all([params, searchParams, loadHelpArticles()]);
   const article = articles.find(article => article.slug === slug);
   if (!article) notFound();
-  const viewer = await getViewer();
+  const viewer = await siteViewer();
   return <HelpCentre signedIn={Boolean(viewer)} officeSupport={viewer?.role === "ADMIN"} key={`${slug}:${query.state ?? "default"}`} articles={articles} article={article} state={helpState(query.state)} submit={saveHelpFeedback} />;
 }

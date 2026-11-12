@@ -143,7 +143,7 @@ export function HelpCentre({ signedIn = false, officeSupport = false, articles, 
             : <><h2 className={styles.listTitle}>{searching ? "Search results" : topic}</h2><div className={styles.articleList}>{results.map(row)}</div></>}
           <LiveMessage message={searching ? `${results.length} articles found` : null} />
         </section>}
-        <aside className={styles.support}><SupportCard signedIn={signedIn} officeSupport={officeSupport} returnTo={article ? `/help/${article.slug}` : query || initialTopic ? `/help?${new URLSearchParams({ ...(query ? { q: query } : {}), ...(initialTopic ? { topic: helpTopicSlug(initialTopic) } : {}) })}` : "/help"} />{showingArticle && <div className={styles.related}><h2>Related</h2>{article.related.map(slug => articles.find(item => item.slug === slug)).filter((item): item is HelpArticle => Boolean(item)).map(item => <TextLink key={item.slug} href={`/help/${item.slug}`}>{relatedNames[item.slug] ?? item.title}</TextLink>)}</div>}</aside>
+        <aside className={styles.support}><SupportCard signedIn={signedIn} officeSupport={officeSupport} returnTo={showingArticle ? `/help/${article.slug}` : search || topic !== "All" ? `/help?${new URLSearchParams({ ...(search ? { q: search } : {}), ...(topic !== "All" ? { topic: helpTopicSlug(topic) } : {}) })}` : "/help"} />{showingArticle && <div className={styles.related}><h2>Related</h2>{article.related.map(slug => articles.find(item => item.slug === slug)).filter((item): item is HelpArticle => Boolean(item)).map(item => <TextLink key={item.slug} href={`/help/${item.slug}`}>{relatedNames[item.slug] ?? item.title}</TextLink>)}</div>}</aside>
       </>}
     </div>
   </div>;
