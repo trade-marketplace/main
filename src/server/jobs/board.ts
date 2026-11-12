@@ -12,6 +12,8 @@ import { createSupabaseFileStore, PHOTO_BUCKET, SIGNED_URL_SECONDS } from "@/ser
 import { JOB_DETAIL_SELECT, JOB_LIST_SELECT, workerJobListView, workerJobView, type JobViewer, type WorkerJobView } from "@/server/views";
 import { eligibleJobsFor, JOB_ELIGIBILITY_SELECT, workerWorkArea, WORKER_ELIGIBILITY_SELECT, type EligibilityWorker } from "@/server/workers/eligibility";
 import { hasCurrentTradeLicence, workerBasicProofFailure } from "@/server/workers/verification";
+import { publicMapboxToken } from "@/server/geo/mapbox-config";
+import { APPROX_MAX_METRES } from "@/server/geo/approximate";
 
 const SCAN_PAGE_SIZE = 100;
 const BOARD_CANDIDATE_SELECT = { ...JOB_LIST_SELECT, ...JOB_ELIGIBILITY_SELECT } satisfies Prisma.JobSelect;
@@ -26,6 +28,7 @@ function metaFor(worker: EligibilityWorker, query: BoardQuery, enabled: readonly
   return { ownerId: worker.id, areaName: area?.baseSuburb?.trim() || "your area", maxDistanceKm,
     distanceKm: Math.min(query.distance ?? Math.min(25, maxDistanceKm), maxDistanceKm),
     blocked: basic === "worker-required" ? "identity-required" : basic ?? (!workArea ? "work-area-required" : null),
+    ...(query.view === "map" && workArea ? { map: { accessToken: publicMapboxToken(), workArea: { ...workArea, name: area?.baseSuburb?.trim() || "your area" }, approxRadiusMetres: APPROX_MAX_METRES } } : {}),
     trades: BOARD_TRADES.map(trade => ({ trade, label: tradeLabel(trade), allowed: enabled.includes(trade) && (trade === "OTHER" || hasCurrentTradeLicence(worker, trade, now)),
       reason: !enabled.includes(trade) ? "Unavailable" : trade !== "OTHER" && !hasCurrentTradeLicence(worker, trade, now) ? "not verified" : null })) };
 }
@@ -112,7 +115,7 @@ export async function loadJobBoard(db: PrismaClient, viewer: JobViewer, query: B
     const now = (deps.now ?? (() => new Date()))();
     const worker = await db.profile.findUnique({ where: { id: viewer.userId }, select: WORKER_ELIGIBILITY_SELECT });
     if (!worker || worker.role !== "TRADIE") return { ok: false, error: "forbidden" };
-    const settings = await db.settings.findUnique({ where: { id: 1 }, select: { enabledTrades: true } });
+    const settings = await db.settings.findUnique({ where: { id: 1 }, select: { enabledTrades: true, bountyAmountCents: true, bountyExpiryHours: true } });
     const enabled = settings?.enabledTrades ?? [...BOARD_TRADES];
     const meta = metaFor(worker, query, enabled, now), savedIds = request.savedIds ?? [];
     const scope = scopeFor(worker, query, enabled, savedIds, now);
@@ -140,7 +143,14 @@ export async function loadJobBoard(db: PrismaClient, viewer: JobViewer, query: B
         try { photoUrl = await (deps.signPhoto ?? ((actor, id, photo) => signBoardPhoto(db, actor, id, photo)))(viewer, raw.id, detail.photos[0].id); }
         catch { /* A missing/unavailable photo keeps the honest no-photo kit fallback. */ }
       }
-      cards.push({ ...safe, distanceKm, photoUrl, tradeLabel: tradeLabel(safe.category), whenLabel: whenLabel(detail, query, now), alreadyEstimated: Boolean(detail.ownEstimate) });
+      // Same clock as scheduler bounty.expired: latest entry to QUOTE_BOUNTY + configured duration.
+      // The existing detail selection already includes this history. Missing legacy proof gets no deadline.
+      const entered = raw.statusHistory.find(event => event.toStatus === "QUOTE_BOUNTY")?.createdAt.getTime();
+      const durationMs = settings ? settings.bountyExpiryHours * 3_600_000 : null;
+      const bounty = query.view === "map" && safe.status === "QUOTE_BOUNTY" && entered !== undefined && Number.isFinite(entered)
+        && durationMs !== null && durationMs > 0 && Number.isInteger(settings?.bountyAmountCents) && settings!.bountyAmountCents >= 0
+        ? { amountCents: settings!.bountyAmountCents, endsAt: entered + durationMs, durationMs } : undefined;
+      cards.push({ ...safe, distanceKm, photoUrl, tradeLabel: tradeLabel(safe.category), whenLabel: whenLabel(detail, query, now), alreadyEstimated: Boolean(detail.ownEstimate), ...(bounty ? { bounty } : {}) });
     }
     const nextCursor = index < remaining.length && scanned ? encodeBoardCursor({ version: 1, scope, before: before.toISOString(), anchor: { id: scanned.id, value: boardSortValue(scanned, query.sort) } }) : null;
     return { ok: true, board: { meta, cards, counts, total: rows.length, nextCursor, before: before.toISOString(), scope } };

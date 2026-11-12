@@ -34,11 +34,11 @@ test.describe("guarded job board states", () => {
     await expect(page).toHaveURL(/kind=estimate/);
     await expect(page.getByRole("tab", { name: /^Needs a quote/ })).toBeFocused();
     await page.getByLabel("Sort by", { exact: true }).selectOption("earn"); await expect(page).toHaveURL(/sort=earn/);
-    await page.getByRole("tab", { name: "Map", exact: true }).press("Enter"); await expect(page.getByRole("heading", { name: "Map", exact: true })).toBeVisible();
-    await page.getByRole("link", { name: "Back to jobs", exact: true }).press("Enter");
+    await page.getByRole("tab", { name: "Map", exact: true }).press("Enter"); await expect(page.getByRole("heading", { name: /\d+ jobs? in view/ })).toBeVisible();
+    await page.getByRole("tab", { name: "Grid", exact: true }).press("Enter");
     await expect(page).not.toHaveURL(/view=map/); await expect(page).toHaveURL(/kind=estimate/);
-    await page.goBack(); await expect(page.getByRole("heading", { name: "Map", exact: true })).toBeVisible();
-    await page.getByRole("link", { name: "Back to jobs", exact: true }).click();
+    await page.goBack(); await expect(page.getByRole("heading", { name: /\d+ jobs? in view/ })).toBeVisible();
+    await page.getByRole("tab", { name: "Grid", exact: true }).click();
     await expect(page).not.toHaveURL(/view=map/);
     await page.getByRole("tab", { name: /^Quote bounty/ }).click();
     await expect(page.locator('#board-cards [data-kind="bounty"]')).toHaveCount(5);
@@ -58,10 +58,10 @@ test.describe("guarded job board states", () => {
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true); await expectNoA11yViolations(page);
       if (process.env.BOARD_E2E_SCREENSHOTS_DIR && [390, 1440].includes(width)) await page.screenshot({ path: join(process.env.BOARD_E2E_SCREENSHOTS_DIR, `detail-${width}.png`), fullPage: true, animations: "disabled" });
       await page.getByRole("link", { name: "Back to jobs", exact: true }).press("Enter"); await expect(page).toHaveURL(/kind=ready/);
-      await page.getByRole("tab", { name: "Map", exact: true }).press("Enter"); await expect(page.getByRole("heading", { name: "Map", exact: true })).toBeVisible();
+      await page.getByRole("tab", { name: "Map", exact: true }).press("Enter"); await expect(page.getByRole("heading", { name: /\d+ jobs? in view/ })).toBeVisible();
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true); await expectNoA11yViolations(page);
       if (process.env.BOARD_E2E_SCREENSHOTS_DIR && [390, 1440].includes(width)) await page.screenshot({ path: join(process.env.BOARD_E2E_SCREENSHOTS_DIR, `map-${width}.png`), fullPage: true, animations: "disabled" });
-      await page.getByRole("link", { name: "Back to jobs", exact: true }).press("Enter"); await expect(page).toHaveURL(/kind=ready/); await expect(page).not.toHaveURL(/view=map/);
+      await page.getByRole("tab", { name: "Grid", exact: true }).press("Enter"); await expect(page).toHaveURL(/kind=ready/); await expect(page).not.toHaveURL(/view=map/);
     }
   });
   test("phone cards preserve full suburbs beside the bookmark", async ({ page }) => {
@@ -129,12 +129,12 @@ test.describe("signed-in eligible board", () => {
     await Promise.all([page.waitForURL(url => url.pathname === `/jobs/${jobId(1)}`), page.getByRole("link", { name: "Board job 1", exact: true }).press("Enter")]);
     await expect(page.getByRole("heading", { name: "Board job 1", level: 1, exact: true })).toBeVisible();
     await page.getByRole("link", { name: "Back to jobs", exact: true }).press("Enter"); await expect(page).toHaveURL(/saved=1/);
-    await page.getByRole("tab", { name: "Map", exact: true }).click(); await expect(page.getByRole("heading", { name: "Map", exact: true })).toBeVisible();
-    await page.getByRole("link", { name: "Back to jobs", exact: true }).click(); await expect(page).not.toHaveURL(/view=map/);
+    await page.getByRole("tab", { name: "Map", exact: true }).click(); await expect(page.getByRole("heading", { name: /\d+ jobs? in view/ })).toBeVisible();
+    await page.getByRole("tab", { name: "Grid", exact: true }).click(); await expect(page).not.toHaveURL(/view=map/);
     await page.goto(`${app}/jobs?trade=electrical&distance=10`); await expect(page.getByRole("heading", { name: "No jobs match that.", exact: true })).toBeVisible();
     await page.getByRole("link", { name: "Alerts settings", exact: true }).click(); await expect(page.getByRole("heading", { name: "Notifications", exact: true })).toBeVisible();
     await page.getByRole("link", { name: "Back to jobs", exact: true }).click(); await expect(page).toHaveURL(/trade=electrical&distance=10/);
-    await page.getByRole("link", { name: "Contact us", exact: true }).click(); await expect(page.getByRole("heading", { name: "Get in touch", exact: true })).toBeVisible();
+    await page.getByRole("link", { name: "Change it", exact: true }).click(); await expect(page.getByRole("heading", { name: "Work area", exact: true })).toBeVisible();
     await page.getByRole("link", { name: "Back to jobs", exact: true }).click(); await expect(page).toHaveURL(/trade=electrical&distance=10/);
     await expectNoA11yViolations(page);
     await page.goto(`${app}/jobs/${jobId(1)}?from=/jobs&from=/jobs`);
@@ -196,10 +196,10 @@ test.describe("signed-in eligible board", () => {
     await expect(page.getByRole("heading", { name: "Board job 3", level: 1, exact: true })).toBeVisible();
     expect(new URL(page.url()).searchParams.get("view")).toBe("all"); await expect(allJobs).toHaveAttribute("aria-current", "page");
     await page.getByRole("link", { name: "Back to jobs", exact: true }).click(); await expect(page).toHaveURL(`${app}${back}`); await expect(allJobs).toHaveAttribute("aria-current", "page");
-    await page.getByRole("tab", { name: "Map", exact: true }).click(); await expect(page.getByRole("heading", { name: "Map", exact: true })).toBeVisible();
+    await page.getByRole("tab", { name: "Map", exact: true }).click(); await expect(page.getByRole("heading", { name: /\d+ jobs? in view/ })).toBeVisible();
     expect(new URL(page.url()).searchParams.get("view")).toBe("all"); expect(new URL(page.url()).searchParams.get("layout")).toBe("map");
     await expect(allJobs).toHaveAttribute("aria-current", "page"); await expectNoA11yViolations(page);
-    await Promise.all([page.waitForURL(url => url.pathname === "/jobs" && url.searchParams.get("view") === "all" && !url.searchParams.has("layout")), page.getByRole("link", { name: "Back to jobs", exact: true }).click()]);
+    await Promise.all([page.waitForURL(url => url.pathname === "/jobs" && url.searchParams.get("view") === "all" && !url.searchParams.has("layout")), page.getByRole("tab", { name: "Grid", exact: true }).click()]);
     const filters = page.getByRole("button", { name: "Filters", exact: true }); if (await filters.getAttribute("aria-expanded") !== "true") await filters.click();
     await page.getByRole("button", { name: "Reset filters", exact: true }).click(); await expect(page).toHaveURL(`${app}/jobs?view=all`);
     await expect(allJobs).toHaveAttribute("aria-current", "page"); await expect(page.locator("#board-cards")).not.toContainText("Filters on");

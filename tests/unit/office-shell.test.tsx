@@ -60,6 +60,12 @@ beforeEach(() => {
 });
 
 describe("office navigation", () => {
+  it("shows the kit photo in the office avatar without changing its account label", () => {
+    const out = shell({ viewer: { ...OFFICE, avatarUrl: "https://photos.example.test/office-signed" }, accountOpen: true });
+    expect(out).toContain('aria-label="Account: Matt Larsen"');
+    expect(out).toContain('<img src="https://photos.example.test/office-signed" alt=""');
+  });
+
   it("matches every sitemap label and URL in exactly the specified order", () => {
     const sitemap = JSON.parse(read("docs/design/sitemap.json")) as { navigation: { office: string[] } };
     expect(OFFICE_NAV.map(({ label, href }) => `${label} ${href}`)).toEqual(sitemap.navigation.office);

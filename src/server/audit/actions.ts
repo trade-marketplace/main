@@ -35,6 +35,8 @@ type ActionRule = { readonly record: AuditRecordType; readonly reason?: "require
 export const AUDIT_ACTIONS = {
   // Jobs. The status machine (#93) names the transition when there is one; `job.status_changed` is for the rest.
   "job.posted": { record: "jobs" },
+  "job.window_booked": { record: "jobs" },
+  "job.times_requested": { record: "jobs" },
   "job.windows_updated": { record: "jobs" },
   "job.details_updated": { record: "jobs" },
   "job.priced": { record: "jobs" },
@@ -42,6 +44,9 @@ export const AUDIT_ACTIONS = {
   "job.price_sent": { record: "jobs" },
   "job.paid": { record: "jobs" },
   "job.claimed": { record: "jobs" },
+  "job.on_my_way": { record: "jobs" },
+  "job.running_late": { record: "jobs" },
+  "job.customer_not_home": { record: "jobs" },
   "job.submitted": { record: "jobs" },
   "job.completed": { record: "jobs" },
   // By the sign-off timer when the customer didn't answer in 48 hours.
@@ -91,6 +96,8 @@ export const AUDIT_ACTIONS = {
   "worker.phone_confirmed": { record: "profiles" },
   "worker.identity_checked": { record: "worker_profiles" },
   "worker.trade_added": { record: "worker_profiles" },
+  "worker.area_updated": { record: "worker_profiles" },
+  "worker.availability_changed": { record: "worker_profiles" },
   "licence.rejected": { record: "licences", reason: "required" },
   "licence.expired": { record: "licences" },
   "worker.paused": { record: "worker_profiles", reason: "required" },
@@ -99,6 +106,7 @@ export const AUDIT_ACTIONS = {
   "profile.role_changed": { record: "profiles", reason: "required" },
 
   // Sign-off, reviews and support.
+  "review.posted": { record: "reviews" },
   "evidence.approved": { record: "completion_evidence" },
   "evidence.flagged": { record: "completion_evidence", reason: "required" },
   "review.hidden": { record: "reviews", reason: "required" },

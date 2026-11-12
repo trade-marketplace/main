@@ -1,0 +1,4 @@
+.gallery { display: grid; gap: var(--trade-space-8); padding: var(--trade-space-5); background: var(--trade-surface); }
+.gallery h1, .gallery h2 { margin: 0; }
+.gallery article { min-width: 0; border: 1px solid var(--trade-line); border-radius: var(--trade-radius-card); }
+.gallery article > h2 { padding: var(--trade-space-4); font-size: var(--trade-fs-body); }

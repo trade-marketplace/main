@@ -11,7 +11,7 @@ import { Button } from "@/components/Button";
 import { Icon } from "@/components/Icon";
 import { Menu, MenuItem, MenuSeparator } from "@/components/overlays/Menu";
 import { Wordmark } from "@/components/Wordmark";
-import { initials } from "@/lib/cards";
+import { Avatar } from "@/components/media/Avatar";
 import { useTabIndicator } from "@/lib/motion/hooks";
 import { logOutAction } from "@/server/auth/actions";
 
@@ -34,11 +34,11 @@ function AccountMenu({ viewer, defaultOpen }: { viewer: OfficeShellViewer; defau
         className={styles.accountMenu}
         trigger={(props) => (
           <button type="button" {...props} className={styles.accountButton} aria-label={`Account: ${name}`}>
-            <span className={styles.avatar} aria-hidden="true">{initials(name)}</span>
+            <Avatar name={name} src={viewer.avatarUrl} decorative className={styles.avatar} />
             <span className={styles.accountLabel}>{viewer.firstName} · Office</span>
           </button>
         )}
-        header={<><b className={styles.menuName}>{name}</b><span className={styles.menuEmail}>{viewer.email}</span></>}
+        header={<div className={styles.menuIdentity}><Avatar name={name} src={viewer.avatarUrl} decorative className={styles.avatar} /><div><b className={styles.menuName}>{name}</b><span className={styles.menuEmail}>{viewer.email}</span></div></div>}
       >
         <MenuItem icon="help" href={HELP_PATH}>Help</MenuItem>
         <MenuSeparator />

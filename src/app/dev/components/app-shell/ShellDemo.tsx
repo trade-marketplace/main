@@ -12,7 +12,7 @@ import { COUNTS, type CountsKey, DEMO_VIEWERS, type DemoKey } from "./demo-data"
 
 const BASE = "/dev/components/app-shell";
 
-type Props = { viewerKey: DemoKey; countsKey: CountsKey; at: string; testMode: boolean; menuOpen: boolean };
+type Props = { viewerKey: DemoKey; countsKey: CountsKey; at: string; testMode: boolean; menuOpen: boolean; state: "initials" | "photo" | "photo-broken" };
 
 function href(props: Props, change: Partial<Props>): string {
   const next = { ...props, ...change };
@@ -22,6 +22,7 @@ function href(props: Props, change: Partial<Props>): string {
   if (next.countsKey !== "some") query.set("counts", next.countsKey);
   if (!next.testMode) query.set("test", "off");
   if (next.menuOpen) query.set("menu", "open");
+  if (next.state !== "initials") query.set("state", next.state);
   const q = query.toString();
   return q ? `${BASE}?${q}` : BASE;
 }
@@ -40,14 +41,14 @@ function Picker<T>({ label, options, current, link }: { label: string; options: 
 }
 
 export function ShellDemo(props: Props) {
-  const { viewerKey, countsKey, at, testMode, menuOpen } = props;
+  const { viewerKey, countsKey, at, testMode, menuOpen, state } = props;
   const demo = DEMO_VIEWERS[viewerKey];
   // Counts the buttons below change; they start from the picked set and reset when it changes.
   const [counts, setCounts] = useState({ key: countsKey, messages: COUNTS[countsKey].messages, notifications: COUNTS[countsKey].notifications });
   const shown = counts.key === countsKey ? counts : { key: countsKey, messages: COUNTS[countsKey].messages, notifications: COUNTS[countsKey].notifications };
   const bump = (field: "messages" | "notifications") => setCounts({ ...shown, [field]: shown[field] + 1 });
 
-  const viewer: ShellViewer = { ...demo.viewer, counts: { messages: shown.messages, notifications: shown.notifications } };
+  const viewer: ShellViewer = { ...demo.viewer, avatarUrl: state === "photo" ? "/images/examples/large/outlet.jpg" : state === "photo-broken" ? "/images/missing-avatar.webp" : null, counts: { messages: shown.messages, notifications: shown.notifications } };
   const base = href({ ...props, menuOpen: false }, {});
 
   return (

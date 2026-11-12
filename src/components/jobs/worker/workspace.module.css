@@ -1,0 +1,26 @@
+.canvas { background: color-mix(in srgb, var(--trade-forest) 3.8%, var(--trade-surface)); color: var(--trade-text); min-height: calc(100dvh - var(--trade-header-h)); }
+.page { max-width: 1240px; margin-inline: auto; padding: var(--trade-space-8) var(--trade-space-6); display: grid; gap: var(--trade-space-5); }
+.breadcrumb { display: flex; align-items: center; flex-wrap: wrap; gap: var(--trade-space-2); color: var(--trade-text-2); font-size: var(--trade-fs-small); }
+.header { display: flex; align-items: center; justify-content: space-between; gap: var(--trade-space-5); }
+.header > div { min-width: 0; }
+.title { margin: 0 0 var(--trade-space-2); font-family: var(--trade-font-heading); font-size: var(--trade-fs-title); line-height: var(--trade-lh-title); overflow-wrap: anywhere; }
+.meta { color: var(--trade-text-2); font-size: var(--trade-fs-small); margin: 0; }
+.meta b { color: var(--trade-text); }
+.layout { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1.15fr) minmax(0, .85fr); gap: var(--trade-space-5); align-items: start; }
+.left, .middle { display: grid; gap: var(--trade-space-4); min-width: 0; }
+.card { display: grid; gap: var(--trade-space-4); padding: var(--trade-space-5); background: var(--trade-surface); border: 1px solid var(--trade-line); border-radius: var(--trade-radius-card); min-width: 0; overflow-wrap: anywhere; }
+.card p { margin: 0; }
+.materials { gap: var(--trade-space-2); }
+.materials > * { justify-self: start; }
+.cardTitle { margin: 0; font-size: var(--trade-fs-body); line-height: var(--trade-lh-body); }
+.person { display: flex; align-items: start; gap: var(--trade-space-3); }
+.person > div { min-width: 0; }
+.avatar { display: grid; place-items: center; flex: 0 0 44px; width: 44px; height: 44px; border-radius: var(--trade-radius-pill); background: var(--trade-forest); color: var(--trade-action); font-family: var(--trade-font-heading); font-weight: 800; }
+.address, .muted { color: var(--trade-text-2); font-size: var(--trade-fs-small); }
+.contactActions { display: flex; flex-wrap: wrap; gap: var(--trade-space-2); }
+.contactActions > * { flex: 1 1 auto; }
+.updates { display: grid; gap: var(--trade-space-3); justify-items: stretch; }
+.updates > span, .updates > span > button { width: 100%; }
+.srOnly { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; clip-path: inset(50%); overflow: hidden; white-space: nowrap; }
+@media (max-width: 1023px) { .layout { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .layout > aside { grid-column: 2; } .left { grid-row: span 2; } }
+@media (max-width: 599px) { .page { padding: var(--trade-space-5) var(--trade-space-4); gap: var(--trade-space-4); } .header { align-items: stretch; flex-direction: column; } .title { font-size: var(--trade-fs-heading); } .layout { display: flex; flex-direction: column; gap: var(--trade-space-4); } .layout > *, .finish, .finish > * { width: 100%; } .card { padding: var(--trade-space-4); } }

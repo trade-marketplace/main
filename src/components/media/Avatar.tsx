@@ -1,8 +1,11 @@
+"use client";
 // The avatar (#81): components.css .tm-avatar. A round photo, or the person's initials in the signature colour on
 // Forest when there is no photo. Sizes from the kit: 32, 44 (default) and 72.
 //
 //   <Avatar name="Jack Wilson" />                       "JW"
 //   <Avatar name="Jack Wilson" src={url} size="lg" />   their photo
+import { useState } from "react";
+
 import { initials } from "@/lib/cards";
 
 import styles from "./media.module.css";
@@ -18,13 +21,16 @@ export type AvatarProps = {
 };
 
 export function Avatar({ name, src, size = "md", decorative = false, className }: AvatarProps) {
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const classes = [styles.avatar, className].filter(Boolean).join(" ");
   const a11y = decorative ? { "aria-hidden": true as const } : { role: "img", "aria-label": name };
-  if (src) {
+  if (src && src !== failedSrc) {
     return (
       <span className={classes} data-size={size} {...a11y}>
         {/* eslint-disable-next-line @next/next/no-img-element -- avatars come from storage at their size */}
-        <img src={src} alt="" className={styles.avatarImg} loading="lazy" decoding="async" />
+        <img src={src} alt="" className={styles.avatarImg} loading="lazy" decoding="async"
+          ref={image => { if (image?.complete && image.naturalWidth === 0) setFailedSrc(src); }}
+          onError={() => setFailedSrc(src)} />
       </span>
     );
   }

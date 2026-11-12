@@ -1,0 +1,6 @@
+.card { display: grid; gap: var(--trade-space-4); }
+.map { min-width: 0; height: 240px; overflow: hidden; border: 1px solid var(--trade-line); border-radius: var(--trade-radius-card); }
+.mapFallback { margin: 0; padding: var(--trade-space-4); background: var(--trade-tint); color: var(--trade-text); border-radius: var(--trade-radius-field); overflow-wrap: anywhere; }
+.centre { position: absolute; width: 12px; height: 12px; transform: translate(-50%, -50%); border-radius: var(--trade-radius-pill); background: var(--trade-action); border: 2px solid var(--trade-text); }
+.trades { display: flex; flex-wrap: wrap; gap: var(--trade-space-2); list-style: none; padding: 0; margin: 0; }
+.trades li { padding: var(--trade-space-2) var(--trade-space-3); border: 1px solid var(--trade-line); border-radius: var(--trade-radius-pill); color: var(--trade-text); background: var(--trade-tint); font-size: var(--trade-fs-small); }

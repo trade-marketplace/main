@@ -4,6 +4,9 @@ import { z } from "zod";
 import { WorkerJobLoading, WorkerJobLoadError } from "@/components/jobs/WorkerJobBoundary";
 import { WorkerEstimatePage } from "@/components/jobs/WorkerEstimatePage";
 import { WorkerClaimLoading } from "@/components/jobs/WorkerClaim";
+import { WorkspaceLoading } from "@/components/jobs/worker/Workspace";
+import { WorkspacePage } from "@/components/jobs/worker/WorkspacePage";
+import { WORKSPACE_STATUSES } from "@/lib/worker-workspace";
 import { WorkerClaimPage } from "@/components/jobs/WorkerClaimPage";
 import { CustomerJobPage } from "@/components/jobs/CustomerJobPage";
 import { CustomerJobLoadError } from "@/components/jobs/CustomerJob";
@@ -29,8 +32,10 @@ export default async function JobPage({ params, searchParams }: { params: Promis
     try { access = await getDb().job.findUnique({ where: { id }, select: { customerId: true, workerId: true, status: true, pricing: { select: { jobId: true } } } }); }
     catch { return <WorkerJobLoadError back={back} />; }
     if (!access || !canReadJob(viewer, access)) notFound();
-    // Ready to claim (#144), and the claimed result on reload/back; legacy assigned rows without pricing keep the quote summary.
-    if (access.status === "BOOKABLE" || (access.status === "ASSIGNED" && access.workerId === viewer.userId && access.pricing))
+    // The immediate claim receipt stays in WorkerClaim client state; a subsequent server visit opens the workspace.
+    if (access.workerId === viewer.userId && (WORKSPACE_STATUSES as readonly string[]).includes(access.status))
+      return <Suspense fallback={<WorkspaceLoading />}><WorkspacePage viewer={viewer} id={id} /></Suspense>;
+    if (access.status === "BOOKABLE")
       return <Suspense fallback={<WorkerClaimLoading />}><WorkerClaimPage viewer={viewer} id={id} back={back} /></Suspense>;
     return <Suspense fallback={<WorkerJobLoading />}><WorkerEstimatePage viewer={viewer} id={id} back={back} /></Suspense>;
   }

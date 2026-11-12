@@ -130,6 +130,7 @@ describe("the runner", () => {
       "support-photo-cleanup",
       "draft-photo-raw-cleanup", "draft-photo-cleanup", "window-expiry", "variation-photo-cleanup", "variation-stage-cleanup",
       "post-confirmation-email", "price-ready-push",
+      "notification-email",
     ]);
   });
   it("shares one physical deadline without treating the injected business clock as elapsed runtime", async () => {
