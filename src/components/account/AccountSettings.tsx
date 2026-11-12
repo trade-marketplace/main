@@ -18,7 +18,7 @@ export function AccountSettings({ role, children, active = "/profile/security", 
     ["Delete account", "/profile/delete", "delete"],
   ];
   // Only these destinations consume a board return. Every other account link retains its existing route.
-  const destination = (path: string) => path === "/profile/trades" || path === "/profile/notifications" ? boardSettingsRoute(path, next).href : path;
+  const destination = (path: string) => role === "TRADIE" && ["/profile/area", "/profile/trades", "/profile/payroll", "/profile/notifications"].includes(path) ? boardSettingsRoute(path, next).href : path;
   return <div className={styles.page}>
     <div className={styles.layout}>
       <details className={styles.mobileNav} onClick={event => {

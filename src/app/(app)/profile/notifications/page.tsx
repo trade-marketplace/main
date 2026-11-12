@@ -13,7 +13,7 @@ export const metadata: Metadata = { ...privateMetadata, title: "Notifications" }
 export default async function NotificationPreferencesPage({ searchParams }: { searchParams: Promise<{ next?: unknown }> }) {
   const destination = boardAlertsRoute((await searchParams).next);
   const viewer = await requireRole(["CUSTOMER", "TRADIE"], { next: destination.href });
-  return <AccountSettings role={viewer.role === "TRADIE" ? "TRADIE" : "CUSTOMER"} active="/profile/notifications">
+  return <AccountSettings role={viewer.role === "TRADIE" ? "TRADIE" : "CUSTOMER"} active="/profile/notifications" next={viewer.role === "TRADIE" ? destination.back : null}>
     {viewer.role === "TRADIE" && destination.back && <TextLink href={destination.back}>Back to jobs</TextLink>}
     <NotificationPreferences initial={await loadPreferencesAction()} />
   </AccountSettings>;
