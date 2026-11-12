@@ -1,0 +1,4 @@
+.gallery { padding: var(--trade-space-6); background: var(--trade-paper); color: var(--trade-text); }
+.gallery > h1 { margin: 0 0 var(--trade-space-6); font-family: var(--trade-font-heading); }
+.gallery > section { margin-bottom: var(--trade-space-8); padding: var(--trade-space-4); border: 1px solid var(--trade-line); border-radius: var(--trade-radius-card); background: var(--trade-surface); }
+.gallery > section > h2 { margin: 0 0 var(--trade-space-4); font-family: var(--trade-font-heading); }

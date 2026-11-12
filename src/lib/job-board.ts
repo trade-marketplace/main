@@ -3,6 +3,7 @@ import type { Trade } from "@/generated/prisma/client";
 import type { JobTimeWindowView, WorkerJobListView } from "@/server/views/jobs";
 import { roundKm } from "@/lib/geo/distance";
 import { customerJobsReturn } from "@/lib/customer-jobs";
+import type { MapboxConfig } from "@/lib/map/mapbox";
 import { myWorkReturn } from "@/lib/my-work";
 
 export const BOARD_PAGE_SIZE = 20;
@@ -82,10 +83,15 @@ export function boardSettingsRoute(path: string, value: unknown): { href: string
 }
 export const boardAlertsRoute = (value: unknown) => boardSettingsRoute("/profile/notifications", value);
 
-export type BoardCard = WorkerJobListView & { distanceKm: number; photoUrl: string | null; tradeLabel: string; whenLabel: string; alreadyEstimated: boolean };
+export type BoardCard = WorkerJobListView & { distanceKm: number; photoUrl: string | null; tradeLabel: string; whenLabel: string; alreadyEstimated: boolean;
+  /** Map-only, from configured bounty facts and its existing status-history clock. */
+  bounty?: { amountCents: number; endsAt: number; durationMs: number } };
 export type BoardCounts = Record<BoardKind | "saved" | "estimated", number>;
 export type BoardTrade = { trade: Trade; label: string; allowed: boolean; reason: string | null };
-export type BoardMeta = { ownerId: string; areaName: string; maxDistanceKm: number; distanceKm: number; trades: BoardTrade[]; blocked: "email-required" | "identity-required" | "worker-paused" | "work-area-required" | null };
+export type BoardMapConfig = MapboxConfig & { approxRadiusMetres: number };
+export type BoardMeta = { ownerId: string; areaName: string; maxDistanceKm: number; distanceKm: number; trades: BoardTrade[]; blocked: "email-required" | "identity-required" | "worker-paused" | "work-area-required" | null;
+  /** Optional map-only configuration; no job address or exact job coordinates. */
+  map?: BoardMapConfig };
 export type BoardPage = { meta: BoardMeta; cards: BoardCard[]; counts: BoardCounts; total: number; nextCursor: string | null; before: string; scope: string };
 export type BoardResult = { ok: true; board: BoardPage } | { ok: false; error: "unavailable" | "session-expired" | "forbidden" | "changed" };
 export type BoardRequest = { savedIds?: string[]; cursor?: string | null; before?: string };
