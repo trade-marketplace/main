@@ -10,6 +10,7 @@ export type OfficeShellViewer = {
   role: "ADMIN";
   firstName: string;
   lastName: string | null;
+  avatarUrl?: string | null;
   email: string;
 };
 

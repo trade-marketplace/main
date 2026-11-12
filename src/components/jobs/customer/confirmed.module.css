@@ -1,0 +1,12 @@
+.panel { display: grid; gap: var(--trade-space-4); min-width: 0; }
+.person { display: flex; gap: var(--trade-space-4); align-items: center; min-width: 0; }
+.person > span { flex: none; }
+.identity { display: grid; gap: var(--trade-space-2); min-width: 0; }
+.name { margin: 0; font: 800 var(--trade-fs-subheading) / var(--trade-lh-subheading) var(--trade-font-heading); font-variation-settings: var(--trade-display-axes); overflow-wrap: anywhere; }
+.rating, .licence { display: flex; gap: var(--trade-space-2); align-items: center; margin: 0; font-size: var(--trade-fs-small); color: var(--trade-text-2); }
+.licence { color: var(--trade-success); }
+.booking { margin: 0; font-size: var(--trade-fs-small); }
+.updates { list-style: none; padding: 0; margin: 0; display: grid; gap: var(--trade-space-3); }
+.updates > li { display: grid; gap: var(--trade-space-1); padding-top: var(--trade-space-3); border-top: 1px solid var(--trade-line); font-size: var(--trade-fs-small); }
+.updates time { color: var(--trade-text-2); font-size: var(--trade-fs-caption); }
+.gallery { display: grid; gap: var(--trade-space-8); }

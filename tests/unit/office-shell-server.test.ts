@@ -25,14 +25,14 @@ function fakeDatabase() {
 afterEach(() => vi.restoreAllMocks());
 
 describe("office shell database reads", () => {
-  it("selects only the person's last name, never the full profile", async () => {
+  it("selects only the person's last name and private avatar path, never the full profile", async () => {
     const db = fakeDatabase();
     expect(await findOfficeShellExtras(office.userId, db)).toEqual({
       lastName: "Larsen",
     });
     expect(db.profile.findUnique).toHaveBeenCalledExactlyOnceWith({
       where: { id: office.userId },
-      select: { lastName: true },
+      select: { lastName: true, avatarPath: true },
     });
   });
 
@@ -64,6 +64,14 @@ describe("office shell database reads", () => {
 });
 
 describe("office shell viewer", () => {
+  it("passes only the bounded signed photo link to the office layout", async () => {
+    const avatarUrl = vi.fn(async () => "https://photos.example.test/office-signed");
+    const viewer = await loadOfficeShellViewer(office, { findExtras: async () => ({ lastName: "Larsen", avatarPath: "private-office-path" }), avatarUrl });
+    expect(viewer).toMatchObject({ avatarUrl: "https://photos.example.test/office-signed" });
+    expect(viewer).not.toHaveProperty("avatarPath");
+    expect(avatarUrl).toHaveBeenCalledExactlyOnceWith(office.userId, "private-office-path");
+  });
+
   it.each([null, "CUSTOMER", "TRADIE"] as const)("rejects %s before calling the database source", async (role) => {
     const findExtras = vi.fn();
     expect(await loadOfficeShellViewer(role ? { ...office, role } : null, { findExtras })).toBeNull();
@@ -78,6 +86,7 @@ describe("office shell viewer", () => {
       firstName: "Matt",
       lastName: "Larsen",
       email: "office@example.test",
+      avatarUrl: null,
     });
     expect(result).not.toHaveProperty("userId");
     expect(result).not.toHaveProperty("emailVerified");
@@ -91,6 +100,7 @@ describe("office shell viewer", () => {
       firstName: "Matt",
       lastName: null,
       email: "office@example.test",
+      avatarUrl: null,
     });
   });
 

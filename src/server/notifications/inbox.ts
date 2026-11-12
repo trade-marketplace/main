@@ -16,8 +16,10 @@ const COPY: Readonly<Record<string, readonly [string, string]>> = {
   "job.priced": ["Your price is ready", "sell"],
   "job.paid": ["Payment received", "receipt_long"],
   "job.claimed": ["Tradie confirmed", "person_check"],
+  "job.times_added": ["New times added", "event_available"],
   "job.window_booked": ["Time booked", "event_available"],
   "job.on_my_way": ["On the way", "local_shipping"],
+  "job.customer_not_home": ["Customer not home", "door_front"],
   "job.running_late": ["Running late", "schedule"],
   "job.reschedule_requested": ["New time requested", "event_repeat"],
   "payment.review_required": ["Payment needs review", "receipt_long"],
@@ -63,9 +65,11 @@ export function inboxItem(row: Row): InboxItem {
   else if (row.type === "message.received" && identifier(payload.supportThreadId)) href = `/support/${encodeURIComponent(identifier(payload.supportThreadId)!)}`;
   else if (row.type === "message.received" && identifier(payload.officeJobId)) href = `/admin/jobs/${encodeURIComponent(identifier(payload.officeJobId)!)}`;
   else if (row.type === "message.received" && threadId) href = `/messages/${encodeURIComponent(threadId)}`;
+  else if (row.type === "job.times_added" && jobId) href = `/jobs/${encodeURIComponent(jobId)}/book`;
   else if (jobId) {
     if (row.type === "job.reschedule_requested" && payload.refreshWindows === true) href = `/jobs/${encodeURIComponent(jobId)}/windows`;
     else if (row.type === "problem_report.created") href = officeProblemJobHref(jobId, payload.reportId, null);
+    else if (row.type === "job.customer_not_home") href = `/admin/jobs/${encodeURIComponent(jobId)}`;
     else if (row.type === "job.materials_over_budget") href = `/admin/jobs/${encodeURIComponent(jobId)}`;
     else if (row.type === "payment.review_required" || row.type === "variation.requested") href = `/admin/jobs/${encodeURIComponent(jobId)}`;
     else if (row.type === "message.received") href = `/messages/${encodeURIComponent(jobId)}`;
@@ -105,3 +109,6 @@ export async function loadNotificationsPage(db: InboxDb, userId: string, input: 
   const rows = await db.notification.findMany({ where, orderBy: [{ createdAt: "desc" }, { id: "desc" }], skip: (page - 1) * NOTIFICATIONS_PAGE_SIZE, take: NOTIFICATIONS_PAGE_SIZE, select: SELECT });
   return { items: rows.map(inboxItem), unread, total, page };
 }
+
+/** Read-only presentation copy shared with the owned customer's booked-job updates. */
+export { COPY as NOTIFICATION_COPY };

@@ -1,0 +1,77 @@
+import { renderToStaticMarkup } from "react-dom/server";
+import { describe, expect, it, vi } from "vitest";
+import { WorkArea, WorkAreaLoadingPage } from "@/components/account/WorkArea";
+import { AccountSettings } from "@/components/account/AccountSettings";
+import { WorkerSignupFields } from "@/components/auth/WorkerSignupFields";
+import { parseWorkArea, workAreaChanged, type WorkAreaSnapshot } from "@/lib/account/work-area";
+import { boardSettingsRoute } from "@/lib/job-board";
+
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
+const initial: WorkAreaSnapshot = { baseSuburb: "Invercargill", radiusKm: 25, point: { lat: -46.4132, lng: 168.3538 }, available: true, paused: false, trades: ["OTHER"] };
+describe("work area", () => {
+  it("leaves Save off until the suburb, selected point or radius changes", () => {
+    expect(workAreaChanged(initial, { ...initial, radiusKm: "25" })).toBe(false);
+    for (const change of [{ baseSuburb: "Windsor" }, { radiusKm: 10 }, { point: null }, { point: { lat: -46, lng: 168 } }]) expect(workAreaChanged(initial, { ...initial, ...change })).toBe(true);
+    expect(renderToStaticMarkup(<WorkArea initial={initial} />)).toMatch(/<button[^>]*aria-disabled="true"[^>]*>[\s\S]*?Save changes/);
+    expect(renderToStaticMarkup(<WorkArea initial={initial} preview="changed" />)).not.toMatch(/<button[^>]*aria-disabled="true"[^>]*>[\s\S]*?Save changes/);
+  });
+  it("requires a selected point and keeps the shared suburb/radius validation", () => {
+    expect(parseWorkArea({ ...initial, point: null })).toEqual({ ok: false, fields: { baseSuburb: "Choose a suburb from the search results." } });
+    expect(parseWorkArea({ ...initial, radiusKm: 30 })).toEqual({ ok: false, fields: { radiusKm: "Choose 10, 25 or 50 km." } });
+    expect(parseWorkArea({ ...initial, point: { lat: NaN, lng: 168 } }).ok).toBe(false);
+    expect(parseWorkArea({ ...initial, point: { lat: 0, lng: 0 } })).toEqual({ ok: false, fields: { baseSuburb: "Choose a suburb from the search results." } });
+    expect(parseWorkArea({ ...initial, baseSuburb: "Auckland", point: { lat: -36.8485, lng: 174.7633 } }).ok).toBe(true);
+    expect(parseWorkArea({ ...initial, baseSuburb: "  Windsor  " })).toMatchObject({ ok: true, data: { baseSuburb: "Windsor" } });
+  });
+  it("only supplies Back to jobs for a bounded board return destination", () => {
+    expect(boardSettingsRoute("/profile/area", "/jobs?view=all&sort=earn")).toEqual({ href: "/profile/area?next=%2Fjobs%3Fsort%3Dearn%26view%3Dall", back: "/jobs?sort=earn&view=all" });
+    for (const next of [undefined, "https://evil.test/jobs", "//evil.test/jobs", "/profile", ["/jobs"]]) expect(boardSettingsRoute("/profile/area", next).back).toBeNull();
+  });
+  it("shows a plain map fallback, read-only trades and existing alert settings", () => {
+    const html = renderToStaticMarkup(<WorkArea initial={initial} />);
+    expect(html).toContain("Invercargill · 25 km"); expect(html).toContain('href="/profile/trades"'); expect(html).toContain('href="/profile/notifications"');
+    expect(html).not.toContain("mapbox://");
+  });
+  it("lets a paused tradie read but disables both writes", () => {
+    const html = renderToStaticMarkup(<WorkArea initial={{ ...initial, paused: true }} preview="changed" />);
+    expect(html).toContain("Your account is paused."); expect(html).toMatch(/role="switch"[^>]*disabled|disabled[^>]*role="switch"/);
+  });
+  it("keeps sign-up manual entry while work area exposes an honest retry-only lookup", () => {
+    const signup = renderToStaticMarkup(<WorkerSignupFields attempt={0} previewAreaState="unavailable" />);
+    expect(signup).toContain("Type your suburb or town by hand.");
+    const area = renderToStaticMarkup(<WorkArea initial={initial} preview="search-unavailable" />);
+    expect(area).toContain("Try again to choose a suburb."); expect(area).not.toContain("Type your suburb or town by hand.");
+  });
+  it("disables enabling alerts until the area is saved, but keeps turning them off available", () => {
+    const incomplete = { ...initial, point: null, available: false };
+    const off = renderToStaticMarkup(<WorkArea initial={incomplete} />);
+    expect(off).toContain("Save your work area before turning on job alerts."); expect(off).toMatch(/role="switch"[^>]*disabled|disabled[^>]*role="switch"/);
+    const on = renderToStaticMarkup(<WorkArea initial={{ ...incomplete, available: true }} />);
+    expect(on).not.toMatch(/role="switch"[^>]*disabled|disabled[^>]*role="switch"/);
+  });
+  it("carries the safe board destination into Trades and Notifications", () => {
+    const html = renderToStaticMarkup(<WorkArea initial={initial} next="/jobs?trade=electrical&distance=10" />);
+    expect(html).toContain('href="/profile/trades?next=%2Fjobs%3Ftrade%3Delectrical%26distance%3D10"');
+    expect(html).toContain('href="/profile/notifications?next=%2Fjobs%3Ftrade%3Delectrical%26distance%3D10"');
+  });
+  it("opts the desktop and mobile account sidebar into a safe board return", () => {
+    const html = renderToStaticMarkup(<AccountSettings role="TRADIE" active="/profile/area" next="/jobs?trade=electrical&distance=10">Content</AccountSettings>);
+    expect(html.match(/href="\/profile\/notifications\?next=%2Fjobs%3Ftrade%3Delectrical%26distance%3D10"/g)).toHaveLength(2);
+    expect(html.match(/href="\/profile\/trades\?next=%2Fjobs%3Ftrade%3Delectrical%26distance%3D10"/g)).toHaveLength(2);
+    for (const path of ["/profile", "/profile/security", "/profile/area", "/profile/payroll", "/profile/delete"]) expect(html).toContain(`href="${path}"`);
+  });
+  it("keeps all default sidebar links bare and rejects an external next destination", () => {
+    for (const next of [undefined, "https://evil.test/jobs"]) {
+      const html = renderToStaticMarkup(<AccountSettings role="TRADIE" next={next}>Content</AccountSettings>);
+      expect(html).toContain('href="/profile/notifications"'); expect(html).toContain('href="/profile/trades"'); expect(html).not.toContain("?next=");
+    }
+  });
+  it("keeps temporary navigation inert with a separate accessible loading status", () => {
+    const [frame, heading, announcement] = WorkAreaLoadingPage().props.children;
+    expect(frame.props.inert).toBe(true);
+    expect(frame.props["aria-hidden"]).toBe("true");
+    expect(heading.type).toBe("h1"); expect(heading.props.children).toBe("Work area");
+    expect(announcement.props.message).toBe("Loading work area");
+    expect(renderToStaticMarkup(announcement)).toContain('role="status"');
+  });
+});

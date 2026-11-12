@@ -52,7 +52,7 @@ export async function loadService(category: Category, db: ServiceStore | null = 
   try {
     live = live && (await enabledServiceCategories(db)).includes(category);
     const reviews = await db.review.findMany({
-      where: { hiddenAt: null, comment: { not: null }, job: { trade: tradeValue(category) } },
+      where: { hiddenAt: null, comment: { not: null }, job: { category: tradeValue(category) } },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: 3,
       select: { id: true, rating: true, comment: true, reviewer: { select: { firstName: true } } },
     });

@@ -3,6 +3,7 @@ import type { Trade } from "@/generated/prisma/client";
 import type { JobTimeWindowView, WorkerJobListView } from "@/server/views/jobs";
 import { roundKm } from "@/lib/geo/distance";
 import { customerJobsReturn } from "@/lib/customer-jobs";
+import { myWorkReturn } from "@/lib/my-work";
 
 export const BOARD_PAGE_SIZE = 20;
 export const BOARD_TRADES = ["ELECTRICAL", "PLUMBING", "GAS", "CONSTRUCTION", "OTHER"] as const;
@@ -55,6 +56,8 @@ export function boardSelectionKey(query: BoardQuery, savedIds: readonly string[]
 }
 export function boardReturn(value: unknown, entry?: unknown): string {
   const fallback = entry === "all" ? "/jobs?view=all" : "/jobs";
+  const work = myWorkReturn(value);
+  if (work) return work;
   // Shared job-detail authentication also carries My jobs' return URL. Keep that bounded list query intact.
   const customerList = customerJobsReturn(value);
   if (customerList !== "/") return customerList;
