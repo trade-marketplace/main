@@ -25,8 +25,8 @@ const PHOTO_EDITABLE_STATUSES = ["REVIEW", "QUOTE_BOUNTY"];
 const PHOTO_KINDS: readonly FileKind[] = ["jpeg", "png", "heic"];
 const DOCUMENT_KINDS: readonly FileKind[] = ["pdf", "jpeg", "png", "heic"];
 /** Document folders, each holding one folder per worker: `licences/<user id>/<file>`. */
-export type DocumentFolder = "licences" | "coc";
-const DOCUMENT_PATH = /^(licences|coc)\/([0-9a-f-]{36})\/[0-9a-f]{32}\.(pdf|webp)$/;
+export type DocumentFolder = "licences" | "coc" | "receipts";
+const DOCUMENT_PATH = /^(licences|coc|receipts)\/([0-9a-f-]{36})\/[0-9a-f]{32}\.(pdf|webp)$/;
 // PDFs that run code or launch programs when opened have no place in a licence or certificate.
 const ACTIVE_PDF_CONTENT = /\/(JavaScript|JS|Launch|EmbeddedFile|OpenAction|AA)\b/;
 
