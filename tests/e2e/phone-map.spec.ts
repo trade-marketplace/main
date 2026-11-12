@@ -56,6 +56,16 @@ test("filter replacements reconcile the selected card and pin while retaining su
  }
  await expectNoA11yViolations(page);
 });
+test("phone map fits above navigation when setup notice appears and disappears",async({page})=>{
+ for(const width of[320,390]){
+  await page.setViewportSize({width,height:1000});await page.goto(route("peek","&banner=1"));const phone=page.getByRole("region",{name:"Nearby jobs map",exact:true});
+  const fits=async()=>{const frame=await phone.boundingBox(),nav=await page.getByRole("navigation",{name:"Main",exact:true}).boundingBox();return Math.abs(frame!.y+frame!.height-nav!.y);};
+  await expect.poll(fits).toBeLessThanOrEqual(1);await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollHeight-innerHeight)).toBeLessThanOrEqual(1);
+  const before=await phone.boundingBox();await page.getByRole("button",{name:"Hide setup notice",exact:true}).click();
+  await expect.poll(async()=> (await phone.boundingBox())!.height-before!.height).toBeGreaterThan(20);await expect.poll(fits).toBeLessThanOrEqual(1);
+  await page.getByRole("button",{name:"Show setup notice",exact:true}).click();await expect.poll(fits).toBeLessThanOrEqual(1);await expectNoA11yViolations(page);
+ }
+});
 test("legacy cards remain readable without receiving a selection for a missing pin",async({page})=>{
  await page.setViewportSize({width:390,height:1000});await page.goto(route("peek","&legacyPins=mixed"));
  const cards=page.getByRole("region",{name:"Jobs near you",exact:true}),selected=cards.locator('a[data-selected="true"]');
@@ -90,11 +100,11 @@ test("availability sends once, remains browseable off, and rolls back a failed s
 const providerScript = `window.mapboxgl={supported:()=>true,Map:class{
  constructor(o){this.el=o.container;window.__phoneLiveMaps=(window.__phoneLiveMaps||0)+1;window.__phoneMapCreates=(window.__phoneMapCreates||0)+1;this.listeners={};this.b={west:168,south:-47,east:169,north:-46};this.z=10;window.__boardMapFixture=this;this.timer=setTimeout(()=>this.emit('load'),0);}
  on(n,f){(this.listeners[n]??=[]).push(f)} off(n,f){this.listeners[n]=(this.listeners[n]??[]).filter(x=>x!==f)} emit(n){for(const f of this.listeners[n]??[])f()}
- fitBounds([[w,s],[e,n]]){this.b={west:w,south:s,east:e,north:n};this.emit('move')}
+ fitBounds([[w,s],[e,n]],o={padding:0,maxZoom:22}){window.__phoneFits=(window.__phoneFits||0)+1;const W=this.el.clientWidth,H=this.el.clientHeight,p=o.padding||0,d=Math.max((e-w)/Math.max(1,W-2*p),(n-s)/Math.max(1,H-2*p),360/(512*2**o.maxZoom)),x=(e+w)/2,y=(n+s)/2;this.z=Math.log2(360/(512*d));this.b={west:x-d*W/2,east:x+d*W/2,south:y-d*H/2,north:y+d*H/2};this.emit('move')}
  project([lng,lat]){return{x:(lng-this.b.west)/(this.b.east-this.b.west)*this.el.clientWidth,y:(this.b.north-lat)/(this.b.north-this.b.south)*this.el.clientHeight}}
  getBounds(){return{getNorth:()=>this.b.north,getSouth:()=>this.b.south,getEast:()=>this.b.east,getWest:()=>this.b.west}} getZoom(){return this.z}
  scale(f){const b=this.b,x=(b.east+b.west)/2,y=(b.north+b.south)/2,w=(b.east-b.west)*f/2,h=(b.north-b.south)*f/2;this.b={west:x-w,east:x+w,south:y-h,north:y+h};this.emit('move')}
- zoomIn(){this.z++;this.scale(.5)} zoomOut(){this.z--;this.scale(2)} flyTo({center:[x,y]}){const w=(this.b.east-this.b.west)/2,h=(this.b.north-this.b.south)/2;this.b={west:x-w,east:x+w,south:y-h,north:y+h};this.emit('move')}
+ zoomIn(){this.z++;this.scale(.5)} zoomOut(){this.z--;this.scale(2)} flyTo({center:[x,y],zoom}){window.__phoneFlies=(window.__phoneFlies||0)+1;const factor=2**(this.z-zoom),w=(this.b.east-this.b.west)*factor/2,h=(this.b.north-this.b.south)*factor/2;this.z=zoom;this.b={west:x-w,east:x+w,south:y-h,north:y+h};this.emit('move')}
  resize(){this.emit('resize')} remove(){window.__phoneLiveMaps--;clearTimeout(this.timer);this.listeners={};this.el.replaceChildren()}
 }};`;
 const app=process.env.PHONE_MAP_E2E_APP_URL,database=process.env.PHONE_MAP_E2E_DATABASE_URL;
@@ -122,6 +132,15 @@ test.describe("real phone map availability and job journey",()=>{
   const liveMaps=()=>page.evaluate(()=>(window as unknown as {__phoneLiveMaps:number}).__phoneLiveMaps);
   const mapCreates=()=>page.evaluate(()=>(window as unknown as {__phoneMapCreates:number}).__phoneMapCreates);
   await expect.poll(liveMaps).toBe(1);expect(await page.evaluate(()=>(window as unknown as {__phoneMapCreates:number}).__phoneMapCreates)).toBe(1);
+  // Model provider padding so a bounds-fit regression cannot masquerade as a stable zoom.
+  const camera=()=>page.evaluate(()=>{const w=window as unknown as {__boardMapFixture:{z:number;b:{west:number;east:number;north:number;south:number};zoomIn:()=>void};__phoneFits:number;__phoneFlies:number},m=w.__boardMapFixture;return{zoom:m.z,width:m.b.east-m.b.west,height:m.b.north-m.b.south,fits:w.__phoneFits,flies:w.__phoneFlies||0};});
+  const centrePin=phone.locator('button[data-pin-kind="claim"]'),centreCard=phone.locator(`a[data-card-id="${job}"]`);await centrePin.focus();await centrePin.press("Enter");await expect(centreCard).toBeFocused();
+  await page.evaluate(()=>{const m=(window as unknown as {__boardMapFixture:{zoomIn:()=>void}}).__boardMapFixture;for(let i=0;i<7;i++)m.zoomIn();});const zoomed=await camera();expect(zoomed.zoom).toBeGreaterThan(16);
+  await centrePin.focus();await centrePin.press("Enter");await expect(centreCard).toBeFocused();for(let i=0;i<3;i++)await centreCard.press("ArrowRight");
+  const centred=await camera();expect(centred.zoom).toBeCloseTo(zoomed.zoom,10);expect(centred.width).toBeCloseTo(zoomed.width,10);expect(centred.height).toBeCloseTo(zoomed.height,10);expect(centred.fits).toBe(zoomed.fits);expect(centred.flies).toBe(zoomed.flies+4);
+  for(const width of[320,390]){await page.setViewportSize({width,height:1000});
+  await page.context().setOffline(true);await expect(phone.getByText("You’re offline.",{exact:true})).toBeVisible();await expect.poll(async()=>{const map=await phone.boundingBox(),nav=await page.getByRole("navigation",{name:"Main",exact:true}).boundingBox();return Math.abs(map!.y+map!.height-nav!.y);}).toBeLessThanOrEqual(1);await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollHeight-innerHeight)).toBeLessThanOrEqual(1);await page.context().setOffline(false);await expect(phone.getByText("You’re offline.",{exact:true})).toHaveCount(0);await expect(page.getByText("You’re back online.",{exact:true})).toBeVisible();await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollHeight-innerHeight)).toBeLessThanOrEqual(1);await expect(page.getByText("You’re back online.",{exact:true})).toHaveCount(0,{timeout:10000});await expect.poll(async()=>{const map=await phone.boundingBox(),nav=await page.getByRole("navigation",{name:"Main",exact:true}).boundingBox();return Math.abs(map!.y+map!.height-nav!.y);}).toBeLessThanOrEqual(1);await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollHeight-innerHeight)).toBeLessThanOrEqual(1);await expect.poll(liveMaps).toBe(1);expect(await mapCreates()).toBe(1);
+  }
   await page.setViewportSize({width:1024,height:1000});await expect(phone).toBeHidden();await expect.poll(liveMaps).toBe(1);await expect(page.getByRole("region",{name:"Map of jobs in view",exact:true})).toBeVisible();await expect.poll(mapCreates).toBe(2);await expect.poll(liveMaps).toBe(1);
   await page.setViewportSize({width:390,height:1000});await expect(phone).toBeVisible();await expect.poll(mapCreates).toBe(3);await expect.poll(liveMaps).toBe(1);
   const auditBefore=Number((await db.query("SELECT count(*) FROM audit_log WHERE actor_id=$1 AND action='worker.availability_changed'",[SECURITY_TRADIE.id])).rows[0].count);

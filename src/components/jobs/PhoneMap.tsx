@@ -11,12 +11,12 @@ import { Skeleton } from "@/components/feedback/Skeleton";
 import { useOnlineStatus } from "@/components/feedback/OfflineBanner";
 import { MapPin, ClusterPin, useBountyRemaining } from "@/components/map/MapPin";
 import { MapSurface, YouAreHere } from "@/components/map/MapSurface";
-import { MapboxSurface, type MapboxViewport } from "@/components/map/MapboxSurface";
+import { MapboxSurface, type MapboxViewport, type MapboxServices } from "@/components/map/MapboxSurface";
 import { QuickFilters } from "@/components/data/QuickFilters";
 import { cardToMapJob, cardsInsideBounds, scaleBounds } from "@/lib/board-map";
 import { boardHref, boardJobHref, type BoardCard, type BoardCounts, type BoardKind, type BoardMapConfig, type BoardQuery } from "@/lib/job-board";
 import { boundsAround, estimatePinWidth, groupOverlappingPins, keepInside, pinText, projectPoint, type Bounds, type MapJob } from "@/lib/map/pins";
-import { workAreaBounds, type MapboxConfig } from "@/lib/map/mapbox";
+import { loadMapbox, lngLat, workAreaBounds, type MapboxConfig, type MapboxMap, type MapboxLibrary } from "@/lib/map/mapbox";
 import { phoneCardIndex, phoneCentredBounds, phoneFrameBounds, phoneMapCards, phonePinId } from "@/lib/phone-map";
 import type { AvailabilitySave, WorkAreaResult } from "@/lib/account/work-area";
 import { setAvailableAction } from "@/server/workers/area-actions";
@@ -43,6 +43,14 @@ export function PhoneMap({ cards, counts, query, config, serverNow, onKindChange
   const token=config?.accessToken??null, areaName=config?.workArea?.name, latitude=config?.workArea?.centre?.lat, longitude=config?.workArea?.centre?.lng, radius=config?.workArea?.radiusKm;
   const provider=useMemo<MapboxConfig|undefined>(()=>areaName?.trim()&&typeof latitude==="number"&&Number.isFinite(latitude)&&typeof longitude==="number"&&Number.isFinite(longitude)&&typeof radius==="number"&&Number.isFinite(radius)&&radius>0
     ?{accessToken:token,workArea:{name:areaName,centre:{lat:latitude,lng:longitude},radiusKm:radius}}:undefined,[token,areaName,latitude,longitude,radius]);
+  const liveProvider = useRef<MapboxMap | null>(null);
+  const [services] = useState<MapboxServices>(() => ({ load: async () => {
+    const library = await loadMapbox();
+    return { supported: () => library.supported(), Map: class extends library.Map {
+      constructor(options: ConstructorParameters<MapboxLibrary["Map"]>[0]) { super(options); liveProvider.current = this; }
+      remove() { if (liveProvider.current === this) liveProvider.current = null; super.remove(); }
+    } };
+  } }));
   const [availability, setAvailability] = useState(initialAvailability), [readError, setReadError] = useState(false), [saveError, setSaveError] = useState(false);
   const [saving, setSaving] = useState(previewState === "saving-available"), [requests] = useState(() => new PhoneAvailabilityRequests());
   const [expanded, setExpanded] = useState(previewState === "sheet-up"), [failed, setFailed] = useState(false), [viewport, setViewport] = useState<MapboxViewport | null>(null);
@@ -60,7 +68,16 @@ export function PhoneMap({ cards, counts, query, config, serverNow, onKindChange
   useEffect(()=>{if(previewState==="card-selected"&&selectedId)items.current.get(selectedId)?.scrollIntoView({block:"nearest",inline:"center",behavior:"instant"});},[previewState,selectedId]);
   const [size,setSize] = useState<{width:number;height:number}|null>(null);
   const visible = Boolean(size?.width);
-  useEffect(() => { const element=map.current;if(!element)return;const observer=new ResizeObserver(()=>{setSize({width:element.clientWidth,height:element.clientHeight});const root=element.parentElement,top=element.closest("main")?.getBoundingClientRect().top;if(root&&top!==undefined)root.style.setProperty("--phone-top",Math.max(0,top)+"px");});observer.observe(element);return()=>observer.disconnect(); },[]);
+  useEffect(() => {
+    const element=map.current;if(!element)return;
+    const measure=()=>{const width=element.clientWidth,height=element.clientHeight;setSize(previous=>previous?.width===width&&previous.height===height?previous:{width,height});const root=element.parentElement;if(root&&!embedded)root.style.setProperty("--phone-top",Math.max(0,root.getBoundingClientRect().top+window.scrollY)+"px");};
+    const observer=new ResizeObserver(measure);observer.observe(element);
+    const host=element.closest("main");if(host&&!embedded)observer.observe(host);
+    const chrome=new MutationObserver(measure);if(!embedded)chrome.observe(document.documentElement,{attributes:true,attributeFilter:["style"]});
+    window.addEventListener("resize",measure);return()=>{observer.disconnect();chrome.disconnect();window.removeEventListener("resize",measure);};
+  },[embedded]);
+  // A sibling notice can move the root without resizing the flex host. Measure after its commit too.
+  useEffect(() => {const root=map.current?.parentElement;if(root&&!embedded){const top=Math.max(0,root.getBoundingClientRect().top+window.scrollY)+"px";if(root.style.getPropertyValue("--phone-top")!==top)root.style.setProperty("--phone-top",top);}});
   useEffect(() => () => { if(pendingScroll.current)clearTimeout(pendingScroll.current);if(scrollRelease.current)clearTimeout(scrollRelease.current); },[]);
   const read = async () => { try {const result=await readPhoneAvailability();if(result.ok){setAvailability({available:result.available,paused:result.paused});setReadError(false);}else setReadError(true);}catch{setReadError(true);} };
   useEffect(() => { if(initialAvailability || fake || !visible)return;let active=true;readPhoneAvailability().then(result=>{if(!active)return;if(result.ok)setAvailability({available:result.available,paused:result.paused});else setReadError(true);}).catch(()=>{if(active)setReadError(true);});return()=>{active=false;}; },[initialAvailability,fake,visible]);
@@ -73,7 +90,8 @@ export function PhoneMap({ cards, counts, query, config, serverNow, onKindChange
   const reduced = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const select = (pinId:string, scroll=true) => {
     const job=jobs.find(item=>item.id===pinId);if(!job)return;setSelectedId(pinId);
-    if(job && bounds)setCamera(phoneCentredBounds(job.point,bounds));
+    if(!fake&&liveProvider.current&&viewport)liveProvider.current.flyTo({center:lngLat(job.point),zoom:liveProvider.current.getZoom(),duration:0});
+    else if(bounds)setCamera(phoneCentredBounds(job.point,bounds));
     if(scroll){if(keyboardSelection.current)requestAnimationFrame(()=>items.current.get(pinId)?.focus({preventScroll:true}));suppressScroll.current=true;if(scrollRelease.current)clearTimeout(scrollRelease.current);scrollRelease.current=setTimeout(()=>{suppressScroll.current=false;},700);items.current.get(pinId)?.scrollIntoView({block:"nearest",inline:"center",behavior:reduced()?"instant":"smooth"});}
   };
   const placed=jobs.flatMap(job=>{const at=fake&&camera?projectPoint(job.point,camera):viewport?.project(job.point);return at?[{job,at}]:[];});
@@ -89,7 +107,7 @@ export function PhoneMap({ cards, counts, query, config, serverNow, onKindChange
   const rootClass=styles.phone+(embedded?" "+styles.embedded:"");
   return <section className={rootClass} data-phone-map data-expanded={expanded} aria-label={embedded?previewState+" nearby jobs map":"Nearby jobs map"} onPointerDownCapture={()=>{keyboardSelection.current=false;}} onKeyDownCapture={event=>{keyboardSelection.current=event.key==="Enter"||event.key===" ";}}>
     <h1 className={styles.srOnly}>Jobs near you</h1>
-    <div className={styles.map} ref={map}>{!unavailable&&(fake?<MapSurface label={embedded?previewState+" map of nearby jobs":"Map of nearby jobs"}>{pins}</MapSurface>:provider&&size&&size.width>0?<MapboxSurface config={provider} bounds={camera??undefined} label={embedded?previewState+" map of nearby jobs":"Map of nearby jobs"} locationNote="Showing your work area." onViewChange={setViewport} onFailure={()=>setFailed(true)}>{pins}</MapboxSurface>:null)}
+    <div className={styles.map} ref={map}>{!unavailable&&(fake?<MapSurface label={embedded?previewState+" map of nearby jobs":"Map of nearby jobs"}>{pins}</MapSurface>:provider&&size&&size.width>0?<MapboxSurface config={provider} services={services} bounds={camera??undefined} label={embedded?previewState+" map of nearby jobs":"Map of nearby jobs"} locationNote="Showing your work area." onViewChange={setViewport} onFailure={()=>setFailed(true)}>{pins}</MapboxSurface>:null)}
       {fake&&!unavailable&&<div className={styles.mapControls}><Button size="sm" width="auto" variant="secondary" onClick={()=>camera&&setCamera(scaleBounds(camera,.5))} aria-label="Zoom in"><Icon name="add" decorative/></Button><Button size="sm" width="auto" variant="secondary" onClick={()=>camera&&setCamera(scaleBounds(camera,2))} aria-label="Zoom out"><Icon name="remove" decorative/></Button></div>}
     </div>
     <div className={styles.floating}><div className={styles.available} data-available={availability?.available} aria-busy={saving||!availability}>

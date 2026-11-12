@@ -1,13 +1,16 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
+import { Button } from "@/components/Button";
+import { Banner } from "@/components/overlays/Banner";
 import { BoardMap } from "@/components/jobs/BoardMap";
 import { PhoneMap } from "@/components/jobs/PhoneMap";
 import { PHONE_MAP_STATES } from "@/lib/phone-map";
 import { matchesBoardKind, type BoardPage, type BoardQuery } from "@/lib/job-board";
 import styles from "./preview.module.css";
-export function PhoneMapDemo({board,query:initialQuery,state:initialState,failSave,legacyPins}:{board:BoardPage;query:BoardQuery;state:string;failSave:boolean;legacyPins?:"mixed"|"empty"}) {
+export function PhoneMapDemo({board,query:initialQuery,state:initialState,failSave,legacyPins,banner}:{board:BoardPage;query:BoardQuery;state:string;failSave:boolean;legacyPins?:"mixed"|"empty";banner?:boolean}) {
  const [query,setQuery]=useState(initialQuery),[state,setState]=useState(initialState),[calls,setCalls]=useState(0);
+ const [showBanner,setShowBanner]=useState(Boolean(banner));
  const changeKind=(kind:BoardQuery["kind"])=>{setQuery(previous=>({...previous,kind}));const url=new URL(location.href);url.searchParams.set("kind",kind);history.replaceState(null,"",url.pathname+url.search);};
  const back=()=>"/dev/components/phone-map?state="+state+"&kind="+query.kind;
  const bounty=board.cards.filter(card=>card.status==="QUOTE_BOUNTY"),ready=board.cards.filter(card=>card.status==="BOOKABLE");
@@ -19,7 +22,7 @@ export function PhoneMapDemo({board,query:initialQuery,state:initialState,failSa
   jobHref={id=>"/dev/components/phone-map?state=detail&job="+encodeURIComponent(id)+"&back="+encodeURIComponent(back())} listHref={"/dev/components/phone-map?state=grid&kind="+query.kind}
   onRetry={()=>setState("peek")} saveAvailable={async available=>{setCalls(value=>value+1);await new Promise(resolve=>setTimeout(resolve,120));return failSave?{ok:false,error:"unavailable"}:{ok:true,snapshot:{available,paused:false,baseSuburb:"Invercargill",point:board.meta.map!.workArea.centre,radiusKm:12,trades:["OTHER"]}};}}/>;
  if(state==="grid")return <section className={styles.grid}><h1>Jobs near you</h1><Link href={"/dev/components/phone-map?state=peek&kind="+query.kind}>Map</Link>{cards.map(card=><Link key={card.id} href={"/dev/components/phone-map?state=detail&job="+card.id+"&back="+encodeURIComponent("/dev/components/phone-map?state=grid&kind="+query.kind)}>{card.title}</Link>)}</section>;
- return <><div className={styles.desktop}><h1>Jobs near you</h1><BoardMap cards={cards} counts={board.counts} query={query} config={board.meta.map} ownerId={board.meta.ownerId} serverNow={Date.parse(board.before)} onKindChange={changeKind} previewState="ready"/></div>
+ return <>{banner&&<><Button onClick={()=>setShowBanner(value=>!value)}>{showBanner?"Hide setup notice":"Show setup notice"}</Button>{showBanner&&<Banner tone="info">Finish setup (4/6)</Banner>}</>}<div className={styles.desktop}><h1>Jobs near you</h1><BoardMap cards={cards} counts={board.counts} query={query} config={board.meta.map} ownerId={board.meta.ownerId} serverNow={Date.parse(board.before)} onKindChange={changeKind} previewState="ready"/></div>
  <div className={styles.phone}>{state==="a-gallery"?<div className={styles.gallery}><h1>Phone map states</h1>{PHONE_MAP_STATES.map(example=><section key={example}><h2>{example}</h2>{show(example,true)}</section>)}</div>:show(state)}</div>
  <output className={styles.srOnly} aria-label="Availability calls">{calls}</output></>;
 }
