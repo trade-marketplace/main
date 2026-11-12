@@ -8,6 +8,8 @@ const startVariationPayment = vi.hoisted(() => vi.fn(async () => ({ ok: true, pa
 vi.mock("@/server/payments/variation-payment", () => ({ startVariationPayment, prepareVariationPayment: vi.fn() }));
 
 vi.mock("@/server/audit/audit", () => ({ SYSTEM_ACTOR: { system: true }, createAudit: () => vi.fn() }));
+// preparePayment takes the job's row lock; the fake database has no schema to name.
+vi.mock("@/server/database-client", () => ({ databaseSchema: () => "public" }));
 
 // Taking a payment (#151): who may pay, what is charged, and that retries never make a second PaymentIntent.
 
@@ -33,13 +35,14 @@ function setup(opts: { job?: Record<string, unknown> | null; variation?: Record<
       return { count: row ? 1 : 0 };
     }),
   };
+  const lock = vi.fn(async (query: string, ...values: unknown[]) => (query && values ? [] : []));
   const db = {
     job: { findFirst: vi.fn(async ({ where }: { where: { customerId: string } }) => (where.customerId === ME ? job : null)) },
     variation: { findFirst: vi.fn(async () => (opts.variation === undefined ? null : opts.variation)) },
     payment,
-    $transaction: async (fn: (tx: unknown) => unknown) => fn({ payment }),
+    $transaction: async (fn: (tx: unknown) => unknown) => fn({ payment, $queryRawUnsafe: lock }),
   } as unknown as PrismaClient;
-  return { db, payments, payment };
+  return { db, payments, payment, lock };
 }
 
 function fakeIntents(): PaymentIntentsApi & { create: ReturnType<typeof vi.fn>; retrieve: ReturnType<typeof vi.fn>; cancel: ReturnType<typeof vi.fn> } {
@@ -113,6 +116,15 @@ describe("preparePayment", () => {
     job: { id: "job-1", jobNumber: 1005, status: "PRICED" }, ...extra,
   });
   beforeEach(() => vi.clearAllMocks());
+
+  it("takes the job's row lock before it asks Stripe for anything (#516)", async () => {
+    const intents = fakeIntents();
+    const { db, lock } = setup({ payments: [pending()] });
+    await preparePayment(db, intents, ME, "pay-1");
+    expect(lock).toHaveBeenCalledTimes(1);
+    expect(String(lock.mock.calls[0]?.[0])).toMatch(/FOR UPDATE$/);
+    expect(lock.mock.invocationCallOrder[0]).toBeLessThan(intents.create.mock.invocationCallOrder[0]!);
+  });
 
   it("creates the PaymentIntent in NZD with dynamic payment methods, the stored amount and the row's idempotency key", async () => {
     const intents = fakeIntents();

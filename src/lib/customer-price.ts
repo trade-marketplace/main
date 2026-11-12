@@ -1,6 +1,7 @@
 export const DECLINE_PRICE_REASONS = ["Too expensive", "Changed my mind", "Found someone else", "Something else"] as const;
 export type DeclinePriceReason = typeof DECLINE_PRICE_REASONS[number];
-export type DeclinePriceResult = { status: "declined" | "changed" | "forbidden" | "invalid" | "unavailable" };
+/** "paying": a payment for this price is already going through, so the job was left as it is. */
+export type DeclinePriceResult = { status: "declined" | "changed" | "paying" | "forbidden" | "invalid" | "unavailable" };
 
 export const priceReadyTicks = (category: string) => ["Labour, parts and call-out included", ...(category === "ELECTRICAL" ? ["Licensed electrician · CoC included"] : []), "No surprise bills"];
 export const hasPreviousPrice = (current: number | null, previous: number | null) => current !== null && previous !== null && previous !== current;
