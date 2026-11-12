@@ -1,0 +1,55 @@
+import { randomUUID } from "node:crypto";
+import pg from "pg";
+import { expect,test } from "@playwright/test";
+import { startAuthStub,sessionCookies } from "../../scripts/screenshots/auth-stub";
+import { expectNoA11yViolations } from "./support/a11y";
+import { VIEWPORTS } from "./support/viewports";
+test.use({trace:"on-first-retry"});
+const preview=process.env.SUPPORT_START_PREVIEW_URL||process.env.POSTED_PREVIEW_E2E_URL||"http://127.0.0.1:3101";
+const states=["form","field-errors","sending","try-later","error","offline","list","list-replied","list-empty","loading","list-error","form-tradie"];
+async function settle(page:import("@playwright/test").Page){await expect(page).toHaveTitle(/\S/);await page.evaluate(async()=>{await document.fonts.ready;await Promise.all(document.getAnimations().filter(a=>{const t=a.effect?.getComputedTiming().endTime;return typeof t==="number"&&t>0&&t<1000;}).map(a=>a.finished.catch(()=>{})));});}
+test("support previews stay guarded in production",async({request,baseURL})=>expect((await request.get(`${baseURL}/dev/components/support-start`)).status()).toBe(404));
+for(const viewport of VIEWPORTS)test(`support states fit ${viewport.width}px and pass axe`,async({page})=>{
+ test.setTimeout(180000);await page.setViewportSize(viewport);
+ for(const state of states)await test.step(state,async()=>{
+  expect((await page.goto(`${preview}/dev/components/support-start?state=${state}`))?.status()).toBe(200);
+  if(["form","form-tradie","offline"].includes(state))await expect(page.getByRole("button",{name:"Send",exact:true})).toHaveAttribute("aria-disabled","true");
+  if(state==="list-replied")await expect(page.getByText("Replied",{exact:true})).toBeVisible();
+  if(state==="list-empty")await expect(page.getByText("No messages yet.",{exact:true})).toBeVisible();
+  if(state==="loading")await expect(page.getByRole("status",{name:"Loading messages",exact:true})).toBeVisible();
+  if(state==="field-errors"){await expect(page.getByRole("textbox",{name:"Subject",exact:true})).toHaveAttribute("aria-invalid","true");await expect(page.getByRole("textbox",{name:"Subject",exact:true})).toHaveAccessibleDescription(/Write a subject\./);await expect(page.getByRole("textbox",{name:"Message",exact:true})).toHaveAttribute("aria-invalid","true");await expect(page.getByRole("textbox",{name:"Message",exact:true})).toHaveAccessibleDescription(/Write a message\./);}
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await settle(page);await expectNoA11yViolations(page);
+  if(process.env.SUPPORT_START_SCREENSHOTS==="1"&&[390,1440].includes(viewport.width))await page.screenshot({path:test.info().outputPath(`${state}-${viewport.width}.png`),fullPage:true});
+ });
+});
+test("keyboard fills both fields, sends, and offline preserves its draft",async({page,context})=>{
+ await page.goto(`${preview}/dev/components/support-start?state=form`);const subject=page.getByRole("textbox",{name:"Subject",exact:true}),message=page.getByRole("textbox",{name:"Message",exact:true}),send=page.getByRole("button",{name:"Send",exact:true});
+ await subject.focus();await page.keyboard.type("Account question");await expect(send).toHaveAttribute("aria-disabled","true");await page.keyboard.press("Tab");await expect(message).toBeFocused();await page.keyboard.type("Can you help me with my account?");await expect(send).not.toHaveAttribute("aria-disabled","true");
+ await context.setOffline(true);await expect(send).toHaveAttribute("aria-disabled","true");await expect(message).toHaveValue("Can you help me with my account?");await context.setOffline(false);await expect(send).not.toHaveAttribute("aria-disabled","true");await send.press("Enter");await expect(page.getByRole("heading",{name:"Account question",exact:true})).toBeVisible();
+});
+test("a failed send retries the same draft and a list remains readable offline",async({page,context})=>{
+ await page.goto(`${preview}/dev/components/support-start?state=error`);await page.getByRole("button",{name:"Try again",exact:true}).press("Enter");await expect(page.getByRole("heading",{name:"Account question",exact:true})).toBeVisible();
+ await page.goto(`${preview}/dev/components/support-start?state=list`);await context.setOffline(true);await expect(page.getByRole("main").getByText("You’re offline.",{exact:true})).toBeVisible();await expect(page.getByRole("link",{name:/Account question/})).toBeVisible();await context.setOffline(false);
+});
+const app=process.env.SUPPORT_START_E2E_APP_URL,database=process.env.SUPPORT_START_E2E_DATABASE_URL;
+test.describe("actual private support opening",()=>{
+ test.skip(!app||!database,"requires isolated local app/database and Auth stand-in");test.describe.configure({mode:"serial",timeout:120000});
+ let db:pg.Client,auth:Awaited<ReturnType<typeof startAuthStub>>;const secret=randomUUID(),office=randomUUID();
+ test.beforeAll(async()=>{const url=new URL(database!),site=new URL(app!);if(url.hostname!=="127.0.0.1"||url.pathname!=="/lane_a_186"||url.search||site.hostname!=="127.0.0.1")throw Error("Dedicated local support fixtures required");auth=await startAuthStub(secret,54510);db=new pg.Client({connectionString:database});await db.connect();await db.query("INSERT INTO auth.users(id,email) VALUES($1,$2)",[office,`${office}@example.test`]);await db.query("INSERT INTO profiles(id,email,role,first_name,email_verified_at,updated_at) VALUES($1,$2,'ADMIN','Office',now(),now())",[office,`${office}@example.test`]);});
+ test.afterAll(async()=>{await db?.end();if(auth){auth.closeAllConnections();await new Promise<void>(resolve=>auth.close(()=>resolve()));}});
+ for(const role of ["CUSTOMER","TRADIE"] as const)test(`${role}: Help to Message us to actual thread and Back, idempotent lost-response retry, and Replied list`,async({page,context,browser})=>{
+  const person={id:randomUUID(),email:`${randomUUID()}@example.test`};await db.query("INSERT INTO auth.users(id,email) VALUES($1,$2)",[person.id,person.email]);await db.query("INSERT INTO profiles(id,email,role,first_name,email_verified_at,updated_at) VALUES($1,$2,$3,'Sarah',now(),now())",[person.id,person.email,role]);await context.addCookies(await sessionCookies(person,secret,app!,"http://127.0.0.1:54510"));
+  const helpPath=role==="TRADIE"?"/help/leaving-a-review":"/help?q=pay&topic=payments";await page.goto(`${app}${role==="TRADIE"?helpPath:"/help?q=account&topic=account"}`);
+  if(role==="CUSTOMER"){await page.getByRole("combobox",{name:"Search help articles",exact:true}).fill("pay");await page.getByRole("button",{name:"Payments",exact:true}).click();}
+  await page.getByRole("link",{name:"Message us",exact:true}).click();await expect(page).toHaveURL(`${app}/support/new?returnTo=${encodeURIComponent(helpPath)}`);
+  await page.getByRole("textbox",{name:"Subject",exact:true}).fill("Private account question");await page.getByRole("textbox",{name:"Message",exact:true}).fill("Please help with my account.");
+  let lost=true;await page.route("**/support/new*",async route=>{if(route.request().method()!=="POST"||!route.request().headers()["next-action"]||!lost)return route.continue();lost=false;await route.fetch();await route.abort("failed");});
+  await page.getByRole("button",{name:"Send",exact:true}).press("Enter");await expect(page.getByText("Couldn’t send. Try again.",{exact:true})).toBeVisible();await expect(page.getByRole("textbox",{name:"Subject",exact:true})).toHaveValue("Private account question");await page.getByRole("button",{name:"Try again",exact:true}).click();await expect(page.getByRole("heading",{name:"Private account question",exact:true})).toBeVisible();
+  const threads=(await db.query("SELECT id FROM support_threads WHERE user_id=$1",[person.id])).rows;expect(threads).toHaveLength(1);const thread=threads[0].id;expect(Number((await db.query("SELECT count(*) FROM support_messages WHERE thread_id=$1",[thread])).rows[0].count)).toBe(1);await expect(page).toHaveURL(new RegExp(`/support/${thread}`));await page.getByRole("main").getByRole("link",{name:"Back",exact:true}).click();await expect(page).toHaveURL(`${app}${helpPath}`);
+  const officeContext=await browser.newContext();try{await officeContext.addCookies(await sessionCookies({id:office,email:`${office}@example.test`},secret,app!,"http://127.0.0.1:54510"));const reply=await officeContext.newPage();await reply.goto(`${app}/admin/support/${thread}`);await reply.getByRole("textbox",{name:"Message",exact:true}).fill("We can help.");await reply.getByRole("button",{name:"Send message",exact:true}).click();await expect(reply.getByRole("log",{name:"Conversation",exact:true}).getByText("We can help.",{exact:true})).toBeVisible();}finally{await officeContext.close();}
+  await page.getByRole("link",{name:"Message us",exact:true}).click();await page.getByRole("link",{name:"Your messages",exact:true}).click();await expect(page).toHaveURL(`${app}/support`);await expect(page.getByText("Replied",{exact:true})).toBeVisible();const row=page.getByRole("link",{name:/Private account question/});await expect(row).toContainText("Unread");await row.click();await expect(page.getByText("We can help.",{exact:true})).toBeVisible();await expect.poll(async()=>Number((await db.query("SELECT count(*) AS n FROM support_thread_reads r WHERE r.thread_id=$1 AND r.user_id=$2 AND r.read_at >= (SELECT max(created_at) FROM support_messages WHERE thread_id=$1 AND NOT internal)",[thread,person.id])).rows[0].n),{timeout:15000}).toBe(1);await page.getByRole("main").getByRole("link",{name:"Back",exact:true}).click();await expect(page).toHaveURL(`${app}/support`);await expect(page.getByText("Replied",{exact:true})).toBeVisible();await expect(page.getByRole("link",{name:/Private account question/})).not.toContainText("Unread");await settle(page);await expectNoA11yViolations(page);await page.getByRole("link",{name:/Private account question/}).click();await page.getByRole("textbox",{name:"Message",exact:true}).fill("Thanks. That helps.");await page.getByRole("button",{name:"Send",exact:true}).click();await expect(page.getByRole("log",{name:"Conversation",exact:true}).getByText("Thanks. That helps.",{exact:true})).toBeVisible();await page.getByRole("main").getByRole("link",{name:"Back",exact:true}).click();await expect(page.getByText("Replied",{exact:true})).toHaveCount(0);
+ });
+ test("guest email/login return and office Help handoff preserve existing direct-route policy",async({page,context})=>{
+  await page.goto(`${app}/help`);await expect(page.getByRole("link",{name:"Message us",exact:true})).toHaveAttribute("href","mailto:hello@trademarketplace.nz");await page.goto(`${app}/support/new`);await expect(page).toHaveURL(/\/login\?next=%2Fsupport%2Fnew/);await context.addCookies(await sessionCookies({id:office,email:`${office}@example.test`},secret,app!,"http://127.0.0.1:54510"));await page.goto(`${app}/help`);await page.getByRole("link",{name:"Message us",exact:true}).click();await expect(page).toHaveURL(`${app}/admin/support`);await page.goto(`${app}/support/new`);await expect(page).toHaveURL(`${app}/admin`);
+ });
+});
