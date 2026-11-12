@@ -67,5 +67,5 @@ export function quoteOutcome(status: JobStatus, workerId: string | null, viewerI
   if (workerId || status === "CANCELLED") return "Not taken";
   return status === "REVIEW" || status === "QUOTE_BOUNTY" ? "Waiting" : "Priced";
 }
-export const MY_WORK_STATES = ["full", "empty", "one-column", "waiting-ok", "on-hold", "paused", "queued-and-paid", "quotes", "quotes-empty", "error", "offline", "loading"] as const;
+export const MY_WORK_STATES = ["full", "empty", "one-column", "waiting-ok", "on-hold", "paused", "queued-and-paid", "quotes", "quotes-mixed", "quotes-empty", "error", "offline", "loading"] as const;
 export type MyWorkState = typeof MY_WORK_STATES[number];
