@@ -23,6 +23,7 @@ import { FINISH_DECLARATION, clearFinishReason, finishErrors, finishReasonKey, f
 import type { AuthFailure } from "@/lib/auth/results";
 import { removeEvidencePhotoAction, saveFinishDraftAction, sendForSignOffAction } from "@/server/jobs/evidence-actions";
 import styles from "./finish-job.module.css";
+import { useWorkspaceReturn } from "./use-workspace-return";
 
 type DocumentState = { url: string; name: string; size?: number; status: UploadStatus; error?: string };
 type UploadKind = "photo" | "coc" | "receipt";
@@ -61,7 +62,7 @@ function FinishContent({ job, preview, embedded, save = saveFinishDraftAction, s
   const failed = photos.some(photo => photo.status === "failed") || coc?.status === "failed" || receipt?.status === "failed";
   const spent = job.budgetCents > 0 ? finishSpend(fields.spent) : 0, over = spent !== null && spent > job.budgetCents;
   const descriptionId = useId();
-  const jobHref = `/jobs/${job.id}`, region = (label: string) => embedded ? `${label} (${preview})` : label;
+  const jobHref = useWorkspaceReturn(`/jobs/${job.id}`), region = (label: string) => embedded ? `${label} (${preview})` : label;
   useEffect(() => { const urls = localUrls.current; return () => { for (const url of urls) URL.revokeObjectURL(url); }; }, []);
   useEffect(() => { if (!sent || preview || cleanupError) return; const timer = setTimeout(() => router.push(jobHref), 900); return () => clearTimeout(timer); }, [sent, preview, cleanupError, router, jobHref]);
   function change<K extends keyof FinishFields>(key: K, value: FinishFields[K]) { if (key === "reason") setReasonEdited(true); setFields(previous => ({ ...previous, [key]: value })); setErrors(previous => ({ ...previous, [key]: undefined })); setError(false); }

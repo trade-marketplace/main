@@ -23,6 +23,12 @@ async function page(source: JobSource | null) {
 }
 beforeEach(() => { vi.clearAllMocks(); deps.viewer.mockResolvedValue(VIEWERS.worker); });
 describe("owned claim result routing", () => {
+  it("forwards the existing bounded My work context into the workspace and its loading fallback", async () => {
+    deps.find.mockResolvedValue(exampleJob());
+    const result = await JobPage({ params: Promise.resolve({ id: exampleJob().id }), searchParams: Promise.resolve({ from: "/dashboard?tab=quotes&column=on-now" }) });
+    expect(result.props.children.props.back).toBe("/dashboard?tab=quotes&column=on-now");
+    expect(result.props.fallback.props.myWorkHref).toBe("/dashboard?tab=quotes&column=on-now");
+  });
   it("opens the owned ASSIGNED workspace on reload", async () => {
     const result = await page(exampleJob());
     expect(result.type).toBe(Suspense);

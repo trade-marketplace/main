@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { availableBookingWindows, bookingButtonLabel, type BookingSnapshot } from "@/lib/worker-booking";
 import { BookWindow } from "@/components/jobs/worker/BookWindow";
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }) }));
+vi.mock("next/navigation", () => ({ useSearchParams: () => null, useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }) }));
 vi.mock("@/server/jobs/worker-booking-actions", () => ({ bookJobWindowAction: vi.fn(), requestOtherTimesAction: vi.fn() }));
 const window = { date: "2026-11-12", timeOfDay: "MORNING" as const };
 describe("worker booking", () => {
