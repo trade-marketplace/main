@@ -31,9 +31,11 @@ type Props = {
   onViewChange: (view: MapboxViewport) => void;
   onFailure: () => void;
   services?: MapboxServices;
+  locationNote?: string;
+  messageClassName?: string;
 };
 
-export function MapboxSurface({ config, bounds, label, children, onViewChange, onFailure, services }: Props) {
+export function MapboxSurface({ config, bounds, label, children, onViewChange, onFailure, services, locationNote, messageClassName }: Props) {
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<MapboxMap | null>(null);
   const callbacks = useRef({ onViewChange, onFailure });
@@ -131,22 +133,29 @@ export function MapboxSurface({ config, bounds, label, children, onViewChange, o
     }
   };
 
+  const messages = <>
+    {!loaded && <p role="status" className={messageClassName ?? styles.mapMessage}>Loading map…</p>}
+    {location === "pending" && <p role="status" className={messageClassName ?? styles.locationNotice}>Finding your location…</p>}
+    {location === "denied" && <p role="status" className={messageClassName ?? styles.locationNotice}>{locationNote ?? `Location unavailable. Showing the ${workArea.name} work area.`}</p>}
+    {location === "found" && <p role="status" className={styles.srOnly}>Map centred on your location.</p>}
+  </>;
   return (
     <div role="region" aria-label={label} className={styles.surface}>
       <div ref={container} className={styles.mapboxCanvas} />
       <div className={`${styles.layer} ${styles.mapboxLayer}`}>
         {children}
+        {messageClassName && messages}
         {youAt && <span className={styles.you} style={{ left: `${youAt.x}%`, top: `${youAt.y}%` }} role="img" aria-label="You are here" />}
       </div>
-      {!loaded && <p role="status" className={styles.mapMessage}>Loading map…</p>}
+      {!messageClassName && !loaded && <p role="status" className={styles.mapMessage}>Loading map…</p>}
       <div className={styles.providerControls}>
         <button type="button" onClick={() => map.current?.zoomIn()} disabled={!loaded} aria-label="Zoom in"><Icon name="add" decorative /></button>
         <button type="button" onClick={() => map.current?.zoomOut()} disabled={!loaded} aria-label="Zoom out"><Icon name="remove" decorative /></button>
         <button type="button" onClick={() => void locate()} disabled={!loaded || location === "pending"} aria-label="Use my location"><Icon name="my_location" decorative /></button>
       </div>
-      {location === "pending" && <p role="status" className={styles.locationNotice}>Finding your location…</p>}
-      {location === "denied" && <p role="status" className={styles.locationNotice}>Location unavailable. Showing the {workArea.name} work area.</p>}
-      {location === "found" && <p role="status" className={styles.srOnly}>Map centred on your location.</p>}
+      {!messageClassName && location === "pending" && <p role="status" className={styles.locationNotice}>Finding your location…</p>}
+      {!messageClassName && location === "denied" && <p role="status" className={styles.locationNotice}>{locationNote ?? "Location unavailable. Showing the " + workArea.name + " work area."}</p>}
+      {!messageClassName && location === "found" && <p role="status" className={styles.srOnly}>Map centred on your location.</p>}
     </div>
   );
 }
