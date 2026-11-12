@@ -1,0 +1,4 @@
+.page { max-width: 52rem; margin-inline: auto; padding: var(--trade-space-6); display: grid; gap: var(--trade-space-6); }
+.card { padding: var(--trade-space-6); border-radius: var(--trade-radius-card); background: var(--trade-surface); border: 1px solid var(--trade-line); display: grid; gap: var(--trade-space-4); }
+.card h1 { font-family: var(--trade-font-heading); font-size: var(--trade-fs-section); line-height: 1.15; text-wrap: balance; margin: 0; }
+.card p { margin: 0; }
