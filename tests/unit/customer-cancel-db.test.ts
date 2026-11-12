@@ -71,4 +71,16 @@ describe.skipIf(!testDatabaseUrl)("customer cancellation", () => {
     await schema.db.profile.update({ where: { id: customer.userId }, data: { role: "TRADIE" } });
     expect(await loadCancelFacts(schema.db, customer, job.id)).toBeNull();
   });
+  it("does not attribute a prior tradie's on-my-way event to a replacement or an unclaimed job", async () => {
+    const { customer, worker, job } = await fixture("ASSIGNED", true), replacement = await person("TRADIE");
+    await schema.db.profile.update({ where: { id: replacement.userId }, data: { firstName: "Alex" } });
+    await schema.db.auditLog.create({ data: { actorId: worker.userId, action: "job.on_my_way", recordType: "jobs", recordId: job.id } });
+    expect(await loadCancelFacts(schema.db, customer, job.id, new Date(Date.now() + 1000))).toMatchObject({ workerFirstName: "Jack", onTheWay: true });
+    await schema.db.job.update({ where: { id: job.id }, data: { workerId: replacement.userId } });
+    expect(await loadCancelFacts(schema.db, customer, job.id, new Date(Date.now() + 1000))).toMatchObject({ workerFirstName: "Alex", onTheWay: false });
+    await schema.db.auditLog.create({ data: { actorId: replacement.userId, action: "job.on_my_way", recordType: "jobs", recordId: job.id } });
+    expect(await loadCancelFacts(schema.db, customer, job.id, new Date(Date.now() + 1000))).toMatchObject({ workerFirstName: "Alex", onTheWay: true });
+    await schema.db.job.update({ where: { id: job.id }, data: { status: "BOOKABLE", workerId: null } });
+    expect(await loadCancelFacts(schema.db, customer, job.id, new Date(Date.now() + 1000))).toMatchObject({ workerFirstName: null, onTheWay: false });
+  });
 });

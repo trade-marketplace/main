@@ -11,10 +11,10 @@ import { applyTransition } from "./status-machine";
 export async function loadCancelFacts(db: Pick<PrismaClient, "job" | "profile" | "auditLog">, viewer: JobViewer, jobId: string, now = new Date()): Promise<CancelFacts | null> {
   if (viewer.role !== "CUSTOMER" || !z.uuid().safeParse(jobId).success) return null;
   const job = await db.job.findFirst({ where: { id: jobId, customerId: viewer.userId, customer: { role: "CUSTOMER" } }, select: {
-    status: true, worker: { select: { firstName: true } }, payments: { where: { status: { in: ["PAID", "PARTIALLY_REFUNDED"] } }, select: { id: true }, take: 1 },
+    status: true, worker: { select: { id: true, firstName: true } }, payments: { where: { status: { in: ["PAID", "PARTIALLY_REFUNDED"] } }, select: { id: true }, take: 1 },
   } });
   if (!job) return null;
-  const onTheWay = Boolean(await db.auditLog.findFirst({ where: { recordType: "jobs", recordId: jobId, action: "job.on_my_way", createdAt: { gt: new Date(now.getTime() - 3 * 60 * 60 * 1000), lte: now } }, select: { id: true } }));
+  const onTheWay = Boolean(job.worker && await db.auditLog.findFirst({ where: { recordType: "jobs", recordId: jobId, actorId: job.worker.id, action: "job.on_my_way", createdAt: { gt: new Date(now.getTime() - 3 * 60 * 60 * 1000), lte: now } }, select: { id: true } }));
   return { canCancel: canCancelJob(job.status), paid: job.status === "BOOKABLE" || job.status === "ASSIGNED" || job.payments.length > 0, workerFirstName: job.worker?.firstName ?? null, onTheWay };
 }
 
