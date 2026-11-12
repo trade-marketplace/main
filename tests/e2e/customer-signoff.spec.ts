@@ -69,7 +69,7 @@ test.describe("real customer sign-off journey", () => {
   const objects = new Map<string, { bytes: Buffer; type: string }>(), tokens = new Map<string, string>();
   test.beforeAll(async () => {
     const target = new URL(database!), host = new URL(app!);
-    if (target.hostname !== "127.0.0.1" || target.pathname !== "/lane_a_129" || target.search || host.hostname !== "127.0.0.1") throw Error("Dedicated local Lane A fixtures required");
+    if (target.hostname !== "127.0.0.1" || !["/lane_a_129", "/lane_a_531"].includes(target.pathname) || target.search || host.hostname !== "127.0.0.1") throw Error("Dedicated local Lane A fixtures required");
     auth = await startAuthStub(secret, 54510);
     const original = auth.listeners("request")[0] as RequestListener; auth.removeListener("request", original);
     auth.on("request", (request, response) => {
@@ -99,7 +99,7 @@ test.describe("real customer sign-off journey", () => {
       import { createDatabaseClient } from './src/server/database-client.ts';
       import { priceJob } from './src/server/pricing/price-job.ts';
       const target = new URL(process.env.CUSTOMER_SIGNOFF_E2E_DATABASE_URL);
-      if (target.hostname !== '127.0.0.1' || target.pathname !== '/lane_a_129' || target.search) throw Error('Local Lane A fixtures only');
+      if (target.hostname !== '127.0.0.1' || !['/lane_a_129', '/lane_a_531'].includes(target.pathname) || target.search) throw Error('Local Lane A fixtures only');
       const client = createDatabaseClient(target.href), [customerId, workerId, extension] = process.argv.slice(1);
       try {
         const job = await client.job.create({ data: { customerId, category: 'OTHER', title: 'Sign-off journey', description: 'Interior door needs hanging.', addressLine1: '1 Example Street', suburb: 'Windsor', city: 'Invercargill', status: 'REVIEW' } });
@@ -149,7 +149,8 @@ test.describe("real customer sign-off journey", () => {
     await page.getByRole("link", { name: "Back to job", exact: true }).click(); await expect(page).toHaveURL(`${app}${path}`); await expect(page.getByText("Auto-release is paused while your report is open.", { exact: true })).toBeVisible();
     await expectNoA11yViolations(page);
   });
-  test("the active sentence follows the real one-hour and 72-hour settings", async ({ page, context }) => {
+  test("the active sentence and both trackers follow the real one-hour and 72-hour settings", async ({ page, context }) => {
+    test.setTimeout(120_000);
     await context.addCookies(await sessionCookies(customer, secret, app!, "http://127.0.0.1:54510"));
     const id = await create(), previous = (await db.query("SELECT auto_release_hours FROM settings WHERE id=1")).rows[0].auto_release_hours;
     try {
@@ -158,6 +159,13 @@ test.describe("real customer sign-off journey", () => {
         await page.goto(`${app}/jobs/${id}`);
         await expect(page.getByText(`No reply in ${hours} ${hours === 1 ? "hour" : "hours"} and we’ll mark it done.`, { exact: true })).toBeVisible();
         await expect(page.getByText("No reply in 48 hours and we’ll mark it done.", { exact: true })).toHaveCount(0);
+        await expect(page.getByText(`Within ${hours} ${hours === 1 ? "hour" : "hours"}`, { exact: true })).toBeVisible();
+        await expectNoA11yViolations(page);
+        await context.addCookies(await sessionCookies(worker, secret, app!, "http://127.0.0.1:54510"));
+        await page.goto(`${app}/jobs/${id}`);
+        await expect(page.getByRole("complementary", { name: "Job progress", exact: true }).getByText(`or ${hours} ${hours === 1 ? "hour" : "hours"}`, { exact: true })).toBeVisible();
+        await expectNoA11yViolations(page);
+        await context.addCookies(await sessionCookies(customer, secret, app!, "http://127.0.0.1:54510"));
       }
       await expectNoA11yViolations(page);
     } finally { await db.query("UPDATE settings SET auto_release_hours=$1 WHERE id=1", [previous]); }

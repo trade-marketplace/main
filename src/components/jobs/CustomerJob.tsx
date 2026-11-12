@@ -48,7 +48,7 @@ export function CustomerJob({ job, photos = [], photosFailed = false, photoLease
   const panel = CUSTOMER_JOB_PANELS[job.status];
   const titleId = `customer-job-${job.id}`;
   const statusId = `${titleId}-status`;
-  const tracker = jobTracker(job.status, "customer", { tradieName: job.worker?.firstName });
+  const tracker = jobTracker(job.status, "customer", { tradieName: job.worker?.firstName, autoReleaseHours: signoffData?.autoReleaseHours });
   const returnTo = customerJobReturn(back);
   const refresh = () => { if (online) startRefresh(() => router.refresh()); };
   const retryPhotos = () => { setFailedGallery(null); refresh(); };

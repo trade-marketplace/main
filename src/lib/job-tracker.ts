@@ -26,9 +26,12 @@ export type TrackerOptions = {
   evidence?: "coc" | "photos";
   /** Tradie side, COMPLETED: where their pay is. */
   payout?: PayoutStatus | null;
+  /** The configured sign-off window, when the caller has loaded it. */
+  autoReleaseHours?: number;
 };
 
 const clean = (text: string | undefined) => text?.trim() || undefined;
+const releaseWindow = (hours: number | undefined) => typeof hours === "number" && Number.isInteger(hours) && hours > 0 ? `${hours} ${hours === 1 ? "hour" : "hours"}` : null;
 
 /** Before paying: the whole journey. Once paid the earlier steps fold into "Price accepted" (C12). */
 function customerTracker(status: JobStatus, options: TrackerOptions): TrackerModel | null {
@@ -83,7 +86,7 @@ function customerTracker(status: JobStatus, options: TrackerOptions): TrackerMod
       };
     case "SUBMITTED":
       return {
-        steps: [{ label: "Price accepted" }, tradie, { label: "Please check", note: "Within 48 hours" }, sorted],
+        steps: [{ label: "Price accepted" }, tradie, { label: "Please check", note: releaseWindow(options.autoReleaseHours) ? `Within ${releaseWindow(options.autoReleaseHours)}` : "Soon after you check" }, sorted],
         current: 2,
       };
     case "COMPLETED":
@@ -98,13 +101,15 @@ function customerTracker(status: JobStatus, options: TrackerOptions): TrackerMod
 /** The job workspace (D09): only once the tradie has claimed the job. */
 function tradieTracker(status: JobStatus, options: TrackerOptions): TrackerModel | null {
   const name = clean(options.customerFirstName);
+  // The current setting cannot tell us a completed job's historical sign-off window.
+  const window = status === "COMPLETED" ? null : releaseWindow(options.autoReleaseHours);
   const steps: TrackerStep[] = [
     { label: "Claimed" },
     options.extraWork
       ? { label: "Do the work", note: `Waiting on ${name ?? "the customer"} to approve extra work` }
       : { label: "Do the work" },
     { label: options.evidence === "photos" ? "Upload photos" : "Upload CoC" },
-    { label: "Customer signs off", note: "or 48 hours" },
+    { label: "Customer signs off", note: window ? `or ${window}` : "or automatically" },
     { label: "Paid", note: "Next payroll" },
   ];
   switch (status) {
