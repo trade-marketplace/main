@@ -28,6 +28,8 @@ export async function declineVariation(db: PrismaClient, actor: VariationActor, 
     await tx.variation.update({ where: { id }, data: { status: "DECLINED" } });
     await createAudit(tx)(actor, "variation.declined", { type: "variations", id }, { status: "PRICED" }, { status: "DECLINED" });
     if (job.workerId) await createNotify(tx)("variation.declined", [job.workerId], { eventId: `variation.declined:${id}`, payload: { jobId: job.id, jobNumber: job.jobNumber, variationId: id } });
+    const office = await tx.profile.findMany({ where: { role: "ADMIN" }, select: { id: true } });
+    await createNotify(tx)("variation.declined_office", office.map(person => person.id), { eventId: `variation.declined_office:${id}:${variation.revision}`, payload: { jobId: job.id, jobNumber: job.jobNumber, variationId: id } });
     return { ok: true, variationId: id } as const;
   });
 }
