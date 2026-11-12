@@ -1,0 +1,7 @@
+.phone { display: none; }
+.desktop, .grid { padding: var(--trade-space-6); }
+.desktop h1,.grid h1 { font-family: var(--trade-font-heading); }
+.grid { display: grid; gap: var(--trade-space-4); }
+.grid a { min-height: 44px; color: var(--trade-text); }
+.srOnly { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+@media (max-width: 767.98px) { .desktop { display: none; } .phone { display: block; } .gallery { display: grid; gap: var(--trade-space-6); } .gallery > h1,.gallery > section > h2 { margin-inline: var(--trade-space-4); } }
