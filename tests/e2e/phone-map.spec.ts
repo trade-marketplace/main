@@ -66,6 +66,12 @@ test("phone map fits above navigation when setup notice appears and disappears",
   await page.getByRole("button",{name:"Show setup notice",exact:true}).click();await expect.poll(fits).toBeLessThanOrEqual(1);await expectNoA11yViolations(page);
  }
 });
+test("empty phone map Zoom out restores the job sheet by keyboard",async({page})=>{
+ for(const width of[320,390]){
+  await page.setViewportSize({width,height:1000});await page.goto(route("no-jobs-in-view"));const empty=page.getByRole("heading",{name:"No jobs here. Zoom out.",exact:true}),reset=empty.locator("..").getByRole("button",{name:"Zoom out",exact:true});
+  await reset.focus();await reset.press("Enter");await expect(empty).toHaveCount(0);await expect(page.getByRole("region",{name:"Jobs near you",exact:true}).locator('a[data-selected="true"]')).toHaveCount(1);await expectNoA11yViolations(page);
+ }
+});
 test("legacy cards remain readable without receiving a selection for a missing pin",async({page})=>{
  await page.setViewportSize({width:390,height:1000});await page.goto(route("peek","&legacyPins=mixed"));
  const cards=page.getByRole("region",{name:"Jobs near you",exact:true}),selected=cards.locator('a[data-selected="true"]');
@@ -132,6 +138,13 @@ test.describe("real phone map availability and job journey",()=>{
   const liveMaps=()=>page.evaluate(()=>(window as unknown as {__phoneLiveMaps:number}).__phoneLiveMaps);
   const mapCreates=()=>page.evaluate(()=>(window as unknown as {__phoneMapCreates:number}).__phoneMapCreates);
   await expect.poll(liveMaps).toBe(1);expect(await page.evaluate(()=>(window as unknown as {__phoneMapCreates:number}).__phoneMapCreates)).toBe(1);
+  // Manual movement never changes the React bounds request; resetting must remain observable each time.
+  for(let round=0;round<2;round++){
+   const fitsBefore=await page.evaluate(()=>(window as unknown as {__phoneFits:number}).__phoneFits);
+   await page.evaluate(()=>{const m=(window as unknown as {__boardMapFixture:{zoomIn:()=>void;getZoom:()=>number;flyTo:(input:{center:[number,number];zoom:number;duration:number})=>void}}).__boardMapFixture;m.zoomIn();m.flyTo({center:[0,0],zoom:m.getZoom(),duration:0});});
+   const empty=phone.getByRole("heading",{name:"No jobs here. Zoom out.",exact:true});await expect(empty).toBeVisible();await empty.locator("..").getByRole("button",{name:"Zoom out",exact:true}).click();await expect(empty).toHaveCount(0);await expect(phone.locator(`a[data-card-id="${job}"]`)).toBeVisible();
+   expect(await page.evaluate(()=>(window as unknown as {__phoneFits:number}).__phoneFits)).toBe(fitsBefore+1);expect(await mapCreates()).toBe(1);expect(await liveMaps()).toBe(1);
+  }
   // Model provider padding so a bounds-fit regression cannot masquerade as a stable zoom.
   const camera=()=>page.evaluate(()=>{const w=window as unknown as {__boardMapFixture:{z:number;b:{west:number;east:number;north:number;south:number};zoomIn:()=>void};__phoneFits:number;__phoneFlies:number},m=w.__boardMapFixture;return{zoom:m.z,width:m.b.east-m.b.west,height:m.b.north-m.b.south,fits:w.__phoneFits,flies:w.__phoneFlies||0};});
   const centrePin=phone.locator('button[data-pin-kind="claim"]'),centreCard=phone.locator(`a[data-card-id="${job}"]`);await centrePin.focus();await centrePin.press("Enter");await expect(centreCard).toBeFocused();
@@ -149,6 +162,7 @@ test.describe("real phone map availability and job journey",()=>{
   expect(Number((await db.query("SELECT count(*) FROM audit_log WHERE actor_id=$1 AND action='worker.availability_changed'",[SECURITY_TRADIE.id])).rows[0].count)).toBe(auditBefore+1);
   // Hold a real board action so the loading shell, provider and local state are observable.
   await phone.getByRole("button",{name:"Show list",exact:true}).click();
+  const filterCamera=await camera();
   const cameraBefore=await page.evaluate(()=>(window as unknown as {__boardMapFixture:{b:unknown}}).__boardMapFixture.b);
   let releaseFilter!:()=>void;const filterGate=new Promise<void>(resolve=>{releaseFilter=resolve;});let heldFilter=false;
   await page.route(app+"/jobs**",async route=>{if(route.request().method()==="POST"&&!heldFilter){heldFilter=true;await filterGate;}await route.continue();});
@@ -162,6 +176,7 @@ test.describe("real phone map availability and job journey",()=>{
   await expect(phone.getByRole("status",{name:"Loading your jobs",exact:true})).toHaveCount(0);
   await expect(phone.locator(`a[data-card-id="${job}"]`)).toHaveAttribute("data-selected","true");expect(await mapCreates()).toBe(3);expect(await liveMaps()).toBe(1);
   await page.unroute(app+"/jobs**");const restoredFilter=page.waitForResponse(response=>response.request().method()==="POST"&&new URL(response.url()).pathname==="/jobs");await phone.getByRole("list",{name:"Map job kind",exact:true}).getByRole("button",{name:/^All/}).click();await restoredFilter;await expect(phone.getByRole("status",{name:"Loading your jobs",exact:true})).toHaveCount(0);expect(await mapCreates()).toBe(3);
+  const afterFilter=await camera();expect(afterFilter.zoom).toBeCloseTo(filterCamera.zoom,10);expect(afterFilter.width).toBeCloseTo(filterCamera.width,10);expect(afterFilter.height).toBeCloseTo(filterCamera.height,10);expect(afterFilter.fits).toBe(filterCamera.fits);
   await page.reload();await expect(phone.getByRole("switch",{name:"Not available",exact:true})).not.toBeChecked();await expect(phone.getByText("You won’t get job alerts.",{exact:true})).toBeVisible();
   for(const width of[320,390,768,1024,1440]){
    await page.setViewportSize({width,height:1000});await page.goto(app+board);await expect.poll(liveMaps).toBe(1);expect(await page.evaluate(()=>(window as unknown as {__phoneMapCreates:number}).__phoneMapCreates)).toBe(1);
