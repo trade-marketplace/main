@@ -152,6 +152,36 @@ test.describe("actual customer saved addresses", () => {
     await page.reload(); await expect(page.getByRole("article")).toHaveCount(2);
     for (const item of fixtures) await expect(page.getByRole("article", { name: `${item.label} renamed`, exact: true })).toContainText("Windsor, Invercargill, 9810");
   });
+  test("all provenance kinds preserve label/unit edits and keep locality out of a corrected street", async ({ page }) => {
+    const fixtures = (["SEARCH", "TYPED", "PIN", null] as const).map(source => ({ id: randomUUID(), label: `${source ?? "Unknown"} home`, source, lat: source === "SEARCH" || source === "PIN" ? -46.41 : null, lng: source === "SEARCH" || source === "PIN" ? 168.35 : null }));
+    for (const [index, item] of fixtures.entries()) await db.query("INSERT INTO addresses(id,user_id,label,line1,line2,suburb,city,postcode,lat,lng,location_source,is_default) VALUES($1,$2,$3,'12 Matrix Test Street','Unit 2','Central','Invercargill','9810',$4,$5,$6,$7)", [item.id, SECURITY_USER.id, item.label, item.lat, item.lng, item.source, index === 0]);
+    await login(page);
+    for (const item of fixtures) {
+      await page.getByRole("article", { name: item.label, exact: true }).getByRole("button", { name: "Edit", exact: true }).click();
+      let dialog = page.getByRole("dialog");
+      await expect(dialog.getByRole("combobox")).toHaveValue("12 Matrix Test Street");
+      await dialog.getByLabel("Label", { exact: true }).fill(`${item.label} edited`);
+      await dialog.getByLabel("Unit or flat", { exact: true }).fill("Unit 3");
+      await dialog.getByRole("button", { name: "Save", exact: true }).click(); await expect(dialog).toHaveCount(0);
+      expect((await db.query("SELECT line1,line2,suburb,city,postcode,location_source,lat,lng FROM addresses WHERE id=$1", [item.id])).rows[0]).toEqual({ line1: "12 Matrix Test Street", line2: "Unit 3", suburb: "Central", city: "Invercargill", postcode: "9810", location_source: item.source, lat: item.lat, lng: item.lng });
+      const card = page.getByRole("article", { name: `${item.label} edited`, exact: true });
+      await card.getByRole("button", { name: "Edit", exact: true }).click(); dialog = page.getByRole("dialog");
+      const street = dialog.getByRole("combobox"); await street.focus(); await street.press("Home"); await street.press("ArrowRight"); await street.press("Delete"); await street.press("3");
+      await expect(street).toHaveValue("13 Matrix Test Street");
+      await expect(dialog.getByLabel("Unit or flat", { exact: true })).toHaveValue("Unit 3");
+      await expect(dialog.getByLabel("Suburb", { exact: true })).toHaveValue("Central");
+      await expect(dialog.getByLabel("City", { exact: true })).toHaveValue("Invercargill");
+      await expect(dialog.getByLabel("Postcode", { exact: true })).toHaveValue("9810");
+      await dialog.getByLabel("Suburb", { exact: true }).fill("Windsor");
+      await expect(street).toHaveValue("13 Matrix Test Street");
+      await expect(dialog.getByLabel("City", { exact: true })).toHaveValue("Invercargill");
+      await expect(dialog.getByLabel("Postcode", { exact: true })).toHaveValue("9810");
+      await dialog.getByRole("button", { name: "Save", exact: true }).click(); await expect(dialog).toHaveCount(0);
+      expect((await db.query("SELECT line1,line2,suburb,city,postcode,location_source,lat,lng FROM addresses WHERE id=$1", [item.id])).rows[0]).toEqual({ line1: "13 Matrix Test Street", line2: "Unit 3", suburb: "Windsor", city: "Invercargill", postcode: "9810", location_source: "TYPED", lat: null, lng: null });
+      await expect(card).toContainText("Unit 3, 13 Matrix Test Street");
+      await expect(card).toContainText("Windsor, Invercargill, 9810");
+    }
+  });
   test("a response lost after commit reuses the same create key on retry", async ({ page }) => {
     const auditsBefore = (await db.query("SELECT count(*)::int AS count FROM audit_log WHERE actor_id=$1 AND action='address.saved' AND after->>'label'='Committed retry'", [SECURITY_USER.id])).rows[0].count;
     await login(page); await page.getByRole("button", { name: "Add address", exact: true }).click(); await fill(page, "Committed retry", "78 Local Test Street");

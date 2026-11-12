@@ -130,9 +130,9 @@ function AddressList({ initial, source = live, search = searchJobAddressesAction
         {offline && <InlineError message="You’re offline. Reconnect before saving." />}
         {failure && <InlineError message={errors[failure.error]} />}
         <TextField label="Label" placeholder="Home" value={input.label} maxLength={40} error={fields.label} readOnly={pending} onChange={event => change("label", event.target.value)} />
-        <AddressField label="Address" autoComplete="street-address" value={input.locationSource === "SEARCH" ? [input.line1, input.suburb, input.city].filter(Boolean).join(", ") : input.line1} required maxLength={200} readOnly={pending}
+        <AddressField label="Address" autoComplete="street-address" value={input.line1} required maxLength={200} readOnly={pending}
           suggestions={lookup.suggestions} status={lookup.status} error={fields.line1 ?? fields.point ?? fields.locationSource} onQueryChange={value => {
-            sequence.current++; setManual(true); setLookup({ status: "idle", suggestions: [] }); setInput(old => ({ ...old, line1: value, suburb: "", city: "", postcode: "", locationSource: "TYPED", point: null }));
+            sequence.current++; setManual(true); setLookup({ status: "idle", suggestions: [] }); setInput(old => ({ ...old, line1: value, locationSource: "TYPED", point: null }));
           }} onSelect={option => { const found = lookup.suggestions.find(value => value.id === option.id); if (found) pick(found); }} />
         <TextField label="Unit or flat" autoComplete="address-line2" value={input.line2} maxLength={200} error={fields.line2} readOnly={pending} onChange={event => change("line2", event.target.value)} />
         {manual && <>
