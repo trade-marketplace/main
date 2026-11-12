@@ -29,7 +29,7 @@ describe("worker workspace", () => {
   it("shows all assigned updates and links to the planned routes with one Messages link", () => {
     const body = html(); for (const label of ["I’m on my way", "Running late", "Need to reschedule", "Customer not home"]) expect(body).toContain(label);
     expect(body).toContain(`/jobs/${workspaceExample.id}/book`); expect(body).toContain(`/jobs/${workspaceExample.id}/complete`);
-    expect(body.match(/href="\/messages"/g)).toHaveLength(1); expect(body).not.toContain("Extra work</");
+    expect(body.match(/href="\/messages"/g)).toHaveLength(1); expect(body).toContain("Extra work</");
   });
   it("disables Finish job with the extra-work reason", () => {
     const body = html({ ...workspaceExample, extraWorkOpen: true });
