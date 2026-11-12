@@ -6,7 +6,7 @@ import { testDatabaseUrl, useTestSchema } from "../support/test-db";
 
 describe.skipIf(!testDatabaseUrl)("saved addresses transactions", () => {
   const schema = useTestSchema(import.meta.filename);
-  const input = (label = "Home"): AddressInput => ({ label, line1: "12 Never Audit Street", line2: "Unit 2", suburb: "Windsor", city: "Invercargill", postcode: "9810", locationSource: "SEARCH", point: { lat: -46.4132, lng: 168.3538 } });
+  const input = (label = "Home"): AddressInput => ({ requestId: randomUUID(), label, line1: "12 Never Audit Street", line2: "Unit 2", suburb: "Windsor", city: "Invercargill", postcode: "9810", locationSource: "SEARCH", point: { lat: -46.4132, lng: 168.3538 } });
   async function person(role: "CUSTOMER" | "TRADIE" = "CUSTOMER") {
     const id = randomUUID();
     await schema.db.$executeRaw`INSERT INTO auth.users(id) VALUES(${id}::uuid)`;
@@ -18,6 +18,22 @@ describe.skipIf(!testDatabaseUrl)("saved addresses transactions", () => {
     expect(answer.ok).toBe(true); if (!answer.ok) throw Error("Fixture address failed");
     return answer.addresses.find(row => row.label === label)!;
   }
+  it("retries the same create key once after commit, including concurrently and at the limit", async () => {
+    const me = await person(), data = input("Retry");
+    const answers = await Promise.all([saveAddress(schema.db, me, data), saveAddress(schema.db, me, data)]);
+    expect(answers.every(answer => answer.ok)).toBe(true);
+    expect(await listAddresses(schema.db, me)).toHaveLength(1);
+    expect((await listAddresses(schema.db, me))[0].id).toBe(data.requestId);
+    expect(await schema.db.auditLog.count({ where: { actorId: me.userId, action: "address.saved" } })).toBe(1);
+    for (let i = 1; i < 10; i++) await add(me, `Extra ${i}`);
+    expect((await saveAddress(schema.db, me, data)).ok).toBe(true);
+    expect(await listAddresses(schema.db, me)).toHaveLength(10);
+    expect((await saveAddress(schema.db, me, { ...data, label: "Updated retry" })).ok).toBe(true);
+    expect((await listAddresses(schema.db, me)).find(row => row.id === data.requestId)?.label).toBe("Updated retry");
+    const other = await person(), foreign = await add(other);
+    expect(await saveAddress(schema.db, me, { ...input(), requestId: foreign.id })).toEqual({ ok: false, error: "forbidden" });
+    expect((await listAddresses(schema.db, other))[0]).toMatchObject({ id: foreign.id, label: "Home" });
+  });
   it("makes the first address default, lists only its owner and keeps default first", async () => {
     const me = await person(), other = await person();
     const first = await add(me), second = await add(me, "Rental"); await add(other, "Other");

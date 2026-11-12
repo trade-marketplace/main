@@ -7,6 +7,11 @@ vi.mock("@/server/account/address-actions", () => ({ listAddressesAction: vi.fn(
 vi.mock("@/server/jobs/address-actions", () => ({ searchJobAddressesAction: vi.fn() }));
 const row: SavedAddress = { id: "23700000-0000-4000-8000-000000000001", label: "Home", line1: "12 Dee Street", line2: "Unit 2", suburb: "Central", city: "Invercargill", postcode: "9810", lat: -46.4, lng: 168.3, locationSource: "SEARCH", isDefault: true, createdAt: "2026-11-12T00:00:00Z" };
 describe("saved address validation and presentation", () => {
+  it("requires a stable request UUID for a new create and keeps edit ids separate", () => {
+    const create = { ...addressInput(row), id: undefined };
+    expect(parseAddress(create)).toMatchObject({ ok: false });
+    expect(parseAddress({ ...create, requestId: "23700000-0000-4000-8000-000000000099" }).ok).toBe(true);
+  });
   it("accepts a search selection with coordinates and trims optional label/unit fields", () => {
     expect(parseAddress({ ...addressInput(row), label: " Home ", line2: " Unit 2 " })).toMatchObject({ ok: true, data: { label: "Home", line2: "Unit 2", point: { lat: -46.4, lng: 168.3 } } });
   });

@@ -10,6 +10,7 @@ export type SavedAddress = {
 const point = z.object({ lat: z.number().finite().min(-90).max(90), lng: z.number().finite().min(-180).max(180) });
 export const savedAddressInput = z.object({
   id: z.uuid().optional(),
+  requestId: z.uuid().optional(),
   label: z.string().trim().max(40, "Use 40 characters or fewer.").default(""),
   line1: z.string().trim().min(1, "Enter the address.").max(200, "Use 200 characters or fewer."),
   line2: z.string().trim().max(200, "Use 200 characters or fewer.").default(""),
@@ -20,6 +21,7 @@ export const savedAddressInput = z.object({
   locationSource: z.enum(["SEARCH", "TYPED"]).nullable(),
   point: point.nullable().default(null),
 }).superRefine((value, context) => {
+  if (!value.id && !value.requestId) context.addIssue({ code: "custom", path: ["line1"], message: "Open Add address again and try saving." });
   if (value.locationSource === "SEARCH" && !value.point) context.addIssue({ code: "custom", path: ["line1"], message: "Choose an address from the search results." });
   if (value.locationSource === "TYPED" && value.point) context.addIssue({ code: "custom", path: ["line1"], message: "Type the address again without a location." });
   if (value.locationSource === null && !value.id) context.addIssue({ code: "custom", path: ["line1"], message: "Choose an address or type it by hand." });

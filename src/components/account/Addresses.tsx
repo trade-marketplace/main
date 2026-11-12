@@ -41,6 +41,7 @@ function AddressList({ initial, source = live, search = searchJobAddressesAction
   const [lookup, setLookup] = useState<Lookup>({ status: preview === "searching" ? "loading" : preview === "search-unavailable" ? "error" : "idle", suggestions: [] });
   const [manual, setManual] = useState(preview === "search-unavailable" || preview === "field-error"), [fields, setFields] = useState<AddressFields>(preview === "field-error" ? { line1: "Enter the address.", suburb: "Enter the suburb.", city: "Enter the city." } : {});
   const [failure, setFailure] = useState<Extract<AddressResult, { ok: false }> | null>(null), [busy, setBusy] = useState(false), [restoreSelector, setRestoreSelector] = useState<string | null>(null);
+  const createRequest = useRef<string | null>(null);
   const sequence = useRef(0), inFlight = useRef(false), root = useRef<HTMLDivElement>(null), form = useRef<HTMLFormElement>(null), id = useId();
   const online = useOnlineStatus(), toast = useToast(), session = useOptionalSessionExpired();
   const offline = !online || preview === "offline", pending = busy || preview === "saving";
@@ -68,7 +69,7 @@ function AddressList({ initial, source = live, search = searchJobAddressesAction
 
   function open(mode: "add" | "edit" | "delete", address?: SavedAddress) {
     if (pending || offline || mode === "add" && addresses.length >= MAX_SAVED_ADDRESSES) return;
-    sequence.current++; setSelected(address); setInput(addressInput(address)); setFields({}); setFailure(null); setLookup({ status: "idle", suggestions: [] });
+    sequence.current++; createRequest.current = null; setSelected(address); setInput(addressInput(address)); setFields({}); setFailure(null); setLookup({ status: "idle", suggestions: [] });
     setManual(address?.locationSource === "TYPED"); setDialog(mode);
   }
   function closeDialog(removed = false) {
@@ -87,7 +88,8 @@ function AddressList({ initial, source = live, search = searchJobAddressesAction
   }
   function save() {
     if (dialog !== "add" && dialog !== "edit" || pending || offline) return;
-    const parsed = parseAddress(input);
+    const submitted = input.id ? input : { ...input, requestId: createRequest.current ??= crypto.randomUUID() };
+    const parsed = parseAddress(submitted);
     if (!parsed.ok) { setFields(parsed.fields); requestAnimationFrame(() => form.current?.querySelector<HTMLElement>("[aria-invalid=true]")?.focus()); return; }
     void receive(() => source.save(parsed.data), () => closeDialog());
   }

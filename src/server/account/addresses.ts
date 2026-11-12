@@ -43,11 +43,13 @@ function unchangedLocation(row: Row, input: AddressInput) {
 }
 export async function saveAddress(db: PrismaClient, viewer: AddressViewer, input: unknown): Promise<AddressResult> {
   if (viewer.role !== "CUSTOMER") return { ok: false, error: "forbidden" };
-  const identifier = z.object({ id: z.uuid().optional() }).safeParse(input);
+  const identifier = z.object({ id: z.uuid().optional(), requestId: z.uuid().optional() }).safeParse(input);
   if (!identifier.success) return { ok: false, error: "invalid" };
   return write(db, viewer, async (tx, rows) => {
-    const old = rows.find(row => row.id === identifier.data.id);
+    const requestedId = identifier.data.id ?? identifier.data.requestId;
+    const old = rows.find(row => row.id === requestedId);
     if (identifier.data.id && !old) return { ok: false, error: "forbidden" };
+    if (!identifier.data.id && requestedId && !old && await tx.address.findUnique({ where: { id: requestedId }, select: { id: true } })) return { ok: false, error: "forbidden" };
     const parsed = parseAddress(input);
     if (!parsed.ok) return parsed;
     const data = parsed.data;
@@ -55,8 +57,10 @@ export async function saveAddress(db: PrismaClient, viewer: AddressViewer, input
     if (data.locationSource === null && (!old || !unchangedLocation(old, data))) return { ok: false, error: "invalid", fields: { line1: "Choose an address or type it by hand." } };
     const values = { label: data.label || null, line1: data.line1, line2: data.line2 || null, suburb: data.suburb, city: data.city, postcode: data.postcode || null,
       lat: data.point?.lat ?? null, lng: data.point?.lng ?? null, locationSource: data.locationSource ?? old!.locationSource };
+    // The request UUID is the row UUID: a lost response can be retried without creating another address.
+    if (old && rows.some(row => row.isDefault) && Object.entries(values).every(([key, value]) => old[key as keyof typeof values] === value)) return result(tx, viewer.userId);
     const saved = old ? await tx.address.update({ where: { id: old.id }, data: values, select })
-      : await tx.address.create({ data: { userId: viewer.userId, ...values, isDefault: !rows.some(row => row.isDefault) }, select });
+      : await tx.address.create({ data: { id: data.requestId, userId: viewer.userId, ...values, isDefault: !rows.some(row => row.isDefault) }, select });
     await createAudit(tx)(viewer, "address.saved", { type: "profiles", id: viewer.userId }, snapshot(old), snapshot(saved));
     if (old && !rows.some(row => row.isDefault)) {
       const newest = rows[0].id === saved.id ? saved : rows[0];

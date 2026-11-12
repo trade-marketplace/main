@@ -117,6 +117,22 @@ test.describe("actual customer saved addresses", () => {
     const audits = (await db.query("SELECT before,after FROM audit_log WHERE actor_id=$1 AND action LIKE 'address.%'", [SECURITY_USER.id])).rows;
     expect(JSON.stringify(audits)).not.toContain("Local Test Street"); await expectNoA11yViolations(page);
   });
+  test("a response lost after commit reuses the same create key on retry", async ({ page }) => {
+    await login(page); await page.getByRole("button", { name: "Add address", exact: true }).click(); await fill(page, "Committed retry", "78 Local Test Street");
+    let dropped = false;
+    await page.route("**/profile/addresses", async route => {
+      if (!dropped && route.request().method() === "POST") { dropped = true; await route.fetch(); return route.abort("failed"); }
+      return route.continue();
+    });
+    await page.getByRole("dialog").getByRole("button", { name: "Save", exact: true }).click();
+    await expect(page.getByText("Couldn’t save your addresses. Try again.", { exact: true })).toBeVisible();
+    expect((await db.query("SELECT count(*)::int AS count FROM addresses WHERE user_id=$1", [SECURITY_USER.id])).rows[0].count).toBe(1);
+    await expect(page.getByRole("dialog").getByLabel("Label", { exact: true })).toHaveValue("Committed retry");
+    await page.getByRole("dialog").getByRole("button", { name: "Save", exact: true }).click(); await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(page.getByRole("article", { name: "Committed retry", exact: true })).toHaveCount(1);
+    expect((await db.query("SELECT count(*)::int AS count FROM addresses WHERE user_id=$1", [SECURITY_USER.id])).rows[0].count).toBe(1);
+    expect((await db.query("SELECT count(*)::int AS count FROM audit_log WHERE actor_id=$1 AND action='address.saved' AND after->>'label'='Committed retry'", [SECURITY_USER.id])).rows[0].count).toBe(1);
+  });
   test("a failed request retains the draft and retry creates one address; wrong-role route exposes no customer data", async ({ page }) => {
     await login(page); await page.getByRole("button", { name: "Add address", exact: true }).click(); await fill(page, "Retry", "56 Local Test Street");
     let failed = false;
