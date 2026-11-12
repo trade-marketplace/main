@@ -8,7 +8,7 @@ for (const width of [320, 390, 768, 1024, 1440]) test(`office customer states at
   test.setTimeout(180_000); await page.setViewportSize({ width, height: 1000 });
   for (const state of CUSTOMER_STATES) await test.step(state, async () => {
     expect((await page.goto(`${preview}/dev/components/office-customers?state=${state}`))?.status()).toBe(200);
-    await expect(page.getByRole("heading", { name: "Customers", exact: true, level: 1 })).toBeVisible();
+    await expect(page.getByRole("heading", { name: state === "customer-jobs" ? "All jobs" : "Customers", exact: true, level: 1 })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true); await expectNoA11yViolations(page);
     if (process.env.OFFICE_CUSTOMERS_QA_DIR && (width === 390 || width === 1440)) { const { mkdir } = await import("node:fs/promises"); await mkdir(process.env.OFFICE_CUSTOMERS_QA_DIR, { recursive: true }); await page.screenshot({ path: `${process.env.OFFICE_CUSTOMERS_QA_DIR}/${state}-${width}.png`, fullPage: true }); }
   });

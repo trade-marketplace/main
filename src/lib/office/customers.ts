@@ -1,7 +1,7 @@
 import type { SortState } from "@/lib/data-table";
 export const CUSTOMER_PAGE_SIZE = 25;
 export const CUSTOMER_SORT_KEYS = ["name", "jobs", "lastJob", "joined"] as const;
-export const CUSTOMER_STATES = ["list", "sorted", "searching", "no-match", "empty", "page-2", "error", "loading", "offline"] as const;
+export const CUSTOMER_STATES = ["list", "sorted", "searching", "no-match", "empty", "page-2", "error", "loading", "offline", "customer-jobs"] as const;
 export type CustomerState = typeof CUSTOMER_STATES[number];
 export type CustomersQuery = { q: string; page: number; sort: SortState };
 export type OfficeCustomer = { id: string; name: string; email: string; mobile: string | null; suburb: string | null; jobs: number; lastJobAt: string | null; joinedAt: string };
