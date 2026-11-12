@@ -107,3 +107,6 @@ export async function loadNotificationsPage(db: InboxDb, userId: string, input: 
   const rows = await db.notification.findMany({ where, orderBy: [{ createdAt: "desc" }, { id: "desc" }], skip: (page - 1) * NOTIFICATIONS_PAGE_SIZE, take: NOTIFICATIONS_PAGE_SIZE, select: SELECT });
   return { items: rows.map(inboxItem), unread, total, page };
 }
+
+/** Read-only presentation copy shared with the owned customer's booked-job updates. */
+export { COPY as NOTIFICATION_COPY };
