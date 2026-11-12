@@ -14,5 +14,5 @@ export default async function TradesPage({ searchParams }: { searchParams: Promi
   const viewer = await requireRole(["TRADIE"], { next: destination.href });
   let snapshot = null;
   try { snapshot = await loadTrades(getDb(), viewer.userId); } catch { /* A safe retry surface; no database details. */ }
-  return <AccountSettings role="TRADIE" active="/profile/trades">{destination.back && <TextLink href={destination.back}>Back to jobs</TextLink>}<TradesLicences key={viewer.userId} initial={snapshot} /></AccountSettings>;
+  return <AccountSettings role="TRADIE" active="/profile/trades" next={destination.back}>{destination.back && <TextLink href={destination.back}>Back to jobs</TextLink>}<TradesLicences key={viewer.userId} initial={snapshot} /></AccountSettings>;
 }
