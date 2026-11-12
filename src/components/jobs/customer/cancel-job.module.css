@@ -1,0 +1,4 @@
+.body { display: grid; gap: var(--trade-space-4); }
+.body p { margin: 0; }
+.body form { display: grid; gap: var(--trade-space-4); }
+.notice { margin-block: var(--trade-space-4); }
