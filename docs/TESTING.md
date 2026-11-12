@@ -1,5 +1,19 @@
 # Testing
 
+Three kinds of test, all in `tests/`:
+
+| Kind | Command | Where | Tool |
+|---|---|---|---|
+| Unit | `npm test` | `tests/unit/*.test.ts(x)` | [Vitest](https://vitest.dev) |
+| End-to-end | `npm run e2e` | `tests/e2e/*.spec.ts` | [Playwright](https://playwright.dev) |
+| Accessibility | part of `npm run e2e` | inside e2e tests | [axe](https://github.com/dequelabs/axe-core) via `expectNoA11yViolations` |
+
+Every PR runs `npm run lint`, `npm run typecheck`, `npm test` and `npm run build` (AGENTS.md §3). Run `npm run e2e`
+too whenever you change a screen. CI (`.github/workflows/ci.yml`) runs all of them, e2e last on the app it just built.
+When an e2e test fails there, the run's **Artifacts** has `playwright-report` (kept 7 days): download it and open
+`index.html` to see each failure with its screenshot and trace. UI PRs also get screenshots of every changed screen
+posted as a comment; see "Screenshots on UI PRs" below.
+
 ## Whole job flow (local opt-in, #191)
 
 `tests/e2e/whole-flow-signed-in.spec.ts` follows one newly posted job through the real customer, office and tradie screens, then checks queued payroll, role privacy, history, notifications and audit actors. Use Node 22, installed Chromium, and a disposable **localhost `lane_d_191`** database. The test owns app port 3140 and local service ports 55440–55443; leave them free. It starts/stops the built app itself, using the existing Auth/Storage stand-ins and an in-process address-search response; its network guard refuses outside service traffic. The card exception calls the existing webhook event handler with a fake success event and replay; Stripe keys and email remain off.
@@ -14,20 +28,6 @@ WHOLE_FLOW_E2E_APP_URL=http://127.0.0.1:3140 WHOLE_FLOW_E2E_DATABASE_URL="$DATAB
 ```
 
 Set `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` if Chromium is installed outside Playwright's cache. Seed once; each run posts its own job and preserves that business history. An observed product bug has an issue-linked `fixme` annotation and skips only the affected nested step (`test.fixme()` would skip the entire journey); all remaining steps still execute. Do not insert missing business rows or change job statuses to conceal a bug. Ordinary CI skips this spec without the opt-in variables; dedicated CI provisioning is tracked in #567. After fixture testing, stop its processes and run a normal build with the Supabase variables blank.
-
-Three kinds of test, all in `tests/`:
-
-| Kind | Command | Where | Tool |
-|---|---|---|---|
-| Unit | `npm test` | `tests/unit/*.test.ts(x)` | [Vitest](https://vitest.dev) |
-| End-to-end | `npm run e2e` | `tests/e2e/*.spec.ts` | [Playwright](https://playwright.dev) |
-| Accessibility | part of `npm run e2e` | inside e2e tests | [axe](https://github.com/dequelabs/axe-core) via `expectNoA11yViolations` |
-
-Every PR runs `npm run lint`, `npm run typecheck`, `npm test` and `npm run build` (AGENTS.md §3). Run `npm run e2e`
-too whenever you change a screen. CI (`.github/workflows/ci.yml`) runs all of them, e2e last on the app it just built.
-When an e2e test fails there, the run's **Artifacts** has `playwright-report` (kept 7 days): download it and open
-`index.html` to see each failure with its screenshot and trace. UI PRs also get screenshots of every changed screen
-posted as a comment; see "Screenshots on UI PRs" below.
 
 ## Unit tests (Vitest)
 
