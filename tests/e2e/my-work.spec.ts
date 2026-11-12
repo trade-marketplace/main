@@ -45,7 +45,7 @@ test("a failed read retries without losing the tab or treating the failure as em
 });
 
 test.describe("real My work journeys", () => {
-  test.skip(!app || !database, "Needs a throwaway localhost lane_c_148 database and local Auth stand-in.");
+  test.skip(!app || !database, "Needs a throwaway localhost lane_c_148 or lane_b_570 database and local Auth stand-in.");
   test.describe.configure({ mode: "serial", timeout: 120_000 });
   let db: pg.Client, auth: Awaited<ReturnType<typeof startSecurityAuthStub>>;
   const me = SECURITY_TRADIE.id, customer = SECURITY_USER.id, other = "14800000-0000-4000-8000-000000000098";
@@ -53,7 +53,7 @@ test.describe("real My work journeys", () => {
   const title = (kind: keyof typeof ids) => `Work ${kind} ${tag}`;
   test.beforeAll(async () => {
     const target = new URL(database!);
-    if (!["127.0.0.1", "localhost"].includes(target.hostname) || target.pathname !== "/lane_c_148" || target.search || !["127.0.0.1", "localhost"].includes(new URL(app!).hostname)) throw Error("Use the disposable localhost lane_c_148 database and app.");
+    if (!["127.0.0.1", "localhost"].includes(target.hostname) || !["/lane_c_148", "/lane_b_570"].includes(target.pathname) || target.search || !["127.0.0.1", "localhost"].includes(new URL(app!).hostname)) throw Error("Use a disposable localhost lane_c_148 or lane_b_570 database and app.");
     auth = await startSecurityAuthStub(Number(process.env.MY_WORK_E2E_AUTH_PORT ?? 54530)); db = new pg.Client({ connectionString: database }); await db.connect();
     for (const [id, email, role] of [[me, SECURITY_TRADIE.email, "TRADIE"], [customer, SECURITY_USER.email, "CUSTOMER"], [other, "my-work-other@example.test", "TRADIE"]]) {
       await db.query("INSERT INTO auth.users(id,email) VALUES($1,$2) ON CONFLICT(id) DO NOTHING", [id, email]);
@@ -76,6 +76,24 @@ test.describe("real My work journeys", () => {
     await page.goto(`${app}/login?next=%2Fdashboard`); await page.getByLabel("Email", { exact: true }).fill(asCustomer ? SECURITY_USER.email : SECURITY_TRADIE.email);
     await page.getByLabel("Password", { exact: true }).fill(SECURITY_PASSWORD); await page.getByRole("button", { name: "Log in", exact: true }).click(); await expect(page).toHaveURL(`${app}/dashboard`);
   }
+  for (const viewport of VIEWPORTS) test(`assigned workspace keeps My work and task Back journeys at ${viewport.width}px`, async ({ page }) => {
+    await page.setViewportSize(viewport); await login(page);
+    const activate = async (locator: ReturnType<Page["getByRole"]>) => { if (viewport.width === 1440) { await locator.focus(); await locator.press("Enter"); } else await locator.click(); };
+    const column = "/dashboard?column=on-now", workspace = `/jobs/${ids.booked}?from=${encodeURIComponent(column)}`;
+    await page.goto(`${app}${column}`); await activate(page.getByRole("heading", { name: title("booked"), exact: true }).locator("..")); await expect(page).toHaveURL(`${app}${workspace}`);
+    const breadcrumb = () => page.getByRole("navigation", { name: "Breadcrumb", exact: true });
+    await activate(page.getByRole("link", { name: "Change", exact: true })); await expect(page.getByRole("heading", { name: "Pick a time", exact: true })).toBeVisible();
+    await activate(page.getByRole("link", { name: "Back to job", exact: true })); await expect(page).toHaveURL(`${app}${workspace}`);
+    await activate(page.getByRole("link", { name: "Finish job", exact: true })); await expect(page).toHaveURL(`${app}/jobs/${ids.booked}/complete?from=${encodeURIComponent(column)}`);
+    await activate(breadcrumb().getByRole("link", { name: title("booked"), exact: true })); await expect(page).toHaveURL(`${app}${workspace}`);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true); await expectNoA11yViolations(page);
+    await activate(breadcrumb().getByRole("link", { name: "My work", exact: true })); await expect(page).toHaveURL(`${app}${column}`);
+    if (viewport.width < 768) await expect(page.getByRole("tab", { name: /^On now/ })).toHaveAttribute("aria-selected", "true");
+    await page.goto(`${app}/dashboard?tab=quotes`); await activate(page.getByRole("link", { name: title("own"), exact: true }));
+    await expect(page).toHaveURL(`${app}/jobs/${ids.own}?from=%2Fdashboard%3Ftab%3Dquotes`);
+    await activate(breadcrumb().getByRole("link", { name: "My work", exact: true })); await expect(page).toHaveURL(`${app}/dashboard?tab=quotes`);
+    await expect(page.getByRole("tab", { name: /^Quotes/ })).toHaveAttribute("aria-selected", "true"); await expectNoA11yViolations(page);
+  });
   test("own job and readable quote links return to their same tab and phone column", async ({ page }) => {
     await login(page); await expect(page).toHaveTitle(/My work/);
     await page.getByRole("heading", { name: title("own"), exact: true }).locator("..").press("Enter");
