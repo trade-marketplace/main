@@ -1,6 +1,7 @@
 import { expect, type Page, test } from "@playwright/test";
 
 import { expectNoA11yViolations } from "./support/a11y";
+import { waitForPageSettled } from "./support/page-settled";
 import { VIEWPORTS } from "./support/viewports";
 
 // The offline banner (#187, G04) is mounted once in the root layout, so every page has it. These run on the production
@@ -41,6 +42,7 @@ test.describe("offline banner on the production build", () => {
       expect(boxes.bannerTop).toBe(0);
       expect(boxes.headerTop).toBeGreaterThanOrEqual(boxes.bannerBottom - 1);
       expect(await overflow(page)).toBe(0);
+      await waitForPageSettled(page, "How it works | Trade Marketplace");
       await expectNoA11yViolations(page);
 
       // Retry now while still offline neither reloads nor leaves the page.
