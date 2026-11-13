@@ -63,7 +63,7 @@ test.describe("office queues against signed-in routes and PostgreSQL", () => {
     const price = page.getByRole("table", { name: "To price", exact: true });
     await expect(price.locator("tbody tr").first()).toContainText("Queue fixture 0");
     await expect(price.locator("tbody tr").first()).toContainText("26h");
-    await price.getByRole("link", { name: "Price it", exact: true }).click();
+    await price.locator("tbody tr").first().getByRole("link", { name: "Price it", exact: true }).click();
     await expect(page.getByRole("heading", { name: "Set the price", exact: true })).toBeVisible();
     await expect(page).toHaveURL(`${app}/admin/jobs/${jobs[0]}/price`);
     await page.goBack(); await expect(price).toBeVisible();
