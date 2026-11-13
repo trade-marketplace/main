@@ -54,6 +54,7 @@ describe("inbox presentation boundary", () => {
       const item = inboxItem(row({ type, payload: {} }));
       // D15 reuses the full existing Earnings banner wording; do not shorten approved screen copy.
       if (type === "payout.details_missing") expect(item.line).toBe("Add bank account & IRD number.");
+      else if (type === "variation.reminder") expect(item.line).toBe("Extra work still needs your OK");
       else expect(item.line.split(/\s+/).length).toBeLessThanOrEqual(4);
       expect(item.icon).toMatch(/^[a-z_]+$/);
     }
