@@ -40,7 +40,7 @@ export function DraftWhere({ draft, onChange, onNext, onOutside, backHref, now, 
   const sequence = useRef(0);
   const session = useOptionalSessionExpired();
   const current = useRef(draft); const mounted = useRef(true); const initialized = useRef(Boolean(preview));
-  const [saved, setSaved] = useState<Awaited<ReturnType<typeof listDraftAddressesAction>>>();
+  const [saved, setSaved] = useState<{ status: "loaded"; addresses: SavedAddress[]; ownerId: string | null } | { status: "unavailable" }>();
   const [refresh, setRefresh] = useState(0);
   const [savedId, setSavedId] = useState(preview?.saved?.selectedId ?? "other");
   const [copying, setCopying] = useState(""); const [attempt, setAttempt] = useState(preview?.saved?.selectedId ?? ""); const [copyError, setCopyError] = useState(Boolean(preview?.saved?.error)); const copyPending = useRef(false); const retryChoice = useRef<(id: string) => Promise<void>>(async () => {});
@@ -49,7 +49,7 @@ export function DraftWhere({ draft, onChange, onNext, onOutside, backHref, now, 
   useEffect(() => {
     if (preview) return;
     let active = true;
-    void listDraftAddressesAction().then(result => { if (active) setSaved(result); }, () => { if (active) setSaved({ status: "unavailable" }); });
+    void listDraftAddressesAction().then(result => { if (active) setSaved("status" in result ? result : { status: "loaded", addresses: [], ownerId: null }); }, () => { if (active) setSaved({ status: "unavailable" }); });
     return () => { active = false; };
   }, [preview, refresh]);
   const [previewLoadFailure, setPreviewLoadFailure] = useState(Boolean(preview?.saved?.loadError));

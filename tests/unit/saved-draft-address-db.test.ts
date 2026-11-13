@@ -53,10 +53,10 @@ describe.skipIf(!testDatabaseUrl)("saved address copies in the where step", () =
   it("uses the actual guarded copy action, keeps guest/other-role choices empty and rechecks owner binding", async () => {
     const me = await person(), them = await person(), own = await address(me), foreign = await address(them), original = await checkpoint(me);
     vi.mocked(getDb).mockReturnValue(schema.db); vi.mocked(getDb).mockClear(); vi.mocked(getViewer).mockResolvedValue(null);
-    expect(await listDraftAddressesAction()).toEqual({ status: "loaded", addresses: [], ownerId: null }); expect(getDb).not.toHaveBeenCalled();
+    expect(await listDraftAddressesAction()).toMatchObject({ error: "session-expired" }); expect(getDb).not.toHaveBeenCalled();
     expect(await copyDraftAddressAction(own.id, original.postKey, me.userId)).toMatchObject({ error: "session-expired" });
-    vi.mocked(getViewer).mockResolvedValue({ ...me, role: "TRADIE" }); expect(await listDraftAddressesAction()).toEqual({ status: "loaded", addresses: [], ownerId: null }); expect(await copyDraftAddressAction(own.id, original.postKey, me.userId)).toMatchObject({ error: "forbidden" });
-    vi.mocked(getViewer).mockResolvedValue(me); const listed = await listDraftAddressesAction(); expect(listed.status).toBe("loaded"); if (listed.status !== "loaded") throw Error("Fixture list failed"); expect(listed.addresses.map(row => row.id)).toEqual([own.id]);
+    vi.mocked(getViewer).mockResolvedValue({ ...me, role: "TRADIE" }); expect(await listDraftAddressesAction()).toMatchObject({ error: "forbidden" }); expect(await copyDraftAddressAction(own.id, original.postKey, me.userId)).toMatchObject({ error: "forbidden" });
+    vi.mocked(getViewer).mockResolvedValue(me); const listed = await listDraftAddressesAction(); expect(listed).toMatchObject({ status: "loaded" }); if (!("status" in listed) || listed.status !== "loaded") throw Error("Fixture list failed"); expect(listed.addresses.map(row => row.id)).toEqual([own.id]);
     const before = await loadDraft(schema.db, me);
     expect(await copyDraftAddressAction(own.id, original.postKey, them.userId)).toEqual({ status: "forbidden" }); expect(await copyDraftAddressAction(foreign.id, original.postKey, me.userId)).toEqual({ status: "forbidden" }); expect(await loadDraft(schema.db, me)).toEqual(before);
     expect(await copyDraftAddressAction(own.id, original.postKey, me.userId)).toEqual({ status: "saved", address: { addressLine1: own.line1, addressLine2: own.line2, suburb: own.suburb, city: own.city, postcode: own.postcode, locationSource: "SEARCH", point: { lat: own.lat, lng: own.lng } } });

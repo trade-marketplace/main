@@ -2,8 +2,6 @@
 
 import { z } from "zod";
 import { jobDraftSchema, POST_KEY_SCHEMA } from "@/lib/job-draft";
-import { unstable_rethrow } from "next/navigation";
-import { getViewer } from "@/server/auth/viewer";
 import { listAddresses } from "@/server/account/addresses";
 import { saveDraft } from "./drafts";
 import { withRole } from "@/server/auth/guard";
@@ -33,13 +31,10 @@ export const inspectPostKeyAction = withRole(["CUSTOMER"], async (viewer, expect
 
 
 /** Optional choices in the public wizard: guests and other roles retain today's address step. */
-export async function listDraftAddressesAction() {
-  try {
-    const viewer = await getViewer();
-    if (!viewer || viewer.role !== "CUSTOMER") return { status: "loaded", addresses: [], ownerId: null } as const;
-    return { status: "loaded", addresses: await listAddresses(getDb(), viewer), ownerId: viewer.userId } as const;
-  } catch (error) { unstable_rethrow(error); return { status: "unavailable" } as const; }
-}
+export const listDraftAddressesAction = withRole(["CUSTOMER"], async (viewer) => {
+  try { return { status: "loaded", addresses: await listAddresses(getDb(), viewer), ownerId: viewer.userId } as const; }
+  catch { return { status: "unavailable" } as const; }
+});
 
 /** Only the saved row ID crosses from the browser for its address facts. Keep owner/key CAS intact. */
 export const copyDraftAddressAction = withRole(["CUSTOMER"], async (viewer, savedAddressId: string, postKey: string, ownerId: string) => {
