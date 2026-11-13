@@ -16,6 +16,6 @@ export default async function PayrollPage({ searchParams }: { searchParams: Prom
   try { initial = await loadPayroll(getDb(), viewer.userId); } catch { /* A retry stays on this protected route. */ }
   return <AccountSettings role="TRADIE" active="/profile/payroll" next={destination.back}>
     {destination.back && <TextLink href={destination.back}>Back to jobs</TextLink>}
-    {initial ? <PayrollSettings initial={initial} /> : <PayrollLoadError />}
+    {initial ? <PayrollSettings initial={initial} /> : <PayrollLoadError next={destination.back} />}
   </AccountSettings>;
 }
