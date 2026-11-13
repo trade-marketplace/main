@@ -26,6 +26,7 @@ const COPY: Readonly<Record<string, readonly [string, string]>> = {
   "payment.review_required": ["Payment needs review", "receipt_long"],
   "variation.requested": ["Extra work requested", "add_circle"],
   "variation.priced": ["Extra-work price ready", "sell"],
+  "variation.reminder": ["Extra work still needs your OK", "schedule"],
   "variation.approved": ["Extra work approved", "task_alt"],
   "variation.declined": ["Extra work declined", "cancel"],
   "job.materials_over_budget": ["Materials over budget", "receipt_long"],
