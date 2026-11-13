@@ -40,6 +40,7 @@ const COPY: Readonly<Record<string, readonly [string, string]>> = {
   "payout.details_missing": ["Add bank account & IRD number.", "account_balance"],
   "payout.paid": ["Payout paid", "payments"],
   "bounty.available": ["Quote bounty available", "stars"],
+  "job.ready_to_claim": ["Ready to claim near you", "bolt"],
   "crew.invited": ["Crew invitation", "group_add"],
   "licence.verified": ["Licence checked", "verified"],
   "licence.rejected": ["Check your licence", "badge"],
