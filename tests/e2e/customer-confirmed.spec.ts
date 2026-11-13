@@ -47,22 +47,22 @@ test("Add times opens the existing windows view and Back returns to the request"
   await page.getByRole("link", { name: "Add times", exact: true }).press("Enter");
   await expect(page.getByRole("heading", { name: "When do you need it?", exact: true })).toBeVisible();
   await page.getByRole("checkbox", { name: "ASAP: today if possible", exact: true }).check();
-  // Saved appears before router.refresh finishes streaming its replacement metadata.
-  const refreshed = page.waitForResponse(response => {
-    const url = new URL(response.url());
-    return url.pathname === "/dev/components/customer-confirmed" && url.searchParams.get("state") === "windows" &&
-      response.request().method() === "GET" && response.request().headers()["rsc"] === "1" &&
-      !response.request().headers()["next-router-prefetch"];
+  await waitForPageSettled(page, "Tradie confirmed (dev) | Trade Marketplace", async () => {
+    const refreshed = page.waitForResponse(response => {
+      const url = new URL(response.url());
+      return url.pathname === "/dev/components/customer-confirmed" && url.searchParams.get("state") === "windows" &&
+        response.request().method() === "GET" && response.request().headers()["rsc"] === "1" &&
+        !response.request().headers()["next-router-prefetch"] && !response.request().headers()["next-router-segment-prefetch"];
+    });
+    await page.getByRole("button", { name: "Save changes", exact: true }).click();
+    await expect(page.getByText("Saved.", { exact: true })).toBeVisible();
+    expect((await refreshed).ok()).toBe(true);
   });
-  await page.getByRole("button", { name: "Save changes", exact: true }).click();
-  await expect(page.getByText("Saved.", { exact: true })).toBeVisible();
-  const response = await refreshed;
-  expect(response.ok()).toBe(true);
-  await waitForPageSettled(page, "Tradie confirmed (dev) | Trade Marketplace");
   await expectNoA11yViolations(page);
-  await page.getByRole("link", { name: "Back", exact: true }).click();
-  await expect(page.getByText("Jack asked for other times.", { exact: true })).toBeVisible();
-  await waitForPageSettled(page, "Tradie confirmed (dev) | Trade Marketplace");
+  await waitForPageSettled(page, "Tradie confirmed (dev) | Trade Marketplace", async () => {
+    await page.getByRole("link", { name: "Back", exact: true }).click();
+    await expect(page.getByText("Jack asked for other times.", { exact: true })).toBeVisible();
+  });
   await expectNoA11yViolations(page);
 });
 
@@ -143,12 +143,16 @@ test.describe("real customer confirmed job", () => {
     const save = page.getByRole("button", { name: "Save changes", exact: true });
     await expect(save).toBeEnabled();
     await page.getByRole("checkbox", { name: "ASAP: today if possible", exact: true }).check();
-    await save.click();
-    await expect(page.getByText("Saved.", { exact: true })).toBeVisible();
+    await waitForPageSettled(page, "When do you need it? | Trade Marketplace", async () => {
+      await save.click();
+      await expect(page.getByText("Saved.", { exact: true })).toBeVisible();
+    });
     expect((await db.query("SELECT asap,status,worker_id FROM jobs WHERE id=$1", [id])).rows[0]).toEqual({ asap: true, status: "ASSIGNED", worker_id: worker.id });
     expect(Number((await db.query("SELECT count(*) FROM audit_log WHERE action='job.windows_updated' AND record_type='jobs' AND record_id=$1 AND actor_id=$2", [id, customer.id])).rows[0].count)).toBe(1);
     await expectNoA11yViolations(page);
-    await page.getByRole("link", { name: "Back", exact: true }).click(); await expect(page).toHaveURL(`${app}${path}`);
+    await waitForPageSettled(page, "Job | Trade Marketplace", async () => {
+      await page.getByRole("link", { name: "Back", exact: true }).click(); await expect(page).toHaveURL(`${app}${path}`);
+    });
     await expect(page.getByText("Jack asked for other times.", { exact: true })).toBeVisible();
     // The current contract allows ASSIGNED edits; retain a genuine terminal read-only check as well.
     const closed = randomUUID();
@@ -166,9 +170,13 @@ test.describe("real customer confirmed job", () => {
     await expect(page.getByRole("heading", { name: "We’re finding someone", exact: true })).toBeVisible();
     await page.getByRole("link", { name: "Time windows", exact: true }).click();
     await page.getByRole("checkbox", { name: "ASAP: today if possible", exact: true }).check();
-    await page.getByRole("button", { name: "Save changes", exact: true }).click();
-    await expect(page.getByText("Saved.", { exact: true })).toBeVisible();
+    await waitForPageSettled(page, "When do you need it? | Trade Marketplace", async () => {
+      await page.getByRole("button", { name: "Save changes", exact: true }).click();
+      await expect(page.getByText("Saved.", { exact: true })).toBeVisible();
+    });
     expect((await db.query("SELECT asap FROM jobs WHERE id=$1", [id])).rows[0].asap).toBe(true);
-    await page.getByRole("link", { name: "Back", exact: true }).click(); await expect(page).toHaveURL(`${app}${path}`);
+    await waitForPageSettled(page, "Job | Trade Marketplace", async () => {
+      await page.getByRole("link", { name: "Back", exact: true }).click(); await expect(page).toHaveURL(`${app}${path}`);
+    });
   });
 });

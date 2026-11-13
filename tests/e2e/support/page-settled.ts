@@ -1,36 +1,26 @@
-import { expect, type Page, type Request } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
 
-/** A busy surface is itself an audit state; do not wait for its deliberately held read to finish. */
-async function waitForRefreshes(page: Page, seen: Set<Request>): Promise<boolean> {
-  if (await page.locator('[aria-busy="true"]:visible').count()) return false;
-  const current = new URL(page.url());
-  const route = (url: URL) => { url.searchParams.delete("_rsc"); url.searchParams.sort(); return url.origin + url.pathname + url.search; };
-  const currentRoute = route(current);
-  const pending = (await page.requests()).filter(request => {
-    const headers = request.headers();
-    // Speculative/partial prefetch streams can deliberately stay open and do not own current metadata.
-    const prefetch = headers["next-router-prefetch"] || headers["next-router-segment-prefetch"] ||
-      headers["purpose"]?.includes("prefetch") || headers["sec-purpose"]?.includes("prefetch");
-    return !seen.has(request) && request.method() === "GET" && headers["rsc"] === "1" && !prefetch &&
-      route(new URL(request.url())) === currentRoute && request.timing().responseEnd < 0 && !request.failure();
-  });
-  await Promise.all(pending.map(async request => {
-    seen.add(request);
-    // Partial Flight bodies can stay open after their metadata is painted; wait for the response, not EOF.
-    await request.response();
-  }));
-  return pending.length > 0;
-}
-
-/** Explicit journeys require their declared title; generic audits require stable, nonempty metadata. */
-export async function waitForPageSettled(page: Page, expectedTitle?: string): Promise<void> {
-  if (expectedTitle !== undefined && !expectedTitle.trim()) throw new Error("An accessibility audit needs the page's expected nonempty title.");
-  const seen = new Set<Request>();
-  let refreshed: boolean;
-  do {
-    await waitForRefreshes(page, seen);
-    if (expectedTitle) await expect(page).toHaveTitle(expectedTitle);
-    else await expect(page).not.toHaveTitle(/^\s*$/);
+/** Audit a declared page only after its metadata commit, fonts and entrance effects have settled. */
+export async function waitForPageSettled(page: Page, expectedTitle: string, action?: () => Promise<void>): Promise<void> {
+  if (!expectedTitle.trim()) throw new Error("An accessibility audit needs the page's expected nonempty title.");
+  // Save can leave the old (even identical) title in place before React commits new metadata.
+  // Observe before the action, so a quick commit is retained and a late commit cannot be missed.
+  const metadata = action ? await page.evaluateHandle(() => {
+    const state = { changed: false, observer: null as MutationObserver | null };
+    const titleNode = (node: Node) => node instanceof Element && (node.tagName === "TITLE" || Boolean(node.querySelector("title")));
+    state.observer = new MutationObserver(records => {
+      if (records.some(record => record.target instanceof Element && Boolean(record.target.closest("title")) ||
+        record.target.parentElement?.tagName === "TITLE" || [...record.addedNodes, ...record.removedNodes].some(titleNode))) state.changed = true;
+    });
+    state.observer.observe(document.head, { childList: true, subtree: true, characterData: true });
+    return state;
+  }) : null;
+  try {
+    if (action) {
+      await action();
+      await expect.poll(() => metadata!.evaluate(state => state.changed), { message: "The action must commit its page metadata before accessibility is audited" }).toBe(true);
+    }
+    await expect(page).toHaveTitle(expectedTitle);
     await page.evaluate(async title => {
       const frame = () => new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
       let stableFrames = 0;
@@ -55,9 +45,11 @@ export async function waitForPageSettled(page: Page, expectedTitle?: string): Pr
         }
       }
     }, expectedTitle);
-    // A refresh may have started while the entrance effects were painting.
-    refreshed = await waitForRefreshes(page, seen);
-  } while (refreshed);
-  if (expectedTitle) await expect(page).toHaveTitle(expectedTitle);
-  else await expect(page).not.toHaveTitle(/^\s*$/);
+    await expect(page).toHaveTitle(expectedTitle);
+  } finally {
+    if (metadata) {
+      await metadata.evaluate(state => state.observer?.disconnect());
+      await metadata.dispose();
+    }
+  }
 }
