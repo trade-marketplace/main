@@ -13,7 +13,7 @@ const PRICING = [
   row(0xb001, "Switchboard upgrade", 26, { customer: "Tom H", suburb: "Richmond", estimates: "1 · site visit asked", spread: "—" }),
   row(0xb003, "Kitchen tap leaking", 5, { trade: "Plumbing", estimates: "2", spread: "1.0–1.5 h · $30–45" }),
   row(0xb002, "Sub wiring", 2),
-  row(0xb004, "Hot water cylinder", 1, { customer: "Ana P", suburb: "Waikiwi", trade: "Plumbing", estimates: "0", spread: "—", action: "Open", href: `/admin/jobs/${id(0xb004)}` }),
+  row(0xb004, "Hot water cylinder", 1, { customer: "Ana P", suburb: "Waikiwi", trade: "Plumbing", estimates: "0", spread: "—" }),
 ];
 const other = (tab: QueueKey): QueueRow[] => {
   const count = tab === "extra" ? 2 : tab === "signoff" ? 3 : 1;

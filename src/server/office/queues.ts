@@ -101,9 +101,10 @@ export const getOfficeQueueStats = (viewer: JobViewer) => { requireOffice(viewer
 
 function rowView(viewer: JobViewer, job: SelectedJob, id: string, since: Date, tab: QueueKey, now: Date, context: string, releaseHours: number): QueueRow | null {
   const visible = officeQueueJobView(viewer, job); if (!visible) return null;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- Keep the internal helper count out of the browser row.
   const { estimateCount, ...base } = visible;
   const hours = tab === "unclaimed" ? UNCLAIMED_AFTER_HOURS : tab === "signoff" ? releaseHours : PRICE_SLOW_AFTER_HOURS;
-  const action = tab === "price" && estimateCount > 0 && ["REVIEW", "QUOTE_BOUNTY"].includes(job.status) ? "Price it" : "Open";
+  const action = tab === "price" && ["REVIEW", "QUOTE_BOUNTY"].includes(job.status) ? "Price it" : "Open";
   return { ...base, id, since: since.toISOString(), waiting: waitingLabel(since, now), overdue: now.getTime() - since.getTime() >= hours * HOUR,
     context, action, href: `/admin/jobs/${job.id}${action === "Price it" ? "/price" : ""}` };
 }
