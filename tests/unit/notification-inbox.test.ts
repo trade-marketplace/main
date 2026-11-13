@@ -25,6 +25,7 @@ describe("inbox presentation boundary", () => {
   });
   it.each([
     ["job.priced", "/jobs/TM-1005", "sell"],
+    ["job.ready_to_claim", "/jobs/TM-1005", "bolt"],
     ["message.received", "/messages/TM-1005", "chat_bubble"],
     ["job.paid", "/receipts/TM-1005", "receipt_long"],
     ["payout.paid", "/earnings", "payments"],
@@ -54,6 +55,7 @@ describe("inbox presentation boundary", () => {
       const item = inboxItem(row({ type, payload: {} }));
       // D15 reuses the full existing Earnings banner wording; do not shorten approved screen copy.
       if (type === "payout.details_missing") expect(item.line).toBe("Add bank account & IRD number.");
+      else if (type === "job.ready_to_claim") expect(item.line).toBe("Ready to claim near you");
       else expect(item.line.split(/\s+/).length).toBeLessThanOrEqual(4);
       expect(item.icon).toMatch(/^[a-z_]+$/);
     }

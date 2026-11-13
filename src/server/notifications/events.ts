@@ -38,6 +38,7 @@ export const NOTIFICATION_EVENTS = {
   "payout.details_missing": { channels: ["IN_APP"], description: "Bank and tax details are needed before payroll can pay." },
   "payout.paid": { channels: ["IN_APP"], description: "A worker payout was paid." },
   "bounty.available": { channels: ["IN_APP"], description: "A quote bounty is available." },
+  "job.ready_to_claim": { channels: ["IN_APP"], description: "A job near you is ready to claim." },
   "bounty.expired": { channels: ["IN_APP"], description: "A quote bounty ran out of time." },
   "job.unclaimed": { channels: ["IN_APP"], description: "A paid job has had no worker for over 48 hours." },
   "review.reminder": { channels: ["IN_APP"], description: "A reminder to review a finished job." },
