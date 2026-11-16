@@ -33,7 +33,7 @@ export function ReleaseJob({ jobId, customerFirstName, bookedDate, online, previ
     try {
       const result = await action(jobId, { reason, ...(note.trim() ? { note: note.trim() } : {}) });
       if (session?.check(result)) { setState("idle"); return; }
-      if ("status" in result && result.status === "released") { setOpen(false); router.push(doneHref); return; }
+      if ("status" in result && result.status === "released") { setOpen(false); router.push(doneHref); router.refresh(); return; }
       setState("status" in result && (result.status === "extra-work" || result.status === "changed") ? result.status : "error");
     } catch { setState("error"); }
     finally { pending.current = false; }
