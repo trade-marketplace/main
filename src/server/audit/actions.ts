@@ -77,6 +77,8 @@ export const AUDIT_ACTIONS = {
   // Stripe said no; recorded by payment.refunded / payment.partially_refunded when it was made.
   "payment.refund_requested": { record: "payments", reason: "required" },
   "payment.refund_failed": { record: "payments" },
+  // A request whose answer was lost, found made in Stripe and already recorded (by the webhook).
+  "payment.refund_confirmed": { record: "payments" },
 
   // Extra work.
   "variation.requested": { record: "variations" },

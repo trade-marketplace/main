@@ -17,6 +17,11 @@ import { createNotify } from "@/server/notifications/notify";
 //     Only when Stripe definitely said no is the entry closed (`payment.refund_failed`), so the next try gets a new key.
 //  3. In a second transaction: move the payment's `refundedCents` up to the new total, only if the row is as read.
 //
+// Before a new request gets a new key, any earlier request for the payment that never got an answer (another
+// dialog, or one whose key has expired) is looked up in Stripe by its id in the refund's metadata: recorded if Stripe
+// made it (and the office is asked to check before refunding more), closed if it didn't. So a lost answer can never
+// turn into a second refund under a new key.
+//
 // Stripe's `charge.refunded` webhook (./webhook-events.ts) records a refund made in the Stripe dashboard, or one whose
 // answer was lost after step 2, through the same `recordRefundTotal`. Both only ever move the row up to a running
 // total, so whichever lands first records it and the other changes nothing. The customer is told, and the office is
@@ -25,6 +30,7 @@ import { createNotify } from "@/server/notifications/notify";
 /** The part of Stripe's Refunds API used here, so tests can hand in a fake (no network in tests). */
 export type RefundsApi = {
   create(params: Stripe.RefundCreateParams, options: Stripe.RequestOptions): Promise<Stripe.Refund>;
+  list(params: Stripe.RefundListParams): Promise<Stripe.ApiList<Stripe.Refund>>;
 };
 
 type Db = Pick<PrismaClient, "$transaction">;
@@ -35,6 +41,8 @@ type RefundInput = Extract<JobActionInput, { action: "refund" }>;
 const REFUNDABLE: readonly string[] = ["PAID", "PARTIALLY_REFUNDED"];
 /** Stripe keeps an idempotency key for 24 hours. Past that, a retry is treated as a new refund and checked again. */
 const KEY_LIFETIME_MS = 23 * 60 * 60 * 1000;
+/** An unanswered request younger than this may still be on its way to Stripe: wait rather than look it up. */
+const IN_FLIGHT_MS = 2 * 60 * 1000;
 
 export const REFUND_MESSAGES = {
   notConfigured: "Refunds are made in Stripe, and Stripe isn’t set up here. Nothing was changed.",
@@ -43,6 +51,8 @@ export const REFUND_MESSAGES = {
   refused: "Stripe didn’t make that refund. Nothing was changed. Check the payment in Stripe, then try again.",
   unconfirmed: "We couldn’t confirm the refund with Stripe. Try again. It won’t be refunded twice.",
   differentRetry: "Your last try at this refund may have gone through. Reload the page and check before changing the amount.",
+  inFlight: "An earlier refund for this payment is still going through. Try again in a minute.",
+  earlierMade: "An earlier refund for this payment went through, and it’s now recorded. Reload the page and check before refunding more.",
 } as const;
 
 const fail = (error: Exclude<JobActionResult, { ok: true }>["error"], message: string, field?: string): JobActionResult => ({
@@ -75,6 +85,8 @@ export async function refundPayment(db: Db, office: Office, input: RefundInput, 
   if (!refunds) return fail("not-allowed", REFUND_MESSAGES.notConfigured);
   let request: OpenRequest;
   try {
+    const earlier = await reconcile(db, office, input, refunds, now);
+    if (earlier) return earlier;
     request = await db.$transaction((tx) => openRequest(tx, office, input, now), { timeout: 30_000 });
   } catch (error) {
     if (error instanceof Refusal) return error.result;
@@ -106,7 +118,7 @@ export async function refundPayment(db: Db, office: Office, input: RefundInput, 
   if (refund.status === "failed" || refund.status === "canceled") return closeRequest(db, office, request, refund.failure_reason ?? refund.status);
 
   try {
-    await db.$transaction((tx) => settle(tx, office, input, request, refund), { timeout: 30_000 });
+    await db.$transaction((tx) => settle(tx, office, input.note, request, refund), { timeout: 30_000 });
     return { ok: true };
   } catch (error) {
     if (error instanceof Refusal) return error.result;
@@ -170,15 +182,84 @@ async function openEntry(tx: Tx, paymentId: string, requestId: string, now: Date
     orderBy: { createdAt: "desc" },
     take: 1,
   });
-  if (!entry) return null;
-  const closed = await tx.auditLog.count({
-    where: { action: "payment.refund_failed", recordType: "payments", recordId: paymentId, after: { path: ["requestEntryId"], equals: entry.id } },
-  });
-  if (closed) return null;
+  if (!entry || (await resolvedRequests(tx, paymentId)).has(entry.id)) return null;
+  return requestOf(entry);
+}
+
+function requestOf(entry: { id: string; after: Prisma.JsonValue; reason: string | null }) {
   const after = (entry.after ?? {}) as Record<string, unknown>;
   const amountCents = typeof after.amountCents === "number" ? after.amountCents : 0;
   const fromCents = typeof after.fromCents === "number" ? after.fromCents : 0;
-  return { id: entry.id, mode: after.mode, amountCents, fromCents };
+  return { id: entry.id, mode: after.mode, requestId: after.requestId, amountCents, fromCents, reason: entry.reason };
+}
+
+/** Request entries that have an answer: Stripe said no, it was recorded, or it was confirmed already recorded. */
+async function resolvedRequests(tx: Tx, paymentId: string): Promise<Set<string>> {
+  const answers = await tx.auditLog.findMany({
+    where: {
+      recordType: "payments",
+      recordId: paymentId,
+      action: { in: ["payment.refund_failed", "payment.refund_confirmed", "payment.refunded", "payment.partially_refunded"] },
+    },
+    select: { after: true },
+  });
+  const ids = new Set<string>();
+  for (const { after } of answers) {
+    const data = (after ?? {}) as Record<string, unknown>;
+    for (const id of [data.requestEntryId, data.refundRequestId]) if (typeof id === "string") ids.add(id);
+  }
+  return ids;
+}
+
+/**
+ * Before a request that would get a new key: every earlier request for this payment that never got an answer
+ * (other than the one this dialog will send again with its own key) is looked up in Stripe. Made: it's recorded and
+ * the office is asked to check before refunding more. Not made: it's closed. Answers null to carry on.
+ */
+async function reconcile(db: Db, office: Office, input: RefundInput, refunds: RefundsApi, now: Date): Promise<JobActionResult | null> {
+  const found = await db.$transaction(async (tx) => {
+    const payment = await tx.payment.findFirst({ where: { id: input.paymentId, jobId: input.jobId }, select: { id: true, providerPaymentId: true } });
+    if (!payment?.providerPaymentId) return null;
+    const resolved = await resolvedRequests(tx, payment.id);
+    const entries = await tx.auditLog.findMany({
+      where: { action: "payment.refund_requested", recordType: "payments", recordId: payment.id },
+      select: { id: true, after: true, reason: true, createdAt: true },
+      orderBy: { createdAt: "asc" },
+    });
+    const reusable = (await openEntry(tx, payment.id, input.requestId, now))?.id;
+    const pending = entries.filter((entry) => !resolved.has(entry.id) && entry.id !== reusable);
+    return pending.length ? { intentId: payment.providerPaymentId, paymentId: payment.id, pending } : null;
+  });
+  if (!found) return null;
+  if (found.pending.some((entry) => now.getTime() - entry.createdAt.getTime() < IN_FLIGHT_MS)) return fail("unavailable", REFUND_MESSAGES.inFlight);
+
+  let made: Stripe.Refund[];
+  try {
+    made = (await refunds.list({ payment_intent: found.intentId, limit: 100, expand: ["data.charge"] })).data;
+  } catch (error) {
+    console.error("Refunds: couldn't check earlier refunds with Stripe.", { payment: found.paymentId }, error);
+    return fail("unavailable", REFUND_MESSAGES.unconfirmed);
+  }
+
+  let recorded = false;
+  for (const entry of found.pending) {
+    const earlier = requestOf(entry);
+    const refund = made.find((one) => one.metadata?.refundRequestId === entry.id && one.status !== "failed" && one.status !== "canceled");
+    const request: OpenRequest = { key: entry.id, paymentId: found.paymentId, jobId: input.jobId, intentId: found.intentId, amountCents: earlier.amountCents, fromCents: earlier.fromCents };
+    await db.$transaction(async (tx) => {
+      if (!refund) {
+        await lockJob(tx, office, input.jobId);
+        await createAudit(tx)(office, "payment.refund_failed", { type: "payments", id: found.paymentId }, null, { requestEntryId: entry.id, code: "not_made" });
+        return;
+      }
+      if (await settle(tx, office, earlier.reason ?? input.note, request, refund)) {
+        recorded = true;
+      } else {
+        await createAudit(tx)(office, "payment.refund_confirmed", { type: "payments", id: found.paymentId }, null, { requestEntryId: entry.id, providerRefundId: refund.id });
+      }
+    }, { timeout: 30_000 });
+  }
+  return recorded ? fail("changed", REFUND_MESSAGES.earlierMade) : null;
 }
 
 /** Stripe answered and the refund wasn't made: close the request so the next try is checked again with a new key. */
@@ -194,8 +275,8 @@ async function closeRequest(db: Db, office: Office, request: OpenRequest, code: 
   return fail("unavailable", REFUND_MESSAGES.refused);
 }
 
-/** Step 3: records the refund Stripe made, unless the webhook (or an earlier try) already did. */
-async function settle(tx: Tx, office: Office, input: RefundInput, request: OpenRequest, refund: Stripe.Refund): Promise<void> {
+/** Step 3: records the refund Stripe made, unless the webhook (or an earlier try) already did. True when it recorded it. */
+async function settle(tx: Tx, office: Office, reason: string, request: OpenRequest, refund: Stripe.Refund): Promise<boolean> {
   await lockJob(tx, office, request.jobId);
   const charge = typeof refund.charge === "object" && refund.charge !== null ? refund.charge : null;
   // Stripe's running total for the charge. Our own count (what we had, plus this one) covers a total Stripe didn't send.
@@ -203,9 +284,9 @@ async function settle(tx: Tx, office: Office, input: RefundInput, request: OpenR
   for (let attempt = 0; attempt < 3; attempt++) {
     const payment = await tx.payment.findUniqueOrThrow({ where: { id: request.paymentId } });
     const total = Math.min(payment.amountCents, Math.max(stripeTotal, request.fromCents + request.amountCents));
-    if (payment.refundedCents >= total) return;
+    if (payment.refundedCents >= total) return false;
     const extra = { providerRefundId: refund.id, refundRequestId: request.key };
-    if (await recordRefundTotal(tx, payment, total, office, input.note, extra)) return;
+    if (await recordRefundTotal(tx, payment, total, office, reason, extra)) return true;
     // The webhook moved the row between our read and our write: read it again.
   }
   throw new Refusal(fail("changed", ACTION_MESSAGES.changed));

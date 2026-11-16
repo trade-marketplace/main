@@ -24,7 +24,8 @@ function fakeStripe() {
   const charges = new Map<string, { amount: number; refunded: number }>();
   const answers = new Map<string, Stripe.Refund>();
   const calls: { params: Stripe.RefundCreateParams; key: string }[] = [];
-  let next: "refused" | "lost" | null = null;
+  let next: "refused" | "lost" | "dropped" | null = null;
+  const lists: string[] = [];
   let made = 0;
   const chargeOf = (intent: string) => {
     const charge = charges.get(intent);
@@ -40,6 +41,8 @@ function fakeStripe() {
       const failure = next;
       next = null;
       if (failure === "refused") throw Object.assign(new Error("Refused."), { type: "StripeInvalidRequestError", statusCode: 400, code: "charge_disputed" });
+      // The connection dropped before Stripe got the request: nothing was made.
+      if (failure === "dropped") throw Object.assign(new Error("Connection dropped."), { type: "StripeConnectionError" });
       const replay = answers.get(key);
       if (replay) return replay;
       const intent = String(params.payment_intent);
@@ -53,13 +56,20 @@ function fakeStripe() {
       if (failure === "lost") throw Object.assign(new Error("Connection lost."), { type: "StripeConnectionError" });
       return refund;
     },
+    async list(params) {
+      const intent = String(params.payment_intent);
+      lists.push(intent);
+      const data = [...answers.values()].filter((refund) => refund.payment_intent === intent).map((refund) => ({ ...refund, charge: chargeObject(intent) }));
+      return { object: "list", data, has_more: false, url: "/v1/refunds" } as unknown as Stripe.ApiList<Stripe.Refund>;
+    },
   };
   return {
     api,
     calls,
+    lists,
     open: (intent: string, amount: number) => charges.set(intent, { amount, refunded: 0 }),
     refunded: (intent: string) => chargeOf(intent).refunded,
-    failNext: (failure: "refused" | "lost") => (next = failure),
+    failNext: (failure: "refused" | "lost" | "dropped") => (next = failure),
     /** Someone refunds in the Stripe dashboard: the charge.refunded event Stripe would send. */
     dashboardRefund(intent: string, amount: number) {
       chargeOf(intent).refunded += amount;
@@ -118,12 +128,12 @@ describe.skipIf(!testDatabaseUrl)("refunds (database, fake Stripe)", () => {
   /** The dialog: one requestId for as long as it's open, sent with every try. */
   function dialog(office: string, setup: Awaited<ReturnType<typeof paidJob>>, refunds: RefundsApi | null = setup.stripe.api) {
     const requestId = randomUUID();
-    return (mode: "full" | "partial", amountCents: number | null = null, note = "Work not done.") =>
+    return (mode: "full" | "partial", amountCents: number | null = null, note = "Work not done.", now = new Date()) =>
       performJobAction(
         schema.db,
         { userId: office },
         { action: "refund", jobId: setup.job.id, seenStatus: setup.job.status, paymentId: setup.payment.id, mode, amountCents, note, requestId },
-        new Date(),
+        now,
         null,
         refunds,
       );
@@ -221,6 +231,76 @@ describe.skipIf(!testDatabaseUrl)("refunds (database, fake Stripe)", () => {
     expect(await stored(setup.payment.id)).toMatchObject({ refundedCents: 3_000 });
     expect(await notices("payment.refunded", setup.job.id)).toHaveLength(1);
     expect((await audits(setup.payment.id)).map((entry) => entry.action)).toEqual(["payment.refund_requested", "payment.partially_refunded"]);
+  });
+
+  describe("an answer lost, then a new dialog (or the same one after Stripe forgot the key)", () => {
+    const later = (minutes: number) => new Date(Date.now() + minutes * 60_000);
+
+    it("waits while the earlier request may still be on its way", async () => {
+      const office = await person("ADMIN");
+      const setup = await paidJob();
+      setup.stripe.failNext("lost");
+      await dialog(office, setup)("partial", 3_000);
+      expect(await dialog(office, setup)("partial", 3_000)).toEqual({ ok: false, error: "unavailable", message: REFUND_MESSAGES.inFlight });
+      expect(setup.stripe.calls).toHaveLength(1);
+      expect(setup.stripe.refunded(setup.intent)).toBe(3_000);
+    });
+
+    it("finds the earlier refund in Stripe, records it once, and makes no second one", async () => {
+      const office = await person("ADMIN");
+      const setup = await paidJob();
+      setup.stripe.failNext("lost");
+      await dialog(office, setup)("partial", 3_000, "Damaged frame.");
+      expect(await dialog(office, setup)("partial", 3_000, "Trying again.", later(3))).toEqual({ ok: false, error: "changed", message: REFUND_MESSAGES.earlierMade });
+      expect(setup.stripe.calls).toHaveLength(1);
+      expect(setup.stripe.lists).toEqual([setup.intent]);
+      expect(setup.stripe.refunded(setup.intent)).toBe(3_000);
+      expect(await stored(setup.payment.id)).toMatchObject({ status: "PARTIALLY_REFUNDED", refundedCents: 3_000 });
+      const recorded = (await audits(setup.payment.id)).find((entry) => entry.action === "payment.partially_refunded");
+      expect(recorded).toMatchObject({ reason: "Damaged frame.", after: expect.objectContaining({ providerRefundId: "re_1" }) });
+      expect(await notices("payment.refunded", setup.job.id)).toHaveLength(1);
+
+      // Now it's answered, a new refund goes ahead as normal.
+      expect(await dialog(office, setup)("partial", 1_000, "More.", later(4))).toEqual({ ok: true });
+      expect(setup.stripe.refunded(setup.intent)).toBe(4_000);
+      expect(await stored(setup.payment.id)).toMatchObject({ refundedCents: 4_000 });
+    });
+
+    it("confirms an earlier refund the webhook already recorded, and carries on", async () => {
+      const office = await person("ADMIN");
+      const setup = await paidJob();
+      setup.stripe.failNext("lost");
+      await dialog(office, setup)("partial", 3_000);
+      expect(await handleStripeEvent(schema.db, setup.stripe.chargeEvent(setup.intent))).toBe("refund-recorded");
+      expect(await dialog(office, setup)("partial", 2_000, "More.", later(3))).toEqual({ ok: true });
+      expect((await audits(setup.payment.id)).map((entry) => entry.action)).toContain("payment.refund_confirmed");
+      expect(setup.stripe.refunded(setup.intent)).toBe(5_000);
+      expect(await stored(setup.payment.id)).toMatchObject({ refundedCents: 5_000 });
+    });
+
+    it("closes an earlier request Stripe never got, and the new one goes ahead once", async () => {
+      const office = await person("ADMIN");
+      const setup = await paidJob();
+      setup.stripe.failNext("dropped");
+      expect(await dialog(office, setup)("full")).toMatchObject({ ok: false, message: REFUND_MESSAGES.unconfirmed });
+      expect(await dialog(office, setup)("full", null, "Again.", later(3))).toEqual({ ok: true });
+      const actions = (await audits(setup.payment.id)).map((entry) => entry.action);
+      expect(actions).toEqual(["payment.refund_requested", "payment.refund_failed", "payment.refund_requested", "payment.refunded"]);
+      expect(setup.stripe.refunded(setup.intent)).toBe(12_000);
+      expect(await notices("payment.refunded", setup.job.id)).toHaveLength(1);
+    });
+
+    it("never sends an expired key again: the same dialog a day later is checked in Stripe first", async () => {
+      const office = await person("ADMIN");
+      const setup = await paidJob();
+      const send = dialog(office, setup);
+      setup.stripe.failNext("lost");
+      await send("partial", 3_000);
+      expect(await send("partial", 3_000, "Work not done.", later(24 * 60))).toEqual({ ok: false, error: "changed", message: REFUND_MESSAGES.earlierMade });
+      expect(setup.stripe.calls).toHaveLength(1);
+      expect(setup.stripe.refunded(setup.intent)).toBe(3_000);
+      expect(await stored(setup.payment.id)).toMatchObject({ refundedCents: 3_000 });
+    });
   });
 
   it("records once when the webhook lands before the retry", async () => {
