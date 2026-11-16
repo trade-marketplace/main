@@ -3,11 +3,13 @@
 // Skipped without TEST_DATABASE_URL (docs/TESTING.md); CI provides one.
 import { randomUUID } from "node:crypto";
 
+import type Stripe from "stripe";
 import { describe, expect, it } from "vitest";
 
 import type { JobStatus, Prisma, Role, Trade } from "@/generated/prisma/client";
 import { getOfficeJob, type OfficeJobDatabase } from "@/server/office/job";
 import { performJobAction } from "@/server/office/job-mutations";
+import type { PaymentIntentsApi } from "@/server/payments/payments";
 
 import { testDatabaseUrl, useTestSchema } from "../support/test-db";
 
@@ -311,6 +313,46 @@ describe.skipIf(!testDatabaseUrl)("the job admin view's actions (database)", () 
       expect(view?.timeline.map((row) => row.title)).toEqual([expect.stringMatching(/^Priced \$/), "Posted"]);
       expect(view?.timeline[0]).toMatchObject({ actor: "office", detail: "Standard." });
       expect(await read(randomUUID())).toBeNull();
+    });
+  });
+
+  // #542: closing a priced job from the office must close any checkout the customer left open first.
+  describe("an office change to a priced job with a checkout left open", () => {
+    function fakeStripe(status: string) {
+      const state = { id: `pi_test_${randomUUID()}`, status, cancelled: 0 };
+      const intent = () => ({ id: state.id, status: state.status, client_secret: "secret", livemode: false }) as unknown as Stripe.PaymentIntent;
+      const api: PaymentIntentsApi = {
+        create: async () => intent(), retrieve: async () => intent(),
+        cancel: async () => { if (state.status === "processing" || state.status === "succeeded") throw new Error("Can't cancel."); state.cancelled++; state.status = "canceled"; return intent(); },
+      };
+      return { api, state };
+    }
+    async function openCheckout(status: string) {
+      const office = await person("ADMIN"), priced = await job("PRICED"), stripe = fakeStripe(status);
+      const payment = await schema.db.payment.create({ data: { jobId: priced.id, kind: "JOB", amountCents: 12_000, providerPaymentId: stripe.state.id, idempotencyKey: randomUUID() } });
+      return { office, priced, stripe, payment };
+    }
+    it.each(["cancel", "status"] as const)("cancels the checkout at Stripe, then does the %s", async action => {
+      const { office, priced, stripe, payment } = await openCheckout("requires_payment_method");
+      const input = action === "cancel" ? { action, jobId: priced.id, seenStatus: "PRICED", note: "Customer asked us to close it." } : { action, jobId: priced.id, seenStatus: "PRICED", to: "CANCELLED", note: "Closing it." };
+      const result = await performJobAction(schema.db, { userId: office }, input, new Date(), stripe.api);
+      expect(result).toEqual({ ok: true });
+      expect(stripe.state).toMatchObject({ cancelled: 1, status: "canceled" });
+      expect(await schema.db.payment.findUnique({ where: { id: payment.id } })).toMatchObject({ status: "FAILED", failureReason: "The office changed the job before it was paid." });
+      expect(await schema.db.job.findUnique({ where: { id: priced.id } })).toMatchObject({ status: "CANCELLED" });
+    });
+    it.each(["processing", "succeeded"])("refuses and changes nothing when the payment is already %s", async status => {
+      const { office, priced, stripe, payment } = await openCheckout(status);
+      const result = await performJobAction(schema.db, { userId: office }, { action: "cancel", jobId: priced.id, seenStatus: "PRICED", note: "Close it." }, new Date(), stripe.api);
+      expect(result).toMatchObject({ ok: false, error: "not-allowed" });
+      expect(await schema.db.job.findUnique({ where: { id: priced.id } })).toMatchObject({ status: "PRICED" });
+      expect(await schema.db.payment.findUnique({ where: { id: payment.id } })).toMatchObject({ status: "PENDING" });
+    });
+    it("refuses without Stripe when a checkout reached Stripe", async () => {
+      const { office, priced } = await openCheckout("requires_payment_method");
+      const result = await performJobAction(schema.db, { userId: office }, { action: "cancel", jobId: priced.id, seenStatus: "PRICED", note: "Close it." }, new Date(), null);
+      expect(result).toMatchObject({ ok: false, error: "unavailable" });
+      expect(await schema.db.job.findUnique({ where: { id: priced.id } })).toMatchObject({ status: "PRICED" });
     });
   });
 });
