@@ -15,6 +15,7 @@ import { timeWindowKey } from "@/lib/job-time-windows";
 import { bookingButtonLabel, bookingDateLabel, bookingWindowLabel, type BookingResult, type BookingSnapshot, type BookingState, type RequestTimesResult } from "@/lib/worker-booking";
 import { bookJobWindowAction, requestOtherTimesAction } from "@/server/jobs/worker-booking-actions";
 import styles from "./book-window.module.css";
+import { useWorkspaceReturn } from "./use-workspace-return";
 
 // The destination is owned by a separate task. Keep the kit toast mounted across client navigation.
 let receipt: { root: Root; node: HTMLDivElement } | undefined;
@@ -26,7 +27,8 @@ function bookingToast(message: string) {
 }
 type Props = { initial: BookingSnapshot; state?: BookingState; backHref?: string; onBooked?: (result: Extract<BookingResult, { status: "booked" }>) => void;
   book?: (id: string, window: unknown, revision: string) => Promise<BookingResult | AuthFailure>; request?: (id: string) => Promise<RequestTimesResult | AuthFailure> };
-export function BookWindow({ initial, state = "pick", backHref = `/jobs/${initial.id}`, book = bookJobWindowAction, request = requestOtherTimesAction, onBooked }: Props) {
+export function BookWindow({ initial, state = "pick", backHref: suppliedBack = `/jobs/${initial.id}`, book = bookJobWindowAction, request = requestOtherTimesAction, onBooked }: Props) {
+  const backHref = useWorkspaceReturn(suppliedBack);
   const [job, setJob] = useState(initial), [selected, setSelected] = useState("");
   const [busy, setBusy] = useState(false), [asked, setAsked] = useState(state === "asked"), [error, setError] = useState(state === "error"), [changed, setChanged] = useState(state === "changed");
   const [lastRequest, setLastRequest] = useState(false);
@@ -73,4 +75,4 @@ export function BookWindow({ initial, state = "pick", backHref = `/jobs/${initia
   </div></section>;
 }
 export function BookWindowLoading() { return <section className={styles.canvas} data-mode="trade"><div className={styles.page} role="status" aria-label="Loading times"><h1 className={styles.srOnly}>Pick a time</h1><Skeleton height={52} /><SkeletonText /><Skeleton height={200} /><Skeleton height={55} /></div></section>; }
-export function BookWindowLoadError({ backHref }: { backHref: string }) { const router = useRouter(); return <section className={styles.canvas} data-mode="trade"><div className={styles.page}><TextLink href={backHref}>Back to job</TextLink><h1>Couldn’t load times</h1><Banner tone="alert">Try again</Banner><Button onClick={() => router.refresh()}>Try again</Button></div></section>; }
+export function BookWindowLoadError({ backHref: suppliedBack }: { backHref: string }) { const router = useRouter(), backHref = useWorkspaceReturn(suppliedBack); return <section className={styles.canvas} data-mode="trade"><div className={styles.page}><TextLink href={backHref}>Back to job</TextLink><h1>Couldn’t load times</h1><Banner tone="alert">Try again</Banner><Button onClick={() => router.refresh()}>Try again</Button></div></section>; }
