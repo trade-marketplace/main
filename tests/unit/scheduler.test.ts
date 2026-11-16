@@ -132,6 +132,7 @@ describe("the runner", () => {
       "post-confirmation-email", "price-ready-push",
       "notification-email",
       "extra-work-reminder",
+      "job-pings",
     ]);
   });
   it("shares one physical deadline without treating the injected business clock as elapsed runtime", async () => {
