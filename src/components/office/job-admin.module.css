@@ -11,6 +11,7 @@
 /* When the Actions menu wraps under the title (phones), keep it on the right so its menu opens on screen. */
 .head > :last-child { margin-left: auto; }
 .headText { min-width: 0; }
+.headActions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--trade-space-2); }
 .title {
   margin: 0;
   display: flex; flex-wrap: wrap; align-items: center; gap: var(--trade-space-3);

@@ -111,6 +111,18 @@ describe("office queue access and predicates", () => {
     db.jobStatusHistory.groupBy.mockResolvedValue([]);
     await expect(readOfficeQueues(db as never, OFFICE, parseQueueQuery({}), NOW, stats)).rejects.toThrow("queue-read-changed");
   });
+  it.each(["REVIEW", "QUOTE_BOUNTY"])("offers the existing pricing workspace for a zero-estimate %s row", async status => {
+    const db = fake(); db.job.findMany.mockResolvedValue([job("j1", { status, estimates: [] })]);
+    const stats = await readOfficeQueueStats(db as never, OFFICE, NOW); stats.kpis.price.count = 1;
+    const data = await readOfficeQueues(db as never, OFFICE, parseQueueQuery({}), NOW, stats);
+    expect(data.rows[0]).toMatchObject({ status, estimates: "0", action: "Price it", href: "/admin/jobs/j1/price" });
+    expect(data.counts).toEqual(stats.counts); expect(data.kpis).toEqual(stats.kpis);
+  });
+  it("keeps a zero-estimate search result's existing Open action", async () => {
+    const db = fake(); db.job.findMany.mockResolvedValue([job("j1", { estimates: [] })]);
+    const data = await readOfficeQueues(db as never, OFFICE, parseQueueQuery({ q: "Sarah" }), NOW);
+    expect(data.rows[0]).toMatchObject({ action: "Open", href: "/admin/jobs/j1" });
+  });
   it("uses the same sign-off overdue fallback in the KPI and row when an office override has no submitted evidence", async () => {
     const db = fake();
     db.job.groupBy.mockResolvedValue([{ status: "SUBMITTED", _count: { _all: 1 } }]);

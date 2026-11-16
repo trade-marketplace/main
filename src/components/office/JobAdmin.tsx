@@ -110,20 +110,25 @@ export function JobAdmin({ job, submit, initialDialog = null, initialMenuOpen = 
             {job.customer.name} → {job.tradie?.name ?? "No tradie yet"} · {job.trade} · {job.suburb}
           </p>
         </div>
-        <Menu
-          defaultOpen={initialMenuOpen}
-          trigger={(props) => (
-            <Button variant="secondary" size="sm" width="auto" iconEnd="expand_more" {...props}>
-              Actions
-            </Button>
+        <div className={styles.headActions}>
+          {(["REVIEW", "QUOTE_BOUNTY"] as const).some(status => status === job.status) && (
+            <Button href={`/admin/jobs/${job.id}/price`} size="sm" width="auto">Price it</Button>
           )}
-        >
-          {(["reassign", "refund", "price", "status"] as const).map((name) => (
-            <ActionItem key={name} job={job} name={name} onSelect={() => setDialog(name)} />
-          ))}
-          <MenuSeparator />
-          <ActionItem job={job} name="cancel" onSelect={() => setDialog("cancel")} />
-        </Menu>
+          <Menu
+            defaultOpen={initialMenuOpen}
+            trigger={(props) => (
+              <Button variant="secondary" size="sm" width="auto" iconEnd="expand_more" {...props}>
+                Actions
+              </Button>
+            )}
+          >
+            {(["reassign", "refund", "price", "status"] as const).map((name) => (
+              <ActionItem key={name} job={job} name={name} onSelect={() => setDialog(name)} />
+            ))}
+            <MenuSeparator />
+            <ActionItem job={job} name="cancel" onSelect={() => setDialog("cancel")} />
+          </Menu>
+        </div>
       </div>
 
       {done && (
