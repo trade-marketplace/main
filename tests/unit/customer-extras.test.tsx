@@ -27,11 +27,27 @@ describe("customer extra work", () => {
     expect(renderToStaticMarkup(dialog.mock.lastCall?.[0].eyebrow)).toContain("Needs your OK");
     expect(dialog.mock.lastCall?.[0]).not.toHaveProperty("initialFocusRef");
   });
-  it("selects and returns only the eight customer fields with a five-row bound", async () => {
-    const findMany = vi.fn(async (query: { select: Record<string, unknown> }) => { void query; return [{ ...extra, pricedAt: new Date("2026-11-12T00:00:00Z"), _count: { photos: 1 }, requestedMinutes: 60, materialsCents: 123, workerGrossCents: 456, marginCents: 789 }]; });
+  it("keeps waiting rows, fills the remaining spaces, and returns only eight customer fields", async () => {
+    const row = { ...extra, createdAt: new Date("2026-11-10T00:00:00Z"), pricedAt: new Date("2026-11-12T00:00:00Z"), _count: { photos: 1 }, requestedMinutes: 60, materialsCents: 123, workerGrossCents: 456, marginCents: 789 };
+    const decided = { ...row, id: "00000000-0000-4000-8000-000000000004", status: "DECLINED", createdAt: new Date("2026-11-11T00:00:00Z") };
+    const findMany = vi.fn().mockResolvedValueOnce([row]).mockResolvedValueOnce([decided]);
     const result = await loadCustomerExtras({ variation: { findMany } } as unknown as Pick<PrismaClient, "variation">, { userId: "00000000-0000-4000-8000-000000000001", role: "CUSTOMER" }, "00000000-0000-4000-8000-000000000003");
-    expect(Object.keys(result[0]).sort()).toEqual(["id", "revision", "status", "description", "priceCents", "photoCount", "pricedAt", "decidedAt"].sort());
-    expect(Object.keys(findMany.mock.calls[0][0].select).sort()).toEqual(["id", "revision", "status", "description", "priceCents", "pricedAt", "decidedAt", "_count"].sort());
-    expect(findMany).toHaveBeenCalledWith(expect.objectContaining({ take: 5, where: { jobId: "00000000-0000-4000-8000-000000000003", job: { customerId: "00000000-0000-4000-8000-000000000001", customer: { role: "CUSTOMER" }, status: "ASSIGNED" } } }));
+    expect(result.map(item => item.id)).toEqual([decided.id, row.id]);
+    for (const item of result) expect(Object.keys(item).sort()).toEqual(["id", "revision", "status", "description", "priceCents", "photoCount", "pricedAt", "decidedAt"].sort());
+    for (const [query] of findMany.mock.calls) {
+      expect(Object.keys(query.select).sort()).toEqual(["id", "revision", "status", "description", "priceCents", "pricedAt", "decidedAt", "createdAt", "_count"].sort());
+      expect(query.where).toMatchObject({ jobId: "00000000-0000-4000-8000-000000000003", job: { customerId: "00000000-0000-4000-8000-000000000001", customer: { role: "CUSTOMER" }, status: "ASSIGNED" } });
+    }
+    expect(findMany.mock.calls[0][0]).not.toHaveProperty("take");
+    expect(findMany.mock.calls[0][0].where.status).toEqual({ in: ["REQUESTED", "PRICED"] });
+    expect(findMany.mock.calls[1][0]).toMatchObject({ take: 4, where: { status: { in: ["APPROVED", "DECLINED"] }, id: { notIn: [row.id] } } });
+  });
+  it("does not read for signed-out, other-role or invalid identifiers", async () => {
+    const findMany = vi.fn();
+    const db = { variation: { findMany } } as unknown as Pick<PrismaClient, "variation">;
+    const id = "00000000-0000-4000-8000-000000000001";
+    for (const viewer of [null, { userId: id, role: "TRADIE" as const }, { userId: "bad", role: "CUSTOMER" as const }]) expect(await loadCustomerExtras(db, viewer, id)).toEqual([]);
+    expect(await loadCustomerExtras(db, { userId: id, role: "CUSTOMER" }, "bad")).toEqual([]);
+    expect(findMany).not.toHaveBeenCalled();
   });
 });
