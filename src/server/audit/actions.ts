@@ -73,6 +73,10 @@ export const AUDIT_ACTIONS = {
   "payment.failed": { record: "payments" },
   "payment.refunded": { record: "payments", reason: "required" },
   "payment.partially_refunded": { record: "payments", reason: "required" },
+  // A refund the office asked Stripe for (#157): its id is the Stripe idempotency key. Closed by refund_failed when
+  // Stripe said no; recorded by payment.refunded / payment.partially_refunded when it was made.
+  "payment.refund_requested": { record: "payments", reason: "required" },
+  "payment.refund_failed": { record: "payments" },
 
   // Extra work.
   "variation.requested": { record: "variations" },

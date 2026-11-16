@@ -379,7 +379,7 @@ function ActionDialog({ name, job, submit, presetError, onClose, onDone }: Dialo
       return (
         <ConfirmDialog {...common} title="Refund" confirmLabel="Record refund">
           <Banner tone="test" title="Test mode.">
-            This is a record only. No real money moves until real payments are on.
+            The refund is made in Stripe’s test mode. No real money moves until real payments are on.
           </Banner>
           {job.payments.length > 1 && (
             <SelectField
@@ -512,6 +512,8 @@ function initialValues(name: DialogName, job: OfficeJobView): Fields {
       materials: (job.pricing.materialsCents / 100).toFixed(2),
     };
   }
+  // Refund: one id for this dialog, sent with every try, so trying again after an error can't refund twice (#157).
+  if (name === "refund") return { ...base, hours: "", materials: "", requestId: crypto.randomUUID() };
   return { ...base, hours: "", materials: "" };
 }
 
@@ -526,7 +528,13 @@ function payloadFor(name: DialogName, job: OfficeJobView, v: Fields): Record<str
     case "price":
       return { ...base, minutes: parseHoursToMinutes(v.hours), materialsCents: parseMoneyToCents(v.materials) };
     case "refund":
-      return { ...base, paymentId: v.paymentId, mode: v.mode, amountCents: v.mode === "partial" ? parseMoneyToCents(v.amount) : null };
+      return {
+        ...base,
+        paymentId: v.paymentId,
+        mode: v.mode,
+        amountCents: v.mode === "partial" ? parseMoneyToCents(v.amount) : null,
+        requestId: v.requestId,
+      };
     case "message":
       return { action: "message", jobId: job.id, body: v.body };
     case "cancel":

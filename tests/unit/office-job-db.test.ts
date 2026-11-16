@@ -210,53 +210,7 @@ describe.skipIf(!testDatabaseUrl)("the job admin view's actions (database)", () 
     });
   });
 
-  describe("refund", () => {
-    it("records a full refund against the payment, with the note on the timeline", async () => {
-      const office = await person("ADMIN", "Matt");
-      const paid = await job("ASSIGNED");
-      const payment = await pay(paid.id);
-      const result = await act(office, { action: "refund", jobId: paid.id, seenStatus: "ASSIGNED", paymentId: payment.id, mode: "full", amountCents: null, note: "Work not done." });
-      expect(result).toEqual({ ok: true });
-      expect(await schema.db.payment.findUniqueOrThrow({ where: { id: payment.id } })).toMatchObject({ status: "REFUNDED", refundedCents: 12_000 });
-      const [entry] = await audits(payment.id);
-      expect(entry).toMatchObject({ action: "payment.refunded", recordType: "payments", reason: "Work not done." });
-      const view = await read(paid.id);
-      expect(view?.money.refundedCents).toBe(12_000);
-      expect(view?.payments).toEqual([]);
-      expect(view?.timeline[0]).toMatchObject({ title: "Refunded $120.00", detail: "Work not done." });
-    });
-
-    it("records a part refund, then the rest, and never more than was paid", async () => {
-      const office = await person("ADMIN");
-      const paid = await job("ASSIGNED");
-      const payment = await pay(paid.id);
-      const refund = (mode: "full" | "partial", amountCents: number | null) =>
-        act(office, { action: "refund", jobId: paid.id, seenStatus: "ASSIGNED", paymentId: payment.id, mode, amountCents, note: "Goodwill" });
-      expect(await refund("partial", 5_000)).toEqual({ ok: true });
-      expect(await schema.db.payment.findUniqueOrThrow({ where: { id: payment.id } })).toMatchObject({ status: "PARTIALLY_REFUNDED", refundedCents: 5_000 });
-      expect((await audits(payment.id))[0].action).toBe("payment.partially_refunded");
-
-      expect(await refund("partial", 7_001)).toMatchObject({ ok: false, field: "amount" });
-      expect(await schema.db.payment.findUniqueOrThrow({ where: { id: payment.id } })).toMatchObject({ refundedCents: 5_000 });
-
-      expect(await refund("full", null)).toEqual({ ok: true });
-      expect(await schema.db.payment.findUniqueOrThrow({ where: { id: payment.id } })).toMatchObject({ status: "REFUNDED", refundedCents: 12_000 });
-      expect(await refund("full", null)).toMatchObject({ ok: false, error: "not-allowed" });
-      expect(await audits(payment.id)).toHaveLength(2);
-    });
-
-    it("refuses a payment that isn't paid or isn't on this job", async () => {
-      const office = await person("ADMIN");
-      const one = await job("ASSIGNED");
-      const other = await job("ASSIGNED");
-      const unpaid = await schema.db.payment.create({ data: { jobId: one.id, kind: "JOB", amountCents: 12_000, idempotencyKey: randomUUID() } });
-      const elsewhere = await pay(other.id);
-      const send = (paymentId: string) => act(office, { action: "refund", jobId: one.id, seenStatus: "ASSIGNED", paymentId, mode: "full", amountCents: null, note: "Refund" });
-      expect(await send(unpaid.id)).toMatchObject({ ok: false, error: "not-allowed" });
-      expect(await send(elsewhere.id)).toMatchObject({ ok: false, field: "paymentId" });
-      expect(await schema.db.payment.findUniqueOrThrow({ where: { id: elsewhere.id } })).toMatchObject({ status: "PAID", refundedCents: 0 });
-    });
-  });
+  // Refunds go to Stripe now (#157): tests/unit/refunds-db.test.ts, with a fake Stripe.
 
   describe("message both", () => {
     it("sends to the customer and the tradie in one open thread each, and reuses them", async () => {

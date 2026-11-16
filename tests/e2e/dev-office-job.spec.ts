@@ -86,7 +86,7 @@ test.describe("/dev/components/office-job", () => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto(url("?dialog=refund"));
     const dialog = page.getByRole("alertdialog", { name: "Refund" });
-    await expect(dialog.getByText("This is a record only. No real money moves until real payments are on.")).toBeVisible();
+    await expect(dialog.getByText("The refund is made in Stripe’s test mode. No real money moves until real payments are on.")).toBeVisible();
     await dialog.getByLabel("Part refund").check();
     await dialog.getByLabel("Note").fill("Goodwill.");
     await dialog.getByRole("button", { name: "Record refund" }).click();
