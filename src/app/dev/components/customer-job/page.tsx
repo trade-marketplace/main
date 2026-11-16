@@ -7,7 +7,7 @@ import { customerJobView } from "@/server/views";
 import { canEditJobWindows } from "@/lib/job-windows";
 
 export const metadata: Metadata = { title: "Customer job (dev)", robots: { index: false, follow: false } };
-const statuses = { ready: "REVIEW", "quick-look": "QUOTE_BOUNTY", priced: "PRICED", booked: "BOOKABLE", assigned: "ASSIGNED", submitted: "SUBMITTED", completed: "COMPLETED", "cancel-requested": "CANCEL_REVIEW", cancelled: "CANCELLED" } as const;
+const statuses = { ready: "REVIEW", "quick-look": "QUOTE_BOUNTY", priced: "PRICED", booked: "BOOKABLE", assigned: "ASSIGNED", submitted: "SUBMITTED", completed: "COMPLETED", "cancel-requested": "CANCEL_REVIEW", cancelled: "CANCELLED", "price-expired": "CANCELLED", "price-expired-draft": "CANCELLED", "price-expired-error": "CANCELLED" } as const;
 export default async function Page({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   guardDevPage();
   const params = await searchParams;
@@ -19,10 +19,10 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
   if (state === "long") { job.title = "A very long job title with enough detail to wrap comfortably on a small phone"; job.description = "LongUnbrokenDescription".repeat(12); job.address.line1 = "A long address that still needs to fit safely inside its card"; job.address.accessNotes = "Access notes ".repeat(25); }
   const photos = state === "empty" ? [] : ["wires", "switch", "board"].map((name, index) => ({ src: `/images/examples/${name}.jpg`, alt: `${job.title} · ${index + 1}` }));
   return <AppShellView viewer={{ role: "CUSTOMER", firstName: "Sarah", lastName: "Thompson", email: "customer@demo.test", emailVerified: true, counts: { messages: 0, notifications: 0 } }} testMode preview={{ at: `/jobs/${job.id}`, base: "/dev/components/customer-job" }}>
-    {state === "status-gallery" ? Object.values(statuses).map((status, index) => {
+    {state === "status-gallery" ? [...new Set(Object.values(statuses))].map((status, index) => {
       const row = exampleJob({ status, id: `12200000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`, jobNumber: 1005 + index, ...(status === "BOOKABLE" ? { workerId: null, worker: null } : {}) });
       const example = customerJobView(VIEWERS.customer, row)!;
       return <CustomerJob problemHref="/dev/components/customer-problem?state=form" key={status} job={example} photos={photos} canEditWindows={canEditJobWindows(row)} preview="static" />;
-    }) : state === "loading" ? <CustomerJobLoading /> : state === "error" ? <CustomerJobLoadError /> : <CustomerJob problemHref="/dev/components/customer-problem?state=form" job={job} photos={photos} photosFailed={state === "photos-error"} canEditWindows={canEditJobWindows(source)} preview={state === "offline" ? "offline" : "static"} />}
+    }) : state === "loading" ? <CustomerJobLoading /> : state === "error" ? <CustomerJobLoadError /> : <CustomerJob problemHref="/dev/components/customer-problem?state=form" job={job} photos={photos} photosFailed={state === "photos-error"} canEditWindows={canEditJobWindows(source)} preview={state === "offline" ? "offline" : "static"} priceExpired={state.startsWith("price-expired")} postAgainPreview={state === "price-expired-draft" ? "draft-exists" : state === "price-expired-error" ? "error" : state === "price-expired" ? "ready" : undefined} />}
   </AppShellView>;
 }

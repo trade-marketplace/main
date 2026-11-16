@@ -1,0 +1,4 @@
+.panel { display: grid; gap: var(--trade-space-3); min-width: 0; }
+.why, .hint, .bannerText { margin: 0; text-wrap: pretty; overflow-wrap: anywhere; }
+.hint { color: var(--trade-text-2); font-size: var(--trade-fs-small); }
+.actions { display: flex; flex-wrap: wrap; gap: var(--trade-space-3); margin-top: var(--trade-space-3); }

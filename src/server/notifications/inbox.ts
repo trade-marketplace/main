@@ -15,6 +15,8 @@ const COPY: Readonly<Record<string, readonly [string, string]>> = {
   "job.posted": ["Job posted", "task_alt"],
   "job.details_updated": ["Job updated", "edit"],
   "job.priced": ["Your price is ready", "sell"],
+  "job.price_reminder": ["Price still waiting", "sell"],
+  "job.price_expired": ["Your price closed", "event_busy"],
   "job.paid": ["Payment received", "receipt_long"],
   "job.claimed": ["Tradie confirmed", "person_check"],
   "job.times_added": ["New times added", "event_available"],

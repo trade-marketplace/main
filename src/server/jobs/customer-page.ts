@@ -3,6 +3,7 @@ import "server-only";
 import { loadCustomerReview } from "./customer-review";
 import type { CustomerReview } from "@/lib/customer-review";
 import { loadCancelFacts } from "./customer-cancel";
+import { priceExpired as wasPriceExpired } from "./post-again";
 import { canCancelJob, type CancelFacts } from "@/lib/customer-cancel";
 import { randomUUID } from "node:crypto";
 import type { PrismaClient } from "@/generated/prisma/client";
@@ -25,6 +26,9 @@ export async function loadCustomerJobPage(db: Pick<PrismaClient, "job"> & Partia
   const previousPriceCents: number | null = null;
   let reviewData: CustomerReview | null = null;
   if (job.status === "COMPLETED") { try { reviewData = await loadCustomerReview(db, viewer, id); } catch { /* Keep the frame; the review card offers retry without mistaking a failed read for an absent review. */ } }
+  let priceExpired = false;
+  // A failed read only hides Post again; the closed job still shows.
+  if (job.status === "CANCELLED" && db.auditLog) { try { priceExpired = await wasPriceExpired({ auditLog: db.auditLog }, id); } catch { /* Post again stays hidden */ } }
   let cancelFacts: CancelFacts | null = null;
   try { if (canCancelJob(job.status) && db.profile && db.auditLog) cancelFacts = await loadCancelFacts({ job: db.job, profile: db.profile, auditLog: db.auditLog }, viewer, id); } catch { /* The frame remains available; a failed facts read must not promise a free cancellation. */ }
   let extras: CustomerExtra[] = [], extrasFailed = false;
@@ -32,7 +36,7 @@ export async function loadCustomerJobPage(db: Pick<PrismaClient, "job"> & Partia
     try { if (!db.variation) throw new Error("Extra work unavailable"); extras = await loadCustomerExtras({ variation: db.variation }, viewer, id); }
     catch { extrasFailed = true; }
   }
-  return { state: "ready" as const, job: { ...job, previousPriceCents, extras, extrasFailed, cancelFacts, reviewData }, previousPriceCents, canEditWindows: canEditJobWindows(row) };
+  return { state: "ready" as const, job: { ...job, previousPriceCents, extras, extrasFailed, cancelFacts, reviewData, priceExpired }, previousPriceCents, canEditWindows: canEditJobWindows(row) };
 }
 
 export async function loadCustomerJobPhotos(job: CustomerJobView, viewer: JobViewer,

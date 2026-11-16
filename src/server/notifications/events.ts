@@ -13,6 +13,8 @@ export const NOTIFICATION_EVENTS = {
   "job.posted": { channels: ["IN_APP"], description: "A job was posted." },
   "job.details_updated": { channels: ["IN_APP"], description: "The customer changed a job’s details after a quote." },
   "job.priced": { channels: ["IN_APP"], description: "The fixed price is ready." },
+  "job.price_reminder": { channels: ["IN_APP"], description: "The price has waited 3 days for an answer." },
+  "job.price_expired": { channels: ["IN_APP"], description: "The price closed after 7 days with no answer." },
   "job.paid": { channels: ["IN_APP"], description: "The job payment was confirmed." },
   "job.claimed": { channels: ["IN_APP"], description: "A worker claimed the job." },
   "job.times_added": { channels: ["IN_APP"], description: "The customer added time windows." },

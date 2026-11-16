@@ -13,12 +13,12 @@ import { firebaseWebConfig } from "@/server/notifications/push-config";
 import { CustomerJob, CustomerJobLoading } from "./CustomerJob";
 import { PostedJob } from "./PostedJob";
 
-export function CustomerJobPage({ job, viewer, posted, back, canEditWindows }: { job: CustomerJobView & { reviewData?: CustomerReview | null; cancelFacts?: CancelFacts | null; previousPriceCents?: number | null; extras?: readonly CustomerExtra[]; extrasFailed?: boolean }; viewer: JobViewer & { emailVerified: boolean }; posted: boolean; back: string; canEditWindows: boolean }) {
+export function CustomerJobPage({ job, viewer, posted, back, canEditWindows }: { job: CustomerJobView & { priceExpired?: boolean; reviewData?: CustomerReview | null; cancelFacts?: CancelFacts | null; previousPriceCents?: number | null; extras?: readonly CustomerExtra[]; extrasFailed?: boolean }; viewer: JobViewer & { emailVerified: boolean }; posted: boolean; back: string; canEditWindows: boolean }) {
   return posted ? <PostedJob job={job} ownerId={viewer.userId} push={viewer.emailVerified ? firebaseWebConfig() : null} /> :
-    <Suspense fallback={<CustomerJobLoading />}><CustomerJobPhotos job={job} viewer={viewer} back={back} canEditWindows={canEditWindows} previousPriceCents={job.previousPriceCents ?? null} extras={job.extras} extrasFailed={job.extrasFailed} cancelFacts={job.cancelFacts} reviewData={job.reviewData} /></Suspense>;
+    <Suspense fallback={<CustomerJobLoading />}><CustomerJobPhotos job={job} viewer={viewer} back={back} canEditWindows={canEditWindows} previousPriceCents={job.previousPriceCents ?? null} extras={job.extras} extrasFailed={job.extrasFailed} cancelFacts={job.cancelFacts} reviewData={job.reviewData} priceExpired={job.priceExpired} /></Suspense>;
 }
 
-async function CustomerJobPhotos({ job, viewer, back, canEditWindows, previousPriceCents, extras, extrasFailed, cancelFacts, reviewData }: { job: CustomerJobView; viewer: JobViewer; back: string; canEditWindows: boolean; previousPriceCents: number | null; extras?: readonly CustomerExtra[]; extrasFailed?: boolean; cancelFacts?: CancelFacts | null; reviewData?: CustomerReview | null }) {
+async function CustomerJobPhotos({ job, viewer, back, canEditWindows, previousPriceCents, extras, extrasFailed, cancelFacts, reviewData, priceExpired }: { job: CustomerJobView; viewer: JobViewer; back: string; canEditWindows: boolean; previousPriceCents: number | null; extras?: readonly CustomerExtra[]; extrasFailed?: boolean; cancelFacts?: CancelFacts | null; reviewData?: CustomerReview | null; priceExpired?: boolean }) {
   const [photos, signoffData, workerCard] = await Promise.all([
     loadCustomerJobPhotos(job, viewer),
     // Do not pair a stale worker name with a concurrent replacement's finished-work files.
@@ -27,5 +27,5 @@ async function CustomerJobPhotos({ job, viewer, back, canEditWindows, previousPr
     // must not pair one person's signed photo/licence with another person's name and phone.
     (async () => { try { return job.worker ? await loadCustomerWorkerCard(getDb(), viewer, job.id, undefined, undefined, job.worker.id) : null; } catch { return null; } })(),
   ]);
-  return <CustomerJob job={job} {...photos} back={back} canEditWindows={canEditWindows} signoffData={signoffData} workerCard={workerCard} previousPriceCents={previousPriceCents} extras={extras} extrasFailed={extrasFailed} cancelFacts={cancelFacts} reviewData={reviewData} />;
+  return <CustomerJob job={job} {...photos} back={back} canEditWindows={canEditWindows} signoffData={signoffData} workerCard={workerCard} previousPriceCents={previousPriceCents} extras={extras} extrasFailed={extrasFailed} cancelFacts={cancelFacts} reviewData={reviewData} priceExpired={priceExpired} />;
 }

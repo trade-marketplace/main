@@ -51,6 +51,7 @@ export type TransitionName =
   | "send-price"
   | "mark-paid"
   | "decline-price"
+  | "expire-price"
   | "cancel"
   | "claim"
   | "submit"
@@ -91,6 +92,9 @@ export const TRANSITIONS: Readonly<Record<TransitionName, TransitionRule>> = {
   "mark-paid": { from: ["PRICED"], to: "BOOKABLE", by: ["system"], action: "job.paid" },
   // "No thanks" on the price (C09). Free, unless money is held (a paid quick look): then the office reviews.
   "decline-price": { from: ["PRICED"], to: null, by: ["customer"], action: "job.price_declined" },
+  // No answer 7 days after the price was sent (DECISIONS.md, Price expiry, #508). Free, like "No thanks": only a
+  // paid quick look sends it to the office instead. Only the scheduler (system) does this.
+  "expire-price": { from: ["PRICED"], to: null, by: ["system"], action: "job.price_expired" },
   // Before paying: cancelled, free. After paying: CANCEL_REVIEW, with a reason (C17).
   cancel: {
     from: ["REVIEW", "QUOTE_BOUNTY", "PRICED", "BOOKABLE", "ASSIGNED"],
@@ -315,6 +319,7 @@ export function decideTransition(job: JobSnapshot, request: TransitionRequest, f
       return plan("BOOKABLE");
 
     case "decline-price":
+    case "expire-price":
     case "cancel": {
       // Paid (the job, or a quick look): the office checks before any refund. BOOKABLE and ASSIGNED are always paid.
       const paid = job.status === "BOOKABLE" || job.status === "ASSIGNED" || Boolean(facts.moneyHeld);
@@ -520,6 +525,7 @@ async function loadFacts(tx: Tx, job: Prisma.JobGetPayload<{ select: typeof JOB_
       return { jobPaymentPaid: (await tx.payment.count({ where: { jobId, kind: "JOB", status: "PAID" } })) > 0 };
 
     case "decline-price":
+    case "expire-price":
     case "cancel":
       return {
         moneyHeld: (await tx.payment.count({ where: { jobId, status: { in: ["PAID", "PARTIALLY_REFUNDED"] } } })) > 0,

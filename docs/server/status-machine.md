@@ -35,6 +35,7 @@ a worker can only submit the job they claimed.
 | `send-price` | REVIEW, QUOTE_BOUNTY | PRICED | office, system | The job has a price and a `job_pricing` row (`priceJob`, #94) |
 | `mark-paid` | PRICED | BOOKABLE | system | A `JOB` payment is `PAID` (the payment webhook calls this) |
 | `decline-price` | PRICED | CANCELLED, or CANCEL_REVIEW if money is held | customer | Their job. A reason when it goes to review |
+| `expire-price` | PRICED | CANCELLED, or CANCEL_REVIEW if money is held | system | No answer 7 days after the price was sent (#508). The scheduler closes any open checkout first |
 | `cancel` | REVIEW, QUOTE_BOUNTY, PRICED | CANCELLED, or CANCEL_REVIEW if money is held | customer | Their job. A reason when it goes to review |
 | `cancel` | BOOKABLE, ASSIGNED | CANCEL_REVIEW | customer | Their job, and a reason |
 | `claim` | BOOKABLE | ASSIGNED | worker | Not their own job. Restricted work (any trade but Other) needs a `VERIFIED`, unexpired licence for that trade (DECISIONS.md 1) |
@@ -110,7 +111,7 @@ const deps: StatusMachineDeps = {
 };
 ```
 
-Audit actions: `job.bounty_posted`, `job.priced`, `job.paid`, `job.price_declined`, `job.cancelled`,
+Audit actions: `job.bounty_posted`, `job.priced`, `job.paid`, `job.price_declined`, `job.price_expired`, `job.cancelled`,
 `job.cancel_requested` (cancel or decline that went to review), `job.claimed`, `job.submitted`, `job.signed_off`,
 `job.auto_signed_off`, `job.cancel_approved`, `job.reinstated`, `job.status_overridden`.
 

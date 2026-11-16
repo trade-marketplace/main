@@ -13,7 +13,7 @@ import {
   paymentFailure,
   payPath,
 } from "@/lib/payments/results";
-import { createAudit } from "@/server/audit/audit";
+import { createAudit, type AuditActor } from "@/server/audit/audit";
 import { databaseSchema } from "@/server/database-client";
 import { customerJobListView, JOB_SUMMARY_SELECT } from "@/server/views/jobs";
 import { startVariationPayment, prepareVariationPayment } from "./variation-payment";
@@ -150,7 +150,7 @@ export type RetireJobPaymentsResult = "retired" | "paying" | "unverified";
 export async function retireJobPayments(
   tx: Prisma.TransactionClient,
   intents: PaymentIntentsApi | null,
-  actor: { userId: string },
+  actor: AuditActor,
   jobId: string,
   reason: string,
 ): Promise<RetireJobPaymentsResult> {
