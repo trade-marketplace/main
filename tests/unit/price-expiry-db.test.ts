@@ -51,7 +51,8 @@ describe.skipIf(!testDatabaseUrl)("price expiry (database)", () => {
     await run(at(sentAt, 2.9));
     expect(await notices(customerId, "job.price_reminder")).toHaveLength(0);
     await Promise.all([run(at(sentAt, 3)), run(at(sentAt, 3))]);
-    await run(at(sentAt, 5));
+    // A reminded price is no longer due, so it never crowds out newer ones under the run's limit.
+    expect(await run(at(sentAt, 5))).toMatchObject({ due: 0 });
     expect(await notices(customerId, "job.price_reminder")).toEqual([expect.objectContaining({ payload: { jobId: job.id, jobNumber: job.jobNumber, sentAt: sentAt.toISOString() } })]);
     expect(await status(job.id)).toBe("PRICED");
   });
@@ -116,6 +117,26 @@ describe.skipIf(!testDatabaseUrl)("price expiry (database)", () => {
     expect(await postAgain(schema.db, viewer, job.id, true)).toEqual({ status: "ready" });
     const other = { ...viewer, userId: await person("CUSTOMER") };
     expect(await postAgain(schema.db, other, job.id, true)).toEqual({ status: "forbidden" });
+  });
+
+  it("sends a held quick look to the office without telling the customer it closed", async () => {
+    const { job, customerId, sentAt } = await priced();
+    await schema.db.payment.create({ data: { jobId: job.id, kind: "QUICK_LOOK", amountCents: 3000, status: "PAID", paidAt: new Date(), idempotencyKey: randomUUID() } });
+    await run(at(sentAt, 7));
+    expect(await status(job.id)).toBe("CANCEL_REVIEW");
+    expect(await notices(customerId, "job.price_expired")).toHaveLength(0);
+    expect(await notices(customerId, "job.cancel_requested")).toHaveLength(1);
+  });
+
+  it("Post again follows the latest cancellation, not an older expiry", async () => {
+    const { job, customerId, office, sentAt } = await priced();
+    await run(at(sentAt, 7));
+    const viewer = { userId: customerId, role: "CUSTOMER" as const, email: "", firstName: "Test", emailVerified: true };
+    // The office reopens it, then cancels it for another reason.
+    await schema.db.$executeRaw`SELECT set_config('app.actor_id', ${office}, false)`;
+    await schema.db.jobStatusHistory.create({ data: { jobId: job.id, fromStatus: "CANCELLED", toStatus: "PRICED", changedById: office } });
+    await schema.db.jobStatusHistory.create({ data: { jobId: job.id, fromStatus: "PRICED", toStatus: "CANCELLED", changedById: office } });
+    expect(await postAgain(schema.db, viewer, job.id, true)).toEqual({ status: "forbidden" });
   });
 
   it("Post again is only for jobs whose price expired", async () => {

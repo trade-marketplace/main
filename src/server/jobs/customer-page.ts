@@ -14,7 +14,7 @@ import { getUploadService, type SignedPhoto } from "@/server/files/service";
 import { JOB_DETAIL_SELECT, customerJobView, type CustomerJobView, type JobViewer } from "@/server/views";
 
 /** Keep ORM rows and Storage paths on the server; the page receives only #95's customer DTO and signed links. */
-export async function loadCustomerJobPage(db: Pick<PrismaClient, "job"> & Partial<Pick<PrismaClient, "variation" | "profile" | "auditLog">>, viewer: JobViewer, id: string) {
+export async function loadCustomerJobPage(db: Pick<PrismaClient, "job"> & Partial<Pick<PrismaClient, "variation" | "profile" | "auditLog" | "jobStatusHistory">>, viewer: JobViewer, id: string) {
   let row;
   try { row = await db.job.findUnique({ where: { id }, select: JOB_DETAIL_SELECT }); }
   catch { return { state: "error" as const }; }
@@ -28,7 +28,7 @@ export async function loadCustomerJobPage(db: Pick<PrismaClient, "job"> & Partia
   if (job.status === "COMPLETED") { try { reviewData = await loadCustomerReview(db, viewer, id); } catch { /* Keep the frame; the review card offers retry without mistaking a failed read for an absent review. */ } }
   let priceExpired = false;
   // A failed read only hides Post again; the closed job still shows.
-  if (job.status === "CANCELLED" && db.auditLog) { try { priceExpired = await wasPriceExpired({ auditLog: db.auditLog }, id); } catch { /* Post again stays hidden */ } }
+  if (job.status === "CANCELLED" && db.jobStatusHistory) { try { priceExpired = await wasPriceExpired({ jobStatusHistory: db.jobStatusHistory }, id); } catch { /* Post again stays hidden */ } }
   let cancelFacts: CancelFacts | null = null;
   try { if (canCancelJob(job.status) && db.profile && db.auditLog) cancelFacts = await loadCancelFacts({ job: db.job, profile: db.profile, auditLog: db.auditLog }, viewer, id); } catch { /* The frame remains available; a failed facts read must not promise a free cancellation. */ }
   let extras: CustomerExtra[] = [], extrasFailed = false;

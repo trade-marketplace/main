@@ -44,7 +44,7 @@ export function createPriceExpiryRule(options: { intents?: () => PaymentIntentsA
         WHERE "sentAt" IS NOT NULL AND "sentAt" <= ${remindBy}
           AND ("sentAt" <= ${closeBy} OR NOT EXISTS (SELECT 1 FROM ${table("notifications")} n
             WHERE n.user_id = priced.customer_id AND n.type = 'job.price_reminder' AND n.payload->>'jobId' = priced.id::text
-              AND (n.payload->>'sentAt')::timestamptz = "sentAt"))
+              AND (n.payload->>'sentAt')::timestamptz = date_trunc('milliseconds', "sentAt")))
         ORDER BY "sentAt" ASC, id ASC LIMIT ${limit}`);
       result.due = due.length;
       let intents: PaymentIntentsApi | null | undefined;
@@ -78,12 +78,12 @@ export function createPriceExpiryRule(options: { intents?: () => PaymentIntentsA
               },
               notify: async () => {},
             }, { jobId: candidate.id, transition: "expire-price", actor: { role: "SYSTEM", source: "scheduler" }, reason: PRICE_EXPIRED_REASON });
-            await createNotify(tx)("job.price_expired", [row.customerId], { eventId, payload });
             if (change.to === "CANCEL_REVIEW") {
-              // A paid quick look is held: the office decides any refund, as with "No thanks".
+              // A paid quick look is held: the job isn't closed yet. The office decides any refund, as with "No thanks",
+              // and the customer is told a cancellation is being looked at, not that it closed.
               const office = await tx.profile.findMany({ where: { role: "ADMIN" }, select: { id: true } });
-              await createNotify(tx)("job.cancel_requested", office.map(person => person.id), { eventId: `${eventId}:office`, payload });
-            }
+              await createNotify(tx)("job.cancel_requested", [row.customerId, ...office.map(person => person.id)], { eventId, payload });
+            } else await createNotify(tx)("job.price_expired", [row.customerId], { eventId, payload });
             return "done";
           }, { timeout: 30_000 });
           result[outcome]++;

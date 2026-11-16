@@ -9,9 +9,15 @@ import { saveDraft } from "./drafts";
 
 export type PostAgainResult = { status: "ready" | "draft-exists" | "forbidden" | "unavailable" };
 
-/** Whether this job closed because its price went unanswered for 7 days (#508): only those offer Post again. */
-export async function priceExpired(db: Pick<PrismaClient, "auditLog">, jobId: string): Promise<boolean> {
-  return Boolean(await db.auditLog.findFirst({ where: { recordType: "jobs", recordId: jobId, action: "job.price_expired" }, select: { id: true } }));
+/**
+ * Whether this job's current cancellation is a price that went unanswered for 7 days (#508): only those offer Post
+ * again. Its latest status change must be the scheduler's PRICED → CANCELLED, which only price expiry makes (a
+ * customer's "No thanks" and an office cancel carry who did it), so an older expiry on a job reopened and cancelled
+ * again for another reason doesn't count.
+ */
+export async function priceExpired(db: Pick<PrismaClient, "jobStatusHistory">, jobId: string): Promise<boolean> {
+  const latest = await db.jobStatusHistory.findFirst({ where: { jobId }, orderBy: [{ createdAt: "desc" }, { id: "desc" }], select: { fromStatus: true, toStatus: true, changedById: true } });
+  return latest?.fromStatus === "PRICED" && latest.toStatus === "CANCELLED" && latest.changedById === null;
 }
 
 /**
