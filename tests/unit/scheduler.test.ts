@@ -131,6 +131,7 @@ describe("the runner", () => {
       "draft-photo-raw-cleanup", "draft-photo-cleanup", "window-expiry", "variation-photo-cleanup", "variation-stage-cleanup",
       "post-confirmation-email", "price-ready-push",
       "notification-email",
+      "extra-work-reminder",
       "job-pings",
     ]);
   });
