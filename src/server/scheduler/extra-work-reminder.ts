@@ -20,14 +20,18 @@ export const extraWorkReminder: SchedulerRule = {
     const variations = Prisma.raw(`"${schema}"."variations"`);
     const jobs = Prisma.raw(`"${schema}"."jobs"`);
     const notifications = Prisma.raw(`"${schema}"."notifications"`);
+    // When this revision's price reached the customer: a re-price always sends a fresh "variation.priced" notice, even
+    // when the figures (and so priced_at) don't change. Legacy rows without one fall back to priced_at.
+    const shownAt = Prisma.sql`GREATEST(v.priced_at, (SELECT max(p.created_at) FROM ${notifications} p WHERE p.user_id = j.customer_id
+      AND p.type = 'variation.priced' AND p.payload->>'variationId' = v.id::text))`;
     // Exclude already-reminded revisions before applying the batch limit, so old ones cannot starve later work.
     const due = await db.$queryRaw<{ id: string; jobId: string; revision: number }[]>(Prisma.sql`
       SELECT v.id, v.job_id AS "jobId", v.revision
       FROM ${variations} v JOIN ${jobs} j ON j.id = v.job_id
-      WHERE v.status = 'PRICED' AND v.priced_at <= ${cutoff} AND j.status = 'ASSIGNED'
+      WHERE v.status = 'PRICED' AND ${shownAt} <= ${cutoff} AND j.status = 'ASSIGNED'
         AND NOT EXISTS (SELECT 1 FROM ${notifications} n WHERE n.user_id = j.customer_id AND n.type = 'variation.reminder'
           AND n.payload->>'variationId' = v.id::text AND n.payload->>'revision' = v.revision::text)
-      ORDER BY v.priced_at ASC, v.id ASC LIMIT ${limit}
+      ORDER BY ${shownAt} ASC, v.id ASC LIMIT ${limit}
     `);
     const result = { rule: "extra-work-reminder", due: due.length, done: 0, skipped: 0, failed: 0 };
     for (const candidate of due) {
@@ -40,6 +44,9 @@ export const extraWorkReminder: SchedulerRule = {
             select: { id: true, revision: true, job: { select: { id: true, jobNumber: true, customerId: true } } },
           });
           if (!variation) return "skipped";
+          const [shown] = await tx.$queryRaw<{ due: boolean }[]>(Prisma.sql`SELECT ${shownAt} <= ${cutoff} AS due
+            FROM ${variations} v JOIN ${jobs} j ON j.id = v.job_id WHERE v.id = ${variation.id}::uuid`);
+          if (!shown?.due) return "skipped";
           const sent = await tx.notification.findFirst({ where: { userId: variation.job.customerId, type: "variation.reminder",
             AND: [{ payload: { path: ["variationId"], equals: variation.id } }, { payload: { path: ["revision"], equals: variation.revision } }] }, select: { id: true } });
           if (sent) return "skipped";

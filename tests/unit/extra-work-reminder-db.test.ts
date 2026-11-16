@@ -36,6 +36,8 @@ describe.skipIf(!testDatabaseUrl)("priced extra-work reminder (database)", () =>
     if (!priced.ok) throw Error(priced.error);
     const saved = await schema.db.variation.findUniqueOrThrow({ where: { id: variation.id } });
     if (!saved.pricedAt) throw Error("The database did not stamp the price time");
+    // The customer's "priced" notice is written a moment after the price; anchor it so the clock starts at pricedAt.
+    await schema.db.notification.updateMany({ where: { type: "variation.priced", payload: { path: ["variationId"], equals: variation.id } }, data: { createdAt: saved.pricedAt } });
     return { customer, worker, office, job, id: variation.id, revision: saved.revision, pricedAt: saved.pricedAt };
   }
   type Fixture = Awaited<ReturnType<typeof fixture>>;
@@ -74,10 +76,24 @@ describe.skipIf(!testDatabaseUrl)("priced extra-work reminder (database)", () =>
     const price = await priceVariation(schema.db, f.office, f.id, f.revision, 45); expect(price.ok).toBe(true);
     const revised = await schema.db.variation.findUniqueOrThrow({ where: { id: f.id } });
     const next = { ...f, revision: revised.revision, pricedAt: revised.pricedAt! };
+    await schema.db.notification.updateMany({ where: { type: "variation.priced", payload: { path: ["variationId"], equals: f.id }, createdAt: { gt: f.pricedAt } }, data: { createdAt: next.pricedAt } });
     expect(await run(at(next, 23))).toMatchObject({ due: 0 });
     expect(await run(at(next, 24))).toMatchObject({ done: 1 });
     expect(await run(at(next, 240))).toMatchObject({ due: 0 });
     expect((await notices(f)).map(row => row.id).sort()).toEqual([notificationId(`variation.reminder:${f.id}:${f.revision}`, f.customer.userId), notificationId(`variation.reminder:${f.id}:${next.revision}`, f.customer.userId)].sort());
+  });
+
+  it("waits 24 hours from a re-price that kept the same figures", async () => {
+    const f = await fixture(); expect(await run(at(f, 24))).toMatchObject({ done: 1 });
+    // Same figures: the revision moves, priced_at doesn't, and the customer is shown the price again now.
+    const repriceAt = at(f, 30);
+    expect(await priceVariation(schema.db, f.office, f.id, f.revision, 30)).toMatchObject({ ok: true });
+    const revised = await schema.db.variation.findUniqueOrThrow({ where: { id: f.id } });
+    expect(revised.pricedAt).toEqual(f.pricedAt);
+    await schema.db.notification.updateMany({ where: { type: "variation.priced", payload: { path: ["variationId"], equals: f.id }, createdAt: { gt: f.pricedAt } }, data: { createdAt: repriceAt } });
+    expect(await run(new Date(repriceAt.getTime() + 23 * HOUR))).toMatchObject({ due: 0 });
+    expect(await run(new Date(repriceAt.getTime() + 24 * HOUR + 1))).toMatchObject({ done: 1 });
+    expect(await notices(f)).toHaveLength(2);
   });
 
   it("finds the oldest unreminded rows before applying limit and drains the backlog on the next run", async () => {
