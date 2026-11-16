@@ -115,7 +115,7 @@ export function usePostReview({ ownerId, verified, draft, manager, state, save, 
       if (session?.check(posted, { resend: () => post(automatic) })) return;
       if (!("status" in posted)) throw new Error("Session changed");
       if (posted.status === "outside-area") { router.push(waitlistSharePath(posted.waitlist.suburb)); return; }
-      if (posted.status === "needs-account") {
+      if (posted.status === "needs-account" || posted.status === "email-required") {
         rememberIntent(entered, selectedIds);
         router.push(verificationPath(returnPath)); return;
       }

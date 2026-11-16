@@ -13,7 +13,7 @@ describe.skipIf(!testDatabaseUrl)("worker extra work with the existing guarded a
   const schema = useTestSchema(import.meta.filename);
   async function person(role: Role) {
     const id = randomUUID(); await schema.db.$executeRaw`INSERT INTO auth.users(id) VALUES(${id}::uuid)`;
-    await schema.db.profile.create({ data: { id, email: `${id}@example.test`, firstName: "Test", role } });
+    await schema.db.profile.create({ data: { id, email: `${id}@example.test`, firstName: "Test", role, emailVerifiedAt: new Date("2026-01-01T00:00:00Z") } });
     return { userId: id, role, firstName: "Test", email: `${id}@example.test`, emailVerified: true } satisfies Viewer;
   }
   async function fixture() {

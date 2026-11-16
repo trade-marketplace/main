@@ -22,7 +22,7 @@ describe.skipIf(!testDatabaseUrl)("customer extra work ownership and existing de
   const schema = useTestSchema(import.meta.filename);
   async function person(role: Role) {
     const id = randomUUID(); await schema.db.$executeRaw`INSERT INTO auth.users (id) VALUES (${id}::uuid)`;
-    await schema.db.profile.create({ data: { id, role, email: `${id}@example.test`, firstName: "Test" } });
+    await schema.db.profile.create({ data: { id, role, email: `${id}@example.test`, firstName: "Test", emailVerifiedAt: new Date("2026-01-01T00:00:00Z") } });
     return { userId: id, role };
   }
   async function fixture() {

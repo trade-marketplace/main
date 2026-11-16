@@ -35,11 +35,6 @@ function fakeProfiles(initial: ProfileRow[] = []) {
       return row;
     }),
     ensureWorker: vi.fn(async () => {}),
-    markEmailVerified: vi.fn(async (id: string, at: Date) => {
-      const row = { ...rows.get(id)!, emailVerifiedAt: at };
-      rows.set(id, row);
-      return row;
-    }),
   } satisfies ProfileStore & { rows: Map<string, ProfileRow> };
   return store;
 }
@@ -104,6 +99,14 @@ describe("signUp", () => {
     const auth = fakeAuth({ signUp: vi.fn(async () => ({ data: { user: user(), session: {} }, error: null })) });
     const result = await signUp({ auth, profiles: fakeProfiles() }, { ...goodSignUp, role: "TRADIE" });
     expect(result).toEqual({ ok: true, status: "signed-in", role: "TRADIE", redirectTo: "/jobs" });
+  });
+
+  it("creates an unconfirmed profile when Supabase auto-confirms the email at sign-up (#353)", async () => {
+    const autoConfirmed = user({ email_confirmed_at: "2026-10-26T01:00:00Z" });
+    const auth = fakeAuth({ signUp: vi.fn(async () => ({ data: { user: autoConfirmed, session: {} }, error: null })) });
+    const profiles = fakeProfiles();
+    expect(await signUp({ auth, profiles }, goodSignUp)).toMatchObject({ ok: true, status: "signed-in" });
+    expect(profiles.rows.get(autoConfirmed.id)?.emailVerifiedAt).toBeNull();
   });
 
   it("goes back to the page they came from after signing up", async () => {
@@ -282,6 +285,13 @@ describe("ensureProfile", () => {
       user({ user_metadata: { first_name: "Aroha", last_name: "Ngata", role: "TRADIE" } }),
     );
     expect(row).toMatchObject({ role: "TRADIE", firstName: "Aroha" });
+  });
+
+  it("rebuilds a missing profile unconfirmed even when Supabase says the email is confirmed (#353)", async () => {
+    const profiles = fakeProfiles();
+    const row = await ensureProfile(profiles, user({ email_confirmed_at: "2026-10-26T01:00:00Z" }));
+    expect(row.emailVerifiedAt).toBeNull();
+    expect(profiles.create).toHaveBeenCalledWith(expect.objectContaining({ emailVerifiedAt: null }));
   });
 
   it("never rebuilds one as office staff, whatever the metadata says", async () => {

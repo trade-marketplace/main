@@ -14,7 +14,7 @@ describe.skipIf(!testDatabaseUrl)("10 MB private variation staging transport", (
   const limit = vi.fn(async () => ({ allowed: true } as const));
   async function person(role: "TRADIE" | "CUSTOMER") {
     const id = randomUUID(); await schema.db.$executeRaw`INSERT INTO auth.users (id) VALUES (${id}::uuid)`;
-    await schema.db.profile.create({ data: { id, email: `${id}@example.nz`, role, firstName: "Test" } }); return { userId: id };
+    await schema.db.profile.create({ data: { id, email: `${id}@example.nz`, role, firstName: "Test", emailVerifiedAt: new Date("2026-01-01T00:00:00Z") } }); return { userId: id };
   }
   async function fixture() {
     const worker = await person("TRADIE"), customer = await person("CUSTOMER");

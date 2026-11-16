@@ -41,7 +41,7 @@ export function ExtraWorkDrawer({ jobId, requestKey, open, onClose, onSent, prev
   const validExample = preview && !["open", "closed", "empty", "field-errors"].includes(preview);
   const [fields, setFields] = useState({ description: validExample ? "Replace the second cracked switch." : "", hours: validExample ? "0.5" : "" });
   const [photos, setPhotos] = useState<Photo[]>(() => validExample ? [{ id: "example", name: "Extra work photo", src: "/images/examples/switch.jpg", path: "preview-photo", status: preview === "uploading" ? "uploading" : preview === "upload-error" ? "failed" : "done", progress: .45 }] : []);
-  const [problems, setProblems] = useState<string[]>([]), [busy, setBusy] = useState(false), [frozen, setFrozen] = useState(false), [error, setError] = useState(preview === "error"), [wait, setWait] = useState(preview === "try-later");
+  const [problems, setProblems] = useState<string[]>([]), [busy, setBusy] = useState(false), [frozen, setFrozen] = useState(false), [error, setError] = useState(preview === "error"), [wait, setWait] = useState(preview === "try-later"), [emailRequired, setEmailRequired] = useState(preview === "email-required");
   const [errors, setErrors] = useState<ReturnType<typeof extraErrors>>(() => preview === "field-errors" ? extraErrors({ description: "", hours: "" }, 0) : {});
   const offline = !online || preview === "offline", sending = busy || preview === "sending", locked = sending || frozen;
   const uploading = photos.some(photo => photo.status === "uploading"), failed = photos.some(photo => photo.status === "failed");
@@ -68,13 +68,13 @@ export function ExtraWorkDrawer({ jobId, requestKey, open, onClose, onSent, prev
   async function send() {
     if (pending.current || offline || sending || uploading || failed || invalid) return;
     const checked = extraErrors(fields, photos.filter(photo => photo.path).length); setErrors(checked); if (Object.keys(checked).length) return;
-    pending.current = true; setBusy(true); setFrozen(true); setError(false); setWait(false);
+    pending.current = true; setBusy(true); setFrozen(true); setError(false); setWait(false); setEmailRequired(false);
     const input = submitted.current ?? extraRequest(jobId, requestKey, fields, photos.map(photo => photo.path!)); submitted.current = input;
     try {
       const result = await request(input);
       if (session?.check(result)) return;
       if (result.ok) { onSent(result.variationId, input); return; }
-      if (result.error === "photos-pending") setWait(true); else setError(true);
+      if (result.error === "photos-pending") setWait(true); else if (result.error === "email-required") setEmailRequired(true); else setError(true);
       // A structured refusal confirms no successful row was returned. Keep the payload for a safe retry.
     } catch { setError(true); }
     finally { pending.current = false; setBusy(false); }
@@ -86,6 +86,7 @@ export function ExtraWorkDrawer({ jobId, requestKey, open, onClose, onSent, prev
     <div className={styles.fields}><OfflineBanner online={offline ? false : undefined} sticky={false} />
       {error && <Banner tone="alert" live action={<Button variant="tertiary" onClick={retry} disabled={offline || sending}>Try again</Button>}>Couldn’t send the extra work. Try again.</Banner>}
       {wait && <Banner tone="alert" live action={<Button variant="tertiary" onClick={retry} disabled={offline || sending}>Try again</Button>}>Try again later.</Banner>}
+      {emailRequired && <Banner tone="alert" live>Confirm your email to continue.</Banner>}
       <TextAreaField label="What needs doing?" required value={fields.description} maxLength={2000} error={errors.description} disabled={locked} onBlur={() => setErrors(previous => ({ ...previous, description: validation.description }))} onChange={event => { setFields(previous => ({ ...previous, description: event.target.value })); setErrors(previous => ({ ...previous, description: undefined })); }} />
       <fieldset className={styles.photos} disabled={offline || locked}><legend>Photos (required)</legend><PhotoPicker photos={photos} max={6} accept="image/jpeg,image/png,image/heic,image/heif,.heic,.heif" problems={[...problems, ...(errors.photos ? [errors.photos] : [])]} onAdd={add} onRemove={id => { if (!offline && !locked) setPhotos(previous => previous.filter(item => item.id !== id)); }} onRetry={id => { const photo = photos.find(item => item.id === id); if (photo?.file) void put(photo); else if (preview) setPhotos(previous => previous.map(item => item.id === id ? { ...item, status: "done" } : item)); }} retryDisabled={offline || locked} /></fieldset>
       <TextField label="Extra hours" type="number" min="0" max="100" step="0.25" required value={fields.hours} error={errors.hours} disabled={locked} onBlur={() => setErrors(previous => ({ ...previous, hours: validation.hours }))} onChange={event => { setFields(previous => ({ ...previous, hours: event.target.value })); setErrors(previous => ({ ...previous, hours: undefined })); }} />

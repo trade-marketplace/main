@@ -31,18 +31,19 @@ export function BookWindow({ initial, state = "pick", backHref: suppliedBack = `
   const backHref = useWorkspaceReturn(suppliedBack);
   const [job, setJob] = useState(initial), [selected, setSelected] = useState("");
   const [busy, setBusy] = useState(false), [asked, setAsked] = useState(state === "asked"), [error, setError] = useState(state === "error"), [changed, setChanged] = useState(state === "changed");
-  const [lastRequest, setLastRequest] = useState(false);
+  const [lastRequest, setLastRequest] = useState(false), [emailRequired, setEmailRequired] = useState(state === "email-required");
   const pending = useRef(false), router = useRouter(), session = useOptionalSessionExpired(), online = useOnlineStatus();
   const saving = busy || state === "saving", offline = !online || state === "offline";
   const picked = job.windows.find(window => timeWindowKey(window) === selected) ?? null;
   async function submit(otherTimes = false) {
     if (pending.current || saving || offline || (!otherTimes && !picked)) return;
-    pending.current = true; setBusy(true); setError(false); setLastRequest(otherTimes);
+    pending.current = true; setBusy(true); setError(false); setEmailRequired(false); setLastRequest(otherTimes);
     try {
       const result = otherTimes ? await request(job.id) : await book(job.id, picked, job.revision);
       if (session?.check(result)) return;
       if (!("status" in result)) { setError(true); return; }
       if (result.status === "asked") { setAsked(true); setChanged(false); }
+      else if (result.status === "email-required") setEmailRequired(true);
       else if (result.status === "changed") { setJob(result.snapshot); setSelected(""); setChanged(true); setAsked(false); }
       else if (result.status === "booked") {
         if (onBooked) onBooked(result);
@@ -63,6 +64,7 @@ export function BookWindow({ initial, state = "pick", backHref: suppliedBack = `
       <OfflineBanner online={state === "offline" ? false : undefined} sticky={false} />
       {changed && <Banner tone="info" live>The times changed. Pick again.</Banner>}
       {asked && <Banner tone="info" live>{job.customerFirstName}’s been asked for more times.</Banner>}
+      {emailRequired && <Banner tone="alert" live>Confirm your email to continue.</Banner>}
       {error && <Banner tone="alert" live action={<Button variant="tertiary" disabled={offline || saving} onClick={() => void submit(lastRequest)}>Try again</Button>}>Couldn’t save. Try again.</Banner>}
       {dates.length ? <div className={styles.windows}>{dates.map(date => <RadioGroup key={date} className={styles.day} label={bookingDateLabel(date)} name={`booking-${job.id}`} value={selected} disabled={saving || offline}
         options={job.windows.filter(window => window.date === date).map(window => ({ value: timeWindowKey(window), label: bookingWindowLabel(window).split(" · ")[1] }))} onChange={setSelected} />)}</div> : <p>None of {job.customerFirstName}’s times are left.</p>}

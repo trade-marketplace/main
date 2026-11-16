@@ -15,7 +15,7 @@ describe.skipIf(!testDatabaseUrl)("worker booking database", () => {
   async function person(role: Role): Promise<Viewer> {
     const userId = randomUUID(), email = `${userId}@example.test`;
     await schema.db.$executeRaw`INSERT INTO auth.users(id) VALUES(${userId}::uuid)`;
-    await schema.db.profile.create({ data: { id: userId, email, firstName: "Sarah", role } });
+    await schema.db.profile.create({ data: { id: userId, email, firstName: "Sarah", role, emailVerifiedAt: new Date("2026-01-01T00:00:00Z") } });
     return { userId, email, firstName: "Sarah", role, emailVerified: true };
   }
   async function fixture(anyTime = false) {

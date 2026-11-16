@@ -32,8 +32,11 @@ allowed destination; signed-out people return to password login with their origi
 The completion cookie lasts one day so a suspended holding tab can catch up. A new email request clears it.
 It only controls the success message; it never grants a session or job permission.
 
-#353 retains the server-side posting/claiming guards and any cleanup of historical provider-auto-confirmed rows.
-These changes do not migrate or update existing accounts automatically.
+Every command that posts or takes a job re-reads `email_verified_at` in its own transaction and refuses with
+`email-required` until it is set (#353, `src/server/auth/email-ownership.ts`): posting, claiming (through the
+status machine's eligibility facts), quoting, booking a time or asking for other times, and asking for extra
+work. None of this migrates existing accounts: profiles whose `email_verified_at` was copied from Supabase's
+automatic confirmation before #106 still count as confirmed until a founder clears them (see PR for #353).
 
 ## Verification without Supabase
 

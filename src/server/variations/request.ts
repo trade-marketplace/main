@@ -2,6 +2,7 @@ import "server-only";
 
 import type { PrismaClient } from "@/generated/prisma/client";
 import { createAudit } from "@/server/audit/audit";
+import { emailOwnershipProved } from "@/server/auth/email-ownership";
 import { createNotify } from "@/server/notifications/notify";
 import { command, inProgress, isUuid, lockJob, refuse, requireActor, type VariationActor } from "./common";
 
@@ -16,6 +17,18 @@ export async function requestVariation(db: PrismaClient, actor: VariationActor, 
     return { ok: false, error: "invalid" } as const;
   }
   const requestKey = raw.requestKey.toLowerCase();
+  try {
+    return await requestCommand(db, actor, raw, requestKey);
+  } catch (error) {
+    if (error instanceof EmailRequired) return { ok: false, error: "email-required" } as const;
+    throw error;
+  }
+}
+
+/** Thrown inside the transaction so it rolls back; only this worker command can refuse with it. */
+class EmailRequired extends Error {}
+
+function requestCommand(db: PrismaClient, actor: VariationActor, raw: RequestVariationInput, requestKey: string) {
   return command(db, async tx => {
     await requireActor(tx, actor, "TRADIE");
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`variation-request:${requestKey}`}, 0))`;
@@ -28,6 +41,10 @@ export async function requestVariation(db: PrismaClient, actor: VariationActor, 
         || JSON.stringify(previous.photos.map(p => p.path)) !== JSON.stringify(raw.photoPaths)) return refuse("changed");
       return { ok: true, variationId: previous.id } as const;
     }
+    // New extra work is taking more of the job (DECISIONS.md, #353): our own email proof, re-read under the job lock.
+    // A retry of a request already made above still gets its committed answer.
+    const worker = await tx.profile.findUnique({ where: { id: actor.userId }, select: { email: true, emailVerifiedAt: true } });
+    if (!emailOwnershipProved(worker)) throw new EmailRequired();
     inProgress(job.status);
     const photos = await tx.variationPhoto.findMany({ where: { path: { in: raw.photoPaths }, jobId: job.id, uploadedById: actor.userId, requestKey, ready: true, deleting: false, variationId: null } });
     if (photos.length !== raw.photoPaths.length) return refuse("photos-pending");

@@ -11,10 +11,13 @@ export async function syncSecurityEmail(user: SecurityUser, emailLinkProved = fa
   if (!user.email) return;
   // #106: Auth can mark signup emails confirmed without proof when "Confirm email" is off.
   // Merely visiting Security or checking a password must never grant our independent verified status.
+  // #353: with Secure email change on, the first of the two links leaves the change pending (`new_email` set) and
+  // `email` still the old address. That link may have gone to the new address, so it proves nothing about `email`.
+  const proved = emailLinkProved && !user.new_email;
   const changed = { email: { not: user.email } };
   await getDb().profile.updateMany({
-    where: { id: user.id, ...(emailLinkProved ? { OR: [changed, { emailVerifiedAt: null }] } : changed) },
-    data: { email: user.email, emailVerifiedAt: emailLinkProved ? new Date() : null },
+    where: { id: user.id, ...(proved ? { OR: [changed, { emailVerifiedAt: null }] } : changed) },
+    data: { email: user.email, emailVerifiedAt: proved ? new Date() : null },
   });
 }
 

@@ -34,7 +34,7 @@ export function Workspace(props: Props) {
 function WorkspaceContent({ job, preview, embedded, send = sendJobUpdateAction, myWorkHref: suppliedReturn, extras: suppliedExtras = [], extraPreview, extraServices, releasePreview, releaseAction }: Props) {
   const myWorkHref = myWorkReturn(suppliedReturn) ?? "/dashboard";
   const router = useRouter();
-  const [extras, setExtras] = useState(suppliedExtras), [drawer, setDrawer] = useState(Boolean(extraPreview && ["open", "uploading", "upload-error", "field-errors", "sending", "try-later", "error", "offline"].includes(extraPreview))), [requestKey, setRequestKey] = useState("16000000-0000-4000-8000-000000000001");
+  const [extras, setExtras] = useState(suppliedExtras), [drawer, setDrawer] = useState(Boolean(extraPreview && ["open", "uploading", "upload-error", "field-errors", "sending", "try-later", "email-required", "error", "offline"].includes(extraPreview))), [requestKey, setRequestKey] = useState("16000000-0000-4000-8000-000000000001");
   const extraWorkOpen = job.extraWorkOpen || extras.some(extra => extra.status === "REQUESTED" || extra.status === "PRICED");
   useEffect(() => {
     if (extraPreview || !extras.some(extra => extra.status === "REQUESTED" || extra.status === "PRICED")) return;

@@ -5,7 +5,7 @@ export type WorkerExtra = {
   id: string; status: VariationStatus; description: string; requestedMinutes: number;
   minutes: number | null; workerEarnsCents: number | null; photoCount: number; createdAt: string;
 };
-export const EXTRA_WORK_STATES = ["closed", "open", "uploading", "upload-error", "field-errors", "sending", "sent", "priced", "approved", "declined", "already-waiting", "try-later", "error", "offline", "loading", "empty"] as const;
+export const EXTRA_WORK_STATES = ["closed", "open", "uploading", "upload-error", "field-errors", "sending", "sent", "priced", "approved", "declined", "already-waiting", "try-later", "email-required", "error", "offline", "loading", "empty"] as const;
 export type ExtraWorkState = typeof EXTRA_WORK_STATES[number];
 export type ExtraFields = { description: string; hours: string };
 export function extraErrors(fields: ExtraFields, photoCount: number) {
