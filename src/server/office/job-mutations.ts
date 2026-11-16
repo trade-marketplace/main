@@ -27,6 +27,7 @@ import {
   type Tx,
 } from "@/server/jobs/status-machine";
 import { createNotify } from "@/server/notifications/notify";
+import { retireJobPayments, type PaymentIntentsApi } from "@/server/payments/payments";
 import { PRICEABLE_STATUSES, priceJob } from "@/server/pricing/price-job";
 
 type Db = Pick<PrismaClient, "$transaction">;
@@ -56,11 +57,11 @@ class Refusal extends Error {
 }
 
 /** Checks, then does, one office action. Never throws for a refusal: it answers with what to tell the office. */
-export async function performJobAction(db: Db, office: Office, raw: unknown, now = new Date()): Promise<JobActionResult> {
+export async function performJobAction(db: Db, office: Office, raw: unknown, now = new Date(), intents: PaymentIntentsApi | null = null): Promise<JobActionResult> {
   const parsed = parseJobAction(raw);
   if (!parsed.ok) return fail("invalid", parsed.message, parsed.field);
   try {
-    await db.$transaction((tx) => run(tx, office, parsed.input, now));
+    await db.$transaction((tx) => run(tx, office, parsed.input, now, intents), { timeout: 30_000 });
     return { ok: true };
   } catch (error) {
     if (error instanceof Refusal) return error.result;
@@ -73,7 +74,7 @@ export async function performJobAction(db: Db, office: Office, raw: unknown, now
   }
 }
 
-async function run(tx: Tx, office: Office, input: JobActionInput, now: Date): Promise<void> {
+async function run(tx: Tx, office: Office, input: JobActionInput, now: Date, intents: PaymentIntentsApi | null): Promise<void> {
   // Who is acting, for the status history and the audit log's default. Local to this transaction.
   await tx.$queryRaw`SELECT set_config('app.actor_id', ${office.userId}, true)`;
   // Lock the job's row so a customer cancelling or a tradie claiming at the same moment waits for us, and what we
@@ -96,9 +97,9 @@ async function run(tx: Tx, office: Office, input: JobActionInput, now: Date): Pr
     case "reassign":
       return reassign(tx, office, job, input, now);
     case "status":
-      return forceStatus(tx, office, job, input);
+      return forceStatus(tx, office, job, input, intents);
     case "cancel":
-      return cancel(tx, office, job, input);
+      return cancel(tx, office, job, input, intents);
     case "refund":
       return refund(tx, office, job, input);
   }
@@ -183,7 +184,18 @@ async function reassign(tx: Tx, office: Office, job: LockedJob, input: Extract<J
   });
 }
 
-async function forceStatus(tx: Tx, office: Office, job: LockedJob, input: Extract<JobActionInput, { action: "status" }>) {
+/**
+ * Before a priced job stops being payable, close every checkout the customer left open (#542), the same way saying
+ * no to a price does (#516). Runs under this action's job row lock, which the card form also takes.
+ */
+async function retireOpenCheckouts(tx: Tx, office: Office, job: LockedJob, to: JobStatus, intents: PaymentIntentsApi | null) {
+  if (job.status !== "PRICED" || to === "PRICED") return;
+  const retired = await retireJobPayments(tx, intents, office, job.id, "The office changed the job before it was paid.");
+  if (retired === "paying") throw new Refusal(notAllowed("A payment for this price is going through. Check its payment before changing the job."));
+  if (retired === "unverified") throw new Refusal(fail("unavailable", "We couldn’t check the open payment with Stripe. Nothing was changed. Try again."));
+}
+
+async function forceStatus(tx: Tx, office: Office, job: LockedJob, input: Extract<JobActionInput, { action: "status" }>, intents: PaymentIntentsApi | null) {
   const allowed = forceStatusOptions({
     status: job.status,
     tradie: job.workerId ? { id: job.workerId, name: "" } : null,
@@ -192,6 +204,7 @@ async function forceStatus(tx: Tx, office: Office, job: LockedJob, input: Extrac
   if (!allowed.some((option) => option.value === input.to)) {
     throw new Refusal(fail("invalid", "The job can’t be moved to that status. It needs a tradie or a price first.", "to"));
   }
+  await retireOpenCheckouts(tx, office, job, input.to, intents);
   await applyTransition(tx, deps(tx, office, "job.status_overridden"), {
     jobId: job.id,
     transition: "override",
@@ -201,8 +214,9 @@ async function forceStatus(tx: Tx, office: Office, job: LockedJob, input: Extrac
   });
 }
 
-async function cancel(tx: Tx, office: Office, job: LockedJob, input: Extract<JobActionInput, { action: "cancel" }>) {
+async function cancel(tx: Tx, office: Office, job: LockedJob, input: Extract<JobActionInput, { action: "cancel" }>, intents: PaymentIntentsApi | null) {
   if (CLOSED.includes(job.status)) throw new Refusal(notAllowed("This job is already closed."));
+  await retireOpenCheckouts(tx, office, job, "CANCELLED", intents);
   await applyTransition(tx, deps(tx, office, "job.cancelled"), {
     jobId: job.id,
     transition: "override",

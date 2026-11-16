@@ -54,6 +54,7 @@ export type TransitionName =
   | "expire-price"
   | "cancel"
   | "claim"
+  | "release"
   | "submit"
   | "sign-off"
   | "auto-sign-off"
@@ -103,6 +104,9 @@ export const TRANSITIONS: Readonly<Record<TransitionName, TransitionRule>> = {
     action: "job.cancelled",
   },
   claim: { from: ["BOOKABLE"], to: "ASSIGNED", by: ["worker"], action: "job.claimed" },
+  // "Can't make it" (#147, DECISIONS.md "Handing a job back"): the worker hands it back before sending it for
+  // sign-off. It goes back on the board for others. Not while extra work waits or after extra work was approved.
+  release: { from: ["ASSIGNED"], to: "BOOKABLE", by: ["worker"], action: "job.released" },
   // The worker sends the job for sign-off once their evidence is sent and no extra work is waiting.
   submit: { from: ["ASSIGNED"], to: "SUBMITTED", by: ["worker"], action: "job.submitted" },
   "sign-off": { from: ["SUBMITTED"], to: "COMPLETED", by: ["customer"], action: "job.signed_off" },
@@ -143,6 +147,7 @@ export type PreconditionFailure =
   | "own-job"
   | "evidence-not-sent"
   | "extra-work-open"
+  | "extra-work-approved"
   | "problem-open"
   | "sign-off-not-due"
   | "no-target"
@@ -238,6 +243,8 @@ export type JobFacts = {
   evidenceSentAt?: Date | null;
   /** Extra work waiting on the office or the customer (REQUESTED or PRICED). */
   extraWorkOpen?: boolean;
+  /** Extra work on this job was approved (and so paid for): only the office can unwind that. */
+  extraWorkApproved?: boolean;
   /** An OPEN problem report: pauses the auto sign-off. */
   problemOpen?: boolean;
   autoReleaseHours?: number;
@@ -339,6 +346,12 @@ export function decideTransition(job: JobSnapshot, request: TransitionRequest, f
       if (job.category !== "OTHER" && !facts.workerLicensed) throw fail("licence-required");
       return plan("ASSIGNED", workerId);
     }
+
+    case "release":
+      if (actorId(actor) !== job.workerId) throw new TransitionForbiddenError(job.id, transition, "it isn't their job");
+      if (facts.extraWorkOpen) throw fail("extra-work-open");
+      if (facts.extraWorkApproved) throw fail("extra-work-approved");
+      return plan("BOOKABLE", null);
 
     case "submit":
       if (actorId(actor) !== job.workerId) throw new TransitionForbiddenError(job.id, transition, "it isn't their job");
@@ -543,6 +556,14 @@ async function loadFacts(tx: Tx, job: Prisma.JobGetPayload<{ select: typeof JOB_
       return { tradeEnabled, timeWindowsExpired: expired, workerPaused: Boolean(worker?.workerProfile?.pausedAt),
         workerLicensed: Boolean(worker && hasCurrentTradeLicence(worker, job.category, now)),
         workerEligibilityFailure: eligibilityFailure(worker, job, "claim", { now, ...(settings ? { enabledTrades: settings.enabledTrades } : {}) }) };
+    }
+
+    case "release": {
+      const [open, approved] = await Promise.all([
+        tx.variation.count({ where: { jobId, status: { in: ["REQUESTED", "PRICED"] } } }),
+        tx.variation.count({ where: { jobId, status: "APPROVED" } }),
+      ]);
+      return { extraWorkOpen: open > 0, extraWorkApproved: approved > 0 };
     }
 
     case "submit": {
