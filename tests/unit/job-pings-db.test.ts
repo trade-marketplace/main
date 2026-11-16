@@ -26,6 +26,9 @@ describe("job ping quiet hours", () => {
 describe.skipIf(!testDatabaseUrl)("ready-to-claim pings (database)", () => {
   const schema = useTestSchema(import.meta.filename);
   const db = () => schema.db;
+  // The audit log keeps rows when a test's jobs are deleted, so count only this test's entries.
+  let testStarted = new Date(0);
+  beforeEach(async () => { testStarted = (await db().$queryRaw<{ now: Date }[]>`SELECT now() AS now`)[0].now; });
   beforeEach(async () => {
     await db().notification.deleteMany();
     await db().job.deleteMany();
@@ -74,11 +77,6 @@ describe.skipIf(!testDatabaseUrl)("ready-to-claim pings (database)", () => {
     await db().notification.createMany({ data: rows });
   }
 
-  it.each(["BOOKABLE", "QUOTE_BOUNTY"] as const)("accepts the plan's exact job-ping:%s mark key", async status => {
-    const created = await job({ status });
-    await expect(db().scheduledJobMark.create({ data: { rule: `job-ping:${status}`, jobId: created.id, markedAt: NOW } })).resolves.toMatchObject({ rule: `job-ping:${status}`, jobId: created.id });
-  });
-
   it("pings an eligible tradie once, excludes the customer, and keeps only the public identifiers", async () => {
     const userId = await worker(), created = await job();
     expect(await run()).toMatchObject({ due: 1, done: 1, failed: 0 });
@@ -90,7 +88,7 @@ describe.skipIf(!testDatabaseUrl)("ready-to-claim pings (database)", () => {
     expect(rows[0].channelsSent).not.toContain("PUSH");
     expect(rows[0].channelsSent).not.toContain("EMAIL");
     expect(await db().notification.count({ where: { userId: created.customerId } })).toBe(0);
-    expect(await db().scheduledJobMark.count({ where: { rule: "job-ping:BOOKABLE", jobId: created.id } })).toBe(1);
+    expect(await db().auditLog.count({ where: { action: "job.pings_sent", createdAt: { gte: testStarted }, recordId: created.id, after: { path: ["status"], equals: "BOOKABLE" } } })).toBe(1);
   });
 
   it.each(["unavailable", "paused", "outside", "wrong-trade"])("does not ping an %s tradie", async reason => {
@@ -98,7 +96,7 @@ describe.skipIf(!testDatabaseUrl)("ready-to-claim pings (database)", () => {
     await job({ electrical: reason === "wrong-trade" });
     expect(await run()).toMatchObject({ done: 1, failed: 0 });
     expect(await db().notification.count({ where: { userId } })).toBe(0);
-    expect(await db().scheduledJobMark.count()).toBe(1);
+    expect(await db().auditLog.count({ where: { action: "job.pings_sent", createdAt: { gte: testStarted } } })).toBe(1);
   });
 
   it("sends nothing during quiet hours, including ASAP, then sends from exactly 7am", async () => {
@@ -107,7 +105,7 @@ describe.skipIf(!testDatabaseUrl)("ready-to-claim pings (database)", () => {
     const created = await job({ entered: new Date(night.getTime() - 60_000) });
     await db().job.update({ where: { id: created.id }, data: { asap: true } });
     expect(await run(night)).toEqual({ rule: "job-pings", due: 0, done: 0, skipped: 0, failed: 0 });
-    expect(await db().scheduledJobMark.count()).toBe(0);
+    expect(await db().auditLog.count({ where: { action: "job.pings_sent", createdAt: { gte: testStarted } } })).toBe(0);
     expect(await db().notification.count()).toBe(0);
     expect(await run(morning)).toMatchObject({ due: 1, done: 1, failed: 0 });
     expect(await db().notification.count()).toBe(1);
@@ -129,7 +127,7 @@ describe.skipIf(!testDatabaseUrl)("ready-to-claim pings (database)", () => {
     await job({ entered: new Date(NOW.getTime() + HOUR) });
     const results = await Promise.all([run(NOW), run(new Date(NOW.getTime() + 2 * HOUR))]);
     expect(results.map(result => result.failed)).toEqual([0, 0]);
-    expect(await db().scheduledJobMark.count()).toBe(2);
+    expect(await db().auditLog.count({ where: { action: "job.pings_sent", createdAt: { gte: testStarted } } })).toBe(2);
     expect(await db().notification.count({ where: { userId } })).toBe(10);
   });
   it("two simultaneous runs queue the same job only once", async () => {
@@ -138,13 +136,13 @@ describe.skipIf(!testDatabaseUrl)("ready-to-claim pings (database)", () => {
     expect(results.reduce((sum, result) => sum + result.done, 0)).toBe(1);
     expect(results.reduce((sum, result) => sum + result.failed, 0)).toBe(0);
     expect(await db().notification.count()).toBe(1);
-    expect(await db().scheduledJobMark.count()).toBe(1);
+    expect(await db().auditLog.count({ where: { action: "job.pings_sent", createdAt: { gte: testStarted } } })).toBe(1);
   });
   it("skips jobs that entered their status more than 24 hours ago", async () => {
     await worker(); await job({ entered: new Date(NOW.getTime() - 24 * HOUR - 1) });
     expect(await run()).toMatchObject({ due: 0, done: 0, failed: 0 });
     expect(await db().notification.count()).toBe(0);
-    expect(await db().scheduledJobMark.count()).toBe(0);
+    expect(await db().auditLog.count({ where: { action: "job.pings_sent", createdAt: { gte: testStarted } } })).toBe(0);
   });
   it("uses the latest status entry and processes the oldest due jobs first within its limit", async () => {
     await worker();
@@ -153,8 +151,8 @@ describe.skipIf(!testDatabaseUrl)("ready-to-claim pings (database)", () => {
     const newest = await job({ entered: new Date(NOW.getTime() - 25 * HOUR) });
     await db().jobStatusHistory.create({ data: { jobId: newest.id, toStatus: "BOOKABLE", createdAt: new Date(NOW.getTime() - HOUR) } });
     expect(await run(NOW, 2)).toMatchObject({ due: 2, done: 2, failed: 0 });
-    const marked = await db().scheduledJobMark.findMany();
-    expect(marked.map(row => row.jobId).sort()).toEqual([oldest.id, middle.id].sort());
+    const marked = await db().auditLog.findMany({ where: { action: "job.pings_sent", createdAt: { gte: testStarted } } });
+    expect(marked.map(row => row.recordId).sort()).toEqual([oldest.id, middle.id].sort());
     expect(await run()).toMatchObject({ due: 1, done: 1, failed: 0 });
   });
   it("uses bounty.available for an eligible actual QUOTE_BOUNTY without changing its status", async () => {
