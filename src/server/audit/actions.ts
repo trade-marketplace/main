@@ -44,6 +44,8 @@ export const AUDIT_ACTIONS = {
   "job.price_sent": { record: "jobs" },
   "job.paid": { record: "jobs" },
   "job.claimed": { record: "jobs" },
+  // "Can't make it": the worker handed the job back, with their reason (#147).
+  "job.released": { record: "jobs", reason: "required" },
   "job.on_my_way": { record: "jobs" },
   "job.running_late": { record: "jobs" },
   "job.customer_not_home": { record: "jobs" },

@@ -208,6 +208,15 @@ describe("decideTransition: preconditions and what-ifs", () => {
     expect(decide("ASSIGNED", submit).to).toBe("SUBMITTED");
   });
 
+  it("lets only the job's own worker hand it back, unless extra work waits or was approved (#147)", () => {
+    const release = { transition: "release" as const, actor: actorOf("worker") };
+    expect(() => decide("ASSIGNED", release, {}, { workerId: randomUUID() })).toThrow(TransitionForbiddenError);
+    expect(failure(() => decide("ASSIGNED", release, { extraWorkOpen: true }))).toBe("extra-work-open");
+    expect(failure(() => decide("ASSIGNED", release, { extraWorkApproved: true }))).toBe("extra-work-approved");
+    const plan = decide("ASSIGNED", release, {});
+    expect(plan).toMatchObject({ to: "BOOKABLE", workerId: null });
+  });
+
   it("needs a price (and its breakdown) before sending it", () => {
     const send = { transition: "send-price" as const, actor: actorOf("office") };
     expect(failure(() => decide("REVIEW", send, { hasPricing: true }, { priceCents: null }))).toBe("not-priced");

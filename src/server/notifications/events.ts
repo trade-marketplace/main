@@ -15,6 +15,8 @@ export const NOTIFICATION_EVENTS = {
   "job.priced": { channels: ["IN_APP"], description: "The fixed price is ready." },
   "job.paid": { channels: ["IN_APP"], description: "The job payment was confirmed." },
   "job.claimed": { channels: ["IN_APP"], description: "A worker claimed the job." },
+  "job.released": { channels: ["IN_APP"], description: "The tradie can't make it; the job is back on the board." },
+  "job.release_flagged": { channels: ["IN_APP"], description: "A tradie handed back a job booked soon, or not for the first time." },
   "job.times_added": { channels: ["IN_APP"], description: "The customer added time windows." },
   "job.window_booked": { channels: ["IN_APP"], description: "A customer time window was booked." },
   "job.on_my_way": { channels: ["IN_APP"], description: "The worker is on the way." },
