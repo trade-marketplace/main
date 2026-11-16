@@ -1,5 +1,6 @@
 import "server-only";
 
+import { z } from "zod";
 import type { PrismaClient, Prisma } from "@/generated/prisma/client";
 import { draftFieldErrors, jobDraftSchema, type DraftFieldErrors, type JobDraft } from "@/lib/job-draft";
 import type { Viewer } from "@/server/auth/viewer";
@@ -16,6 +17,8 @@ const CLEARABLE_WHERE_FIELDS = new Set<keyof JobDraft>(["addressLine2", "postcod
 type DraftOptions = {
   /** Modern wizard callers replace only the fields owned by this validated step. */
   wizardStep?: WizardStep;
+  /** Address facts for this path are read from the current customer's saved row, never from the request. */
+  savedAddressId?: string;
   /** Explicit internal full snapshots; photo-only and legacy callers remain patches by default. */
   fullSnapshot?: boolean;
   manualCategory?: boolean;
@@ -34,9 +37,10 @@ export function saveDraft(db: Db, viewer: Viewer | null, input: unknown, options
 export function saveDraft(db: Db, viewer: Viewer | null, input: unknown, options?: DraftOptions & { wizardStep?: undefined }): Promise<LegacySaveResult>;
 export async function saveDraft(db: Db, viewer: Viewer | null, input: unknown, options: DraftOptions = {}): Promise<WizardSaveResult | LegacySaveResult> {
   if (!viewer) return { status: "needs-account" } as const;
+  if (options.savedAddressId !== undefined && (options.wizardStep !== "where" || !z.uuid().safeParse(options.savedAddressId).success)) return { status: "invalid", fields: { addressLine1: "Address" } } as const;
   const parsed = jobDraftSchema.safeParse(input);
   if (!parsed.success) return { status: "invalid", fields: draftFieldErrors(parsed.error) } as const;
-  return db.$transaction(async (tx) => {
+  return db.$transaction(async (tx): Promise<WizardSaveResult | LegacySaveResult> => {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`draft:${viewer.userId}`}, 0))`;
     const profile = await tx.profile.findUnique({ where: { id: viewer.userId }, select: { role: true } });
     if (profile?.role !== "CUSTOMER") return { status: "forbidden" } as const;
@@ -48,15 +52,24 @@ export async function saveDraft(db: Db, viewer: Viewer | null, input: unknown, o
     if (options.expectedPhotoPaths && JSON.stringify(old.photoPaths ?? []) !== JSON.stringify(options.expectedPhotoPaths)) {
       return { status: "photos-changed", photoPaths: old.photoPaths ?? [] } as const;
     }
-    let next: Record<string, unknown> = { ...(options.fullSnapshot ? {} : old), ...parsed.data };
+    let values = parsed.data;
+    if (options.savedAddressId !== undefined) {
+      const address = await tx.address.findFirst({ where: { id: options.savedAddressId, userId: viewer.userId }, select: { line1: true, line2: true, suburb: true, city: true, postcode: true, lat: true, lng: true, locationSource: true } });
+      if (!address) return { status: "forbidden" } as const;
+      if (!address.locationSource || address.locationSource !== "TYPED" && (address.lat === null || address.lng === null)) return { status: "invalid", fields: { addressLine1: "Address" } } as const;
+      values = { ...values, addressLine1: address.line1, addressLine2: address.line2 ?? undefined, suburb: address.suburb, city: address.city, postcode: address.postcode ?? undefined, locationSource: address.locationSource, point: address.locationSource === "TYPED" ? undefined : { lat: address.lat!, lng: address.lng! } };
+    }
+    let next: Record<string, unknown> = { ...(options.fullSnapshot ? {} : old), ...values };
     if (options.wizardStep && previous) {
       // A stale same-key snapshot may include newer fields from another step. Only this step can replace its
       // fields. Omitted incomplete required input keeps its valid checkpoint; omitted optional address fields
       // intentionally clear. The owner lock keeps this merge atomic with other devices' saves.
       next = { ...old };
       for (const field of WIZARD_FIELDS[options.wizardStep]) {
+        // Choosing an address is an address-only checkpoint; keep existing schedule/access notes.
+        if (options.savedAddressId !== undefined && !["addressLine1", "addressLine2", "suburb", "city", "postcode", "locationSource", "point"].includes(field) && values[field] === undefined) continue;
         if (CLEARABLE_WHERE_FIELDS.has(field)) delete next[field];
-        if (parsed.data[field] !== undefined) next[field] = parsed.data[field];
+        if (values[field] !== undefined) next[field] = values[field];
       }
     }
     const data = jobDraftSchema.parse(next);
