@@ -132,6 +132,7 @@ describe("the runner", () => {
       "post-confirmation-email", "price-ready-push",
       "notification-email",
       "extra-work-reminder",
+      "job-pings",
       "price-expiry",
     ]);
   });
