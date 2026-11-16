@@ -6,7 +6,7 @@ import { SECURITY_PASSWORD, SECURITY_TRADIE, SECURITY_USER, startSecurityAuthStu
 import { expect, test } from "@playwright/test";
 import { expectNoA11yViolations } from "./support/a11y";
 const preview = process.env.POSTED_PREVIEW_E2E_URL || "http://127.0.0.1:3101";
-const states = ["not-booked", "booked", "electrical", "other-trade", "late-menu", "sending", "sent", "try-later", "waiting-extra", "submitted", "completed", "on-hold", "error", "offline", "loading", "load-error", "recovery-gallery"];
+const states = ["not-booked", "booked", "electrical", "other-trade", "late-menu", "sending", "sent", "try-later", "waiting-extra", "submitted", "completed", "on-hold", "error", "offline", "loading", "load-error", "release", "release-soon", "release-saving", "release-extra", "release-error", "recovery-gallery"];
 test("workspace preview keeps the production guard", async ({ page }) => { expect((await page.goto("/dev/components/worker-workspace?state=booked"))?.status()).toBe(404); });
 for (const width of [320, 390, 768, 1024, 1440]) test(`workspace states at ${width}px`, async ({ page }) => {
   test.setTimeout(180_000); await page.setViewportSize({ width, height: 1000 });
@@ -21,6 +21,9 @@ for (const width of [320, 390, 768, 1024, 1440]) test(`workspace states at ${wid
       if (state === "waiting-extra") await expect(page.getByRole("button", { name: "Finish job", exact: true })).toHaveAttribute("aria-disabled", "true");
       if (["submitted", "completed", "on-hold"].includes(state)) { await expect(page.getByRole("button", { name: "Running late", exact: true })).toHaveCount(0); await expect(page.getByRole("link", { name: "Finish job", exact: true })).toHaveCount(0); }
       if (state === "offline") await expect(page.getByRole("button", { name: "I’m on my way", exact: true })).toHaveAttribute("aria-disabled", "true");
+      if (state.startsWith("release")) await expect(page.getByRole("dialog", { name: "Hand this job back?" })).toBeVisible();
+      if (state === "release-soon") await expect(page.getByText("It’s booked for today or tomorrow, so the office will be told too.")).toBeVisible();
+      if (state === "release-extra") await expect(page.getByText("This job has extra work on it. Message us to hand it back.")).toBeVisible();
     }
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true); await expectNoA11yViolations(page);
     if (process.env.WORKSPACE_SCREENSHOTS_DIR && [390, 1440].includes(width)) await page.screenshot({ path: `${process.env.WORKSPACE_SCREENSHOTS_DIR}/${state}-${width}.png`, fullPage: true });
@@ -83,4 +86,16 @@ test.describe("real assigned workspace and updates", () => {
     await page.getByRole("navigation", { name: "Breadcrumb" }).getByRole("link", { name: "My work", exact: true }).press("Enter"); await expect(page).toHaveURL(/\/dashboard$/); await expect(page.getByRole("heading", { name: "Wrong address.", exact: true })).toBeVisible(); await page.goBack(); await expect(page.getByRole("heading", { name: "Real workspace job", exact: true })).toBeVisible();
     await db.query("UPDATE jobs SET worker_id=$2 WHERE id=$1", [job, other]); const denied = await page.request.get(`${app}/jobs/${job}`); expect(denied.status()).toBe(404); expect(await denied.text()).not.toMatch(/149 Private Street|Real workspace job/);
   });
+});
+test("Can’t make it opens by keyboard, needs a reason, and Escape returns focus", async ({ page }) => {
+  await page.goto(`${preview}/dev/components/worker-workspace?state=booked`);
+  const trigger = page.getByRole("button", { name: "Can’t make it", exact: true });
+  await trigger.press("Enter");
+  const dialog = page.getByRole("dialog", { name: "Hand this job back?" });
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toContainText("Sarah is told, and the job goes back on the board for another tradie.");
+  await expectNoA11yViolations(page);
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+  await expect(trigger).toBeFocused();
 });

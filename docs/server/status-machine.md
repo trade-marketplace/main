@@ -38,6 +38,7 @@ a worker can only submit the job they claimed.
 | `cancel` | REVIEW, QUOTE_BOUNTY, PRICED | CANCELLED, or CANCEL_REVIEW if money is held | customer | Their job. A reason when it goes to review |
 | `cancel` | BOOKABLE, ASSIGNED | CANCEL_REVIEW | customer | Their job, and a reason |
 | `claim` | BOOKABLE | ASSIGNED | worker | Not their own job. Restricted work (any trade but Other) needs a `VERIFIED`, unexpired licence for that trade (DECISIONS.md 1) |
+| `release` | ASSIGNED | BOOKABLE (no worker) | worker | Their job; no extra work waiting or approved (#147, "Can’t make it") |
 | `submit` | ASSIGNED | SUBMITTED | worker | They're the job's worker, their evidence is sent (`submitted_at`), and no extra work is REQUESTED or PRICED |
 | `sign-off` | SUBMITTED | COMPLETED | customer | Their job |
 | `auto-sign-off` | SUBMITTED | COMPLETED | system | `settings.auto_release_hours` (48) since the evidence was sent, and no OPEN problem report |
@@ -110,7 +111,7 @@ const deps: StatusMachineDeps = {
 };
 ```
 
-Audit actions: `job.bounty_posted`, `job.priced`, `job.paid`, `job.price_declined`, `job.cancelled`,
+Audit actions: `job.bounty_posted`, `job.priced`, `job.paid`, `job.price_declined`, `job.released`, `job.cancelled`,
 `job.cancel_requested` (cancel or decline that went to review), `job.claimed`, `job.submitted`, `job.signed_off`,
 `job.auto_signed_off`, `job.cancel_approved`, `job.reinstated`, `job.status_overridden`.
 

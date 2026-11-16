@@ -46,6 +46,8 @@ export const AUDIT_ACTIONS = {
   "job.claimed": { record: "jobs" },
   // By the scheduler: the in-app pings for a job that became ready to claim or a bounty went out (#239).
   "job.pings_sent": { record: "jobs" },
+  // "Can't make it": the worker handed the job back, with their reason (#147).
+  "job.released": { record: "jobs", reason: "required" },
   "job.on_my_way": { record: "jobs" },
   "job.running_late": { record: "jobs" },
   "job.customer_not_home": { record: "jobs" },

@@ -17,6 +17,8 @@ const COPY: Readonly<Record<string, readonly [string, string]>> = {
   "job.priced": ["Your price is ready", "sell"],
   "job.paid": ["Payment received", "receipt_long"],
   "job.claimed": ["Tradie confirmed", "person_check"],
+  "job.released": ["Finding another tradie", "person_search"],
+  "job.release_flagged": ["Job handed back", "assignment_return"],
   "job.times_added": ["New times added", "event_available"],
   "job.window_booked": ["Time booked", "event_available"],
   "job.on_my_way": ["On the way", "local_shipping"],
@@ -74,6 +76,7 @@ export function inboxItem(row: Row): InboxItem {
   else if (jobId) {
     if (row.type === "job.reschedule_requested" && payload.refreshWindows === true) href = `/jobs/${encodeURIComponent(jobId)}/windows`;
     else if (row.type === "problem_report.created") href = officeProblemJobHref(jobId, payload.reportId, null);
+    else if (row.type === "job.release_flagged") href = `/admin/jobs/${encodeURIComponent(jobId)}`;
     else if (row.type === "job.customer_not_home") href = `/admin/jobs/${encodeURIComponent(jobId)}`;
     else if (row.type === "job.materials_over_budget") href = `/admin/jobs/${encodeURIComponent(jobId)}`;
     else if (row.type === "variation.declined_office") href = `/admin/jobs/${encodeURIComponent(jobId)}`;

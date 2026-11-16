@@ -24,3 +24,4 @@
 .srOnly { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; clip-path: inset(50%); overflow: hidden; white-space: nowrap; }
 @media (max-width: 1023px) { .layout { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .layout > aside { grid-column: 2; } .left { grid-row: span 2; } }
 @media (max-width: 599px) { .page { padding: var(--trade-space-5) var(--trade-space-4); gap: var(--trade-space-4); } .header { align-items: stretch; flex-direction: column; } .title { font-size: var(--trade-fs-heading); } .layout { display: flex; flex-direction: column; gap: var(--trade-space-4); } .layout > *, .finish, .finish > * { width: 100%; } .card { padding: var(--trade-space-4); } }
+.release { margin-top: var(--trade-space-3); padding-top: var(--trade-space-3); border-top: 1px solid var(--trade-line); }
