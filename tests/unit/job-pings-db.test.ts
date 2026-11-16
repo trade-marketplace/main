@@ -73,7 +73,7 @@ describe.skipIf(!testDatabaseUrl)("ready-to-claim pings (database)", () => {
     });
     for (let index = 0; index < legacyCount; index++) {
       const jobId = randomUUID();
-      rows.push({ id: notificationId(`legacy-bounty:${jobId}`, userId), userId, type: "bounty.available", payload: { jobId, jobNumber: index + 100 }, createdAt: new Date(NOW.getTime() - 1_000) });
+      rows.push({ id: notificationId(`legacy-bounty:${jobId}`, userId), userId, type: "bounty.available", payload: { jobId, jobNumber: index + 100, enteredAt: "" }, createdAt: new Date(NOW.getTime() - 1_000) });
     }
     await db().notification.createMany({ data: rows });
   }
