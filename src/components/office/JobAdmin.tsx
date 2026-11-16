@@ -379,7 +379,7 @@ function ActionDialog({ name, job, submit, presetError, onClose, onDone }: Dialo
       return (
         <ConfirmDialog {...common} title="Refund" confirmLabel="Record refund">
           <Banner tone="test" title="Test mode.">
-            The refund is made in Stripe’s test mode. No real money moves until real payments are on.
+            Sent to Stripe as a test refund. No real money moves until real payments are on.
           </Banner>
           {job.payments.length > 1 && (
             <SelectField

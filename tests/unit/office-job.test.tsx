@@ -502,7 +502,7 @@ describe("JobAdmin", () => {
     expect(reassign).toContain("Note");
 
     const refund = dialog("refund");
-    expect(refund).toContain("The refund is made in Stripe’s test mode. No real money moves until real payments are on.");
+    expect(refund).toContain("Sent to Stripe as a test refund. No real money moves until real payments are on.");
     expect(refund).toContain("Full refund");
     expect(refund).toContain("Part refund");
     expect(refund).toContain("Record refund");

@@ -90,7 +90,7 @@ person's open support thread about this job (made on the first message). It uses
 - **Matt:** words the mockup doesn't show, all new and easy to change in `JobAdmin.tsx` / `office-job.ts`:
   - **Force status** in the Actions menu (the mockup has four items; the issue asks for forcing a status).
   - The dialogs' titles, buttons and short lines (Reassign tradie, Refund, Edit price, Force status, Cancel this
-    job?, Message both) and "The refund is made in Stripe’s test mode. No real money moves until real payments are on."
+    job?, Message both) and "Sent to Stripe as a test refund. No real money moves until real payments are on."
   - Greyed-out reasons: "No tradie yet", "Nothing to refund", "Locked once paid", "Already closed", "Not at this stage".
   - Money shows "Customer paid $372.00" without the card ("Visa ••42"): we don't store card details.
   - Payroll words: "After sign-off", "Queued", "Sent to payroll", "Paid", "No payout".
