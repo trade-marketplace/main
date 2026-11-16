@@ -7,7 +7,11 @@ import type { SchedulerRule } from "./rules";
 
 const DAY_MS = 24 * 3_600_000;
 
-/** A mark and its customer notice commit together, once for each still-unanswered price revision. */
+/**
+ * One customer notice for each still-unanswered price revision. The notice itself is the "already sent" record:
+ * its event id is fixed per revision (so a replay can never make a second row), and the job's row lock makes two
+ * runs at once take turns, so the second finds the first one's notice and skips.
+ */
 export const extraWorkReminder: SchedulerRule = {
   name: "extra-work-reminder",
   async run({ db, now, limit }) {
@@ -15,14 +19,14 @@ export const extraWorkReminder: SchedulerRule = {
     const schema = databaseSchema(db).replaceAll('"', '""');
     const variations = Prisma.raw(`"${schema}"."variations"`);
     const jobs = Prisma.raw(`"${schema}"."jobs"`);
-    const marks = Prisma.raw(`"${schema}"."scheduled_job_marks"`);
-    // Exclude already-sent revisions before applying the batch limit, so old marks cannot starve later work.
+    const notifications = Prisma.raw(`"${schema}"."notifications"`);
+    // Exclude already-reminded revisions before applying the batch limit, so old ones cannot starve later work.
     const due = await db.$queryRaw<{ id: string; jobId: string; revision: number }[]>(Prisma.sql`
       SELECT v.id, v.job_id AS "jobId", v.revision
       FROM ${variations} v JOIN ${jobs} j ON j.id = v.job_id
       WHERE v.status = 'PRICED' AND v.priced_at <= ${cutoff} AND j.status = 'ASSIGNED'
-        AND NOT EXISTS (SELECT 1 FROM ${marks} m WHERE m.job_id = v.job_id
-          AND m.rule = 'extra-work-reminder:' || v.id::text || ':' || v.revision::text)
+        AND NOT EXISTS (SELECT 1 FROM ${notifications} n WHERE n.user_id = j.customer_id AND n.type = 'variation.reminder'
+          AND n.payload->>'variationId' = v.id::text AND n.payload->>'revision' = v.revision::text)
       ORDER BY v.priced_at ASC, v.id ASC LIMIT ${limit}
     `);
     const result = { rule: "extra-work-reminder", due: due.length, done: 0, skipped: 0, failed: 0 };
@@ -36,14 +40,12 @@ export const extraWorkReminder: SchedulerRule = {
             select: { id: true, revision: true, job: { select: { id: true, jobNumber: true, customerId: true } } },
           });
           if (!variation) return "skipped";
-          const mark = await tx.scheduledJobMark.createMany({
-            data: [{ rule: `extra-work-reminder:${variation.id}:${variation.revision}`, jobId: variation.job.id, markedAt: now }],
-            skipDuplicates: true,
-          });
-          if (mark.count !== 1) return "skipped";
+          const sent = await tx.notification.findFirst({ where: { userId: variation.job.customerId, type: "variation.reminder",
+            AND: [{ payload: { path: ["variationId"], equals: variation.id } }, { payload: { path: ["revision"], equals: variation.revision } }] }, select: { id: true } });
+          if (sent) return "skipped";
           await createNotify(tx)("variation.reminder", [variation.job.customerId], {
             eventId: `variation.reminder:${variation.id}:${variation.revision}`,
-            payload: { jobId: variation.job.id, jobNumber: variation.job.jobNumber, variationId: variation.id },
+            payload: { jobId: variation.job.id, jobNumber: variation.job.jobNumber, variationId: variation.id, revision: variation.revision },
           });
           return "done";
         });
