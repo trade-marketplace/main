@@ -133,6 +133,7 @@ describe("the runner", () => {
       "notification-email",
       "extra-work-reminder",
       "job-pings",
+      "price-expiry",
     ]);
   });
   it("shares one physical deadline without treating the injected business clock as elapsed runtime", async () => {

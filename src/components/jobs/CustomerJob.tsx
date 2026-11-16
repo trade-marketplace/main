@@ -26,6 +26,7 @@ import { ConfirmedPanel } from "./customer/ConfirmedPanel";
 import type { CustomerWorkerCard } from "@/lib/customer-worker-card";
 import type { CustomerExtra } from "@/lib/customer-extras";
 import { ExtraWorkCard, type ExtraWorkActions } from "./customer/ExtraWorkCard";
+import { PostAgain, type PostAgainAction, type PostAgainPreview } from "./customer/PostAgain";
 import styles from "./customer-job.module.css";
 
 import { ReviewCard, type ReviewAction } from "./customer/ReviewCard";
@@ -33,13 +34,13 @@ import type { CustomerReview } from "@/lib/customer-review";
 import { CancelJobDialog, type CancelAction } from "./customer/CancelJobDialog";
 import { canCancelJob, cancelRevision, CANCEL_REQUESTED_MESSAGE, type CancelFacts } from "@/lib/customer-cancel";
 
-type Props = { reviewData?: CustomerReview | null; reviewPreview?: string; reviewAction?: ReviewAction; cancelFacts?: CancelFacts | null; cancelPreview?: string; cancelAction?: CancelAction; extras?: readonly CustomerExtra[]; extrasFailed?: boolean; extraPreview?: string; extraActions?: ExtraWorkActions; job: CustomerJobView; photos?: readonly ViewerPhoto[]; photosFailed?: boolean; photoLease?: { batchId: string; renewAfterMs: number } | null; back?: string; canEditWindows?: boolean; preview?: "offline" | "static"; initialAgeMs?: number; waitingPreview?: string; waitingActions?: WaitingActions; problemHref?: string; workerCard?: CustomerWorkerCard | null; confirmedWindowsHref?: string; signoffData?: CustomerSignoff | null; signoffPreview?: string; signoffAction?: SignoffAction; previousPriceCents?: number | null; pricePreview?: string; priceActions?: PriceReadyActions };
+type Props = { priceExpired?: boolean; postAgainPreview?: PostAgainPreview; postAgainAction?: PostAgainAction; reviewData?: CustomerReview | null; reviewPreview?: string; reviewAction?: ReviewAction; cancelFacts?: CancelFacts | null; cancelPreview?: string; cancelAction?: CancelAction; extras?: readonly CustomerExtra[]; extrasFailed?: boolean; extraPreview?: string; extraActions?: ExtraWorkActions; job: CustomerJobView; photos?: readonly ViewerPhoto[]; photosFailed?: boolean; photoLease?: { batchId: string; renewAfterMs: number } | null; back?: string; canEditWindows?: boolean; preview?: "offline" | "static"; initialAgeMs?: number; waitingPreview?: string; waitingActions?: WaitingActions; problemHref?: string; workerCard?: CustomerWorkerCard | null; confirmedWindowsHref?: string; signoffData?: CustomerSignoff | null; signoffPreview?: string; signoffAction?: SignoffAction; previousPriceCents?: number | null; pricePreview?: string; priceActions?: PriceReadyActions };
 const trades = { ELECTRICAL: "Electrical", PLUMBING: "Plumbing", GAS: "Gas", CONSTRUCTION: "Construction", OTHER: "Other" } as const;
 const date = new Intl.DateTimeFormat("en-NZ", { timeZone: "UTC", weekday: "short", day: "numeric", month: "short" });
 const postedDate = new Intl.DateTimeFormat("en-NZ", { timeZone: "Pacific/Auckland", weekday: "short", day: "numeric", month: "short" });
 const time = { MORNING: "Morning", AFTERNOON: "Afternoon", EVENING: "Evening" } as const;
 
-export function CustomerJob({ job, photos = [], photosFailed = false, photoLease, back = "/", canEditWindows = false, preview, initialAgeMs = 0, waitingPreview, waitingActions, problemHref, workerCard, confirmedWindowsHref, signoffData, signoffPreview, signoffAction, previousPriceCents = null, pricePreview, priceActions, extras = [], extrasFailed, extraPreview, extraActions, cancelFacts, cancelPreview, cancelAction, reviewData, reviewPreview, reviewAction }: Props) {
+export function CustomerJob({ job, photos = [], photosFailed = false, photoLease, back = "/", canEditWindows = false, preview, initialAgeMs = 0, waitingPreview, waitingActions, problemHref, workerCard, confirmedWindowsHref, signoffData, signoffPreview, signoffAction, previousPriceCents = null, pricePreview, priceActions, extras = [], extrasFailed, extraPreview, extraActions, cancelFacts, cancelPreview, cancelAction, reviewData, reviewPreview, reviewAction, priceExpired = false, postAgainPreview, postAgainAction }: Props) {
   const router = useRouter();
   const browserOnline = useOnlineStatus();
   const online = browserOnline && preview !== "offline";
@@ -143,7 +144,8 @@ export function CustomerJob({ job, photos = [], photosFailed = false, photoLease
             <span id={statusId} className={styles.status}><StatusPill status={job.status} audience="customer" announce /></span>
             <div className={styles.panelContent}>
               <h2 ref={statusHeading} tabIndex={-1} className={styles.heading}>{panel.heading}</h2>
-              {panel.message && <p className={styles.message}>{panel.message}</p>}
+              {job.status === "CANCELLED" && priceExpired ? <PostAgain jobId={job.id} online={online} preview={postAgainPreview} action={postAgainAction} />
+                : panel.message && <p className={styles.message}>{panel.message}</p>}
               {(job.status === "REVIEW" || job.status === "QUOTE_BOUNTY") && <>
                 {job.status === "REVIEW" && customerPriceDelayed(ageMs) && <Banner tone="info" title="Taking a little longer than usual" className={styles.notice}>Still working on it. Thanks for your patience. We’ll message you.</Banner>}
                 <CustomerWaitingActions key={job.id} job={job} online={online} preview={waitingPreview} actions={waitingActions} cancelFacts={cancelFacts} cancelAction={cancelAction} onCancelled={() => setCancelFocusJob(job.id)} />

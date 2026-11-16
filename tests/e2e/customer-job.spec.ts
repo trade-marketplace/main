@@ -10,7 +10,7 @@ import { VIEWPORTS } from "./support/viewports";
 
 const app = process.env.CUSTOMER_JOB_E2E_APP_URL, database = process.env.CUSTOMER_JOB_E2E_DATABASE_URL;
 const previewApp = process.env.POSTED_PREVIEW_E2E_URL || "http://127.0.0.1:3101";
-const states = ["ready", "quick-look", "priced", "booked", "assigned", "submitted", "completed", "cancel-requested", "cancelled", "empty", "loading", "error", "offline", "long", "photos-error", "status-gallery"];
+const states = ["ready", "quick-look", "priced", "booked", "assigned", "submitted", "completed", "cancel-requested", "cancelled", "price-expired", "price-expired-draft", "price-expired-error", "empty", "loading", "error", "offline", "long", "photos-error", "status-gallery"];
 for (const viewport of VIEWPORTS) test(`customer job panels and recovery states fit ${viewport.width}px`, async ({ page }) => {
   test.setTimeout(180_000);
   await page.setViewportSize(viewport);
@@ -25,6 +25,10 @@ for (const viewport of VIEWPORTS) test(`customer job panels and recovery states 
     }
     else await expect(page.getByRole("heading", { name: state === "long" ? "A very long job title with enough detail to wrap comfortably on a small phone" : "Sub wiring", exact: true })).toBeVisible();
     if (state === "cancelled") { await expect(page.getByText("This job was cancelled.", { exact: true })).toBeVisible(); await expect(page.getByRole("link", { name: "Time windows", exact: true })).toHaveCount(0); }
+    if (state.startsWith("price-expired")) await expect(page.getByText("Your price closed after 7 days with no answer. Saying no was free.", { exact: true })).toBeVisible();
+    if (state === "price-expired") await expect(page.getByRole("button", { name: "Post again" })).toBeVisible();
+    if (state === "price-expired-draft") { await expect(page.getByRole("button", { name: "Replace it" })).toBeVisible(); await expect(page.getByRole("link", { name: "Keep my draft" })).toHaveAttribute("href", "/jobs/new"); }
+    if (state === "price-expired-error") await expect(page.getByText("Couldn’t start it. Try again.", { exact: true })).toBeVisible();
     if (state === "empty") { await expect(page.getByText("No photos yet.", { exact: true })).toBeVisible(); await expect(page.getByText("Time to be arranged", { exact: true })).toBeVisible(); }
     if (state === "offline") await expect(page.getByText("You’re offline.", { exact: true })).toBeVisible();
     if (state === "photos-error") await expect(page.getByText("Can’t load photos.", { exact: true })).toBeVisible();

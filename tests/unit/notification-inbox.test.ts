@@ -26,6 +26,8 @@ describe("inbox presentation boundary", () => {
   it.each([
     ["job.priced", "/jobs/TM-1005", "sell"],
     ["job.ready_to_claim", "/jobs/TM-1005", "bolt"],
+    ["job.price_reminder", "/jobs/TM-1005", "sell"],
+    ["job.price_expired", "/jobs/TM-1005", "event_busy"],
     ["message.received", "/messages/TM-1005", "chat_bubble"],
     ["job.paid", "/receipts/TM-1005", "receipt_long"],
     ["payout.paid", "/earnings", "payments"],

@@ -14,6 +14,7 @@ import { draftPhotoCleanup, draftPhotoRawCleanup } from "@/server/jobs/photo-cle
 import { licenceExpiryReminder } from "./licence-reminders";
 import { supportPhotoCleanup } from "@/server/messages/photo-cleanup";
 import { windowExpiry } from "./window-expiry";
+import { priceExpiry } from "./price-expiry";
 import { postConfirmationEmail } from "@/server/notifications/post-confirmation";
 import { priceReadyPush } from "@/server/notifications/price-push";
 import { notificationEmailRule } from "@/server/notifications/email-rule";
@@ -258,4 +259,4 @@ export const reviewReminder: SchedulerRule = {
 };
 
 /** In the order they run. Money-relevant (sign-off) first. */
-export const SCHEDULER_RULES: readonly SchedulerRule[] = [autoSignOff, bountyExpiry, priceSlowBanner, unclaimedAlert, reviewReminder, licenceExpiryReminder, licenceUploadCleanup(), licenceDocumentCleanup(), supportPhotoCleanup(), draftPhotoRawCleanup(), draftPhotoCleanup(), windowExpiry, variationPhotoCleanup(), variationStageCleanup(), postConfirmationEmail, priceReadyPush, notificationEmailRule, extraWorkReminder, jobPings];
+export const SCHEDULER_RULES: readonly SchedulerRule[] = [autoSignOff, bountyExpiry, priceSlowBanner, unclaimedAlert, reviewReminder, licenceExpiryReminder, licenceUploadCleanup(), licenceDocumentCleanup(), supportPhotoCleanup(), draftPhotoRawCleanup(), draftPhotoCleanup(), windowExpiry, variationPhotoCleanup(), variationStageCleanup(), postConfirmationEmail, priceReadyPush, notificationEmailRule, extraWorkReminder, jobPings, priceExpiry];

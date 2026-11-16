@@ -20,6 +20,9 @@ export type A11yOptions = {
  * and fails the test if there is any violation, listing each one and where it is.
  */
 export async function expectNoA11yViolations(page: Page, options: A11yOptions = {}): Promise<void> {
+  // A refresh can leave the title empty for a moment while React commits new metadata (#558). Wait for one, but not
+  // forever: a page that really has no title still reaches axe and fails "document-title".
+  await expect.poll(() => page.title(), { timeout: 5_000 }).not.toBe("").catch(() => undefined);
   let builder = new AxeBuilder({ page });
   if (options.include) builder = builder.include(options.include);
   for (const selector of options.exclude ?? []) builder = builder.exclude(selector);

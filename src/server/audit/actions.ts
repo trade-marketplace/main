@@ -57,6 +57,8 @@ export const AUDIT_ACTIONS = {
   // By the sign-off timer when the customer didn't answer in 48 hours.
   "job.auto_completed": { record: "jobs" },
   "job.cancel_requested": { record: "jobs" },
+  // By the scheduler: no answer 7 days after the price was sent (#508).
+  "job.price_expired": { record: "jobs" },
   "job.cancelled": { record: "jobs", reason: "required" },
   "job.cancel_declined": { record: "jobs", reason: "required" },
   "job.reassigned": { record: "jobs", reason: "required" },
