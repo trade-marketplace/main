@@ -419,6 +419,14 @@ describe("JobAdmin", () => {
     expect(html).toContain('aria-current="page"');
   });
 
+  it.each(["REVIEW", "QUOTE_BOUNTY", "PRICED", "BOOKABLE", "ASSIGNED", "SUBMITTED", "COMPLETED", "CANCEL_REVIEW", "CANCELLED"] as const)("shows a primary Price it link only while waiting on a price: %s", status => {
+    const html = show({ ...previewJob("unpaid"), status });
+    const link = html.match(new RegExp(`<a[^>]*href="/admin/jobs/${ID}/price"[^>]*>`))?.[0];
+    if (status === "REVIEW" || status === "QUOTE_BOUNTY") expect(link).toContain("primary");
+    else expect(link).toBeUndefined();
+    expect(text(html)).toContain("Actions");
+  });
+
   it("lists the timeline newest first with a dot coloured by who did it, and the actor in words for screen readers", () => {
     const html = show(previewJob("default"));
     const titles = [...html.matchAll(/class="eventTitle">([^<]*)</g)].map((match) => match[1]);

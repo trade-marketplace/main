@@ -19,15 +19,14 @@ import styles from "./help.module.css";
 
 type Submit = (input: HelpFeedbackInput) => Promise<HelpFeedbackResult>;
 type Topic = HelpTopic | "All";
-type Props = { articles: HelpArticle[]; article?: HelpArticle; query?: string; topic?: HelpTopic | null; state?: HelpState; submit: Submit };
+type Props = { signedIn?: boolean; officeSupport?: boolean; articles: HelpArticle[]; article?: HelpArticle; query?: string; topic?: HelpTopic | null; state?: HelpState; submit: Submit };
 const filters = (["All", ...HELP_TOPICS] as Topic[]).map(value => ({ value, label: value }));
 const INTRO = "Answers about posting jobs, prices, payments and doing the work.";
 const railNames: Record<string, string> = { "cancelling-a-job": "Cancelling", "extra-work": "Extra work" };
 const relatedNames: Record<string, string> = { "cancelling-a-job": "Cancelling a job", "extra-work": "Extra work" };
 
-function SupportCard() {
-  // The support inbox is a separate planned screen (#186). The approved public email works for guests too.
-  return <div className={styles.supportCard}><Icon name="support_agent" decorative /><div><b>Still stuck?</b><p>We reply within one working day.</p></div><Button href="mailto:hello@trademarketplace.nz" size="sm" width="auto">Message us</Button></div>;
+function SupportCard({ signedIn, officeSupport, returnTo }: { signedIn: boolean; officeSupport: boolean; returnTo: string }) {
+  return <div className={styles.supportCard}><Icon name="support_agent" decorative /><div><b>Still stuck?</b><p>We reply within one working day.</p></div><Button href={officeSupport ? "/admin/support" : signedIn ? (returnTo === "/help" ? "/support/new" : `/support/new?returnTo=${encodeURIComponent(returnTo)}`) : "mailto:hello@trademarketplace.nz"} size="sm" width="auto">Message us</Button></div>;
 }
 function ArticleBody({ article }: { article: HelpArticle }) {
   return <div className={styles.prose}>{article.blocks.map((block, index) => {
@@ -114,7 +113,7 @@ function ArticleRow({ item, expanded, onToggle }: { item: HelpArticle; expanded:
     <div className={styles.phoneArticle}><button aria-expanded={expanded} aria-controls={`answer-${item.slug}`} onClick={onToggle}><span className={styles.helpIcon}><Icon name="help" size="sm" decorative /></span><span>{item.title}</span><Icon name="expand_more" decorative /></button><div className="tm-accordion" data-open={expanded}><div id={`answer-${item.slug}`} inert={!expanded}><ArticleBody article={item} /><TextLink href={`/help/${item.slug}`}>Read article</TextLink></div></div></div>
   </div>;
 }
-export function HelpCentre({ articles, article, query = "", topic: initialTopic = null, state = "default", submit }: Props) {
+export function HelpCentre({ signedIn = false, officeSupport = false, articles, article, query = "", topic: initialTopic = null, state = "default", submit }: Props) {
   const ready = useIsClient();
   const [search, setSearch] = useState(state === "search-results" ? "pay" : state === "no-results" ? "unmatched search" : query);
   const [debounced, setDebounced] = useState(search);
@@ -144,7 +143,7 @@ export function HelpCentre({ articles, article, query = "", topic: initialTopic 
             : <><h2 className={styles.listTitle}>{searching ? "Search results" : topic}</h2><div className={styles.articleList}>{results.map(row)}</div></>}
           <LiveMessage message={searching ? `${results.length} articles found` : null} />
         </section>}
-        <aside className={styles.support}><SupportCard />{showingArticle && <div className={styles.related}><h2>Related</h2>{article.related.map(slug => articles.find(item => item.slug === slug)).filter((item): item is HelpArticle => Boolean(item)).map(item => <TextLink key={item.slug} href={`/help/${item.slug}`}>{relatedNames[item.slug] ?? item.title}</TextLink>)}</div>}</aside>
+        <aside className={styles.support}><SupportCard signedIn={signedIn} officeSupport={officeSupport} returnTo={showingArticle ? `/help/${article.slug}` : search || topic !== "All" ? `/help?${new URLSearchParams({ ...(search ? { q: search } : {}), ...(topic !== "All" ? { topic: helpTopicSlug(topic) } : {}) })}` : "/help"} />{showingArticle && <div className={styles.related}><h2>Related</h2>{article.related.map(slug => articles.find(item => item.slug === slug)).filter((item): item is HelpArticle => Boolean(item)).map(item => <TextLink key={item.slug} href={`/help/${item.slug}`}>{relatedNames[item.slug] ?? item.title}</TextLink>)}</div>}</aside>
       </>}
     </div>
   </div>;

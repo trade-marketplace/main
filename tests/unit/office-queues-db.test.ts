@@ -45,6 +45,17 @@ describe.skipIf(!testDatabaseUrl)("office queues with real PostgreSQL", () => {
     await clearJobs();
   });
 
+  it.each(["REVIEW", "QUOTE_BOUNTY"] as const)("links a zero-estimate %s job directly to the authorized pricing workspace", async status => {
+    const f = await fixture(status);
+    expect(await schema.db.estimate.count({ where: { jobId: f.job.id } })).toBe(0);
+    const data = await readOfficeQueues(schema.db, f.office, parseQueueQuery({}), NOW);
+    expect(data.kpis.price.count).toBe(1);
+    expect(data.rows).toContainEqual(expect.objectContaining({ jobId: f.job.id, status, estimates: "0", action: "Price it", href: `/admin/jobs/${f.job.id}/price` }));
+    expect(await schema.db.job.findUniqueOrThrow({ where: { id: f.job.id } })).toMatchObject({ status, priceCents: null });
+    expect(await schema.db.estimate.count({ where: { jobId: f.job.id } })).toBe(0);
+    await clearJobs();
+  });
+
   it("counts extra-work tasks per variation and excludes requests on closed jobs", async () => {
     const f = await fixture("ASSIGNED"), closed = await fixture("ASSIGNED");
     for (const [job, worker, descriptions] of [[f.job, f.worker, ["First extra task", "Second extra task"]], [closed.job, closed.worker, ["Closed extra task"]]] as const) {

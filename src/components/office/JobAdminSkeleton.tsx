@@ -11,11 +11,12 @@ export function JobAdminSkeleton({ loading = true }: { loading?: boolean }) {
       className={styles.page}
       skeleton={
         <div className={styles.page}>
+          <h1 className={styles.srOnly}>Loading job</h1>
           <Skeleton width={140} />
           <div className={styles.head}>
-            <div>
+            <div className={styles.headText}>
               <Skeleton width={260} height={30} />
-              <Skeleton width={320} />
+              <Skeleton width="min(320px, 100%)" />
             </div>
             <Skeleton width={110} height={40} />
           </div>
