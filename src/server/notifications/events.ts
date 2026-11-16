@@ -27,6 +27,7 @@ export const NOTIFICATION_EVENTS = {
   "variation.reminder": { channels: ["IN_APP"], description: "Priced extra work is still waiting on the customer." },
   "variation.approved": { channels: ["IN_APP"], description: "The customer approved extra work." },
   "variation.declined": { channels: ["IN_APP"], description: "The customer declined extra work." },
+  "variation.declined_office": { channels: ["IN_APP"], description: "A customer declined extra work." },
   "job.materials_over_budget": { channels: ["IN_APP"], description: "A tradie reported materials over the budget." },
   "job.submitted": { channels: ["IN_APP"], description: "Completion evidence is ready for sign-off." },
   "job.signed_off": { channels: ["IN_APP"], description: "The customer signed off the job." },

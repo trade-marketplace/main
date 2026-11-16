@@ -23,13 +23,15 @@ import { ExtraWorkDrawer, type ExtraWorkServices } from "./ExtraWorkDrawer";
 import { ExtraWorkCard } from "./ExtraWorkCard";
 import type { ExtraWorkState, WorkerExtra } from "@/lib/worker-extras";
 import { loadVariationAction } from "@/server/variations/actions";
+import { myWorkReturn } from "@/lib/my-work";
 
 type Props = { job: WorkspaceView; preview?: WorkspaceState; embedded?: boolean; send?: (id: string, kind: JobUpdateKind, lateMinutes?: number) => Promise<JobUpdateResult | AuthFailure>; myWorkHref?: string; extras?: WorkerExtra[]; extraPreview?: ExtraWorkState; extraServices?: ExtraWorkServices };
 const extraReason = "Extra work sent. Waiting on the customer’s OK.";
 export function Workspace(props: Props) {
   return <ToastProvider initial={props.extraPreview === "sent" ? { message: "Sent for pricing." } : props.preview === "sent" ? { message: `Sent to ${props.job.customer.firstName}.` } : undefined}><WorkspaceContent {...props} /></ToastProvider>;
 }
-function WorkspaceContent({ job, preview, embedded, send = sendJobUpdateAction, myWorkHref = "/dashboard", extras: suppliedExtras = [], extraPreview, extraServices }: Props) {
+function WorkspaceContent({ job, preview, embedded, send = sendJobUpdateAction, myWorkHref: suppliedReturn, extras: suppliedExtras = [], extraPreview, extraServices }: Props) {
+  const myWorkHref = myWorkReturn(suppliedReturn) ?? "/dashboard";
   const router = useRouter();
   const [extras, setExtras] = useState(suppliedExtras), [drawer, setDrawer] = useState(Boolean(extraPreview && ["open", "uploading", "upload-error", "field-errors", "sending", "try-later", "error", "offline"].includes(extraPreview))), [requestKey, setRequestKey] = useState("16000000-0000-4000-8000-000000000001");
   const extraWorkOpen = job.extraWorkOpen || extras.some(extra => extra.status === "REQUESTED" || extra.status === "PRICED");
@@ -52,7 +54,8 @@ function WorkspaceContent({ job, preview, embedded, send = sendJobUpdateAction, 
   const tracker = jobTracker(job.status, "tradie", { extraWork: extraWorkOpen, customerFirstName: job.customer.firstName, evidence: job.category === "ELECTRICAL" ? "coc" : "photos", payout: job.payout, autoReleaseHours: job.autoReleaseHours });
   const claim = claimDateLabel(job.claimedAt), jobNumber = `TM-${job.jobNumber}`, booked = Boolean(job.bookedDate && job.bookedTime);
   const hasBudget = job.budgetCents !== null && job.budgetCents > 0;
-  const bookHref = `/jobs/${job.id}/book`, finishHref = `/jobs/${job.id}/complete`;
+  const returnQuery = myWorkReturn(myWorkHref) ? `?from=${encodeURIComponent(myWorkHref)}` : "";
+  const bookHref = `/jobs/${job.id}/book${returnQuery}`, finishHref = `/jobs/${job.id}/complete${returnQuery}`;
   const heading = <>{job.title}</>;
   const region = (label: string) => embedded ? `${label} (${extraPreview ?? preview})` : label;
   async function update(kind: JobUpdateKind, lateMinutes?: number) {
@@ -100,5 +103,5 @@ function WorkspaceContent({ job, preview, embedded, send = sendJobUpdateAction, 
     }} />
   </div></section>;
 }
-export function WorkspaceLoading({ embedded = false }: { embedded?: boolean }) { return <section className={styles.canvas} data-mode="trade"><div className={styles.page} role="status" aria-label="Loading workspace">{!embedded && <h1 className={styles.srOnly}>Job workspace</h1>}<SkeletonText /><div className={styles.layout}>{[0, 1, 2].map(key => <div key={key} className={styles.card}><Skeleton height={120} /><SkeletonText /></div>)}</div></div></section>; }
-export function WorkspaceLoadError({ embedded = false, retry }: { embedded?: boolean; retry?: () => void }) { const router = useRouter(); return <section className={styles.canvas} data-mode="trade"><div className={styles.page}><TextLink href="/dashboard">My work</TextLink><div className={styles.card}>{embedded ? <h3>Couldn’t load this job</h3> : <h1>Couldn’t load this job</h1>}<Banner tone="alert">Try again</Banner><Button onClick={() => retry ? retry() : router.refresh()}>Try again</Button></div></div></section>; }
+export function WorkspaceLoading({ embedded = false, myWorkHref }: { embedded?: boolean; myWorkHref?: string }) { const back = myWorkReturn(myWorkHref); return <section className={styles.canvas} data-mode="trade"><div className={styles.page} role="status" aria-label="Loading workspace">{!embedded && <>{back && <TextLink href={back}>My work</TextLink>}<h1 className={styles.srOnly}>Job workspace</h1></>}<SkeletonText /><div className={styles.layout}>{[0, 1, 2].map(key => <div key={key} className={styles.card}><Skeleton height={120} /><SkeletonText /></div>)}</div></div></section>; }
+export function WorkspaceLoadError({ embedded = false, retry, myWorkHref }: { embedded?: boolean; retry?: () => void; myWorkHref?: string }) { const router = useRouter(); return <section className={styles.canvas} data-mode="trade"><div className={styles.page}><TextLink href={myWorkReturn(myWorkHref) ?? "/dashboard"}>My work</TextLink><div className={styles.card}>{embedded ? <h3>Couldn’t load this job</h3> : <h1>Couldn’t load this job</h1>}<Banner tone="alert">Try again</Banner><Button onClick={() => retry ? retry() : router.refresh()}>Try again</Button></div></div></section>; }

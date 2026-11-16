@@ -2,7 +2,7 @@
 // mockup (pages.html w-o-job: TM-1005, Sub wiring, Sarah Thompson to Jack Wilson).
 import type { OfficeJobView, TimelineEntry } from "@/lib/office-job";
 
-export const PREVIEW_STATES = ["default", "photos", "unpaid", "no-tradie", "cancelled", "long-text", "loading", "error"] as const;
+export const PREVIEW_STATES = ["default", "photos", "unpaid", "no-estimates", "bounty", "no-tradie", "cancelled", "long-text", "loading", "error"] as const;
 export type PreviewState = (typeof PREVIEW_STATES)[number];
 
 export function isPreviewState(value: string | undefined): value is PreviewState {
@@ -68,6 +68,9 @@ export function previewJob(state: PreviewState): OfficeJobView {
   };
 
   switch (state) {
+    case "no-estimates":
+    case "bounty":
+      return { ...previewJob("unpaid"), status: state === "bounty" ? "QUOTE_BOUNTY" : "REVIEW", timeline: [entry("n1", "customer", "Sarah", "Posted", "Mon 9:12")] };
     case "photos":
       return { ...base, messages: base.messages.map((message, index) => index === 0 ? { ...message, photos: [{ id: "photo-1", url: "/images/van.png" }, { id: "photo-2", url: null }] } : message) };
     case "unpaid":

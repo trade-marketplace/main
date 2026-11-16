@@ -11,6 +11,8 @@ import { VIEWPORTS } from "./support/viewports";
 const preview = process.env.POSTED_PREVIEW_E2E_URL || "http://127.0.0.1:3101";
 const app = process.env.BOARD_MAP_E2E_APP_URL, noMapApp = process.env.BOARD_MAP_E2E_NO_MAP_URL, database = process.env.BOARD_MAP_E2E_DATABASE_URL;
 const demo = (state: string) => `${preview}/dev/components/board-map?state=${state}`;
+const desktopMap = (page: Page) => page.getByRole("region", { name: /^\d+ jobs? in view$/ });
+const phoneMap = (page: Page) => page.getByRole("region", { name: "Nearby jobs map", exact: true });
 test("board map examples remain guarded on production", async ({ request }) => { expect((await request.get("/dev/components/board-map")).status()).toBe(404); });
 for (const viewport of VIEWPORTS) test(`all board map states at ${viewport.width}px`, async ({ page }) => {
   test.setTimeout(240_000); await page.setViewportSize(viewport);
@@ -119,7 +121,7 @@ async function fakeProvider(page: Page, fail = false) {
   await page.route("https://api.mapbox.com/**", route => route.fulfill({ contentType: route.request().url().endsWith(".css") ? "text/css" : "application/javascript", body: route.request().url().endsWith(".css") ? "" : fail ? "window.mapboxgl={supported:()=>false};" : providerScript }));
 }
 test.describe("real board map journeys", () => {
-  test.skip(!app || !database || !noMapApp, "Needs the disposable localhost lane_c_140 fixture app, database and no-token server.");
+  test.skip(!app || !database || !noMapApp, "Needs the disposable localhost board-map fixture app, database and no-token server.");
   test.describe.configure({ mode: "serial", timeout: 120_000 });
   let db: pg.Client, auth: Awaited<ReturnType<typeof startSecurityAuthStub>>;
   const office = "14000000-0000-4000-8000-000000000099", ids = { ready: randomUUID(), quote: randomUUID(), bounty: randomUUID() }, tag = randomUUID().slice(0, 8);
@@ -128,7 +130,7 @@ test.describe("real board map journeys", () => {
   const board = "/jobs?trade=other&distance=5&when=flexible&sort=newest&view=all&layout=map";
   test.beforeAll(async () => {
     const target = new URL(database!);
-    if (!["127.0.0.1", "localhost"].includes(target.hostname) || target.pathname !== "/lane_c_140" || target.search || !["127.0.0.1", "localhost"].includes(new URL(app!).hostname)) throw Error("Disposable localhost lane_c_140 required");
+    if (!["127.0.0.1", "localhost"].includes(target.hostname) || !["/lane_c_140", "/lane_d_560"].includes(target.pathname) || target.search || target.hash || ![app!, noMapApp!].every(url => ["127.0.0.1", "localhost"].includes(new URL(url).hostname))) throw Error("Disposable localhost board-map fixture required");
     db = new pg.Client({ connectionString: database }); await db.connect(); auth = await startSecurityAuthStub(Number(process.env.BOARD_MAP_E2E_AUTH_PORT ?? 54530));
     for (const [id, email, role] of [[SECURITY_TRADIE.id, SECURITY_TRADIE.email, "TRADIE"], [SECURITY_USER.id, SECURITY_USER.email, "CUSTOMER"], [office, "map-office@example.test", "ADMIN"]]) {
       await db.query("INSERT INTO auth.users(id,email) VALUES($1,$2) ON CONFLICT(id) DO NOTHING", [id, email]);
@@ -149,41 +151,50 @@ test.describe("real board map journeys", () => {
   test.afterAll(async () => { if (db) await db.query("DELETE FROM jobs WHERE id=ANY($1::uuid[])", [Object.values(ids)]); await auth?.close(); await db?.end(); });
   async function login(page: Page, expected = 3) {
     await page.goto(`${app}/login?next=${encodeURIComponent(board)}`); await page.getByLabel("Email", { exact: true }).fill(SECURITY_TRADIE.email); await page.getByLabel("Password", { exact: true }).fill(SECURITY_PASSWORD);
-    await page.getByRole("button", { name: "Log in", exact: true }).click(); await expect(page).toHaveURL(`${app}${board}`); await expect(page.getByRole("heading", { name: `${expected} jobs in view`, exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Log in", exact: true }).click(); await expect(page).toHaveURL(`${app}${board}`); await expect(desktopMap(page).getByRole("heading", { name: `${expected} jobs in view`, exact: true })).toBeVisible();
   }
   test("real map → keyboard pin → job → Back and Grid keep all filters at five widths", async ({ page }) => {
-    await fakeProvider(page); await login(page);
+    await page.setViewportSize({ width: 1440, height: 1000 }); await fakeProvider(page); await login(page);
     const response = await page.goto(`${app}${board}`), html = await response!.text();
     expect(html).not.toContain("Private map street"); expect(html).not.toContain('"priceCents"'); expect(html).not.toContain(String(exact.lat));
     for (const viewport of VIEWPORTS) {
       await page.setViewportSize(viewport); await page.goto(`${app}${board}`);
-      const pin = page.locator(`button[data-pin-kind="claim"]`).filter({ hasText: "$" }); await expect(pin).toHaveCount(1);
-      await page.getByRole("tab", { name: "Map", exact: true }).focus();
+      const phone = viewport.width < 768, map = phone ? phoneMap(page) : desktopMap(page);
+      await expect(map).toBeVisible();
+      const pin = map.locator(`button[data-pin-kind="claim"]`).filter({ hasText: "$" }); await expect(pin).toHaveCount(1);
+      if (phone) await map.getByRole("link", { name: "List", exact: true }).focus();
+      else await page.getByRole("tab", { name: "Map", exact: true }).focus();
       for (let step = 0; step < 80 && !await pin.evaluate(element => element === document.activeElement); step++) await page.keyboard.press("Tab");
       await expect(pin).toBeFocused(); await pin.press("Enter");
-      const link = page.locator("article[data-card-kind]").getByRole("link", { name: title("ready"), exact: true }); await expect(link).toBeFocused(); await link.press("Enter");
+      const link = phone ? map.locator(`a[data-card-id="${ids.ready}"]`) : map.locator("article[data-card-kind]").getByRole("link", { name: title("ready"), exact: true });
+      await expect(link).toBeFocused(); if (phone) await expect(link).toHaveAttribute("data-selected", "true"); await link.press("Enter");
       await expect(page.getByRole("heading", { name: title("ready"), exact: true })).toBeVisible();
       await page.getByRole("main").getByRole("link", { name: "Back to jobs", exact: true }).click(); await expect(page).toHaveURL(`${app}${board}`);
       await expect(page.getByRole("link", { name: viewport.width < 1024 ? "All jobs" : "Find work", exact: true })).toHaveAttribute("aria-current", "page");
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true); await expectNoA11yViolations(page);
-      await page.getByRole("tab", { name: "Grid", exact: true }).click(); await expect(page).toHaveURL(`${app}${board.replace("&layout=map", "")}`);
+      if (phone) await phoneMap(page).getByRole("link", { name: "List", exact: true }).click();
+      else await page.getByRole("tab", { name: "Grid", exact: true }).click();
+      await expect(page).toHaveURL(`${app}${board.replace("&layout=map", "")}`);
       await expect(page.getByLabel("Sort by", { exact: true })).toHaveValue("newest"); await expect(page.getByRole("link", { name: title("ready"), exact: true })).toBeVisible();
     }
   });
   test("real permission denial, configured bounty, no-token and provider error keep honest usable rows", async ({ page, context }) => {
+    await page.setViewportSize({ width: 1440, height: 1000 });
     await context.grantPermissions([]); await fakeProvider(page); await login(page);
-    await page.getByRole("button", { name: "Use my location", exact: true }).click(); await expect(page.getByText("Showing your work area.", { exact: true })).toBeVisible();
-    await page.locator('button[data-pin-kind="bounty"]').click(); await expect(page.locator('article[data-card-kind="bounty"]')).toContainText("$45.00");
-    await page.keyboard.press("Escape"); await expect(page.locator('article[data-card-kind="bounty"]')).toHaveCount(0);
+    const map = desktopMap(page);
+    await map.getByRole("button", { name: "Use my location", exact: true }).click(); await expect(map.getByText("Showing your work area.", { exact: true })).toBeVisible();
+    await map.locator('button[data-pin-kind="bounty"]').click(); await expect(map.locator('article[data-card-kind="bounty"]')).toContainText("$45.00");
+    await page.keyboard.press("Escape"); await expect(map.locator('article[data-card-kind="bounty"]')).toHaveCount(0);
     let requests = 0; await page.unroute("https://api.mapbox.com/**"); await page.route("https://api.mapbox.com/**", route => { requests++; return route.abort(); });
-    await page.goto(`${noMapApp}${board}`); await expect(page.getByText("Map isn’t available right now.", { exact: true })).toBeVisible(); expect(requests).toBe(0);
-    await page.getByRole("list", { name: "Jobs in view", exact: true }).getByRole("link").filter({ hasText: title("ready") }).click(); await expect(page.getByRole("heading", { name: title("ready"), exact: true })).toBeVisible();
+    await page.goto(`${noMapApp}${board}`); await expect(map.getByText("Map isn’t available right now.", { exact: true })).toBeVisible(); expect(requests).toBe(0);
+    await map.getByRole("list", { name: "Jobs in view", exact: true }).getByRole("link").filter({ hasText: title("ready") }).click(); await expect(page.getByRole("heading", { name: title("ready"), exact: true })).toBeVisible();
     await page.getByRole("main").getByRole("link", { name: "Back to jobs", exact: true }).click(); await expect(page).toHaveURL(`${noMapApp}${board}`);
     await page.unroute("https://api.mapbox.com/**"); await fakeProvider(page, true); await page.goto(`${app}${board}`);
-    await expect(page.getByText("Map isn’t available right now.", { exact: true })).toBeVisible(); await expect(page.getByRole("list", { name: "Jobs in view", exact: true }).getByRole("link")).toHaveCount(3);
+    await expect(map.getByText("Map isn’t available right now.", { exact: true })).toBeVisible(); await expect(map.getByRole("list", { name: "Jobs in view", exact: true }).getByRole("link")).toHaveCount(3);
     await expectNoA11yViolations(page);
   });
   test("existing map pagination appends later pins, exhausts its cursor and keeps motion browser-only", async ({ page, context }) => {
+    await page.setViewportSize({ width: 1440, height: 1000 });
     const extra = Array.from({ length: 22 }, () => randomUUID()), later = `Map later ${tag}`;
     let release: (() => void) | undefined;
     try {

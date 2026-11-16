@@ -1,0 +1,13 @@
+ .page { width:min(100%,800px); margin-inline:auto; padding:var(--trade-space-6); display:grid; gap:var(--trade-space-5); min-width:0; color:var(--trade-text); }
+.page h1 { margin:0; font-family:var(--trade-font-heading); font-variation-settings:var(--trade-display-axes); font-size:var(--trade-fs-title); font-weight:900; line-height:var(--trade-lh-title); text-wrap:balance; overflow-wrap:anywhere; }
+.header { display:grid; gap:var(--trade-space-2); }.header p { margin:0; color:var(--trade-text-2); text-wrap:pretty; }
+.card { display:grid; gap:var(--trade-space-5); padding:var(--trade-space-6); border:1px solid var(--trade-line); border-radius:var(--trade-radius-card); background:var(--trade-surface); min-width:0; }
+.listHeader { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:var(--trade-space-4); }
+.list { list-style:none; padding:0; margin:0; }.list li+li { border-top:1px solid var(--trade-line); }
+.thread { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:var(--trade-space-2) var(--trade-space-3); align-items:center; padding-block:var(--trade-space-4); color:var(--trade-text); text-decoration:none; }.subject { font-weight:700; overflow-wrap:anywhere; display:flex; align-items:baseline; gap:var(--trade-space-2); }.when { color:var(--trade-text-2); font-size:var(--trade-fs-small); grid-column:1; }.thread>svg { grid-column:2; grid-row:2; }
+.pill { border:1px solid var(--trade-line); border-radius:var(--trade-radius-pill); padding:var(--trade-space-1) var(--trade-space-3); font-size:var(--trade-fs-small); background:var(--trade-surface); }.dot { flex-shrink:0; width:var(--trade-space-2); height:var(--trade-space-2); border-radius:var(--trade-radius-pill); background:var(--trade-link); }
+.pages { display:flex; flex-wrap:wrap; align-items:center; gap:var(--trade-space-4); }.srOnly { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+.thread:focus-visible { outline:var(--trade-focus-ring); outline-offset:var(--trade-space-1); border-radius:var(--trade-radius-field); }
+@media(max-width:767.98px) { .page { padding:var(--trade-space-4); }.page h1 { font-size:var(--trade-fs-heading); line-height:var(--trade-lh-heading); }.card { padding:var(--trade-space-4); } }
+
+.backRow { display:flex; align-items:center; justify-content:space-between; gap:var(--trade-space-4); flex-wrap:wrap; }

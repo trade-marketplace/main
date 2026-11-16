@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { FinishJob } from "@/components/jobs/worker/FinishJob";
 import { finishExample } from "@/app/dev/components/finish-job/FinishDemo";
 import { clearFinishReason, finishErrors, finishReasonKey, finishSpend, keepFinishReason, readFinishReason } from "@/lib/finish-job";
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }) }));
+vi.mock("next/navigation", () => ({ useSearchParams: () => null, useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }) }));
 const html = (job = finishExample) => renderToStaticMarkup(<FinishJob job={job} />);
 const facts = { rule: finishExample.rule, photoCount: 2, cocFile: true, receipt: false, budgetCents: 8500, category: "ELECTRICAL" as const, extraWorkOpen: false };
 describe("finish job form", () => {
