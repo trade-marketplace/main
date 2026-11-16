@@ -1,4 +1,5 @@
 import "server-only";
+import { extraWorkReminder } from "./extra-work-reminder";
 import { variationPhotoCleanup } from "./variation-photo-cleanup";
 import { variationStageCleanup } from "./variation-stage-cleanup";
 
@@ -256,4 +257,4 @@ export const reviewReminder: SchedulerRule = {
 };
 
 /** In the order they run. Money-relevant (sign-off) first. */
-export const SCHEDULER_RULES: readonly SchedulerRule[] = [autoSignOff, bountyExpiry, priceSlowBanner, unclaimedAlert, reviewReminder, licenceExpiryReminder, licenceUploadCleanup(), licenceDocumentCleanup(), supportPhotoCleanup(), draftPhotoRawCleanup(), draftPhotoCleanup(), windowExpiry, variationPhotoCleanup(), variationStageCleanup(), postConfirmationEmail, priceReadyPush, notificationEmailRule];
+export const SCHEDULER_RULES: readonly SchedulerRule[] = [autoSignOff, bountyExpiry, priceSlowBanner, unclaimedAlert, reviewReminder, licenceExpiryReminder, licenceUploadCleanup(), licenceDocumentCleanup(), supportPhotoCleanup(), draftPhotoRawCleanup(), draftPhotoCleanup(), windowExpiry, variationPhotoCleanup(), variationStageCleanup(), postConfirmationEmail, priceReadyPush, notificationEmailRule, extraWorkReminder];
