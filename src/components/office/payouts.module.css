@@ -1,0 +1,42 @@
+/* The office Payouts page (#175, F10): pages.html w-o-payouts. KPI cards, tables and dialog are the kit's. Tokens only. */
+
+.page { display: grid; gap: var(--trade-space-4); min-width: 0; max-width: var(--trade-content-max); }
+
+.head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--trade-space-3); }
+.title {
+  margin: 0;
+  font-family: var(--trade-font-heading);
+  font-weight: 900;
+  font-variation-settings: var(--trade-display-axes);
+  /* 30px in the mockup: the price size is the nearest token. */
+  font-size: var(--trade-fs-price);
+  line-height: var(--trade-lh-price);
+}
+.actions { display: flex; flex-wrap: wrap; gap: var(--trade-space-3); }
+
+.kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--trade-space-3); }
+.kpiSkeleton {
+  display: grid; gap: var(--trade-space-2); padding: var(--trade-space-4);
+  border: 1px solid var(--trade-line); border-radius: var(--trade-radius-card); background: var(--trade-surface);
+}
+
+.section { display: grid; gap: var(--trade-space-3); min-width: 0; }
+.section h2 { margin: 0; font-size: var(--trade-fs-subheading); line-height: var(--trade-lh-subheading); }
+
+.job { overflow-wrap: anywhere; }
+.rowActions { display: inline-flex; flex-wrap: nowrap; justify-content: flex-end; gap: var(--trade-space-2); }
+
+.dialogFacts { margin: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--trade-space-2) var(--trade-space-4); }
+.dialogFacts dt { color: var(--trade-text-2); }
+.dialogFacts dd { margin: 0; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+.dialogNote { margin: 0; }
+
+.gallery { display: grid; gap: var(--trade-space-8); }
+
+@media (max-width: 899.98px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 599.98px) {
+  .kpis { grid-template-columns: minmax(0, 1fr); }
+  .actions { width: 100%; flex-direction: column; }
+  /* Stacked on a phone card, so the payday beside them keeps its room. */
+  .rowActions { flex-direction: column; align-items: stretch; }
+}
