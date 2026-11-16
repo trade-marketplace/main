@@ -10,6 +10,7 @@ import { PasswordField, SelectField, TextField } from "@/components/forms/TextFi
 import { Banner } from "@/components/overlays/Banner";
 import { ToastProvider, useToast } from "@/components/overlays/Toast";
 import type { AuthFailure } from "@/lib/auth/results";
+import { boardSettingsRoute } from "@/lib/job-board";
 import { KIWISAVER_RATES, OFFICE_TAX_CODE, TAX_CODES, TAX_CODE_HELP, maskedBank, maskedIrd, validatePayroll, type PayrollInput, type PayrollResult, type PayrollSummary } from "@/lib/payroll";
 import { savePayrollAction } from "@/server/account/payroll-actions";
 
@@ -30,8 +31,8 @@ export function PayrollLoading() {
   return <><h1 className={account.title}>Bank &amp; tax</h1><LoadingRegion loading label="Loading bank and tax details" skeleton={<div className={account.card}>{[0, 1, 2].map(item => <div className={styles.skeleton} key={item}><Skeleton width={120} height={20} /><Skeleton height={48} /></div>)}</div>} /></>;
 }
 
-export function PayrollLoadError() {
-  return <><h1 className={account.title}>Bank &amp; tax</h1><Banner tone="alert">Couldn’t load your bank and tax details. <TextLink href="/profile/payroll">Try again</TextLink></Banner></>;
+export function PayrollLoadError({ next }: { next?: string | null } = {}) {
+  return <><h1 className={account.title}>Bank &amp; tax</h1><Banner tone="alert">Couldn’t load your bank and tax details. <TextLink href={boardSettingsRoute("/profile/payroll", next).href}>Try again</TextLink></Banner></>;
 }
 
 function TaxReviewNotice() {
