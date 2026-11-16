@@ -36,7 +36,7 @@ async function hasDailyCap(tx: Prisma.TransactionClient, userId: string, since: 
     for (const row of rows) {
       const payload = row.payload && typeof row.payload === "object" && !Array.isArray(row.payload) ? row.payload : {};
       const status = row.type === "job.ready_to_claim" ? "BOOKABLE" : "QUOTE_BOUNTY";
-      if (typeof payload.jobId === "string" && row.id === notificationId(`job-ping:${status}:${payload.jobId}`, userId) && ++count >= CAP) return true;
+      if (typeof payload.jobId === "string" && typeof payload.enteredAt === "string" && row.id === notificationId(`job-ping:${status}:${payload.jobId}:${payload.enteredAt}`, userId) && ++count >= CAP) return true;
     }
     if (rows.length < 50) return false;
     cursor = { id: rows[rows.length - 1].id };
@@ -44,7 +44,7 @@ async function hasDailyCap(tx: Prisma.TransactionClient, userId: string, since: 
 }
 
 /**
- * Each status pings once per job. The record that it happened is a `job.pings_sent` audit entry, written in the same
+ * Each entry into a status pings once (a job handed back and ready to claim again pings again). The record that it happened is a `job.pings_sent` audit entry, written in the same
  * transaction as the in-app rows under the job's row lock, so two runs at once take turns and the second skips.
  */
 export const jobPings: SchedulerRule = {
@@ -64,7 +64,8 @@ export const jobPings: SchedulerRule = {
       WHERE j.status::text IN ('BOOKABLE', 'QUOTE_BOUNTY')
         AND latest.created_at >= ${since} AND latest.created_at <= ${context.now}
         AND NOT EXISTS (SELECT 1 FROM ${table("audit_log")} AS a
-          WHERE a.record_type = 'jobs' AND a.record_id = j.id::text AND a.action = 'job.pings_sent' AND a.after->>'status' = j.status::text)
+          WHERE a.record_type = 'jobs' AND a.record_id = j.id::text AND a.action = 'job.pings_sent' AND a.after->>'status' = j.status::text
+            AND (a.after->>'enteredAt')::timestamptz = date_trunc('milliseconds', latest.created_at))
       ORDER BY latest.created_at ASC, j.id ASC LIMIT ${context.limit}
     `);
     result.due = due.length;
@@ -82,7 +83,7 @@ export const jobPings: SchedulerRule = {
           } });
           const latest = job?.statusHistory[0];
           if (!job || job.status !== candidate.status || latest?.toStatus !== job.status || latest.createdAt < since || latest.createdAt > context.now) return "skipped";
-          const sent = await tx.auditLog.findFirst({ where: { recordType: "jobs", recordId: job.id, action: "job.pings_sent", after: { path: ["status"], equals: candidate.status } }, select: { id: true } });
+          const sent = await tx.auditLog.findFirst({ where: { recordType: "jobs", recordId: job.id, action: "job.pings_sent", AND: [{ after: { path: ["status"], equals: candidate.status } }, { after: { path: ["enteredAt"], equals: latest.createdAt.toISOString() } }] }, select: { id: true } });
           if (sent) return "skipped";
           const settings = await tx.settings.findUnique({ where: { id: 1 }, select: { enabledTrades: true } });
           const eligibility = { now: context.now, ...(settings && { enabledTrades: settings.enabledTrades }) };
@@ -104,9 +105,9 @@ export const jobPings: SchedulerRule = {
             if (allowed && !await hasDailyCap(tx, worker.id, since)) recipients.push(worker.id);
           }
           await createNotify(tx)(candidate.status === "BOOKABLE" ? "job.ready_to_claim" : "bounty.available", recipients, {
-            eventId: `job-ping:${candidate.status}:${job.id}`, payload: { jobId: job.id, jobNumber: job.jobNumber },
+            eventId: `job-ping:${candidate.status}:${job.id}:${latest.createdAt.toISOString()}`, payload: { jobId: job.id, jobNumber: job.jobNumber, enteredAt: latest.createdAt.toISOString() },
           });
-          await createAudit(tx)(SYSTEM_ACTOR, "job.pings_sent", { type: "jobs", id: job.id }, null, { status: candidate.status, recipients: recipients.length });
+          await createAudit(tx)(SYSTEM_ACTOR, "job.pings_sent", { type: "jobs", id: job.id }, null, { status: candidate.status, enteredAt: latest.createdAt.toISOString(), recipients: recipients.length });
           return "done";
         }, { timeout: Math.min(30_000, remaining), maxWait: Math.min(2_000, remaining) });
         result[outcome]++;

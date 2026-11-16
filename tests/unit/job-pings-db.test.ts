@@ -68,7 +68,8 @@ describe.skipIf(!testDatabaseUrl)("ready-to-claim pings (database)", () => {
   async function oldPings(userId: string, count: number, legacyCount = 0) {
     const rows = Array.from({ length: count }, (_, index) => {
       const jobId = randomUUID();
-      return { id: notificationId(`job-ping:BOOKABLE:${jobId}`, userId), userId, type: "job.ready_to_claim", payload: { jobId, jobNumber: index + 1 }, createdAt: new Date(NOW.getTime() - HOUR) };
+      const enteredAt = new Date(NOW.getTime() - 2 * HOUR).toISOString();
+      return { id: notificationId(`job-ping:BOOKABLE:${jobId}:${enteredAt}`, userId), userId, type: "job.ready_to_claim", payload: { jobId, jobNumber: index + 1, enteredAt }, createdAt: new Date(NOW.getTime() - HOUR) };
     });
     for (let index = 0; index < legacyCount; index++) {
       const jobId = randomUUID();
@@ -83,8 +84,10 @@ describe.skipIf(!testDatabaseUrl)("ready-to-claim pings (database)", () => {
     expect(await run()).toMatchObject({ due: 0, done: 0, failed: 0 });
     const rows = await db().notification.findMany();
     expect(rows).toHaveLength(1);
-    expect(rows[0]).toMatchObject({ id: notificationId(`job-ping:BOOKABLE:${created.id}`, userId), userId, type: "job.ready_to_claim", payload: { jobId: created.id, jobNumber: created.jobNumber } });
-    expect(Object.keys(rows[0].payload as object).sort()).toEqual(["jobId", "jobNumber"]);
+    const enteredAt = (rows[0].payload as { enteredAt: string }).enteredAt;
+    expect(rows[0]).toMatchObject({ id: notificationId(`job-ping:BOOKABLE:${created.id}:${enteredAt}`, userId), userId, type: "job.ready_to_claim", payload: { jobId: created.id, jobNumber: created.jobNumber } });
+    // Ids and when it entered the status only: never a price.
+    expect(Object.keys(rows[0].payload as object).sort()).toEqual(["enteredAt", "jobId", "jobNumber"]);
     expect(rows[0].channelsSent).not.toContain("PUSH");
     expect(rows[0].channelsSent).not.toContain("EMAIL");
     expect(await db().notification.count({ where: { userId: created.customerId } })).toBe(0);
@@ -158,7 +161,15 @@ describe.skipIf(!testDatabaseUrl)("ready-to-claim pings (database)", () => {
   it("uses bounty.available for an eligible actual QUOTE_BOUNTY without changing its status", async () => {
     const userId = await worker(), created = await job({ status: "QUOTE_BOUNTY" });
     expect(await run()).toMatchObject({ due: 1, done: 1, failed: 0 });
-    expect(await db().notification.findMany()).toEqual([expect.objectContaining({ userId, type: "bounty.available", payload: { jobId: created.id, jobNumber: created.jobNumber } })]);
+    expect(await db().notification.findMany()).toEqual([expect.objectContaining({ userId, type: "bounty.available", payload: expect.objectContaining({ jobId: created.id, jobNumber: created.jobNumber }) })]);
     expect((await db().job.findUniqueOrThrow({ where: { id: created.id } })).status).toBe("QUOTE_BOUNTY" satisfies JobStatus);
+  });
+  it("pings again when a job comes back on the board, but not twice for one return", async () => {
+    await worker(); const created = await job({ entered: new Date(NOW.getTime() - 2 * HOUR) });
+    expect(await run()).toMatchObject({ done: 1 });
+    await db().jobStatusHistory.create({ data: { jobId: created.id, fromStatus: "ASSIGNED", toStatus: "BOOKABLE", createdAt: new Date(NOW.getTime() - HOUR) } });
+    expect(await run()).toMatchObject({ done: 1 });
+    expect(await run()).toMatchObject({ due: 0 });
+    expect(await db().notification.count({ where: { type: "job.ready_to_claim", payload: { path: ["jobId"], equals: created.id } } })).toBe(2);
   });
 });
