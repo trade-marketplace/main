@@ -10,9 +10,11 @@
 import type { Metadata } from "next";
 
 import { guardDevPage } from "@/server/dev-pages";
+import { AccountMenu } from "@/components/app/AppNav";
 import { OfficeShellView } from "@/components/office/OfficeShellView";
 import { currentOfficeLink } from "@/components/office/office-links";
 
+import styles from "./app-shell.module.css";
 import { COUNTS, type CountsKey, DEMO_VIEWERS, type DemoKey } from "./demo-data";
 import { ShellDemo } from "./ShellDemo";
 
@@ -36,6 +38,16 @@ export default async function AppShellPreview({ searchParams }: { searchParams: 
 
   const params = await searchParams;
   const state = one(params.state);
+  if (state === "bottom-menu") {
+    return (
+      <main className={styles.bottomMenu}>
+        <h1 className={styles.title}>Account menu</h1>
+        <div className={styles.bottomMenuBar}>
+          <AccountMenu viewer={{ ...DEMO_VIEWERS.long.viewer, counts: COUNTS.none }} defaultOpen={one(params.menu) === "open"} preview />
+        </div>
+      </main>
+    );
+  }
   const officeAt = one(params.at);
   const officePage = officeAt?.startsWith("/admin") && currentOfficeLink(officeAt) ? officeAt : "/admin";
   if (one(params.viewer) === "office") return <OfficeShellView
