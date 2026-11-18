@@ -160,7 +160,7 @@ describe.skipIf(!testDatabaseUrl)("shared job problem threads (database)", () =>
     expect(await sendProblemMessage(schema.db, f.worker, id, { ...data, photoPaths: [path] }, { ...deps, files: { exists: async () => true } })).toEqual({ ok: false, error: "invalid" });
     expect(await schema.db.supportMessage.count({ where: { requestKey: data.requestKey } })).toBe(1);
     expect(await sendProblemMessage(schema.db, f.worker, id, { ...data, text: "" }, deps)).toEqual({ ok: false, error: "invalid" });
-    expect(await sendProblemMessage(schema.db, f.worker, id, data, { ...deps, rateLimit: async () => ({ allowed: false, retryAfter: 30 }) })).toEqual({ ok: false, error: "try-later", retryAfter: 30 });
+    expect(await sendProblemMessage(schema.db, f.worker, id, { ...data, requestKey: randomUUID() }, { ...deps, rateLimit: async () => ({ allowed: false, retryAfter: 30 }) })).toEqual({ ok: false, error: "try-later", retryAfter: 30 });
     await schema.db.supportThread.update({ where: { id }, data: { status: "CLOSED" } });
     expect(await sendProblemMessage(schema.db, f.worker, id, data, deps)).toEqual({ ok: false, error: "closed" });
     const next = await openProblemThread(schema.db, f.customer, input(f.job.id, "A new support request after closure."), deps);
@@ -169,6 +169,64 @@ describe.skipIf(!testDatabaseUrl)("shared job problem threads (database)", () =>
     expect(await schema.db.supportThread.count({ where: { jobId: f.job.id, jobParticipants: true, status: "OPEN" } })).toBe(1);
     expect((await getMessages(schema.db, f.customer, id)).selected?.closed).toBe(true);
   });
+  it.each(["open", "send"] as const)("replays the committed %s receipt only for its current actor, target, text and ordered photos", async (operation) => {
+    const f = await fixture();
+    const threadId = operation === "send" ? await opened(f) : null;
+    const photoPaths = ["a", "b"].map(letter => `support/${f.job.id}/${f.worker.userId}/${letter.repeat(32)}.webp`);
+    await schema.db.supportPhotoCleanup.createMany({ data: photoPaths.map(path => ({ path })) });
+    const data = { ...input(f.job.id), photoPaths };
+    const rateLimit = vi.fn().mockResolvedValueOnce({ allowed: true }).mockResolvedValue({ allowed: false, retryAfter: 60 });
+    const notify = vi.fn(async () => {});
+    const files = { exists: vi.fn(async () => true) };
+    const send = (payload = data, actor = f.worker, target = threadId) => target
+      ? sendProblemMessage(schema.db, actor, target, payload, { rateLimit, notify, files })
+      : openProblemThread(schema.db, actor, payload, { rateLimit, notify, files });
+
+    const saved = await send();
+    expect(saved.ok).toBe(true);
+    expect(await send()).toEqual(saved);
+    expect(await send({ ...data, text: "A changed retry" })).toEqual({ ok: false, error: "invalid" });
+    expect(await send({ ...data, photoPaths: [...photoPaths].reverse() })).toEqual({ ok: false, error: "invalid" });
+    expect(await send(data, f.customer)).toEqual({ ok: false, error: "forbidden" });
+    const otherJob = await schema.db.job.create({ data: { customerId: f.customer.userId, workerId: f.worker.userId,
+      category: "OTHER", title: "Another sofa", description: "Different target", addressLine1: "2 Example Street", suburb: "Windsor", city: "Invercargill" } });
+    const otherThread = await schema.db.supportThread.create({ data: { userId: f.customer.userId, jobId: otherJob.id, jobParticipants: true, subject: "Another sofa" } });
+    expect(await send({ ...data, jobId: otherJob.id }, f.worker, threadId ? otherThread.id : null)).toEqual({ ok: false, error: "forbidden" });
+    expect(rateLimit).toHaveBeenCalledTimes(1);
+    expect(await send({ ...data, requestKey: randomUUID() })).toEqual({ ok: false, error: "try-later", retryAfter: 60 });
+    expect(rateLimit).toHaveBeenCalledTimes(2);
+    await schema.db.job.update({ where: { id: f.job.id }, data: { workerId: f.stranger.userId } });
+    expect(await send()).toEqual({ ok: false, error: "forbidden" });
+    expect(notify).toHaveBeenCalledTimes(1);
+    expect(files.exists).toHaveBeenCalledTimes(2);
+    expect(await schema.db.supportMessage.count({ where: { requestKey: data.requestKey } })).toBe(1);
+  });
+
+  it.each(["open", "send"] as const)("waits for an in-flight %s on the last allowance and returns its receipt", async (operation) => {
+    const f = await fixture();
+    const threadId = operation === "send" ? await opened(f) : null;
+    const data = input(f.job.id);
+    const rateLimit = vi.fn().mockResolvedValueOnce({ allowed: true }).mockResolvedValue({ allowed: false, retryAfter: 60 });
+    let entered!: () => void, release!: () => void;
+    const pendingCommit = new Promise<void>(resolve => { entered = resolve; });
+    const proceed = new Promise<void>(resolve => { release = resolve; });
+    const notify = vi.fn(async () => { entered(); await proceed; });
+    const send = () => threadId
+      ? sendProblemMessage(schema.db, f.customer, threadId, data, { rateLimit, notify })
+      : openProblemThread(schema.db, f.customer, data, { rateLimit, notify });
+
+    const first = send();
+    await pendingCommit;
+    const retry = send();
+    try { await vi.waitFor(() => expect(rateLimit).toHaveBeenCalledTimes(2)); }
+    finally { release(); }
+    const saved = await first;
+    expect(saved.ok).toBe(true);
+    expect(await retry).toEqual(saved);
+    expect(notify).toHaveBeenCalledTimes(1);
+    expect(await schema.db.supportMessage.count({ where: { requestKey: data.requestKey } })).toBe(1);
+  });
+
   it("records read receipts only for an authorized public message and uses the same office thread", async () => {
     const f = await fixture(); const id = await opened(f);
     const result = await performJobAction(schema.db, f.office, { action: "message", jobId: f.job.id, body: "Trade Marketplace office reply" });
