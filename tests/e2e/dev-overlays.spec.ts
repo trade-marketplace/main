@@ -117,6 +117,7 @@ test.describe("/dev/components/overlays on the dev server", () => {
       for (const id of ["dialog", "menu", "toast"]) {
         await page.goto(url(`?mode=${mode}&open=${id}`));
         await expectOpen(page, OPEN_STATES.find((s) => s.id === id)!);
+        await settled(page);
         await expectNoA11yViolations(page);
       }
     });
