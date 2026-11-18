@@ -111,15 +111,14 @@ export const ADDRESSES = {
 };
 
 /**
- * Example rates, copied into job_pricing like the office would (DECISIONS.md, launch rates #62): $70/hr licensed,
- * $38/hr Other, 2 h / 1 h minimum, 20% margin. Holiday pay and on-costs follow BUSINESS_PLAN.md's example
- * (12.5% on-costs incl. 8% holiday pay). These are seed figures only; the real pricing maths is its own task.
+ * Example rates, copied into job_pricing like the office would: the settings defaults (DECISIONS.md, launch rates
+ * #62): $70/hr licensed, $38/hr Other, 2 h / 1 h minimum, 8% holiday pay, 12.5% on-costs, 20% margin, 15% GST.
  */
 export const EXAMPLE_RATES = {
   licensed: { workerRateCents: 7000, minMinutes: 120 },
   other: { workerRateCents: 3800, minMinutes: 60 },
   holidayPayBps: 800,
-  onCostBps: 450,
+  onCostBps: 1250,
   marginBps: 2000,
   gstBps: 1500,
 };
@@ -384,8 +383,10 @@ export function testPaymentRefs(jobId) {
 export const photoPath = (/** @type {string} */ file) => `demo/${file}`;
 
 /**
- * An example of how a price is built, in whole cents (BUSINESS_PLAN.md "Pricing"): worker pay, holiday pay and
- * on-costs, materials at cost, a margin on all of that, then GST. Demo figures only.
+ * A price built exactly the way the pricing engine builds one (src/server/pricing/calculate.ts, priceWork, #306):
+ * worker gross, holiday pay on gross, on-costs on gross + holiday pay, margin on labour + materials, then GST, each
+ * rounded half up to whole cents. This file runs as plain Node and can't import the engine, so
+ * tests/unit/seed-pricing.test.ts checks the two agree.
  * @param {{ minutes: number; materialsCents: number }} work
  * @param {Trade} category
  */
@@ -394,7 +395,7 @@ export function examplePricing(work, category) {
   const minutes = Math.max(work.minutes, rates.minMinutes);
   const workerGrossCents = Math.round((rates.workerRateCents * minutes) / 60);
   const holidayPayCents = Math.round((workerGrossCents * EXAMPLE_RATES.holidayPayBps) / 10000);
-  const onCostCents = Math.round((workerGrossCents * EXAMPLE_RATES.onCostBps) / 10000);
+  const onCostCents = Math.round(((workerGrossCents + holidayPayCents) * EXAMPLE_RATES.onCostBps) / 10000);
   const costCents = workerGrossCents + holidayPayCents + onCostCents + work.materialsCents;
   const marginCents = Math.round((costCents * EXAMPLE_RATES.marginBps) / 10000);
   const gstCents = Math.round(((costCents + marginCents) * EXAMPLE_RATES.gstBps) / 10000);

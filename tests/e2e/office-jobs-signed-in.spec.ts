@@ -130,7 +130,7 @@ test.describe("/admin/jobs, signed in as the office", () => {
     await page.goto(`${app}/admin/jobs`);
     await table(page).getByRole("button", { name: /^Price/ }).click();
     await expect(page).toHaveURL(`${app}/admin/jobs?sort=price.desc`);
-    await expect(rows(page).first()).toContainText("$846.98");
+    await expect(rows(page).first()).toContainText("$890.45");
     await expect(rows(page).last()).toContainText("—");
   });
 

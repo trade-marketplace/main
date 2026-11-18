@@ -14,7 +14,7 @@ describe.skipIf(!testDatabaseUrl)("office notification when extra work is declin
   const schema = useTestSchema(import.meta.filename);
   async function person(role: Role) {
     const id = randomUUID(); await schema.db.$executeRaw`INSERT INTO auth.users(id) VALUES(${id}::uuid)`;
-    await schema.db.profile.create({ data: { id, role, firstName: "Test", email: `${id}@example.test` } }); return { userId: id };
+    await schema.db.profile.create({ data: { id, role, firstName: "Test", email: `${id}@example.test`, emailVerifiedAt: new Date("2026-01-01T00:00:00Z") } }); return { userId: id };
   }
   async function fixture() {
     const customer = await person("CUSTOMER"), worker = await person("TRADIE"), office = await person("ADMIN"); await person("ADMIN");

@@ -6,6 +6,7 @@ import { currentSchedule, postingDateRange } from "@/lib/job-time-windows";
 export { postingDateRange } from "@/lib/job-time-windows";
 import { canEstimate, WORKER_ELIGIBILITY_SELECT } from "@/server/workers/eligibility";
 import { createAudit } from "@/server/audit/audit";
+import { emailOwnershipProved } from "@/server/auth/email-ownership";
 import type { Viewer } from "@/server/auth/viewer";
 import { createSupabaseFileStore, PHOTO_BUCKET } from "@/server/files/storage";
 import { loadCoverage, settingsCoverageSource } from "@/server/geo/coverage-settings";
@@ -19,7 +20,8 @@ import { createJobInReview } from "./status-machine";
 
 type Posted = { status: "posted"; jobId: string; jobNumber: number };
 export type PostJobResult = Posted
-  | { status: "needs-account" | "forbidden" | "photos-pending" | "trade-unavailable" | "draft-changed" }
+  /** `email-required`: signed in, but their email ownership isn't proved yet (#353). Nothing was posted. */
+  | { status: "needs-account" | "email-required" | "forbidden" | "photos-pending" | "trade-unavailable" | "draft-changed" }
   | { status: "invalid"; fields: DraftFieldErrors }
   | { status: "rate-limited"; retryAfter: number }
   | { status: "outside-area"; waitlist: { path: string; suburb: string; areaName: string; email: string } };
@@ -48,7 +50,8 @@ export async function postJob(db: PrismaClient, viewer: Viewer | null, input: un
     const customer = await tx.profile.findUnique({ where: { id: viewer.userId }, select: { role: true, emailVerifiedAt: true, email: true } });
     if (!customer) return { status: "needs-account" };
     if (customer.role !== "CUSTOMER") return { status: "forbidden" };
-    if (!customer.emailVerifiedAt) return { status: "needs-account" };
+    // Re-read here, under the draft lock: our own email proof only, never the session's or Supabase's flag (#353).
+    if (!emailOwnershipProved(customer)) return { status: "email-required" };
     const previous = await tx.job.findUnique({ where: { postKey } });
     if (previous) return previous.customerId === viewer.userId
       ? { status: "posted", jobId: previous.id, jobNumber: previous.jobNumber }

@@ -50,13 +50,13 @@ export type NewProfile = {
   firstName: string;
   lastName: string | null;
   phone?: string | null;
-  emailVerifiedAt: Date | null;
+  /** Always null: sign-up and log-in never prove email ownership. Only /verify and email-change links do (#106, #353). */
+  emailVerifiedAt: null;
 };
 
 export type ProfileStore = {
   find(id: string): Promise<ProfileRow | null>;
   create(profile: NewProfile): Promise<ProfileRow>;
-  markEmailVerified(id: string, at: Date): Promise<ProfileRow>;
   /** Creates pending worker details once. Never changes existing verification or licence decisions. */
   ensureWorker?(id: string, details: WorkerSignupDetails): Promise<void>;
 };

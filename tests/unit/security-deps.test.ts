@@ -25,6 +25,10 @@ describe("independent email verification (#106 compatibility)", () => {
     await syncSecurityEmail(user, true);
     expect(fakes.update).toHaveBeenCalledWith({ where: { id: user.id, OR: [{ email: { not: user.email } }, { emailVerifiedAt: null }] }, data: { email: user.email, emailVerifiedAt: expect.any(Date) } });
   });
+  it("the first link of a pending secure email change proves nothing about the current email (#353)", async () => {
+    await syncSecurityEmail({ ...user, new_email: "new@example.test" }, true);
+    expect(fakes.update).toHaveBeenCalledWith({ where: { id: user.id, email: { not: user.email } }, data: { email: user.email, emailVerifiedAt: null } });
+  });
   it("no email means no profile update", async () => {
     await syncSecurityEmail({ id: user.id }); expect(fakes.update).not.toHaveBeenCalled();
   });

@@ -1,8 +1,8 @@
 import { DAY_PARTS, postingDateRange, postingDays, type JobTimeWindow } from "./job-time-windows";
 export type BookingSnapshot = { id: string; title: string; suburb: string; customerFirstName: string; windows: JobTimeWindow[]; anyTime: boolean; booked: JobTimeWindow | null; revision: string };
-export type BookingResult = { status: "booked"; window: JobTimeWindow; rescheduled: boolean } | { status: "changed"; snapshot: BookingSnapshot } | { status: "invalid" | "forbidden" | "unavailable" };
-export type RequestTimesResult = { status: "asked" | "forbidden" | "unavailable" };
-export const BOOKING_STATES = ["pick", "any-time", "booked", "saving", "changed", "none-left", "asked", "error", "offline", "loading", "load-error"] as const;
+export type BookingResult = { status: "booked"; window: JobTimeWindow; rescheduled: boolean } | { status: "changed"; snapshot: BookingSnapshot } | { status: "invalid" | "forbidden" | "email-required" | "unavailable" };
+export type RequestTimesResult = { status: "asked" | "forbidden" | "email-required" | "unavailable" };
+export const BOOKING_STATES = ["pick", "any-time", "booked", "saving", "changed", "none-left", "asked", "email-required", "error", "offline", "loading", "load-error"] as const;
 export type BookingState = typeof BOOKING_STATES[number];
 export function availableBookingWindows(windows: JobTimeWindow[], anyTime: boolean, now: Date): JobTimeWindow[] {
   const { today } = postingDateRange(now);

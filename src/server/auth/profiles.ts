@@ -27,7 +27,5 @@ export function prismaProfiles(db: () => PrismaClient = () => getDb()): ProfileS
     },
     find: (id) => db().profile.findUnique({ where: { id }, select: PROFILE_SELECT }),
     create: (profile) => db().profile.create({ data: profile, select: PROFILE_SELECT }),
-    markEmailVerified: (id, at) =>
-      db().profile.update({ where: { id }, data: { emailVerifiedAt: at }, select: PROFILE_SELECT }),
   };
 }

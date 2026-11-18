@@ -24,7 +24,7 @@ describe.skipIf(!testDatabaseUrl)("extra work request → frozen price → verif
   const db = () => schema.db;
   async function person(role: Role) {
     const id = randomUUID(); await db().$executeRaw`INSERT INTO auth.users (id) VALUES (${id}::uuid)`;
-    await db().profile.create({ data: { id, role, email: `${id}@example.nz`, firstName: "Test" } });
+    await db().profile.create({ data: { id, role, email: `${id}@example.nz`, firstName: "Test", emailVerifiedAt: new Date("2026-01-01T00:00:00Z") } });
     return { userId: id };
   }
   async function fixture() {

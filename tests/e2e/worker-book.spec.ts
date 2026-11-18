@@ -18,6 +18,7 @@ for (const width of [320, 390, 768, 1024, 1440]) test(`booking states at ${width
     if (state === "none-left") { await expect(page.getByRole("radio")).toHaveCount(0); await expect(page.getByText("None of Sarah’s times are left.")).toBeVisible(); }
     if (state === "changed") await expect(page.getByText("The times changed. Pick again.")).toBeVisible();
     if (state === "asked") await expect(page.getByText("Sarah’s been asked for more times.")).toBeVisible();
+    if (state === "email-required") await expect(page.getByText("Confirm your email to continue.")).toBeVisible();
     if (state === "booked") await expect(page.getByText("Booked: Thu 12 Nov · Morning")).toBeVisible();
     if (state === "offline") await expect(page.getByRole("button", { name: "Suggest other times", exact: true })).toHaveAttribute("aria-disabled", "true");
     if (state === "error") await expect(page.getByRole("button", { name: "Try again", exact: true })).toBeVisible();

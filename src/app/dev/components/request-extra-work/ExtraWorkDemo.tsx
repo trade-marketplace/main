@@ -21,6 +21,7 @@ export function ExtraWorkDemo({ state, embedded = false }: { state: ExtraWorkSta
       attempts.current++;
       if (state === "error" && attempts.current === 1) throw Error("Lost response");
       if (state === "try-later" && attempts.current === 1) return { ok: false, error: "photos-pending" };
+      if (state === "email-required") return { ok: false, error: "email-required" };
       return { ok: true, variationId: "16000000-0000-4000-8000-000000000021" };
     },
   };
