@@ -112,15 +112,15 @@ test.describe("/dev/components/overlays on the dev server", () => {
   }
 
   for (const mode of ["trade", "office"] as const) {
-    test(`a dialog, a menu and a toast have no accessibility violations in ${mode} mode`, async ({ page }) => {
-      await page.setViewportSize({ width: 390, height: 844 });
-      for (const id of ["dialog", "menu", "toast"]) {
+    for (const id of ["dialog", "menu", "toast"]) {
+      test(`the ${id} has no accessibility violations in ${mode} mode`, async ({ page }) => {
+        await page.setViewportSize({ width: 390, height: 844 });
         await page.goto(url(`?mode=${mode}&open=${id}`));
         await expectOpen(page, OPEN_STATES.find((s) => s.id === id)!);
         await settled(page);
         await expectNoA11yViolations(page);
-      }
-    });
+      });
+    }
   }
 
   test("a dialog: focus goes to its title, Tab stays inside, Esc closes, focus comes back", async ({ page }) => {
