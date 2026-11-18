@@ -79,6 +79,12 @@ describe("<Button>", () => {
     expect(html).not.toContain("<button");
   });
 
+  it("gives the link its caller-provided accessible name while keeping the visible label", () => {
+    const html = renderToString(<Button href="/example" aria-label="Review Jack Wilson, Electrical">Review</Button>);
+    expect(openingTag(html, "a")).toContain('aria-label="Review Jack Wilson, Electrical"');
+    expect(html).toContain(">Review<");
+  });
+
   it("shows decorative icons beside the label, so the label alone is the name", () => {
     const html = renderToString(
       <Button icon="add_a_photo" iconEnd="arrow_forward">

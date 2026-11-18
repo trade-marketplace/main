@@ -86,6 +86,7 @@ type AsLink = Common & {
   target?: string;
   rel?: string;
   "aria-current"?: "page" | "step" | "true";
+  "aria-label"?: string;
   loading?: never;
   disabled?: never;
 };
@@ -244,7 +245,14 @@ export function Button(props: ButtonProps) {
   let control: ReactNode;
   if (typeof props.href === "string") {
     control = (
-      <Link href={props.href} target={props.target} rel={props.rel} aria-current={props["aria-current"]} className={classes}>
+      <Link
+        href={props.href}
+        target={props.target}
+        rel={props.rel}
+        aria-current={props["aria-current"]}
+        aria-label={props["aria-label"]}
+        className={classes}
+      >
         {content}
       </Link>
     );
