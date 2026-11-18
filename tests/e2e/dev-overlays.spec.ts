@@ -76,7 +76,10 @@ async function expectOpen(page: Page, state: (typeof OPEN_STATES)[number]) {
   if (state.what === "dialog[open]") {
     await expect(page.getByRole(state.id === "confirm" ? "alertdialog" : "dialog", { name: state.name })).toBeVisible();
   } else if (state.what === "[role=menu]") {
-    await expect(page.getByRole("menu", { name: state.name })).toBeVisible();
+    const menu = page.getByRole("menu", { name: state.name });
+    await expect(menu).toBeVisible();
+    // The server-rendered menu is visible before hydration positions it and focuses its first item.
+    await expect(menu.getByRole("menuitem").first()).toBeFocused();
   } else {
     await expect(page.getByRole("status").filter({ hasText: state.name }).first()).toBeVisible();
   }
