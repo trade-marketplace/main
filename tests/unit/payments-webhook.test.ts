@@ -38,7 +38,11 @@ function fakeDb(initial: Partial<Row> = {}) {
       return { count: 1 };
     }),
   };
-  const db = { payment, $transaction: async (fn: (tx: unknown) => unknown) => fn({ payment }) } as unknown as PrismaClient;
+  // A recorded refund also reads the job (to tell its customer) and its payouts (to flag payroll, #157).
+  const job = { findUniqueOrThrow: vi.fn(async () => ({ id: row.jobId, jobNumber: 1005, customerId: "customer-1" })) };
+  const payout = { findMany: vi.fn(async () => []) };
+  const profile = { findMany: vi.fn(async () => []) };
+  const db = { payment, $transaction: async (fn: (tx: unknown) => unknown) => fn({ payment, job, payout, profile }) } as unknown as PrismaClient;
   return { db, row, payment };
 }
 

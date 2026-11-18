@@ -65,11 +65,11 @@ describe("parseJobAction", () => {
     expect(parseJobAction({ ...base, action: "reassign", workerId: ID })).toMatchObject({ ok: true, input: { action: "reassign", workerId: ID } });
     expect(parseJobAction({ ...base, action: "status", to: "BOOKABLE" })).toMatchObject({ ok: true, input: { to: "BOOKABLE" } });
     expect(parseJobAction({ ...base, action: "price", minutes: 150, materialsCents: 12000 })).toMatchObject({ ok: true, input: { minutes: 150 } });
-    expect(parseJobAction({ ...base, action: "refund", paymentId: ID, mode: "partial", amountCents: 5000 })).toMatchObject({
+    expect(parseJobAction({ ...base, action: "refund", paymentId: ID, mode: "partial", amountCents: 5000, requestId: ID })).toMatchObject({
       ok: true,
-      input: { mode: "partial", amountCents: 5000 },
+      input: { mode: "partial", amountCents: 5000, requestId: ID },
     });
-    expect(parseJobAction({ ...base, action: "refund", paymentId: ID, mode: "full" })).toMatchObject({ ok: true, input: { amountCents: null } });
+    expect(parseJobAction({ ...base, action: "refund", paymentId: ID, mode: "full", requestId: ID })).toMatchObject({ ok: true, input: { amountCents: null } });
   });
 
   it("needs a note for every action but a message (what if the note is empty or only spaces)", () => {
@@ -88,6 +88,8 @@ describe("parseJobAction", () => {
     expect(parseJobAction({ ...base, action: "refund", paymentId: ID, mode: "partial", amountCents: null })).toMatchObject({ ok: false, field: "amount" });
     expect(parseJobAction({ ...base, action: "refund", paymentId: ID, mode: "partial", amountCents: 0 })).toMatchObject({ ok: false, field: "amount" });
     expect(parseJobAction({ ...base, action: "refund", paymentId: ID, mode: "some" })).toMatchObject({ ok: false, field: "mode" });
+    // #157: a refund carries the dialog's id, so a retry can't refund twice.
+    expect(parseJobAction({ ...base, action: "refund", paymentId: ID, mode: "full" })).toMatchObject({ ok: false, field: "requestId" });
   });
 
   it("rejects junk: no job id, an unknown action, an unknown status, a non-object", () => {
@@ -500,7 +502,7 @@ describe("JobAdmin", () => {
     expect(reassign).toContain("Note");
 
     const refund = dialog("refund");
-    expect(refund).toContain("This is a record only. No real money moves until real payments are on.");
+    expect(refund).toContain("Sent to Stripe as a test refund. No real money moves until real payments are on.");
     expect(refund).toContain("Full refund");
     expect(refund).toContain("Part refund");
     expect(refund).toContain("Record refund");

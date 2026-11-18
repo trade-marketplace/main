@@ -10,6 +10,7 @@ import {
   applyTransition,
 } from "@/server/jobs/status-machine";
 import { createNotify } from "@/server/notifications/notify";
+import { recordRefundTotal } from "./refunds";
 import { settleVariationPayment } from "./variation-payment";
 
 // What Stripe's webhook events do to our records (#151). The route (src/app/api/stripe/webhook/route.ts) checks the
@@ -18,7 +19,8 @@ import { settleVariationPayment } from "./variation-payment";
 //
 //   payment_intent.succeeded       PENDING/FAILED → PAID; the job moves PRICED → BOOKABLE through the status machine
 //   payment_intent.payment_failed  PENDING → FAILED with Stripe's reason, for the office
-//   charge.refunded                records the refund (up to what was paid); PAID → PARTIALLY_REFUNDED / REFUNDED
+//   charge.refunded                records the refund (up to what was paid); PAID → PARTIALLY_REFUNDED / REFUNDED;
+//                                  the customer is told, and the office if the payout already went to payroll (#157)
 //   anything else                  ignored (the route still answers 200 so Stripe stops retrying)
 
 export type EventOutcome =
@@ -140,28 +142,15 @@ async function onRefunded(db: PrismaClient, charge: Stripe.Charge): Promise<Even
 
 /**
  * `amount_refunded` is Stripe's running total, so a replayed or out-of-order event can't double count: the payment
- * only ever moves up to that total, never past what was paid. Refunds the office already recorded by hand (#171)
- * are included in the total, not added to it.
+ * only ever moves up to that total, never past what was paid. A refund the office made from the job admin view
+ * (#157) is in the total too, so whichever of the two lands first records it and the other changes nothing. The
+ * customer is told, and the office is flagged when the payout already went to payroll, by `recordRefundTotal`.
  */
 async function recordRefund(db: PrismaClient, found: Payment, refundedTotal: number): Promise<EventOutcome> {
   if (found.status !== "PAID" && found.status !== "PARTIALLY_REFUNDED") return "ignored";
   const refundedCents = Math.min(refundedTotal, found.amountCents);
   if (refundedCents <= found.refundedCents) return "duplicate";
-  const status = refundedCents === found.amountCents ? "REFUNDED" : "PARTIALLY_REFUNDED";
-  return db.$transaction(async (tx) => {
-    const updated = await tx.payment.updateMany({
-      where: { id: found.id, refundedCents: found.refundedCents, status: found.status },
-      data: { refundedCents, status, refundedAt: new Date() },
-    });
-    if (updated.count !== 1) return "duplicate";
-    await createAudit(tx)(
-      SYSTEM_ACTOR,
-      status === "REFUNDED" ? "payment.refunded" : "payment.partially_refunded",
-      { type: "payments", id: found.id },
-      { status: found.status, refundedCents: found.refundedCents },
-      { status, refundedCents },
-      "Refunded in Stripe.",
-    );
-    return "refund-recorded";
-  });
+  return db.$transaction(async (tx) =>
+    (await recordRefundTotal(tx, found, refundedCents, SYSTEM_ACTOR, "Refunded in Stripe.")) ? "refund-recorded" : "duplicate",
+  );
 }

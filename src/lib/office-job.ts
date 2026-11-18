@@ -148,7 +148,17 @@ export function forceStatusOptions(job: Pick<OfficeJobView, "status" | "tradie" 
 
 export type JobActionInput =
   | { action: "reassign"; jobId: string; seenStatus: JobStatus; workerId: string; note: string }
-  | { action: "refund"; jobId: string; seenStatus: JobStatus; paymentId: string; mode: "full" | "partial"; amountCents: number | null; note: string }
+  | {
+      action: "refund";
+      jobId: string;
+      seenStatus: JobStatus;
+      paymentId: string;
+      mode: "full" | "partial";
+      amountCents: number | null;
+      note: string;
+      /** Made when the dialog opens and sent with every try, so trying again after an error can't refund twice (#157). */
+      requestId: string;
+    }
   | { action: "price"; jobId: string; seenStatus: JobStatus; minutes: number; materialsCents: number; note: string }
   | { action: "status"; jobId: string; seenStatus: JobStatus; to: JobStatus; note: string }
   | { action: "cancel"; jobId: string; seenStatus: JobStatus; note: string }
@@ -251,7 +261,9 @@ export function parseJobAction(raw: unknown): ParsedAction {
         amountCents = typeof data.amountCents === "number" && Number.isInteger(data.amountCents) ? data.amountCents : null;
         if (amountCents === null || amountCents < 1) return failure("amount", "Enter an amount to refund, like 50.00.");
       }
-      return { ok: true, input: { action, ...base, paymentId, mode, amountCents } };
+      const requestId = text(data.requestId);
+      if (!UUID.test(requestId)) return failure("requestId", ACTION_MESSAGES.changed);
+      return { ok: true, input: { action, ...base, paymentId, mode, amountCents, requestId } };
     }
   }
 }

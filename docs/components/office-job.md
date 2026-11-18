@@ -29,7 +29,7 @@ Issue #171 (F05). Route: `/admin/jobs/[id]`. Mockup: pages.html `w-o-job` ("Offi
 | Menu item | What it does | Available when |
 |---|---|---|
 | Reassign tradie | Puts another verified tradie on the job (same status). Audit `job.reassigned` | ASSIGNED, SUBMITTED or CANCEL_REVIEW |
-| Refund (full or part) | Records a refund against one payment. Audit `payment.refunded` / `payment.partially_refunded` | A payment has money left |
+| Refund (full or part) | Refunds one payment in Stripe (test mode), then records it. Audit `payment.refund_requested`, then `payment.refunded` / `payment.partially_refunded` | A payment has money left |
 | Edit price | Re-prices from hours and materials with the job's frozen rates (`priceJob`). Audit `job.priced` | REVIEW, QUOTE_BOUNTY or PRICED (the database freezes the price once paid) |
 | Force status | The status machine's `override`, to any status the job can be in. Audit `job.status_overridden` | Always |
 | Cancel job | `override` to CANCELLED. Audit `job.cancelled`. Does not refund | Not COMPLETED or CANCELLED |
@@ -41,9 +41,14 @@ locks the job's row, checks the status the office was looking at (`seenStatus`; 
 machine or pricing module, writes the audit entry and queues the in-app notifications (cancel: `job.cancelled`;
 reassign and force status: `job.status_overridden`, to the customer and both tradies). Any failure rolls all of it back.
 
-**Refunds are a record.** Payments are in test mode, so a refund moves the payment's `refundedCents`, status and
-`refundedAt` and writes the audit entry. Nothing is sent to Stripe. The dialog says so. When real payments are
-switched on (both founders), sending the refund to Stripe belongs in `refund()` in `job-mutations.ts`.
+**Refunds go to Stripe (#157).** Payments are in test mode, so the refund is made in Stripe's test mode. The flow is
+in `src/server/payments/refunds.ts`: a `payment.refund_requested` entry is written under the job's row lock (its id is
+the Stripe idempotency key), Stripe is asked with no lock held, and then the payment's `refundedCents`, status and
+`refundedAt` move in a second transaction. The dialog sends one `requestId` with every try, so trying again after an
+error sends the same key and never refunds twice. The `charge.refunded` webhook records a refund made in the Stripe
+dashboard, or one whose answer was lost, the same way. The customer gets "Refund on its way"; if the tradie's payout
+was already sent to payroll or paid, every office user gets "Payroll adjustment needed" (payout rows don't change).
+Without Stripe keys the refund is refused and nothing changes.
 
 **Message both** sends the message to the customer and the tradie (if there is one) as the office, in each
 person's open support thread about this job (made on the first message). It uses the support tables from Schema 4
@@ -79,13 +84,13 @@ person's open support thread about this job (made on the first message). It uses
 
 ## Notes for review
 
-- **William:** the actions touch pricing, payments and the status machine. Refunds are a record only. Please check
-  `refund()` and `reprice()` in `job-mutations.ts`. The row lock is a no-op update of `jobs.updated_at` (rolled back
+- **William:** the actions touch pricing, payments and the status machine. Please check `reprice()` in
+  `job-mutations.ts` and the refund flow in `src/server/payments/refunds.ts`. The row lock is a no-op update of `jobs.updated_at` (rolled back
   if the action is refused), because Prisma has no `FOR UPDATE` without naming the table. No schema change.
 - **Matt:** words the mockup doesn't show, all new and easy to change in `JobAdmin.tsx` / `office-job.ts`:
   - **Force status** in the Actions menu (the mockup has four items; the issue asks for forcing a status).
   - The dialogs' titles, buttons and short lines (Reassign tradie, Refund, Edit price, Force status, Cancel this
-    job?, Message both) and "This is a record only. No real money moves until real payments are on."
+    job?, Message both) and "Sent to Stripe as a test refund. No real money moves until real payments are on."
   - Greyed-out reasons: "No tradie yet", "Nothing to refund", "Locked once paid", "Already closed", "Not at this stage".
   - Money shows "Customer paid $372.00" without the card ("Visa ••42"): we don't store card details.
   - Payroll words: "After sign-off", "Queued", "Sent to payroll", "Paid", "No payout".

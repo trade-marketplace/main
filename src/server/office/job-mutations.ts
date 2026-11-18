@@ -1,7 +1,7 @@
 // What the office can change from the job admin view (#171): re-price, reassign, force a status, cancel, refund,
-// and message both sides. Each runs in one database transaction that locks the job's row first (so two people
-// acting at once can't both win), changes it through the same rules as everything else (the status machine,
-// #93; the pricing module, #94), and writes the audit entry with the office's required note in the same
+// and message both sides. Each but the refund (which talks to Stripe: ../payments/refunds.ts, #157) runs in one
+// database transaction that locks the job's row first (so two people acting at once can't both win), changes it
+// through the same rules as everything else (the status machine, #93; the pricing module, #94), and writes the audit entry with the office's required note in the same
 // transaction (#100), so the timeline can never disagree with the data.
 import "server-only";
 
@@ -14,7 +14,6 @@ import {
   forceStatusOptions,
   type JobActionInput,
   type JobActionResult,
-  money,
   parseJobAction,
 } from "@/lib/office-job";
 import { createAudit } from "@/server/audit/audit";
@@ -28,6 +27,7 @@ import {
 } from "@/server/jobs/status-machine";
 import { createNotify } from "@/server/notifications/notify";
 import { retireJobPayments, type PaymentIntentsApi } from "@/server/payments/payments";
+import { refundPayment, type RefundsApi } from "@/server/payments/refunds";
 import { PRICEABLE_STATUSES, priceJob } from "@/server/pricing/price-job";
 
 type Db = Pick<PrismaClient, "$transaction">;
@@ -57,9 +57,17 @@ class Refusal extends Error {
 }
 
 /** Checks, then does, one office action. Never throws for a refusal: it answers with what to tell the office. */
-export async function performJobAction(db: Db, office: Office, raw: unknown, now = new Date(), intents: PaymentIntentsApi | null = null): Promise<JobActionResult> {
+export async function performJobAction(
+  db: Db,
+  office: Office,
+  raw: unknown,
+  now = new Date(),
+  intents: PaymentIntentsApi | null = null,
+  refunds: RefundsApi | null = null,
+): Promise<JobActionResult> {
   const parsed = parseJobAction(raw);
   if (!parsed.ok) return fail("invalid", parsed.message, parsed.field);
+  if (parsed.input.action === "refund") return refundPayment(db, office, parsed.input, refunds, now);
   try {
     await db.$transaction((tx) => run(tx, office, parsed.input, now, intents), { timeout: 30_000 });
     return { ok: true };
@@ -100,8 +108,6 @@ async function run(tx: Tx, office: Office, input: JobActionInput, now: Date, int
       return forceStatus(tx, office, job, input, intents);
     case "cancel":
       return cancel(tx, office, job, input, intents);
-    case "refund":
-      return refund(tx, office, job, input);
   }
 }
 
@@ -227,39 +233,9 @@ async function cancel(tx: Tx, office: Office, job: LockedJob, input: Extract<Job
 }
 
 // ---------------------------------------------------------------- Refund
-
-/**
- * Records a refund against one payment: the payment's `refundedCents` and status move, with the office's note on
- * the audit entry. It is a record only: payments are in test mode, and nothing is sent to Stripe (DECISIONS.md 7).
- */
-async function refund(tx: Tx, office: Office, job: LockedJob, input: Extract<JobActionInput, { action: "refund" }>) {
-  const payment = await tx.payment.findFirst({ where: { id: input.paymentId, jobId: job.id } });
-  if (!payment) throw new Refusal(fail("invalid", "Pick a payment.", "paymentId"));
-  if (payment.status !== "PAID" && payment.status !== "PARTIALLY_REFUNDED") {
-    throw new Refusal(notAllowed("That payment has nothing left to refund."));
-  }
-  const left = payment.amountCents - payment.refundedCents;
-  const giving = input.mode === "full" ? left : (input.amountCents ?? 0);
-  if (giving < 1) throw new Refusal(notAllowed("That payment has nothing left to refund."));
-  if (giving > left) throw new Refusal(fail("invalid", `You can refund up to ${money(left)} of this payment.`, "amount"));
-
-  const refundedCents = payment.refundedCents + giving;
-  const status = refundedCents === payment.amountCents ? "REFUNDED" : "PARTIALLY_REFUNDED";
-  // Only while nobody else has refunded it since we read it (the row is locked by the update).
-  const updated = await tx.payment.updateMany({
-    where: { id: payment.id, refundedCents: payment.refundedCents, status: payment.status },
-    data: { refundedCents, status, refundedAt: new Date() },
-  });
-  if (updated.count !== 1) throw new Refusal(fail("changed", ACTION_MESSAGES.changed));
-  await createAudit(tx)(
-    office,
-    status === "REFUNDED" ? "payment.refunded" : "payment.partially_refunded",
-    { type: "payments", id: payment.id },
-    { status: payment.status, refundedCents: payment.refundedCents },
-    { status, refundedCents },
-    input.note,
-  );
-}
+//
+// In Stripe (test mode), outside this file's one-transaction shape so no lock is held while Stripe answers:
+// src/server/payments/refunds.ts (#157).
 
 // ---------------------------------------------------------------- Message both
 

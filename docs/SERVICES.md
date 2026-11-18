@@ -174,5 +174,5 @@ and `webhook-events.ts`), checkout at `/pay/[paymentId]`. Payments are in **test
 
 **Payment methods:** the Payment Element uses the methods switched on in the dashboard (Settings → Payment methods): turn on
 cards, Apple Pay, Google Pay (and leave Link on). Apple Pay on the web also needs the domain verified (#210).
-**Refunds:** the office's refund (#171) is still a record only. To send it to Stripe later, call `stripe.refunds.create({ payment_intent: payment.providerPaymentId, amount })` in
-`src/server/office/job-mutations.ts` with the refund's idempotency key before recording it; `charge.refunded` is already handled and never double counts.
+**Refunds:** the office's refund is made in Stripe (#157, `src/server/payments/refunds.ts`): `stripe.refunds.create({ payment_intent, amount })`
+with the `payment.refund_requested` audit entry's id as the idempotency key, then recorded. `charge.refunded` records dashboard refunds and never double counts.

@@ -28,6 +28,7 @@ const COPY: Readonly<Record<string, readonly [string, string]>> = {
   "job.running_late": ["Running late", "schedule"],
   "job.reschedule_requested": ["New time requested", "event_repeat"],
   "payment.review_required": ["Payment needs review", "receipt_long"],
+  "payment.refunded": ["Refund on its way", "currency_exchange"],
   "variation.requested": ["Extra work requested", "add_circle"],
   "variation.priced": ["Extra-work price ready", "sell"],
   "variation.reminder": ["Extra work still needs your OK", "schedule"],
@@ -45,6 +46,7 @@ const COPY: Readonly<Record<string, readonly [string, string]>> = {
   "payout.queued": ["Payout queued", "payments"],
   "payout.details_missing": ["Add bank account & IRD number.", "account_balance"],
   "payout.paid": ["Payout paid", "payments"],
+  "payout.adjustment_needed": ["Payroll adjustment needed", "payments"],
   "bounty.available": ["Quote bounty available", "stars"],
   "job.ready_to_claim": ["Ready to claim near you", "bolt"],
   "crew.invited": ["Crew invitation", "group_add"],
@@ -66,7 +68,9 @@ export function inboxItem(row: Row): InboxItem {
   const [label, icon] = row.type === "problem_report.created" && payload.urgent === true ? ["Urgent problem report", "report"] : row.type === "job.posted" && payload.asap === true ? ["ASAP · Job posted", "bolt"] : row.type === "payout.details_missing" && payload.needsPayrollReview === true ? ["Bank & tax review", "account_balance"] : Object.hasOwn(COPY, row.type) ? COPY[row.type] : ["Notification", "notifications"];
   const title = typeof payload.jobTitle === "string" ? payload.jobTitle.trim() : "";
   let href = `/notifications#${encodeURIComponent(row.id)}`;
-  if (row.type === "payout.details_missing") href = "/profile/payroll";
+  if (row.type === "payment.refunded") href = "/profile/payments";
+  else if (row.type === "payout.adjustment_needed") href = jobId ? `/admin/jobs/${encodeURIComponent(jobId)}` : "/admin/jobs";
+  else if (row.type === "payout.details_missing") href = "/profile/payroll";
   else if (row.type.startsWith("payout.")) href = "/earnings";
   else if (row.type.startsWith("licence.")) href = "/profile/trades";
   else if (row.type === "message.received" && identifier(payload.officeSupportThreadId)) href = `/admin/support/${encodeURIComponent(identifier(payload.officeSupportThreadId)!)}`;

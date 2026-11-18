@@ -31,6 +31,8 @@ describe("inbox presentation boundary", () => {
     ["message.received", "/messages/TM-1005", "chat_bubble"],
     ["job.paid", "/receipts/TM-1005", "receipt_long"],
     ["payout.paid", "/earnings", "payments"],
+    ["payment.refunded", "/profile/payments", "currency_exchange"],
+    ["payout.adjustment_needed", "/admin/jobs/TM-1005", "payments"],
     ["payout.details_missing", "/profile/payroll", "account_balance"],
     ["licence.verified", "/profile/trades", "verified"],
   ])("%s links to the relevant destination", (type, href, icon) => {

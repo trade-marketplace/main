@@ -13,7 +13,7 @@ import { performJobAction } from "./job-mutations";
 export const jobAction = withRole(["ADMIN"], async (viewer, input: unknown): Promise<JobActionResult> => {
   let result: JobActionResult;
   try {
-    result = await performJobAction(getDb(), { userId: viewer.userId }, input, new Date(), safeIntents());
+    result = await performJobAction(getDb(), { userId: viewer.userId }, input, new Date(), safeIntents(), safeRefunds());
   } catch (error) {
     // No database, or it dropped the connection before the transaction began. Nothing was changed.
     console.error("Job admin: couldn't run an office action.", error);
@@ -26,4 +26,9 @@ export const jobAction = withRole(["ADMIN"], async (viewer, input: unknown): Pro
 /** Closing an open checkout needs Stripe. Without keys there is none to close, and one that exists is never guessed at. */
 function safeIntents() {
   try { return getStripe().paymentIntents; } catch { return null; }
+}
+
+/** Refunds are made in Stripe (#157). Without keys there is no Refunds API, and the refund is refused. */
+function safeRefunds() {
+  try { return getStripe().refunds; } catch { return null; }
 }
