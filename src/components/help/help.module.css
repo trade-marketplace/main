@@ -6,6 +6,8 @@
 .article h1, .phoneBar h1, .phoneBar h2 { margin: 0; font-family: var(--trade-font-heading); font-variation-settings: var(--trade-display-axes); font-weight: 900; font-size: var(--trade-fs-title); line-height: var(--trade-lh-title); }
 .bolt { position: absolute; width: 500px; right: -100px; top: -200px; fill: var(--trade-signature); opacity: .2; pointer-events: none; }
 .boltClip { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+/* Let the empty search action extend past the short hero. The bolt has its own clip. */
+.page .hero:has(.noSuggestion) { overflow: visible; }
 .searchHost { position: relative; max-width: 680px; margin-top: var(--trade-space-6); }
 .searchField > div[data-variant] { min-height: 52px; border: 0; border-radius: var(--trade-radius-action); background: var(--trade-surface); padding-inline: var(--trade-space-3); color: var(--trade-text-2); }
 .searchField input { color: var(--trade-text); }

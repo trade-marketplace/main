@@ -26,6 +26,7 @@ for (const viewport of VIEWPORTS) {
     await page.locator("[data-help-ready]").waitFor();
     await search.fill(query);
     await expect(suggestion).toHaveAttribute("href", email);
+    await suggestion.click({ trial: true });
     await search.press("Tab");
     await expect(suggestion).toBeFocused();
     await expect(empty).toHaveAttribute("href", email);
