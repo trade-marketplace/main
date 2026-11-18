@@ -22,9 +22,9 @@ export function helpTopicFromSlug(value: unknown): HelpTopic | null {
 export type HelpSpan = { text: string; strong?: true };
 export type HelpBlock = { type: "paragraph" | "heading"; text: string; spans: HelpSpan[] };
 export type HelpArticle = { slug: string; title: string; topic: HelpTopic; updated: string; related: string[]; blocks: HelpBlock[]; minutes: number };
-export type HelpState = "default" | "search-results" | "no-results" | "loading" | "error" | "helpful-voted" | "not-helpful" | "feedback-error";
+export type HelpState = "default" | "search-results" | "no-results" | "no-suggestions" | "loading" | "error" | "helpful-voted" | "not-helpful" | "feedback-error";
 export function helpState(value: unknown): HelpState {
-  return typeof value === "string" && ["search-results", "no-results", "loading", "error", "helpful-voted", "not-helpful", "feedback-error"].includes(String(value)) ? value as HelpState : "default";
+  return typeof value === "string" && ["search-results", "no-results", "no-suggestions", "loading", "error", "helpful-voted", "not-helpful", "feedback-error"].includes(String(value)) ? value as HelpState : "default";
 }
 export function searchHelp(articles: HelpArticle[], query: string, topic: HelpTopic | "All" = "All") {
   const terms = query.trim().toLocaleLowerCase("en-NZ").split(/\s+/).filter(Boolean);
