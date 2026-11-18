@@ -25,8 +25,13 @@ const INTRO = "Answers about posting jobs, prices, payments and doing the work."
 const railNames: Record<string, string> = { "cancelling-a-job": "Cancelling", "extra-work": "Extra work" };
 const relatedNames: Record<string, string> = { "cancelling-a-job": "Cancelling a job", "extra-work": "Extra work" };
 
-function SupportCard({ signedIn, officeSupport, returnTo }: { signedIn: boolean; officeSupport: boolean; returnTo: string }) {
-  return <div className={styles.supportCard}><Icon name="support_agent" decorative /><div><b>Still stuck?</b><p>We reply within one working day.</p></div><Button href={officeSupport ? "/admin/support" : signedIn ? (returnTo === "/help" ? "/support/new" : `/support/new?returnTo=${encodeURIComponent(returnTo)}`) : "mailto:hello@trademarketplace.nz"} size="sm" width="auto">Message us</Button></div>;
+function supportDestination(signedIn: boolean, officeSupport: boolean, returnTo: string) {
+  if (officeSupport) return "/admin/support";
+  if (!signedIn) return "mailto:hello@trademarketplace.nz";
+  return returnTo === "/help" ? "/support/new" : `/support/new?returnTo=${encodeURIComponent(returnTo)}`;
+}
+function SupportCard({ href }: { href: string }) {
+  return <div className={styles.supportCard}><Icon name="support_agent" decorative /><div><b>Still stuck?</b><p>We reply within one working day.</p></div><Button href={href} size="sm" width="auto">Message us</Button></div>;
 }
 function ArticleBody({ article }: { article: HelpArticle }) {
   return <div className={styles.prose}>{article.blocks.map((block, index) => {
@@ -68,9 +73,9 @@ function subscribeCompact(onChange: () => void) {
 }
 const isCompact = () => window.matchMedia(compactQuery).matches;
 const serverCompact = () => false;
-function Search({ articles, value, resultQuery, onChange }: { articles: HelpArticle[]; value: string; resultQuery: string; onChange: (value: string) => void }) {
+function Search({ articles, value, resultQuery, supportHref, initiallyOpen, onChange }: { supportHref: string; initiallyOpen: boolean; articles: HelpArticle[]; value: string; resultQuery: string; onChange: (value: string) => void }) {
   const compact = useSyncExternalStore(subscribeCompact, isCompact, serverCompact);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(initiallyOpen);
   const [active, setActive] = useState(-1);
   const ref = useRef<HTMLInputElement>(null);
   const host = useRef<HTMLDivElement>(null);
@@ -101,7 +106,7 @@ function Search({ articles, value, resultQuery, onChange }: { articles: HelpArti
     </form>
     {shown && <div className={`${styles.suggestions} tm-anim-suggest`}><ul role="listbox" id={id} aria-label="Suggested help articles">
       {results.map((article, index) => <li role="option" id={`${id}-${index}`} aria-selected={active === index} key={article.slug} onPointerDown={event => event.preventDefault()} onPointerMove={() => setActive(index)} onClick={() => { setOpen(false); router.push(`/help/${article.slug}`); }}>{article.title}</li>)}
-    </ul>{results.length === 0 && <div className={styles.noSuggestion}>No articles found. <TextLink href="mailto:hello@trademarketplace.nz">Message us</TextLink></div>}</div>}
+    </ul>{results.length === 0 && <div className={styles.noSuggestion}>No articles found. <TextLink href={supportHref}>Message us</TextLink></div>}</div>}
   </div>;
 }
 export function HelpLoading() {
@@ -115,7 +120,7 @@ function ArticleRow({ item, expanded, onToggle }: { item: HelpArticle; expanded:
 }
 export function HelpCentre({ signedIn = false, officeSupport = false, articles, article, query = "", topic: initialTopic = null, state = "default", submit }: Props) {
   const ready = useIsClient();
-  const [search, setSearch] = useState(state === "search-results" ? "pay" : state === "no-results" ? "unmatched search" : query);
+  const [search, setSearch] = useState(state === "search-results" ? "pay" : (state === "no-results" || state === "no-suggestions") ? "unmatched search" : query);
   const [debounced, setDebounced] = useState(search);
   const [topic, setTopic] = useState<Topic>(initialTopic ?? "All");
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -124,6 +129,11 @@ export function HelpCentre({ signedIn = false, officeSupport = false, articles, 
   const results = searchHelp(articles, debounced, topic);
   const searching = debounced.trim().length > 0;
   const showingArticle = article && !searching;
+  const params = new URLSearchParams();
+  if (search) params.set("q", search);
+  if (topic !== "All") params.set("topic", helpTopicSlug(topic));
+  const returnTo = article && !search.trim() ? `/help/${article.slug}` : params.size ? `/help?${params}` : "/help";
+  const supportHref = supportDestination(signedIn, officeSupport, returnTo);
   const navigationArticles = articles.filter(item => item.topic === article?.topic);
   const row = (item: HelpArticle) => <ArticleRow key={item.slug} item={item} expanded={expanded === item.slug} onToggle={() => setExpanded(expanded === item.slug ? null : item.slug)} />;
   const grouped = !searching && topic === "All";
@@ -131,19 +141,19 @@ export function HelpCentre({ signedIn = false, officeSupport = false, articles, 
   const PhoneHeading = showingArticle ? "h2" : "h1";
   return <div className={styles.page} data-help-ready={ready || undefined}>
     <div className={styles.phoneBar}><TextLink href={article ? "/help" : "/"} aria-label={article ? "Back to help" : "Go home"}><Icon name="arrow_back" decorative /></TextLink><PhoneHeading>Help & support</PhoneHeading></div>
-    <section className={`${hero.hero} ${hero.short} ${styles.hero}`} data-site-hero><div className={styles.boltClip}><BoltMark variant="hero" className={styles.bolt} /></div><div className={styles.heroInner}><HeroHeading className={hero.title}>How can we help?</HeroHeading><p className={`${hero.lead} ${styles.intro}`}>{INTRO}</p><Search articles={articles} value={search} resultQuery={debounced} onChange={setSearch} /></div></section>
+    <section className={`${hero.hero} ${hero.short} ${styles.hero}`} data-site-hero><div className={styles.boltClip}><BoltMark variant="hero" className={styles.bolt} /></div><div className={styles.heroInner}><HeroHeading className={hero.title}>How can we help?</HeroHeading><p className={`${hero.lead} ${styles.intro}`}>{INTRO}</p><Search supportHref={supportHref} initiallyOpen={state === "no-suggestions"} articles={articles} value={search} resultQuery={debounced} onChange={setSearch} /></div></section>
     <div className={`${styles.wrap} ${showingArticle ? styles.articleLayout : styles.homeLayout}`}>
       {state === "loading" ? <div className={styles.loading}><h1 className={styles.srOnly}>Loading help articles</h1><LoadingRegion loading label="Loading help articles" skeleton={<><Skeleton width="65%" height={38} /><SkeletonText lines={4} /></>} /></div> : state === "error" ? <ErrorState title="Can’t load help articles" headingLevel={article ? 1 : 2} onRetry={() => router.push(article ? `/help/${article.slug}` : "/help")} /> : <>
         {showingArticle && <nav aria-label={`${article.topic} help articles`} className={styles.topicNav}><h2>{article.topic}</h2>{navigationArticles.map(item => <Link key={item.slug} href={`/help/${item.slug}`} aria-current={article.slug === item.slug ? "page" : undefined}>{railNames[item.slug] ?? item.title}</Link>)}</nav>}
         {showingArticle ? <article className={styles.article}><nav aria-label="Breadcrumb" className={styles.crumbs}><Link href="/help">Help</Link><Icon name="chevron_right" size="sm" decorative /><Link href={`/help?topic=${helpTopicSlug(article.topic)}`}>{article.topic}</Link></nav><h1>{article.title}</h1><p className={styles.meta}>Updated {new Intl.DateTimeFormat("en-NZ", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(article.updated))} · {article.minutes} min read</p><ArticleBody article={article} /><Feedback key={article.slug} article={article} state={state} submit={submit} /></article> : <section className={styles.home} aria-label="Help articles">
           <div className={styles.topics}>{HELP_TOPICS.map(value => <button key={value} aria-pressed={topic === value} onClick={() => setTopic(topic === value ? "All" : value)}><Icon name={HELP_TOPIC_ICONS[value]} decorative /><span>{value}</span><Icon name="chevron_right" decorative /></button>)}</div>
           <div className={styles.filters}><QuickFilters label="Help topics" items={filters} value={topic} onChange={setTopic} /></div>
-          {results.length === 0 ? <><h2 className={styles.listTitle}>{searching ? "Search results" : topic}</h2><EmptyState icon="search_off" title="No articles found" action={<Button href="mailto:hello@trademarketplace.nz" width="auto">Message us</Button>} /></>
+          {results.length === 0 ? <><h2 className={styles.listTitle}>{searching ? "Search results" : topic}</h2><EmptyState icon="search_off" title="No articles found" action={<Button href={supportHref} width="auto">Message us</Button>} /></>
             : grouped ? HELP_TOPICS.map(value => ({ value, items: results.filter(item => item.topic === value) })).filter(group => group.items.length > 0).map(group => <section key={group.value} className={styles.group} aria-labelledby={`topic-${helpTopicSlug(group.value)}`}><h2 id={`topic-${helpTopicSlug(group.value)}`} className={styles.listTitle}>{group.value}</h2><div className={styles.articleList}>{group.items.map(row)}</div></section>)
             : <><h2 className={styles.listTitle}>{searching ? "Search results" : topic}</h2><div className={styles.articleList}>{results.map(row)}</div></>}
           <LiveMessage message={searching ? `${results.length} articles found` : null} />
         </section>}
-        <aside className={styles.support}><SupportCard signedIn={signedIn} officeSupport={officeSupport} returnTo={showingArticle ? `/help/${article.slug}` : search || topic !== "All" ? `/help?${new URLSearchParams({ ...(search ? { q: search } : {}), ...(topic !== "All" ? { topic: helpTopicSlug(topic) } : {}) })}` : "/help"} />{showingArticle && <div className={styles.related}><h2>Related</h2>{article.related.map(slug => articles.find(item => item.slug === slug)).filter((item): item is HelpArticle => Boolean(item)).map(item => <TextLink key={item.slug} href={`/help/${item.slug}`}>{relatedNames[item.slug] ?? item.title}</TextLink>)}</div>}</aside>
+        <aside className={styles.support}><SupportCard href={supportHref} />{showingArticle && <div className={styles.related}><h2>Related</h2>{article.related.map(slug => articles.find(item => item.slug === slug)).filter((item): item is HelpArticle => Boolean(item)).map(item => <TextLink key={item.slug} href={`/help/${item.slug}`}>{relatedNames[item.slug] ?? item.title}</TextLink>)}</div>}</aside>
       </>}
     </div>
   </div>;
