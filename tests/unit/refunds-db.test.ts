@@ -233,6 +233,17 @@ describe.skipIf(!testDatabaseUrl)("refunds (database, fake Stripe)", () => {
     expect((await audits(setup.payment.id)).map((entry) => entry.action)).toEqual(["payment.refund_requested", "payment.partially_refunded"]);
   });
 
+  it("two dialogs refunding at the same moment make one Stripe refund", async () => {
+    const office = await person("ADMIN");
+    const setup = await paidJob();
+    const results = await Promise.all([dialog(office, setup)("partial", 3_000), dialog(office, setup)("partial", 3_000)]);
+    expect(results.filter((result) => result.ok)).toHaveLength(1);
+    expect(results.find((result) => !result.ok)).toMatchObject({ ok: false, error: "unavailable", message: REFUND_MESSAGES.inFlight });
+    expect(setup.stripe.calls).toHaveLength(1);
+    expect(setup.stripe.refunded(setup.intent)).toBe(3_000);
+    expect(await stored(setup.payment.id)).toMatchObject({ refundedCents: 3_000 });
+  });
+
   describe("an answer lost, then a new dialog (or the same one after Stripe forgot the key)", () => {
     const later = (minutes: number) => new Date(Date.now() + minutes * 60_000);
 

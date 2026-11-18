@@ -151,6 +151,11 @@ async function openRequest(tx: Tx, office: Office, input: RefundInput, now: Date
   }
 
   if (job.status !== input.seenStatus) throw new Refusal(fail("changed", ACTION_MESSAGES.changed));
+  // Under the job lock: another request for this payment that has no answer yet (a second dialog that started at
+  // the same moment and passed reconcile() too) must finish first, or both could reach Stripe under different keys.
+  const resolved = await resolvedRequests(tx, payment.id);
+  const unanswered = await tx.auditLog.findMany({ where: { action: "payment.refund_requested", recordType: "payments", recordId: payment.id }, select: { id: true } });
+  if (unanswered.some((entry) => !resolved.has(entry.id))) throw new Refusal(fail("unavailable", REFUND_MESSAGES.inFlight));
   if (!REFUNDABLE.includes(payment.status)) throw new Refusal(fail("not-allowed", REFUND_MESSAGES.nothingLeft));
   const left = payment.amountCents - payment.refundedCents;
   const giving = input.mode === "full" ? left : (input.amountCents ?? 0);
