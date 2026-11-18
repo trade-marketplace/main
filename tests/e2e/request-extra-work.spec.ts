@@ -8,14 +8,15 @@ import { SECURITY_PASSWORD, SECURITY_TRADIE, SECURITY_USER, startSecurityAuthStu
 import { expect, test } from "@playwright/test";
 import { expectNoA11yViolations } from "./support/a11y";
 const preview = process.env.POSTED_PREVIEW_E2E_URL || "http://127.0.0.1:3101";
-const states = ["closed", "open", "uploading", "upload-error", "field-errors", "sending", "sent", "priced", "approved", "declined", "already-waiting", "try-later", "error", "offline", "loading", "empty", "gallery"];
+const states = ["closed", "open", "uploading", "upload-error", "field-errors", "sending", "sent", "priced", "approved", "declined", "already-waiting", "try-later", "email-required", "error", "offline", "loading", "empty", "gallery"];
 test("extra work previews keep the production guard", async ({ page }) => { expect((await page.goto("/dev/components/request-extra-work?state=open"))?.status()).toBe(404); });
 for (const width of [320, 390, 768, 1024, 1440]) test(`extra work states at ${width}px`, async ({ page }) => {
   test.setTimeout(180_000); await page.setViewportSize({ width, height: 1000 });
   for (const state of states) await test.step(state, async () => {
     expect((await page.goto(`${preview}/dev/components/request-extra-work?state=${state}`))?.status()).toBe(200);
-    if (["open", "uploading", "upload-error", "field-errors", "sending", "try-later", "error", "offline"].includes(state)) await expect(page.getByRole("dialog", { name: "Extra work", exact: true })).toBeVisible();
+    if (["open", "uploading", "upload-error", "field-errors", "sending", "try-later", "email-required", "error", "offline"].includes(state)) await expect(page.getByRole("dialog", { name: "Extra work", exact: true })).toBeVisible();
     if (["sent", "priced", "already-waiting"].includes(state)) await expect(page.getByRole("button", { name: "Extra work", exact: true })).toHaveAttribute("aria-disabled", "true");
+    if (state === "email-required") await expect(page.getByRole("dialog", { name: "Extra work", exact: true })).toContainText("Confirm your email to continue.");
     if (state === "declined") await expect(page.getByRole("region", { name: "Extra work", exact: true })).toContainText("Sarah said no to the extra work. Finish the original job only.");
     if (state === "priced" || state === "approved") await expect(page.getByRole("region", { name: "Extra work", exact: true })).toContainText("Earn +$64.00");
     expect(await page.locator("main").innerText()).not.toMatch(/customer price|margin|You earn|materials field/i);

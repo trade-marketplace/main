@@ -244,14 +244,14 @@ describe.skipIf(!testDatabaseUrl)("drafts and posting a job (database)", () => {
     const worker = await person("TRADIE");
     expect(await post({ ...worker, role: "CUSTOMER" }, input(worker, randomUUID()), randomUUID())).toEqual({ status: "forbidden" });
     const unverified = await person("CUSTOMER", false);
-    expect(await post({ ...unverified, emailVerified: true }, {}, randomUUID())).toEqual({ status: "needs-account" });
+    expect(await post({ ...unverified, emailVerified: true }, {}, randomUUID())).toEqual({ status: "email-required" });
   });
 
   it("keeps the draft through sign-up, then posts with the same key after verification", async () => {
     const customer = await person("CUSTOMER", false); const key = randomUUID(); const data = input(customer, key);
     await saveDraft(schema.db, customer, data);
     expect(await post(null, data, key)).toEqual({ status: "needs-account" });
-    expect(await post(customer, data, key)).toEqual({ status: "needs-account" });
+    expect(await post(customer, data, key)).toEqual({ status: "email-required" });
     expect(await loadDraft(schema.db, customer)).toMatchObject({ postKey: key });
     await schema.db.profile.update({ where: { id: customer.userId }, data: { emailVerifiedAt: now } });
     expect((await post(customer, data, key)).status).toBe("posted");

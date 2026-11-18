@@ -5,6 +5,7 @@ import { availableBookingWindows, type BookingResult, type BookingSnapshot, type
 import { postingDateRange, timeWindowKey, type JobTimeWindow } from "@/lib/job-time-windows";
 import type { Viewer } from "@/server/auth/viewer";
 import { createAudit } from "@/server/audit/audit";
+import { emailOwnershipProved } from "@/server/auth/email-ownership";
 import { createNotify } from "@/server/notifications/notify";
 import { lockJobWindows } from "./window-lock";
 import { windowsRevision } from "./windows";
@@ -29,9 +30,11 @@ export async function bookJobWindow(db: PrismaClient, viewer: Viewer, id: string
   const parsed = windowSchema.safeParse(input);
   return db.$transaction(async tx => {
     await lockJobWindows(tx, id);
-    const profile = await tx.profile.findUnique({ where: { id: viewer.userId }, select: { role: true } });
+    const profile = await tx.profile.findUnique({ where: { id: viewer.userId }, select: { role: true, email: true, emailVerifiedAt: true } });
     const job = await tx.job.findFirst({ where: { id, workerId: viewer.userId, status: "ASSIGNED" }, select: SELECT });
     if (profile?.role !== "TRADIE" || !job) return { status: "forbidden" };
+    // Taking a job includes booking its time (DECISIONS.md, #353): our own email proof, re-read under the job lock.
+    if (!emailOwnershipProved(profile)) return { status: "email-required" };
     const before = snapshot(job, now);
     if (before.revision !== revision) return { status: "changed", snapshot: before };
     if (!parsed.success) return { status: "invalid" };
@@ -49,9 +52,11 @@ export async function requestOtherTimes(db: PrismaClient, viewer: Viewer, id: st
   if (!permitted(viewer, id)) return { status: "forbidden" };
   return db.$transaction(async tx => {
     await lockJobWindows(tx, id);
-    const profile = await tx.profile.findUnique({ where: { id: viewer.userId }, select: { role: true } });
+    const profile = await tx.profile.findUnique({ where: { id: viewer.userId }, select: { role: true, email: true, emailVerifiedAt: true } });
     const job = await tx.job.findFirst({ where: { id, workerId: viewer.userId, status: "ASSIGNED" }, select: SELECT });
     if (profile?.role !== "TRADIE" || !job) return { status: "forbidden" };
+    // Taking a job includes booking its time (DECISIONS.md, #353): our own email proof, re-read under the job lock.
+    if (!emailOwnershipProved(profile)) return { status: "email-required" };
     const recent = await tx.auditLog.findFirst({ where: { action: "job.times_requested", recordType: "jobs", recordId: id, actorId: viewer.userId, createdAt: { gte: new Date(now.getTime() - 3_600_000) } } });
     if (recent) return { status: "asked" };
     const audit = await createAudit(tx)(viewer, "job.times_requested", { type: "jobs", id }, null, { requested: true });
