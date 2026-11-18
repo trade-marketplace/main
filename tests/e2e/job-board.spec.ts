@@ -90,6 +90,22 @@ test.describe("signed-in eligible board", () => {
   let db: pg.Client, auth: Awaited<ReturnType<typeof startSecurityAuthStub>>;
   const office = "13800000-0000-4000-8000-000000000099";
   const jobId = (i: number) => `13800000-0000-4000-8000-${String(i).padStart(12, "0")}`;
+  async function seedReadyWorker(userId: string) {
+    await db.query(`
+      INSERT INTO worker_profiles(user_id,identity_checked_at,identity_checked_by_id,base_suburb,area_lat,area_lng,area_radius_km,available,updated_at)
+      VALUES($1,now(),$2,'Invercargill',-46.4132,168.3538,50,false,now())
+      ON CONFLICT(user_id) DO UPDATE SET identity_checked_at=now(), identity_checked_by_id=$2, paused_at=NULL, paused_by_id=NULL,
+        base_suburb=excluded.base_suburb, area_lat=excluded.area_lat, area_lng=excluded.area_lng, area_radius_km=50, available=false
+    `, [userId, office]);
+    await db.query("INSERT INTO worker_trades(user_id,trade) VALUES($1,'OTHER') ON CONFLICT DO NOTHING", [userId]);
+    await db.query(`
+      INSERT INTO payroll_details(user_id,ird_number_encrypted,ird_number_last3,bank_account_encrypted,bank_account_last4,tax_code,updated_at)
+      VALUES($1,'local-test','123','local-test','0001','M',now())
+      ON CONFLICT(user_id) DO UPDATE SET ird_number_encrypted=excluded.ird_number_encrypted, ird_number_last3=excluded.ird_number_last3,
+        bank_account_encrypted=excluded.bank_account_encrypted, bank_account_last4=excluded.bank_account_last4, tax_code='M', kiwisaver_rate_pct=NULL
+    `, [userId]);
+    await db.query("UPDATE profiles SET avatar_path=$2 WHERE id=$1", [userId, `avatars/${userId}/${"a".repeat(32)}.webp`]);
+  }
   test.beforeAll(async () => {
     if (new URL(database!).hostname !== "127.0.0.1" || !/issue138|local_board/.test(new URL(database!).pathname) || !["127.0.0.1", "localhost"].includes(new URL(app!).hostname)) throw Error("Board e2e needs a disposable localhost app/database.");
     auth = await startSecurityAuthStub(Number(process.env.BOARD_E2E_AUTH_PORT ?? 54338));
@@ -98,7 +114,7 @@ test.describe("signed-in eligible board", () => {
       await db.query("INSERT INTO auth.users(id,email) VALUES($1,$2) ON CONFLICT(id) DO NOTHING", [id, email]);
       await db.query("INSERT INTO profiles(id,email,role,first_name,email_verified_at,updated_at) VALUES($1,$2,$3,'Board Demo',now(),now()) ON CONFLICT(id) DO UPDATE SET role=excluded.role,email_verified_at=now()", [id, email, role]);
     }
-    await db.query("INSERT INTO worker_profiles(user_id,identity_checked_at,identity_checked_by_id,base_suburb,area_lat,area_lng,area_radius_km,available,updated_at) VALUES($1,now(),$2,'Invercargill',-46.4132,168.3538,50,false,now()) ON CONFLICT(user_id) DO UPDATE SET identity_checked_at=now(),identity_checked_by_id=$2,paused_at=NULL,area_radius_km=50", [SECURITY_TRADIE.id, office]);
+    await seedReadyWorker(SECURITY_TRADIE.id);
     await db.query("DELETE FROM jobs WHERE id::text LIKE '13800000-%'");
     for (let i = 1; i <= 23; i++) {
       await db.query("INSERT INTO jobs(id,customer_id,category,status,title,description,address_line1,suburb,city,lat,lng,approx_lat,approx_lng,asap,any_time) VALUES($1,$2,'OTHER','REVIEW',$3,'Call +64211111111','1 Private Street','Windsor','Invercargill',-46.4132,168.3538,-46.4117,168.3538,$4,true)", [jobId(i), SECURITY_USER.id, `Board job ${i}`, i % 2 === 0]);
@@ -129,8 +145,8 @@ test.describe("signed-in eligible board", () => {
     await Promise.all([page.waitForURL(url => url.pathname === `/jobs/${jobId(1)}`), page.getByRole("link", { name: "Board job 1", exact: true }).press("Enter")]);
     await expect(page.getByRole("heading", { name: "Board job 1", level: 1, exact: true })).toBeVisible();
     await page.getByRole("link", { name: "Back to jobs", exact: true }).press("Enter"); await expect(page).toHaveURL(/saved=1/);
-    await page.getByRole("tab", { name: "Map", exact: true }).click(); await expect(page.getByRole("heading", { name: /\d+ jobs? in view/ })).toBeVisible();
-    await page.getByRole("tab", { name: "Grid", exact: true }).click(); await expect(page).not.toHaveURL(/view=map/);
+    await page.getByRole("tab", { name: "Map", exact: true }).click(); await expect(page.getByRole("heading", { name: "1 job near you", exact: true })).toBeVisible();
+    await page.getByRole("link", { name: "List", exact: true }).click(); await expect(page).not.toHaveURL(/view=map/);
     await page.goto(`${app}/jobs?trade=electrical&distance=10`); await expect(page.getByRole("heading", { name: "No jobs match that.", exact: true })).toBeVisible();
     await page.getByRole("link", { name: "Alerts settings", exact: true }).click(); await expect(page.getByRole("heading", { name: "Notifications", exact: true })).toBeVisible();
     await page.getByRole("link", { name: "Back to jobs", exact: true }).click(); await expect(page).toHaveURL(/trade=electrical&distance=10/);
@@ -196,10 +212,10 @@ test.describe("signed-in eligible board", () => {
     await expect(page.getByRole("heading", { name: "Board job 3", level: 1, exact: true })).toBeVisible();
     expect(new URL(page.url()).searchParams.get("view")).toBe("all"); await expect(allJobs).toHaveAttribute("aria-current", "page");
     await page.getByRole("link", { name: "Back to jobs", exact: true }).click(); await expect(page).toHaveURL(`${app}${back}`); await expect(allJobs).toHaveAttribute("aria-current", "page");
-    await page.getByRole("tab", { name: "Map", exact: true }).click(); await expect(page.getByRole("heading", { name: /\d+ jobs? in view/ })).toBeVisible();
+    await page.getByRole("tab", { name: "Map", exact: true }).click(); await expect(page.getByRole("heading", { name: /\d+ jobs? near you/ })).toBeVisible();
     expect(new URL(page.url()).searchParams.get("view")).toBe("all"); expect(new URL(page.url()).searchParams.get("layout")).toBe("map");
     await expect(allJobs).toHaveAttribute("aria-current", "page"); await expectNoA11yViolations(page);
-    await Promise.all([page.waitForURL(url => url.pathname === "/jobs" && url.searchParams.get("view") === "all" && !url.searchParams.has("layout")), page.getByRole("tab", { name: "Grid", exact: true }).click()]);
+    await Promise.all([page.waitForURL(url => url.pathname === "/jobs" && url.searchParams.get("view") === "all" && !url.searchParams.has("layout")), page.getByRole("link", { name: "List", exact: true }).click()]);
     const filters = page.getByRole("button", { name: "Filters", exact: true }); if (await filters.getAttribute("aria-expanded") !== "true") await filters.click();
     await page.getByRole("button", { name: "Reset filters", exact: true }).click(); await expect(page).toHaveURL(`${app}/jobs?view=all`);
     await expect(allJobs).toHaveAttribute("aria-current", "page"); await expect(page.locator("#board-cards")).not.toContainText("Filters on");
@@ -313,7 +329,7 @@ test.describe("signed-in eligible board", () => {
   test("Saved survives returning to an account and never follows a switch to another owner", async ({ page }) => {
     await login(page); await page.getByRole("button", { name: "Save Board job 1", exact: true }).click();
     await db.query("UPDATE profiles SET role='TRADIE' WHERE id=$1", [SECURITY_USER.id]);
-    await db.query("INSERT INTO worker_profiles(user_id,identity_checked_at,identity_checked_by_id,base_suburb,area_lat,area_lng,area_radius_km,updated_at) VALUES($1,now(),$2,'Invercargill',-46.4132,168.3538,50,now()) ON CONFLICT(user_id) DO UPDATE SET identity_checked_at=now(),identity_checked_by_id=$2", [SECURITY_USER.id, office]);
+    await seedReadyWorker(SECURITY_USER.id);
     await db.query("INSERT INTO jobs(id,customer_id,category,status,title,description,address_line1,suburb,city,lat,lng,approx_lat,approx_lng,any_time) VALUES($1,$2,'OTHER','REVIEW','Shared board job','Work','1 Private Street','Windsor','Invercargill',-46.4132,168.3538,-46.4117,168.3538,true)", [jobId(60), office]);
     try {
       await page.context().clearCookies(); await login(page, SECURITY_USER);
