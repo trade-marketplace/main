@@ -30,12 +30,19 @@ describe("repo-owned help articles", () => {
     expect(searchHelp(published, "refunds usually show up")).toEqual([]);
     for (const article of published) expect(article).not.toHaveProperty("confirm");
   });
+  it("keeps fixed 48-hour deadlines out of published help", async () => {
+    const published = await loadHelpArticles();
+    for (const article of published) {
+      const text = [article.title, ...article.blocks.map(block => block.text)].join("\n");
+      expect(text, article.slug).not.toMatch(/\b48[\s-]+hours?\b/i);
+    }
+  });
   it("keeps the payment explanation and says workers, not tradies, where it means everyone", async () => {
     const article = (await loadHelpArticles()).find(a => a.slug === input.slug)!;
     expect(article.topic).toBe("Payments");
     expect(article.blocks.map(b => b.text)).toEqual([
       "You pay when you accept your price, before anyone turns up. That locks in your booking.",
-      "Your worker gets paid after you’ve checked the job and said it’s all good, or 48 hours after they finish if we don’t hear from you.",
+      "Your worker gets paid after you’ve checked the job and said it’s all good, or automatically if you don’t answer in time.",
       "Extra work? You’ll see photos and the cost first, and you only pay for it if you say yes.",
     ]);
   });
