@@ -3,6 +3,7 @@ import pg from "pg";
 import { startAuthStub, sessionCookies } from "../../scripts/screenshots/auth-stub";
 import { expect, test, type Page } from "@playwright/test";
 import { expectNoA11yViolations } from "./support/a11y";
+import { waitForPageSettled } from "./support/page-settled";
 import { VIEWPORTS } from "./support/viewports";
 
 test.use({ trace: "on-first-retry" });
@@ -48,9 +49,10 @@ test("keyboard opens, validates, keeps the job, requests with a reason, and foll
   const reason = page.getByLabel("Reason", { exact: true }); await expect(reason).toBeFocused();
   await expect(page.getByText("Tell us why.")).toBeVisible();
   await reason.fill("The work is no longer needed."); await page.keyboard.press("Tab"); await page.keyboard.press("Tab");
-  await page.getByRole("button", { name: "Request to cancel", exact: true }).press("Enter");
+  await waitForPageSettled(page, "Cancel job (dev) | Trade Marketplace", () =>
+    page.getByRole("button", { name: "Request to cancel", exact: true }).press("Enter"));
   await expect(page.getByText("Cancel requested. We’ll reply within 1 working day.", { exact: true })).toBeVisible();
-  await settle(page); await expectNoA11yViolations(page);
+  await expectNoA11yViolations(page);
   await page.getByRole("main").getByRole("link", { name: "My jobs", exact: true }).click();
   await expect(page).toHaveURL(`${preview}/dev/components/cancel-job?state=closed`); await page.goBack();
   await expect(page).toHaveURL(`${preview}/dev/components/cancel-job?state=paid`);
