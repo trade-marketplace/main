@@ -397,6 +397,8 @@ test.describe("signed-in draft photos through real actions, private Storage tran
     await next.click();
     await expect(page.getByRole("heading", { name: "Where and when?", exact: true })).toBeVisible();
     await page.getByRole("link", { name: "Back", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "Add some photos", exact: true })).toBeVisible();
+    await expect(page).toHaveURL(/step=photos/);
     await page.reload();
     await expect(page.getByRole("list", { name: "Photos", exact: true }).getByRole("img")).toHaveCount(3);
     await expect(next).not.toHaveAttribute("aria-disabled", "true");
