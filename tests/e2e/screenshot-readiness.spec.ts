@@ -44,6 +44,19 @@ for (const width of [390, 1440]) {
     const pixel = await sharp(await page.screenshot()).extract({ left: 20, top: 400, width: 1, height: 1 }).removeAlpha().raw().toBuffer();
     expect([...pixel]).toEqual([255, 0, 0]);
   });
+
+  test(`${width}px settled gallery retains its persistent loading example`, async ({ page }) => {
+    const url = "/dev/components/board-map?state=gallery";
+    await page.setViewportSize({ width, height: 844 });
+    await page.route("http://shots.test/**", route => route.fulfill({ contentType: "text/html", body: loading }));
+    await page.goto(`http://shots.test${url}`);
+    expect(await waitForCaptureContent(page, { url, expectMode: "trade" }, 100)).toBe("component gallery content did not appear before capture");
+    await page.evaluate(() => {
+      document.querySelector("main")!.innerHTML = '<h1>Map states</h1><section><h2>Loading</h2><div aria-busy="true"><span class="tm-skel">Loading your jobs</span></div></section>';
+    });
+    expect(await waitForCaptureContent(page, { url, expectMode: "trade" }, 500)).toBeNull();
+    await expect(page.getByText("Loading your jobs")).toBeVisible();
+  });
 }
 
 test("ordinary routes wait for visible loading regions and ignore hidden regions", async ({ page }) => {

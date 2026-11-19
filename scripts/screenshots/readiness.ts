@@ -7,8 +7,10 @@ import type { Shot } from "./shots";
 export async function waitForCaptureContent(page: Page, shot: Pick<Shot, "url" | "status" | "expectMode">, timeout = 8_000) {
   const wanted = new URL(shot.url, page.url());
   const actual = new URL(page.url());
-  const intentional = wanted.pathname === actual.pathname && wanted.search === actual.search
-    && wanted.searchParams.get("state") === "loading";
+  const requestedState = wanted.pathname === actual.pathname && wanted.search === actual.search
+    ? wanted.searchParams.get("state") : null;
+  const intentional = requestedState === "loading";
+  const gallery = wanted.pathname.startsWith("/dev/components/") && requestedState === "gallery";
   // Busy buttons and illustrative skeletons in component galleries are not page-load indicators.
   const markers = [
     '[aria-busy="true"]:not(button):not([role="button"]):visible',
@@ -23,6 +25,11 @@ export async function waitForCaptureContent(page: Page, shot: Pick<Shot, "url" |
   try {
     if (intentional) {
       await fallback.waitFor({ state: "visible", timeout });
+    } else if (gallery) {
+      // A gallery displays several states together. A heading outside the loading examples proves it rendered.
+      const content = page.locator("main").getByRole("heading")
+        .and(page.locator(':not([aria-busy="true"] *, [role="status"] *)'));
+      await content.first().waitFor({ state: "visible", timeout });
     } else {
       let destination = page.locator("body").filter({ hasNot: fallback });
       // The streamed worker route's fallback has its own H1. Require the actual seeded job title in the same paint.
@@ -32,6 +39,7 @@ export async function waitForCaptureContent(page: Page, shot: Pick<Shot, "url" |
   } catch (error) {
     if (!(error instanceof errors.TimeoutError)) throw error;
     if (intentional) return "requested loading state did not appear before capture";
+    if (gallery) return "component gallery content did not appear before capture";
     if (await fallback.isVisible()) return "still loading at capture";
     if (job) return "assigned job content did not appear before capture";
     return "content did not settle before capture";
