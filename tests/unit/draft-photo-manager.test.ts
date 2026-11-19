@@ -219,6 +219,22 @@ describe("draft photo lifecycle", () => {
     expect(manager.confirmedPaths()).toEqual(["uploaded-path"]);
   });
 
+  it("keeps a refresh-confirmed attachment done when the earlier save later rejects", async () => {
+    const response = deferred<void>();
+    const upload = vi.fn(async () => "uploaded-path");
+    const saveServer = vi.fn(async () => {}).mockImplementationOnce(() => response.promise);
+    const { manager } = await fixture({ upload, saveServer }, "owner");
+    manager.add([file()]);
+    await vi.waitFor(() => expect(saveServer).toHaveBeenCalledWith(["uploaded-path"], []));
+    manager.reconcile(["uploaded-path"]);
+    response.reject(new Error("Earlier save response lost"));
+    await done(manager);
+    await manager.flush();
+    expect(manager.getSnapshot().photos[0]).toMatchObject({ status: "done", path: "uploaded-path", pendingAttach: false });
+    expect(manager.getSnapshot().problems).toEqual([]);
+    expect(upload).toHaveBeenCalledTimes(1);
+  });
+
   it("an ambiguously acknowledged path removed remotely never auto-reattaches, while its bytes remain retryable", async () => {
     let stored: readonly StoredDraftPhoto[] = []; let fail = true; let count = 0;
     const upload = vi.fn(async () => `upload-${++count}`);

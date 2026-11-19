@@ -172,7 +172,8 @@ export class DraftPhotoManager {
     this.authoritativeOrder = key; this.expectedServerPaths = [...paths];
     const saved = paths.map((path, index): DraftPhoto => {
       const current = this.state.photos.find(photo => photo.path === path);
-      if (current?.pendingAttach) return { ...current, pendingAttach: false, needsRetry: false, status: "done", progress: 1 };
+      // A refresh can confirm the attachment before its request returns. Ignore that older attempt.
+      if (current?.pendingAttach) return { ...current, pendingAttach: false, needsRetry: false, generation: ++this.generation, status: "done", progress: 1 };
       return current ? { ...current, pendingAttach: false, needsRetry: false } : { id: crypto.randomUUID(), name: `Photo ${index + 1}`, path, src: "", prepared: true, generation: ++this.generation, status: "uploading", progress: 0 };
     });
     const pending = this.state.photos.filter(photo => !photo.path || photo.pendingAttach && !paths.includes(photo.path));
