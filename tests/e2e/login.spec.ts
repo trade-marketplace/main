@@ -97,7 +97,7 @@ test.describe("/dev/components/login (every answer)", () => {
     await page.goto(preview("wrong"));
     const password = page.getByLabel("Password", { exact: true });
     const message = "That email and password don’t match. Try again or reset it.";
-    const error = page.getByText(message, { exact: true });
+    const error = page.getByRole("paragraph").filter({ hasText: message });
     await expect(error).toHaveCount(1);
     await expect(error).toBeVisible();
     await expect(password).toHaveAccessibleDescription(message);
