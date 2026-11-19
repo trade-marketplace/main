@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
 import { expectNoA11yViolations } from "./support/a11y";
+import { waitForPageSettled } from "./support/page-settled";
 import { VIEWPORTS } from "./support/viewports";
 
 const previewBase = process.env.E2E_DEV_BASE_URL;
@@ -73,6 +74,7 @@ test.describe("verify email preview states", () => {
       for (const state of ["ready", "waiting", "cooldown", "expired", "invalid", "verified", "unavailable", "loading", "offline", "send-error", "signed-in"]) {
         await page.goto(preview(state));
         await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+        await waitForPageSettled(page, "Verify email (dev) | Trade Marketplace");
         expect(await overflow(page), state).toBe(0);
         await expectNoA11yViolations(page);
       }
