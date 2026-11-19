@@ -197,6 +197,44 @@ describe("draft photo lifecycle", () => {
     manager.move(active.id, 0); upload.resolve("uploaded-active"); await done(manager); await manager.flush();
     expect(server).toEqual(["uploaded-active", "c", "b"]); expect(manager.paths()).toEqual(server);
   });
+  it.each([false, true])("recovers a finalized photo when its attachment response fails (confirmed by refresh: %s)", async confirmedByRefresh => {
+    let unavailable = true;
+    const upload = vi.fn(async () => "uploaded-path");
+    const saveServer = vi.fn(async (paths: string[]) => {
+      if (paths.length && unavailable) throw new Error("Draft save unavailable");
+    });
+    const { manager } = await fixture({ upload, saveServer }, "owner");
+    manager.add([file()]);
+    await done(manager);
+    const photo = manager.getSnapshot().photos[0];
+    expect(photo).toMatchObject({ status: "failed", pendingAttach: true, path: "uploaded-path" });
+
+    unavailable = false;
+    if (confirmedByRefresh) manager.reconcile(["uploaded-path"]);
+    else manager.retry(photo.id);
+    await done(manager);
+    await manager.flush();
+    expect(upload).toHaveBeenCalledTimes(1);
+    expect(manager.getSnapshot().photos[0]).toMatchObject({ status: "done", pendingAttach: false });
+    expect(manager.confirmedPaths()).toEqual(["uploaded-path"]);
+  });
+
+  it("keeps a refresh-confirmed attachment done when the earlier save later rejects", async () => {
+    const response = deferred<void>();
+    const upload = vi.fn(async () => "uploaded-path");
+    const saveServer = vi.fn(async () => {}).mockImplementationOnce(() => response.promise);
+    const { manager } = await fixture({ upload, saveServer }, "owner");
+    manager.add([file()]);
+    await vi.waitFor(() => expect(saveServer).toHaveBeenCalledWith(["uploaded-path"], []));
+    manager.reconcile(["uploaded-path"]);
+    response.reject(new Error("Earlier save response lost"));
+    await done(manager);
+    await manager.flush();
+    expect(manager.getSnapshot().photos[0]).toMatchObject({ status: "done", path: "uploaded-path", pendingAttach: false });
+    expect(manager.getSnapshot().problems).toEqual([]);
+    expect(upload).toHaveBeenCalledTimes(1);
+  });
+
   it("an ambiguously acknowledged path removed remotely never auto-reattaches, while its bytes remain retryable", async () => {
     let stored: readonly StoredDraftPhoto[] = []; let fail = true; let count = 0;
     const upload = vi.fn(async () => `upload-${++count}`);
