@@ -77,11 +77,41 @@ test.describe("/dev/components/cards", () => {
     await expect(page).toHaveURL(/t1$/);
   });
 
-  test("a row's own button is pressed by itself, not the row", async ({ page }) => {
+  test("a row's own button has a separate See price destination above the stretched job link", async ({ page }) => {
     await page.goto(url());
-    await page.getByRole("link", { name: "See price" }).click();
-    await expect(page).toHaveURL(/1005#price$/);
+    const jobs = page.getByRole("list", { name: "Needs you" });
+    const price = jobs.getByRole("link", { name: "See price", exact: true });
+    await expect(jobs.getByRole("link", { name: "Sub wiring", exact: true })).toHaveAttribute("href", "/jobs/1005");
+    await expect(price).toHaveAttribute("href", "/jobs/1005#price");
+    await price.scrollIntoViewIfNeeded();
+    const pointerTarget = await price.evaluate(link => {
+      const { left, top, width, height } = link.getBoundingClientRect();
+      return document.elementFromPoint(left + width / 2, top + height / 2)?.closest("a")?.getAttribute("href");
+    });
+    expect(pointerTarget).toBe("/jobs/1005#price");
   });
+
+  for (const activation of ["click", "Enter"] as const) {
+    test(`a row's own button opens login for the job with ${activation}, and Back returns to the cards`, async ({ page }) => {
+      await page.goto(url());
+      const jobs = page.getByRole("list", { name: "Needs you" });
+      const price = jobs.getByRole("link", { name: "See price", exact: true });
+      if (activation === "click") {
+        await price.click();
+      } else {
+        await jobs.getByRole("link", { name: "Sub wiring", exact: true }).focus();
+        await page.keyboard.press("Tab");
+        await expect(price).toBeFocused();
+        await page.keyboard.press("Enter");
+      }
+
+      await expect(page).toHaveURL(new URL("/login?next=%2Fjobs%2F1005", devUrl).href);
+      await expect(page.getByRole("button", { name: "Log in", exact: true })).toBeVisible();
+      await page.goBack();
+      await expect(page).toHaveURL(url());
+      await expect(price).toBeVisible();
+    });
+  }
 
   test("Save toggles, keeps focus, and pops once when it becomes saved (M23)", async ({ page }) => {
     await page.goto(url());
