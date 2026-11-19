@@ -9,14 +9,17 @@ export async function waitForCaptureContent(page: Page, shot: Pick<Shot, "url" |
   const actual = new URL(page.url());
   const requestedState = wanted.pathname === actual.pathname && wanted.search === actual.search
     ? wanted.searchParams.get("state") : null;
-  const intentional = requestedState === "loading";
-  const gallery = wanted.pathname.startsWith("/dev/components/") && requestedState === "gallery";
+  const componentPreview = wanted.pathname.startsWith("/dev/components/");
+  const stateWords = requestedState?.split("-") ?? [];
+  const intentional = requestedState === "loading" || (componentPreview && stateWords.includes("loading"));
+  const gallery = componentPreview && stateWords.includes("gallery");
   // Busy buttons and illustrative skeletons in component galleries are not page-load indicators.
   const markers = [
     '[aria-busy="true"]:not(button):not([role="button"]):visible',
     '[role="status"][aria-label^="loading" i]:visible',
     '[role="status"] .tm-skel:visible',
   ];
+  if (intentional) markers.push('[aria-busy="true"]:visible', '[role="progressbar"]:visible');
   if (intentional || !wanted.pathname.startsWith("/dev/")) markers.push(".tm-skel:visible");
   const fallback = page.locator(markers.join(", ")).first();
   const jobId = /^\/jobs\/([^/]+)\/?$/.exec(wanted.pathname)?.[1];

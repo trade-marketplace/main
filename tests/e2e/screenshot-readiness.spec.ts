@@ -46,7 +46,7 @@ for (const width of [390, 1440]) {
   });
 
   test(`${width}px settled gallery retains its persistent loading example`, async ({ page }) => {
-    const url = "/dev/components/board-map?state=gallery";
+    const url = width === 390 ? "/dev/components/worker-workspace?state=recovery-gallery" : "/dev/components/board-map?state=gallery";
     await page.setViewportSize({ width, height: 844 });
     await page.route("http://shots.test/**", route => route.fulfill({ contentType: "text/html", body: loading }));
     await page.goto(`http://shots.test${url}`);
@@ -70,4 +70,13 @@ test("ordinary routes wait for visible loading regions and ignore hidden regions
   });
   expect(await waitForCaptureContent(page, { url, expectMode: null })).toBeNull();
   await expect(page.getByRole("heading", { name: "Messages" })).toBeVisible();
+});
+
+test("a compound component loading state can show its pending button", async ({ page }) => {
+  const url = "/dev/components/recovery?state=reset-loading";
+  await page.route("http://shots.test/**", route => route.fulfill({
+    contentType: "text/html", body: '<main><button aria-busy="true">Saving</button></main>',
+  }));
+  await page.goto(`http://shots.test${url}`);
+  expect(await waitForCaptureContent(page, { url, expectMode: null }, 500)).toBeNull();
 });
