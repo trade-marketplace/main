@@ -1,7 +1,7 @@
 "use client";
 // /dev/components/buttons demos that need a click: the loading state, and the usage example (a "Cancel job"
 // dialog footer, as in WEBAPP_SPEC "Dialogs"). Nothing is saved; the wait is pretend.
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import { Button } from "@/components/Button";
 
@@ -50,7 +50,11 @@ export function LoadingDemo() {
   );
 }
 
+const noSubscribe = () => () => {};
+
 export function UsageExample() {
+  // These choices need client handlers before they can accept a click.
+  const ready = useSyncExternalStore(noSubscribe, () => true, () => false);
   const work = usePretendWork();
   const [result, setResult] = useState<string | null>(null);
   return (
@@ -58,10 +62,10 @@ export function UsageExample() {
       <h3 className={styles.exampleTitle}>Cancel this job?</h3>
       <p className={styles.para}>It hasn’t been paid for yet, so cancelling is free.</p>
       <div className={styles.exampleActions}>
-        <Button variant="secondary" disabled={work.busy ? "Wait for the cancel to finish" : false} onClick={() => setResult("Kept.")}>
+        <Button variant="secondary" disabled={work.busy ? "Wait for the cancel to finish" : !ready} onClick={() => setResult("Kept.")}>
           Keep job
         </Button>
-        <Button variant="destructive" loading={work.busy} onClick={() => work.start(() => setResult("Cancelled."))}>
+        <Button variant="destructive" disabled={!ready} loading={work.busy} onClick={() => work.start(() => setResult("Cancelled."))}>
           Cancel job
         </Button>
       </div>
