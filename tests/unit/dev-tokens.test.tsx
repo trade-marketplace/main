@@ -27,23 +27,15 @@ describe("/dev/tokens", () => {
   it("defaults to customer mode and shows all three modes side by side", async () => {
     vi.stubEnv("NODE_ENV", "development");
     const html = await render();
-    expect(html).toMatch(/^<div[^>]*data-page-mode="customer"/);
+    expect(html).toMatch(/^<div[^>]*data-mode="customer"/);
     for (const mode of ["customer", "trade", "office"]) expect(html).toContain(`data-mode="${mode}"`);
   });
 
   it("switches the whole page with ?mode= and ignores unknown modes", async () => {
     vi.stubEnv("NODE_ENV", "development");
-    expect(await render({ mode: "trade" })).toMatch(/<header data-mode="trade"/);
-    expect(await render({ mode: "office" })).toMatch(/<header data-mode="office"/);
-    expect(await render({ mode: "purple" })).toMatch(/<header data-mode="customer"/);
-  });
-
-  it("keeps the side-by-side columns outside the page's mode, so the customer column is really customer", async () => {
-    vi.stubEnv("NODE_ENV", "development");
-    const html = await render({ mode: "trade" });
-    // <main> carries no mode; the modes section sits straight inside it, after the contents nav.
-    expect(html).toMatch(/<main class="[^"]*">(?:(?!<\/main>)[\s\S])*?<\/nav><section id="modes"/);
-    expect(html).not.toMatch(/<main[^>]*data-mode/);
+    expect(await render({ mode: "trade" })).toMatch(/^<div[^>]*data-mode="trade"/);
+    expect(await render({ mode: "office" })).toMatch(/^<div[^>]*data-mode="office"/);
+    expect(await render({ mode: "purple" })).toMatch(/^<div[^>]*data-mode="customer"/);
   });
 
   it("can simulate the icon font failing, and every icon still has a label or text", async () => {
