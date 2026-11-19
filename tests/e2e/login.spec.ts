@@ -96,7 +96,13 @@ test.describe("/dev/components/login (every answer)", () => {
   test("wrong password: one message under the password, which is red and empty", async ({ page }) => {
     await page.goto(preview("wrong"));
     const password = page.getByLabel("Password", { exact: true });
-    await expect(password).toHaveAccessibleDescription("That email and password don’t match. Try again or reset it.");
+    const message = "That email and password don’t match. Try again or reset it.";
+    const error = page.getByText(message, { exact: true });
+    await expect(error).toHaveCount(1);
+    await expect(error).toBeVisible();
+    await expect(password).toHaveAccessibleDescription(message);
+    const fieldBox = (await password.boundingBox())!;
+    expect((await error.boundingBox())!.y).toBeGreaterThanOrEqual(fieldBox.y + fieldBox.height);
     await expect(password).toHaveAttribute("aria-invalid", "true");
     await expect(password).toHaveValue("");
     await expect(page.getByLabel("Email")).toHaveValue("sarah@email.co.nz");
