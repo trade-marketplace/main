@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { expect, type Page, test } from "@playwright/test";
 
 import { expectNoA11yViolations } from "./support/a11y";
@@ -30,7 +31,7 @@ test.describe("/login", () => {
   test("by keyboard: type, show the password, Enter submits; the email stays, the password empties", async ({ page }) => {
     await page.goto("/login?next=/dashboard");
     await page.getByLabel("Email").fill("sarah@email.co.nz");
-    await page.getByLabel("Password", { exact: true }).fill("hunter2-hunter2");
+    await page.getByLabel("Password", { exact: true }).fill(randomUUID());
     await page.getByRole("button", { name: "Show password" }).click();
     await expect(page.getByLabel("Password", { exact: true })).toHaveAttribute("type", "text");
     await page.getByLabel("Password", { exact: true }).press("Enter");
@@ -94,16 +95,18 @@ test.describe("/dev/components/login (every answer)", () => {
 
   test("wrong password: one message under the password, which is red and empty", async ({ page }) => {
     await page.goto(preview("wrong"));
-    await expect(page.getByText("Incorrect email or password.")).toBeVisible();
-    await expect(page.getByLabel("Password", { exact: true })).toHaveAttribute("aria-invalid", "true");
+    const password = page.getByLabel("Password", { exact: true });
+    await expect(password).toHaveAccessibleDescription("That email and password don’t match. Try again or reset it.");
+    await expect(password).toHaveAttribute("aria-invalid", "true");
+    await expect(password).toHaveValue("");
     await expect(page.getByLabel("Email")).toHaveValue("sarah@email.co.nz");
   });
 
   test("too many tries and an unconfirmed email show as banners", async ({ page }) => {
     await page.goto(preview("locked"));
-    await expect(page.getByText("Try again shortly.")).toBeVisible();
+    await expect(page.getByRole("main").getByRole("alert")).toContainText("Too many tries. Wait a few minutes, or reset your password.");
     await page.goto(preview("unverified"));
-    await expect(page.getByText("Confirm your email.")).toBeVisible();
+    await expect(page.getByRole("main").getByRole("status")).toContainText("Confirm your email first. Open the link we emailed you, then log in.");
   });
 
   test("200% text still fits", async ({ page }) => {
