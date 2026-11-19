@@ -49,11 +49,8 @@ export default async function TokensPage({ searchParams }: { searchParams: Searc
   };
 
   return (
-    // `mode` is set on each part of the page except "Modes side by side". tokens.css only defines the customer
-    // values on :root, so a data-mode="customer" column nested inside a trade or office area would inherit the
-    // outer mode's colours; keeping that section outside any mode wrapper shows each column truly.
-    <div className={styles.page} data-page-mode={mode}>
-      <header data-mode={mode} className={styles.band}>
+    <div className={styles.page} data-mode={mode}>
+      <header className={styles.band}>
         <BoltMark variant="hero" className={styles.bandBolt} />
         <div className={styles.wrap}>
           <p className={styles.eyebrow}>Dev only · not in production builds</p>
@@ -74,7 +71,7 @@ export default async function TokensPage({ searchParams }: { searchParams: Searc
       </header>
 
       <main className={styles.wrap}>
-        <nav aria-label="Sections" data-mode={mode} className={styles.toc}>
+        <nav aria-label="Sections" className={styles.toc}>
           {modeSection && <a href="#modes">Modes side by side</a>}
           {sections.map((s) => (
             <a key={s.number} href={`#section-${s.number}`}>
@@ -115,7 +112,7 @@ export default async function TokensPage({ searchParams }: { searchParams: Searc
           </section>
         )}
 
-        <div data-mode={mode}>
+        <div>
           {sections.map((s) => (
             <Section key={s.number} section={s} />
           ))}
