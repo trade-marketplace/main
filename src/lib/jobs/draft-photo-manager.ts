@@ -172,6 +172,7 @@ export class DraftPhotoManager {
     this.authoritativeOrder = key; this.expectedServerPaths = [...paths];
     const saved = paths.map((path, index): DraftPhoto => {
       const current = this.state.photos.find(photo => photo.path === path);
+      if (current?.pendingAttach) return { ...current, pendingAttach: false, needsRetry: false, status: "done", progress: 1 };
       return current ? { ...current, pendingAttach: false, needsRetry: false } : { id: crypto.randomUUID(), name: `Photo ${index + 1}`, path, src: "", prepared: true, generation: ++this.generation, status: "uploading", progress: 0 };
     });
     const pending = this.state.photos.filter(photo => !photo.path || photo.pendingAttach && !paths.includes(photo.path));
@@ -208,7 +209,7 @@ export class DraftPhotoManager {
     const abort = new AbortController(); this.uploads.set(id, abort);
     try {
       let file = initial.file;
-      if (initial.path && this.deps.preview) {
+      if (initial.path && !initial.pendingAttach && this.deps.preview) {
         if (!this.deps.online() && file) { this.update(id, generation, { status: "done", progress: 1 }); return; }
         const src = await this.deps.preview(initial.path);
         if (this.update(id, generation, { src, status: "done", progress: 1 })) {
@@ -226,10 +227,15 @@ export class DraftPhotoManager {
       if (!this.current(id, generation) || abort.signal.aborted) return;
       if (!this.deps.upload) { this.update(id, generation, { status: "done", progress: 1 }); await this.persist(); return; }
       if (!this.deps.online()) throw new Error(failedMessage);
+      let path = initial.path;
+      if (!path) {
+        await this.saveOrder();
+        path = await this.deps.upload(file, abort.signal, progress => this.update(id, generation, { progress }));
+        if (!this.update(id, generation, { path, pendingAttach: true, progress: 1 })) return;
+        await this.persist();
+      }
       await this.saveOrder();
-      const path = await this.deps.upload(file, abort.signal, progress => this.update(id, generation, { progress }));
-      if (!this.update(id, generation, { path, pendingAttach: true, status: "done", progress: 1 })) return;
-      await this.persist(); await this.saveOrder();
+      if (!this.update(id, generation, { status: "done", progress: 1 })) return;
       if (this.deps.preview) {
         try {
           const src = await this.deps.preview(path); const previous = this.current(id, generation)?.src;
@@ -239,7 +245,8 @@ export class DraftPhotoManager {
     } catch (error) {
       if (!abort.signal.aborted && this.update(id, generation, { status: "failed" })) {
         this.emit({ problems: [error instanceof DraftPhotoUploadError ? error.message : this.current(id, generation)?.prepared ? failedMessage : "We couldn't read that picture. Try another one."] });
-        void this.saveOrder().catch(() => {});
+        // A finalized file is durable. Retry the failed attachment explicitly using its existing path.
+        if (!this.current(id, generation)?.pendingAttach) void this.saveOrder().catch(() => {});
       }
     } finally { if (this.uploads.get(id) === abort) this.uploads.delete(id); }
   }
@@ -248,7 +255,7 @@ export class DraftPhotoManager {
     if (this.state.photos.length > MAX_PHOTOS) return;
     const photo = this.state.photos.find(item => item.id === id); if (!photo) return;
     this.uploads.get(id)?.abort(); const generation = ++this.generation;
-    this.emit({ photos: this.state.photos.map(item => item.id === id ? { ...item, path: item.file ? undefined : item.path, pendingAttach: false, needsRetry: false, generation, status: "uploading", progress: 0 } : item), problems: [] });
+    this.emit({ photos: this.state.photos.map(item => item.id === id ? { ...item, path: item.pendingAttach || !item.file ? item.path : undefined, needsRetry: false, generation, status: "uploading", progress: 0 } : item), problems: [] });
     void this.process(id, generation);
   }
   move(id: string, position: number) {
