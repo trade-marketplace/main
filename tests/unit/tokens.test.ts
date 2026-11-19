@@ -84,14 +84,12 @@ describe("fonts", () => {
     for (const url of urls) expect(existsSync(new URL(`public${url}`, root)), url).toBe(true);
   });
 
-  it("serves the same font files as docs/design/fonts", () => {
-    const pairs = [
-      ["public/fonts/roboto-flex/RobotoFlex.woff2", "docs/design/fonts/RobotoFlex.woff2"],
-      ["public/fonts/material-symbols/MaterialSymbolsRounded.woff2", "docs/design/fonts/MaterialSymbolsRounded.woff2"],
-    ];
-    for (const [served, source] of pairs) {
-      expect(statSync(new URL(served, root)).size).toBe(statSync(new URL(source, root)).size);
-    }
+  it("serves the original text font and a smaller icon subset at normal preload priority", () => {
+    const size = (file: string) => statSync(new URL(file, root)).size;
+    expect(size("public/fonts/roboto-flex/RobotoFlex.woff2")).toBe(size("docs/design/fonts/RobotoFlex.woff2"));
+    const icon = FONT_PRELOADS.find((font) => font.href.includes("MaterialSymbolsRounded"));
+    expect(icon?.fetchPriority).toBe("auto");
+    expect(size(`public${icon!.href}`)).toBeLessThan(size("docs/design/fonts/MaterialSymbolsRounded.woff2") / 10);
   });
 
   it("keeps the licence files next to the fonts", () => {
