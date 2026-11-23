@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useRef } from "react";
 
 import { NavCount } from "@/components/app/AppNav";
-import { countText, fullName, HELP_PATH } from "@/components/app/app-links";
+import { countLabel, countText, fullName, HELP_PATH } from "@/components/app/app-links";
 import { BoltMark } from "@/components/BoltMark";
 import { Button } from "@/components/Button";
 import { Icon } from "@/components/Icon";
@@ -16,10 +16,12 @@ import { useTabIndicator } from "@/lib/motion/hooks";
 import { logOutAction } from "@/server/auth/actions";
 
 import type { OfficeShellViewer } from "./OfficeShellView";
-import { currentOfficeLink, OFFICE_NAV, officeCountLabel, officeHref, type OfficeCounts, type OfficeNavPreview } from "./office-links";
+import { currentOfficeLink, OFFICE_NAV, OFFICE_NOTIFICATIONS_PATH, officeCountLabel, officeHref, type OfficeCounts, type OfficeNavPreview } from "./office-links";
 import styles from "./office.module.css";
 
-type Props = { viewer: OfficeShellViewer; counts: OfficeCounts; preview?: OfficeNavPreview };
+export type OfficeNavViewer = OfficeShellViewer & { unreadNotifications?: number };
+
+type Props = { viewer: OfficeNavViewer; counts: OfficeCounts; preview?: OfficeNavPreview };
 
 function AccountMenu({ viewer, defaultOpen }: { viewer: OfficeShellViewer; defaultOpen?: boolean }) {
   const formRef = useRef<HTMLFormElement>(null);
@@ -55,6 +57,17 @@ export function OfficeNav({ viewer, counts, preview }: Props) {
   const linksRef = useRef<HTMLUListElement>(null);
   useTabIndicator(linksRef, current?.href, '[aria-current="page"]', "y");
 
+  const unread = viewer.unreadNotifications ?? 0;
+  const bell = (
+    <Link href={officeHref(preview, OFFICE_NOTIFICATIONS_PATH)} className={styles.accountButton} style={{ textDecoration: "none" }}
+      aria-label={countLabel("Notifications", unread)}
+      aria-current={(preview?.at ?? pathname) === OFFICE_NOTIFICATIONS_PATH ? "page" : undefined}>
+      <Icon name="notifications" decorative />
+      <span className={styles.accountLabel}>Notifications</span>
+      <NavCount count={unread} className={styles.count} />
+    </Link>
+  );
+
   return (
     <>
       <aside className={styles.sidebar} aria-label="Office sidebar">
@@ -84,7 +97,7 @@ export function OfficeNav({ viewer, counts, preview }: Props) {
             </li>
           </ul>
         </nav>
-        <div className={styles.sidebarAccount}><AccountMenu viewer={viewer} defaultOpen={preview?.accountOpen} /></div>
+        <div className={styles.sidebarAccount}>{bell}<AccountMenu viewer={viewer} defaultOpen={preview?.accountOpen} /></div>
       </aside>
       <header className={styles.mobileHeader}>
         <nav aria-label="Office">
@@ -108,6 +121,7 @@ export function OfficeNav({ viewer, counts, preview }: Props) {
             })}
           </Menu>
         </nav>
+        {bell}
         <AccountMenu viewer={viewer} defaultOpen={preview?.accountOpen} />
       </header>
     </>
