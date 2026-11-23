@@ -30,6 +30,17 @@ describe.skipIf(!testDatabaseUrl)("office notification access", () => {
     expect((await schema.db.notification.findUniqueOrThrow({ where: { id: foreign.id } })).readAt).toBeNull();
   });
 
+  it("labels scheduler notices and opens their office jobs", async () => {
+    const viewer = await person("ADMIN");
+    await notice(viewer, "bounty.expired");
+    await notice(viewer, "job.unclaimed");
+    const result = await officeInbox(schema.db, viewer, {});
+    expect(result).toMatchObject({ ok: true, inbox: { items: expect.arrayContaining([
+      expect.objectContaining({ line: "Bounty expired", icon: "timer_off", href: "/admin/jobs/owned-job" }),
+      expect.objectContaining({ line: "Job unclaimed after 48 hours", icon: "schedule", href: "/admin/jobs/owned-job" }),
+    ]) } });
+  });
+
   it.each(["CUSTOMER", "TRADIE"] as const)("denies %s even if they have a notification", async role => {
     const viewer = await person(role), own = await notice(viewer);
     for (const readId of [undefined, own.id, null]) {

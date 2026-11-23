@@ -34,10 +34,12 @@ test.describe("office notification journey", () => {
 
   for (const viewport of VIEWPORTS) {
     test(`${viewport.width}px: bell → inbox → office job → Back`, async ({ page, context }) => {
-      await db.query("INSERT INTO notifications(user_id,type,payload) VALUES($1,'variation.requested',$2)", [office.id, { jobId: job, jobTitle: "Office inbox fixture" }]);
       await context.addCookies(await sessionCookies(office, secret, app, stub));
       await page.setViewportSize(viewport);
       await page.goto(app + "/admin/jobs");
+      await expect(page.getByRole("link", { name: "Notifications", exact: true })).toBeVisible();
+      await db.query("INSERT INTO notifications(user_id,type,payload) VALUES($1,'variation.requested',$2)", [office.id, { jobId: job, jobTitle: "Office inbox fixture" }]);
+      await page.evaluate(() => window.dispatchEvent(new Event("focus")));
       await page.getByRole("link", { name: "Notifications, 1 unread" }).press("Enter");
       await expect(page).toHaveURL(app + "/admin/notifications");
       await expectNoA11yViolations(page);

@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useRef } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useRef } from "react";
 
+import { countOfficeNotifications } from "@/app/admin/notifications/actions";
 import { NavCount } from "@/components/app/AppNav";
 import { countLabel, countText, fullName, HELP_PATH } from "@/components/app/app-links";
 import { BoltMark } from "@/components/BoltMark";
@@ -58,6 +59,30 @@ export function OfficeNav({ viewer, counts, preview }: Props) {
   useTabIndicator(linksRef, current?.href, '[aria-current="page"]', "y");
 
   const unread = viewer.unreadNotifications ?? 0;
+  const router = useRouter();
+  useEffect(() => {
+    if (preview) return;
+    let active = true;
+    let pending = false;
+    async function refreshCount() {
+      if (pending || document.visibilityState !== "visible" || !navigator.onLine) return;
+      pending = true;
+      try {
+        const latest = await countOfficeNotifications();
+        if (active && typeof latest === "number" && latest !== unread) router.refresh();
+      } catch { /* Keep the last confirmed count until the next refresh. */ }
+      finally { pending = false; }
+    }
+    const timer = window.setInterval(refreshCount, 30_000);
+    window.addEventListener("focus", refreshCount);
+    document.addEventListener("visibilitychange", refreshCount);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refreshCount);
+      document.removeEventListener("visibilitychange", refreshCount);
+    };
+  }, [preview, router, unread]);
   const bell = (
     <Link href={officeHref(preview, OFFICE_NOTIFICATIONS_PATH)} className={styles.accountButton} style={{ textDecoration: "none" }}
       aria-label={countLabel("Notifications", unread)}
