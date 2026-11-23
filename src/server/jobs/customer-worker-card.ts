@@ -49,9 +49,10 @@ async function assignmentUpdates(db: Db, customerId: string, jobId: string, work
   const generation = entryCount(changes, workerId);
   if (!generation) return [];
   const [assignment, previous] = changes;
-  const evidence: Prisma.AuditLogWhereInput[] = [
-    { after: { path: ["workerAssignmentGeneration"], equals: generation } },
-  ];
+  const evidence: Prisma.AuditLogWhereInput[] = [];
+  if (generation > 1) {
+    evidence.push({ after: { path: ["workerAssignmentGeneration"], equals: generation } });
+  }
   // Legacy first assignments retain their existing proof. A returning claim can also prove
   // untagged updates when every assignment came through claim history: clock_timestamp() was
   // recorded under the job lock. Same-status office handoffs have no such history.
@@ -69,6 +70,7 @@ async function assignmentUpdates(db: Db, customerId: string, jobId: string, work
     }
     if (boundary) evidence.push({ createdAt: { gte: new Date(boundary.getTime() + 1) } });
   }
+  if (!evidence.length) return [];
   // The notification UUID must also match an immutable preset audit from this job and worker.
   const origins = await db.auditLog.findMany({
     where: { recordType: "jobs", recordId: jobId, actorId: workerId, action: { in: UPDATE_ACTIONS }, OR: evidence },
