@@ -3,13 +3,12 @@
 
 export type FontPreload = {
   href: string;
-  /** "low" keeps a big file from competing with the page's text font and hero image. */
-  fetchPriority: "high" | "low";
+  fetchPriority: "high" | "auto";
 };
 
 export const FONT_PRELOADS: readonly FontPreload[] = [
   // Trade Display + Trade UI: one 326 KB variable file. Needed for every word on every page.
   { href: "/fonts/roboto-flex/RobotoFlex.woff2", fetchPriority: "high" },
-  // Material Symbols Rounded: 5.4 MB (every icon). Preloaded at low priority until it is subset (#284).
-  { href: "/fonts/material-symbols/MaterialSymbolsRounded.woff2", fetchPriority: "low" },
+  // The subset is small enough to preload at normal browser priority.
+  { href: "/fonts/material-symbols/MaterialSymbolsRounded.woff2", fetchPriority: "auto" },
 ];
