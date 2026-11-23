@@ -350,4 +350,63 @@ test.describe("signed-in draft photos through real actions, private Storage tran
     expect((await db.query("SELECT data->'photoPaths' AS paths FROM job_drafts WHERE profile_id=$1", [SECURITY_USER.id])).rows[0].paths).toHaveLength(1);
   });
 
+  test("mobile JPG, PNG and HEIC persist once when a finalized upload's draft save needs Retry", async ({ page }) => {
+    test.setTimeout(90_000);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await db.query("DELETE FROM job_drafts WHERE profile_id = $1", [SECURITY_USER.id]);
+    await login(page, SECURITY_USER.email);
+    await page.getByRole("textbox", { name: "Describe the job", exact: true }).fill("Repair the leaking shower tap.");
+    const next = page.getByRole("button", { name: "Next", exact: true });
+    await next.click();
+    const picker = page.locator('input[type="file"]').last();
+    await picker.setInputFiles({ name: "notes.txt", mimeType: "text/plain", buffer: Buffer.from("notes") });
+    await expect(page.getByText(/notes.txt.*isn’t a photo we can use/)).toBeVisible();
+
+    // A synthetic 16×16 HEVC-encoded HEIC, generated with libheif. Use the real server decoder.
+    const heic = Buffer.from("AAAAHGZ0eXBoZWljAAAAAG1pZjFoZWljbWlhZgAAAXxtZXRhAAAAAAAAACFoZGxyAAAAAAAAAABwaWN0AAAAAAAAAAAAAAAAAAAAACJpbG9jAAAAAERAAAEAAQAAAAABoAABAAAAAAAAADQAAAAjaWluZgAAAAAAAQAAABVpbmZlAgAAAAABAABodmMxAAAAAA5waXRtAAAAAAABAAAA/GlwcnAAAADcaXBjbwAAAHVodmNDAQNwAAAAkAAAAAAAHvAA/P34+AAADwNgAAEAGEABDAH//wNwAAADAJAAAAMAAAMAHroCQGEAAQApQgEBA3AAAAMAkAAAAwAAAwAeoCCBBZbqrprm4CGgwIAAAAyAAAADAIRiAAEABkQBwXPBiQAAABNjb2xybmNseAABAA0ABoAAAAAUaXNwZQAAAAAAAABAAAAAQAAAAChjbGFwAAAAEAAAAAEAAAAQAAAAAf///9AAAAAC////0AAAAAIAAAAQcGl4aQAAAAADCAgIAAAAGGlwbWEAAAAAAAAAAQABBYECAwWEAAAAPG1kYXQAAAAwKAGvDshZmNBXhBivX5yR//vq///JsGo9mfsPeu5UkyAFUq2wjrB5sNdAh3klFrbY", "base64");
+    let failAttachment = true;
+    let failedAttachments = 0;
+    await page.route("**/jobs/new**", async route => {
+      const request = route.request();
+      if (failAttachment && request.headers()["next-action"] && request.postData()?.includes(`drafts/${SECURITY_USER.id}/`)) {
+        failedAttachments++;
+        await route.abort("failed");
+      } else {
+        await route.continue();
+      }
+    });
+    const writes = () => storage.events.filter(event => event.method === "PUT").length;
+    const before = writes();
+    await picker.setInputFiles({ name: "camera.heic", mimeType: "image/heic", buffer: heic });
+    const retry = page.getByRole("button", { name: "Retry camera.heic", exact: true });
+    await expect(retry).toBeVisible();
+    expect(failedAttachments).toBeGreaterThan(0);
+    expect(writes()).toBe(before + 1);
+    await expect(next).toHaveAttribute("aria-disabled", "true");
+    failAttachment = false;
+    await retry.click();
+    await expect(next).not.toHaveAttribute("aria-disabled", "true");
+    expect(writes()).toBe(before + 1);
+
+    const swatch = sharp({ create: { width: 48, height: 32, channels: 3, background: "blue" } });
+    await picker.setInputFiles([
+      { name: "detail.jpg", mimeType: "image/jpeg", buffer: await swatch.clone().jpeg().toBuffer() },
+      { name: "detail.png", mimeType: "image/png", buffer: await swatch.clone().png().toBuffer() },
+    ]);
+    await expect(next).not.toHaveAttribute("aria-disabled", "true");
+    await next.click();
+    await expect(page.getByRole("heading", { name: "Where and when?", exact: true })).toBeVisible();
+    await page.getByRole("link", { name: "Back", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "Add some photos", exact: true })).toBeVisible();
+    await expect(page).toHaveURL(/step=photos/);
+    await page.reload();
+    await expect(page.getByRole("list", { name: "Photos", exact: true }).getByRole("img")).toHaveCount(3);
+    await expect(next).not.toHaveAttribute("aria-disabled", "true");
+    expect(writes()).toBe(before + 3);
+    const paths = (await db.query("SELECT data->'photoPaths' AS paths FROM job_drafts WHERE profile_id = $1", [SECURITY_USER.id])).rows[0].paths as string[];
+    expect(new Set(paths).size).toBe(3);
+    for (const path of paths) {
+      expect((await sharp(storage.objects.get(`photos/${path}`)).metadata()).format).toBe("webp");
+    }
+  });
 });
