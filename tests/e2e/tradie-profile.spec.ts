@@ -63,7 +63,9 @@ test("See profile from a confirmed job, Back, and a paused tradie's 404", async 
     await link.press("Enter");
     await expect(page).toHaveURL(`${live}/tradies/${tradie.id}`);
     await expect(page.getByRole("heading", { name: "Jack W." })).toBeVisible();
-    await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
+    const robots = page.locator('meta[name="robots"]');
+    await expect.poll(() => robots.evaluateAll(tags =>
+      tags.length > 0 && tags.every(tag => tag.getAttribute("content")?.split(/,\s*/).includes("noindex")))).toBe(true);
     await page.goBack();
     await expect(page).toHaveURL(jobUrl);
     await expect(link).toBeVisible();
