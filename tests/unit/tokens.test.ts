@@ -41,11 +41,12 @@ describe("tokens.css in the app", () => {
     expect(app.modes.office["--trade-on-action"]).toEqual({ name: "--trade-on-action", value: "#ffffff" });
   });
 
-  it("defines the trade and office overrides for every mode token, so switching mode is one attribute", () => {
-    const modeTokens = app.sections.find((s) => s.title.startsWith("Mode"))!.tokens.map((t) => t.name);
-    for (const mode of MODES.filter((m) => m !== "customer")) {
-      expect(Object.keys(app.modes[mode]).sort()).toEqual([...modeTokens].sort());
+  it("defines every mode token explicitly, with customer values matching the root defaults", () => {
+    const defaults = app.sections.find((s) => s.title.startsWith("Mode"))!.tokens;
+    for (const mode of MODES) {
+      expect(Object.keys(app.modes[mode] ?? {}).sort()).toEqual(defaults.map((t) => t.name).sort());
     }
+    expect(app.modes.customer).toEqual(Object.fromEntries(defaults.map((t) => [t.name, t])));
   });
 
   it("keeps labels on coloured fills Forest (#0C251D) in customer and trade mode", () => {
