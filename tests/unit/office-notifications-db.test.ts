@@ -37,7 +37,7 @@ describe.skipIf(!testDatabaseUrl)("office notification access", () => {
     const result = await officeInbox(schema.db, viewer, {});
     expect(result).toMatchObject({ ok: true, inbox: { items: expect.arrayContaining([
       expect.objectContaining({ line: "Bounty expired", icon: "timer_off", href: "/admin/jobs/owned-job" }),
-      expect.objectContaining({ line: "Job unclaimed after 48 hours", icon: "schedule", href: "/admin/jobs/owned-job" }),
+      expect.objectContaining({ line: "Unclaimed > 48h", icon: "schedule", href: "/admin/jobs/owned-job" }),
     ]) } });
   });
 
