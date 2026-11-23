@@ -172,10 +172,38 @@ test.describe("/dev/components/buttons on the dev server", () => {
     expect(await inline.evaluate((el) => getComputedStyle(el).textDecorationLine)).toBe("underline");
   });
 
+  test.describe("before hydration", () => {
+    test.use({ javaScriptEnabled: false });
+
+    test("the usage example waits before accepting a choice", async ({ page }) => {
+      await page.goto(url());
+      const usage = page.getByRole("region", { name: "Usage", exact: true });
+      await expect(usage.getByRole("button", { name: "Cancel job" })).toBeDisabled();
+      await expect(usage.getByRole("button", { name: "Keep job" })).toBeDisabled();
+    });
+  });
+
   test("the usage example works: Cancel job loads, Keep job waits", async ({ page }) => {
+    const start = Date.now();
+    await page.clock.install({ time: start });
     await page.goto(url());
-    await page.getByRole("button", { name: "Cancel job", exact: true }).last().click();
-    await expect(page.getByRole("button", { name: "Keep job" })).toHaveAccessibleDescription("Wait for the cancel to finish");
-    await expect(page.getByText("Cancelled.")).toBeVisible({ timeout: 5000 });
+    const usage = page.getByRole("region", { name: "Usage", exact: true });
+    const cancel = usage.getByRole("button", { name: /^Cancel job/ });
+    const keep = usage.getByRole("button", { name: "Keep job" });
+    const result = usage.getByRole("status");
+    await expect(cancel).toBeEnabled();
+    // Let the page hydrate normally, then hold the demo timer while we check the pending state.
+    await page.clock.pauseAt(start + 60_000);
+
+    await cancel.click();
+    await expect(cancel).toHaveAttribute("aria-busy", "true");
+    await expect(keep).toBeDisabled();
+    await expect(keep).toHaveAccessibleDescription("Wait for the cancel to finish");
+    await expect(result).toBeEmpty();
+    await page.clock.fastForward(2_000);
+    await expect(result).toHaveText("Cancelled.");
+    await expect(cancel).toBeEnabled();
+    await keep.press("Enter");
+    await expect(result).toHaveText("Kept.");
   });
 });
