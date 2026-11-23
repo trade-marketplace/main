@@ -110,14 +110,15 @@ test("an unfiltered office jobs screenshot accepts the finished list without a c
   const url = "/admin/jobs";
   await page.route("http://shots.test/**", route => route.fulfill({ contentType: "text/html", body: "<main><h1>All jobs</h1></main>" }));
   await page.goto(`http://shots.test${url}`);
-  expect(await waitForCaptureContent(page, { url, expectMode: "office" }, 500)).toBeNull();
+  expect(await waitForCaptureContent(page, { url, expectMode: "office" })).toBeNull();
 });
 
 test("the Today queue belongs on the office home but is an inherited fallback on a subpage", async ({ page }) => {
   const body = '<main><h1>Today</h1><div role="group" aria-label="Queue totals">Jobs</div></main>';
   await page.route("http://shots.test/**", route => route.fulfill({ contentType: "text/html", body }));
-  for (const [url, expected] of [["/admin/customers", "inherited Today queue still visible at capture"], ["/admin", null]] as const) {
-    await page.goto(`http://shots.test${url}`);
-    expect(await waitForCaptureContent(page, { url, expectMode: "office" }, 100)).toBe(expected);
-  }
+  await page.goto("http://shots.test/admin/customers");
+  expect(await waitForCaptureContent(page, { url: "/admin/customers", expectMode: "office" }, 100))
+    .toBe("inherited Today queue still visible at capture");
+  await page.goto("http://shots.test/admin");
+  expect(await waitForCaptureContent(page, { url: "/admin", expectMode: "office" })).toBeNull();
 });
