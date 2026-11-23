@@ -9,6 +9,8 @@ const app = "http://127.0.0.1:3156";
 const stub = "http://127.0.0.1:54576";
 const database = process.env.OFFICE_NOTIFICATIONS_E2E_DATABASE_URL;
 
+test.use({ reducedMotion: "reduce" });
+
 test.describe("office notification journey", () => {
   test.skip(!database, "Requires a disposable local database and app at 3156 with local Auth at 54576");
   test.describe.configure({ mode: "serial" });
@@ -38,6 +40,9 @@ test.describe("office notification journey", () => {
       await page.setViewportSize(viewport);
       await page.goto(app + "/admin/jobs");
       await expect(page.getByRole("link", { name: "Notifications", exact: true })).toBeVisible();
+      await page.getByRole("button", { name: /^Account:/ }).click();
+      await expect(page.getByRole("menu", { name: "Account", exact: true })).toBeVisible();
+      await page.keyboard.press("Escape");
       await db.query("INSERT INTO notifications(user_id,type,payload) VALUES($1,'variation.requested',$2)", [office.id, { jobId: job, jobTitle: "Office inbox fixture" }]);
       await page.evaluate(() => window.dispatchEvent(new Event("focus")));
       await page.getByRole("link", { name: "Notifications, 1 unread" }).press("Enter");
