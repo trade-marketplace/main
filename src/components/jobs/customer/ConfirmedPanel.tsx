@@ -50,8 +50,9 @@ export function ConfirmedPanel({ job, card, back, online, preview = false, windo
       </div>
     </div>
     {worker.phone && <TextLink href={`tel:${worker.phone}`}><Icon name="call" decorative size="sm" />Call {worker.firstName}</TextLink>}
+    {card && <p className={styles.booking}>{job.bookedDate ? `${worker.firstName}’s booked in ${date.format(new Date(`${job.bookedDate}T00:00:00Z`))}${job.bookedTime ? ` · ${periods[job.bookedTime]}` : ""}` : `${worker.firstName} will book one of your times.`}</p>}
+    {job.bookedDate && job.bookedTime && <TextLink href={`/jobs/${job.id}/calendar.ics`} download>Add to calendar</TextLink>}
     {card && <>
-      <p className={styles.booking}>{job.bookedDate ? `${worker.firstName}’s booked in ${date.format(new Date(`${job.bookedDate}T00:00:00Z`))}${job.bookedTime ? ` · ${periods[job.bookedTime]}` : ""}` : `${worker.firstName} will book one of your times.`}</p>
       {card.askedForTimes && card.updates[0]?.type === "job.reschedule_requested" && <Banner tone="info" title={`${worker.firstName} asked for other times.`} action={<TextLink href={windowsHref ?? `/jobs/${job.id}/windows?from=${encodeURIComponent(returnTo)}`}>Add times</TextLink>} />}
       {card.updates.length > 0 && <ul className={styles.updates} aria-label="Job updates" aria-live="polite">{card.updates.map(update => <li key={update.id}><span>{update.label}{update.lateMinutes !== null ? ` · ${update.lateMinutes} min` : ""}</span><time dateTime={update.createdAt}>{updateTime.format(new Date(update.createdAt))}</time></li>)}</ul>}
     </>}
