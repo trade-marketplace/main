@@ -55,10 +55,13 @@ describe("customer job frame", () => {
     const back = customerJobHref(job.id, "/dashboard?tab=done&q=light&page=2&next=foreign");
     expect(customerJobWindowsReturn(job.id, back)).toBe(`/jobs/${job.id}?from=%2Fdashboard%3Ftab%3Ddone%26q%3Dlight%26page%3D2`);
     for (const value of [undefined, "https://foreign.test", `//foreign.test/jobs/${job.id}`, "/jobs/another-job", `/jobs/${job.id}?posted=1`, `/jobs/${job.id}?from=%2F&from=%2Fdashboard`]) expect(customerJobWindowsReturn(job.id, value)).toBe("/notifications");
-    const initial = { id: job.id, jobNumber: job.jobNumber, title: job.title, editable: true, revision: job.updatedAt, schedule: { anyTime: true, asap: false, timeWindows: [] } };
+    const initial = { id: job.id, jobNumber: job.jobNumber, title: job.title, editable: true, booked: { date: "2026-11-05", timeOfDay: "MORNING" as const }, revision: job.updatedAt, schedule: { anyTime: true, asap: false, timeWindows: [] } };
     expect(renderToStaticMarkup(<JobWindows initial={initial} initialNow="2026-11-04T00:00:00Z" backHref={back} />)).toContain(`href="${back}"`);
     expect(renderToStaticMarkup(<JobWindowsLoadError backHref={back} />)).toContain(`href="${back}"`);
-    expect(renderToStaticMarkup(<JobWindows initial={initial} initialNow="2026-11-04T00:00:00Z" />)).toContain('href="/notifications"');
+    const direct = renderToStaticMarkup(<JobWindows initial={initial} initialNow="2026-11-04T00:00:00Z" />);
+    expect(direct).toContain('href="/notifications"');
+    expect(direct).toContain("Booked for Thu 5 Nov · Morning");
+    expect(direct).toContain(`href="/jobs/${job.id}"`);
   });
 });
 

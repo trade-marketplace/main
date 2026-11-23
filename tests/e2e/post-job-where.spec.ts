@@ -81,18 +81,24 @@ test("Auckland midnight rolls offered dates while keeping a stale selection visi
   const saved = await page.evaluate(key => JSON.parse(localStorage.getItem(key)!).data.timeWindows, DRAFT_STORAGE_KEY); expect(saved[0].date).toBe(oldDate.split("/")[0]);
   await expectNoA11yViolations(page);
 });
-const states = ["empty", "loading", "results", "manual", "invalid", "outside", "offline", "expired", "review", "saving", "save-error", "update", "update-error", "update-loading", "update-load-error", "update-changed", "update-offline", "update-claimed", "update-saving"];
+const states = ["empty", "loading", "results", "manual", "invalid", "outside", "offline", "expired", "review", "saving", "save-error", "update", "update-error", "update-loading", "update-load-error", "update-changed", "booked-meanwhile", "update-offline", "update-claimed", "update-saving"];
 for (const viewport of VIEWPORTS) test(`Where states at ${viewport.name}: layout and axe`, async ({ page }) => {
   test.skip(!dev, "guarded preview requires the task-owned dev app"); test.setTimeout(180_000); await page.setViewportSize(viewport);
   for (const state of states) {
     await page.goto(`${dev}/dev/components/post-job-where?state=${state}`);
     if (state === "update-loading") await expect(page.getByRole("status", { name: "Loading time windows", exact: true })).toBeVisible();
-    else await expect(page.getByRole("heading", { level: 1 })).toHaveText(state.startsWith("update") ? "When do you need it?" : state === "review" ? "All good?" : "Where and when?");
+    else await expect(page.getByRole("heading", { level: 1 })).toHaveText(state.startsWith("update") || state === "booked-meanwhile" ? "When do you need it?" : state === "review" ? "All good?" : "Where and when?");
+    if (state === "booked-meanwhile") {
+      await expect(page.getByRole("status").filter({ hasText: "Booked for Thu 6 Nov · Morning" })).toBeVisible();
+      await expect(page.locator('input[value="2025-11-06/MORNING"]')).toBeChecked();
+      const jobLink = page.getByRole("link", { name: "Back to job", exact: true });
+      await expect(jobLink).toHaveAttribute("href", "/dev/components/customer-confirmed?state=booked");
+    }
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await expectNoA11yViolations(page);
   }
   await page.goto(`${dev}/dev/components/post-job-where?state=editor-states`);
-  await expect(page.getByRole("main")).toHaveCount(1); await expect(page.getByRole("heading", { level: 2 })).toHaveCount(8);
+  await expect(page.getByRole("main")).toHaveCount(1); await expect(page.getByRole("heading", { level: 2 })).toHaveCount(9);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await expectNoA11yViolations(page);
 });

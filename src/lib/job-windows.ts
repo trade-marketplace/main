@@ -1,3 +1,4 @@
+import type { JobTimeWindow } from "./job-time-windows";
 import type { JobSchedule } from "./job-draft";
 import type { JobStatus } from "@/generated/prisma/enums";
 
@@ -5,6 +6,6 @@ export function canEditJobWindows(job: { status: JobStatus; workerId: string | n
   return job.status === "BOOKABLE" || job.status === "ASSIGNED";
 }
 
-export type JobWindowsSnapshot = { id: string; jobNumber: number; title: string; editable: boolean; revision: string; schedule: JobSchedule };
+export type JobWindowsSnapshot = { id: string; jobNumber: number; title: string; editable: boolean; booked: JobTimeWindow | null; revision: string; schedule: JobSchedule };
 export type SaveJobWindowsResult = { status: "saved" | "changed"; snapshot: JobWindowsSnapshot }
   | { status: "invalid"; fields: Record<string, string> } | { status: "forbidden" | "unavailable" };
