@@ -1,6 +1,6 @@
 import "server-only";
 import { z } from "zod";
-import type { PrismaClient } from "@/generated/prisma/client";
+import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { CUSTOMER_WORKER_UPDATE_TYPES, type CustomerWorkerCard, type CustomerWorkerUpdate, type CustomerWorkerUpdateType } from "@/lib/customer-worker-card";
 import { getAvatarService } from "@/server/account/avatar-store";
 import { NOTIFICATION_COPY } from "@/server/notifications/inbox";
@@ -15,33 +15,65 @@ const avatarUrl = async (id: string, path: string | null) => {
   try { return await getAvatarService().avatarUrl(id, path); } catch { return null; }
 };
 
-async function assignmentUpdates(db: Db, customerId: string, jobId: string, workerId: string) {
-  // Status history does not record a same-status office reassignment. The audit snapshots
-  // record the actual worker change, including reassignments back to a previous worker.
-  const [assignment, previous] = await db.auditLog.findMany({
-    where: { recordType: "jobs", recordId: jobId, action: { in: ["job.claimed", "job.reassigned", "job.status_overridden"] },
+const ASSIGNMENTS = ["job.claimed", "job.reassigned", "job.status_overridden"];
+
+function workerIn(snapshot: Prisma.JsonValue) {
+  if (!snapshot || typeof snapshot !== "object" || Array.isArray(snapshot)) return undefined;
+  return typeof snapshot.workerId === "string" || snapshot.workerId === null ? snapshot.workerId : undefined;
+}
+
+async function assignmentChanges(db: Pick<Db, "auditLog">, jobId: string) {
+  // createAudit omits unchanged fields, including workerId on a status-only override.
+  const rows = await db.auditLog.findMany({
+    where: { recordType: "jobs", recordId: jobId, action: { in: ASSIGNMENTS },
       OR: [{ after: { path: ["workerId"], string_starts_with: "" } }, { before: { path: ["workerId"], string_starts_with: "" } }] },
-    orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: 2, select: { id: true, createdAt: true, after: true, action: true, actorId: true },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    select: { createdAt: true, before: true, after: true, action: true, actorId: true },
   });
-  const after = assignment?.after;
-  // Without a unique current assignment, no historical notification can be attributed to this tradie.
-  if (!assignment || !after || typeof after !== "object" || Array.isArray(after) || after.workerId !== workerId || (previous && previous.createdAt >= assignment.createdAt)) return [];
-  // With transaction-start audit times, a worker returning to a previous assignment cannot
-  // always be separated from their old events. Omit that ambiguous history rather than guess.
-  if (await db.auditLog.count({ where: { recordType: "jobs", recordId: jobId, id: { not: assignment.id }, action: { in: ["job.claimed", "job.reassigned", "job.status_overridden"] }, after: { path: ["workerId"], equals: workerId } } })) return [];
-  let boundary = assignment.createdAt;
-  if (assignment.action === "job.claimed") {
-    if (assignment.actorId !== workerId) return [];
-    // Claim history uses clock_timestamp(), unlike an audit row's transaction-start now().
-    const claimed = await db.jobStatusHistory.findFirst({ where: { jobId, fromStatus: "BOOKABLE", toStatus: "ASSIGNED", changedById: workerId, createdAt: { gte: assignment.createdAt } }, orderBy: [{ createdAt: "desc" }, { id: "desc" }], select: { createdAt: true } });
-    if (!claimed) return [];
-    boundary = claimed.createdAt;
+  return rows.filter(row => workerIn(row.before) !== workerIn(row.after));
+}
+
+// Audit rows are immutable. Counting entries into this worker's assignment avoids imposing a
+// commit order on transaction-start timestamps or randomly generated audit UUIDs.
+function entryCount(changes: Awaited<ReturnType<typeof assignmentChanges>>, workerId: string) {
+  return changes.filter(row => workerIn(row.after) === workerId).length;
+}
+
+/** Read after checking the worker under the job lock; store the result in the update audit's after snapshot. */
+export async function workerAssignmentGeneration(tx: Pick<Db, "auditLog">, jobId: string, workerId: string) {
+  return entryCount(await assignmentChanges(tx, jobId), workerId);
+}
+
+async function assignmentUpdates(db: Db, customerId: string, jobId: string, workerId: string) {
+  const changes = await assignmentChanges(db, jobId);
+  const generation = entryCount(changes, workerId);
+  if (!generation) return [];
+  const [assignment, previous] = changes;
+  const evidence: Prisma.AuditLogWhereInput[] = [
+    { after: { path: ["workerAssignmentGeneration"], equals: generation } },
+  ];
+  // Legacy first assignments retain their existing proof. A returning claim can also prove
+  // untagged updates when every assignment came through claim history: clock_timestamp() was
+  // recorded under the job lock. Same-status office handoffs have no such history.
+  const uniqueBoundary = workerIn(assignment.after) === workerId && (!previous || previous.createdAt < assignment.createdAt);
+  if (uniqueBoundary && (generation === 1 || changes.every(row => row.action === "job.claimed"))) {
+    let boundary: Date | undefined;
+    if (assignment.action === "job.claimed" && assignment.actorId === workerId) {
+      const claimed = await db.jobStatusHistory.findFirst({
+        where: { jobId, fromStatus: "BOOKABLE", toStatus: "ASSIGNED", changedById: workerId, createdAt: { gte: assignment.createdAt } },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }], select: { createdAt: true },
+      });
+      boundary = claimed?.createdAt;
+    } else if (assignment.action !== "job.claimed") {
+      boundary = assignment.createdAt;
+    }
+    if (boundary) evidence.push({ createdAt: { gte: new Date(boundary.getTime() + 1) } });
   }
-  // These existing producers use `${audit.action}:${audit.id}` as the durable event id.
-  // Match the canonical notification UUID to the current worker's immutable audit, so neither
-  // pre-claim scheduler notices nor another worker's events can become this person's updates.
-  // The notification's read state can change without breaking this stable correlation.
-  const origins = await db.auditLog.findMany({ where: { recordType: "jobs", recordId: jobId, actorId: workerId, action: { in: UPDATE_ACTIONS }, createdAt: { gte: new Date(boundary.getTime() + 1) } }, select: { id: true, action: true } });
+  // The notification UUID must also match an immutable preset audit from this job and worker.
+  const origins = await db.auditLog.findMany({
+    where: { recordType: "jobs", recordId: jobId, actorId: workerId, action: { in: UPDATE_ACTIONS }, OR: evidence },
+    select: { id: true, action: true },
+  });
   if (!origins.length) return [];
   const events = origins.map(audit => ({ id: notificationId(`${audit.action}:${audit.id}`, customerId), type: audit.action === "job.times_requested" ? "job.reschedule_requested" : audit.action }));
   return db.notification.findMany({ where: { OR: events, userId: customerId, payload: { path: ["jobId"], equals: jobId }, type: { in: [...CUSTOMER_WORKER_UPDATE_TYPES] } },
