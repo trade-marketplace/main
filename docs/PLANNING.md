@@ -42,7 +42,7 @@ Work the lowest open milestone first. Inside a milestone: `P1` → `P2` → `P3`
 | `mode:customer` `mode:trade` `mode:office` | Which colour mode / role the screen belongs to |
 | `size:S` `size:M` | Half a day / about a day |
 | `ui` | Changes something visible: screenshots required in the PR |
-| `needs-william` | Touches schema, money, auth or security: William reviews |
+| `needs-william` | Touches schema, money, auth or security: Matt reviews (William left in November 2026) |
 | `needs-matt` | Touches brand, copy or look: Matt reviews |
 | `human-only` | Agents don't pick this up (decisions, accounts, legal, going live) |
 | `port-from-old-repo` | Start from the code in `willimobro/Trade-Marketplace`, then check it against the spec |

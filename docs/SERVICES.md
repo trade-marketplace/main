@@ -64,7 +64,7 @@ Used for (DECISIONS.md #58–#61):
 - **pg_cron**: every-minute timers (bounty expiry, 48h auto sign-off, reminders, unclaimed alerts).
 
 ### Rules for agents
-- **Database changes are Prisma migrations** in `prisma/migrations/` (set up in #67), reviewed by William.
+- **Database changes are Prisma migrations** in `prisma/migrations/` (set up in #67), reviewed and OK'd by Matt on the PR before merge (merging runs them on the live database).
   Row-level security policies, pg_cron jobs and storage policies are plain SQL inside those migrations.
   Never edit the production schema by hand in the dashboard. Never commit `.env` files.
 - **Previews and tests must not use this project's real data.** A second free project,
