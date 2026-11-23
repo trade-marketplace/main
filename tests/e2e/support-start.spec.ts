@@ -49,7 +49,23 @@ test.describe("actual private support opening",()=>{
   const officeContext=await browser.newContext();try{await officeContext.addCookies(await sessionCookies({id:office,email:`${office}@example.test`},secret,app!,"http://127.0.0.1:54510"));const reply=await officeContext.newPage();await reply.goto(`${app}/admin/support/${thread}`);await reply.getByRole("textbox",{name:"Message",exact:true}).fill("We can help.");await reply.getByRole("button",{name:"Send message",exact:true}).click();await expect(reply.getByRole("log",{name:"Conversation",exact:true}).getByText("We can help.",{exact:true})).toBeVisible();}finally{await officeContext.close();}
   await page.getByRole("link",{name:"Message us",exact:true}).click();await page.getByRole("link",{name:"Your messages",exact:true}).click();await expect(page).toHaveURL(`${app}/support`);await expect(page.getByText("Replied",{exact:true})).toBeVisible();const row=page.getByRole("link",{name:/Private account question/});await expect(row).toContainText("Unread");await row.click();await expect(page.getByText("We can help.",{exact:true})).toBeVisible();await expect.poll(async()=>Number((await db.query("SELECT count(*) AS n FROM support_thread_reads r WHERE r.thread_id=$1 AND r.user_id=$2 AND r.read_at >= (SELECT max(created_at) FROM support_messages WHERE thread_id=$1 AND NOT internal)",[thread,person.id])).rows[0].n),{timeout:15000}).toBe(1);await page.getByRole("main").getByRole("link",{name:"Back",exact:true}).click();await expect(page).toHaveURL(`${app}/support`);await expect(page.getByText("Replied",{exact:true})).toBeVisible();await expect(page.getByRole("link",{name:/Private account question/})).not.toContainText("Unread");await settle(page);await expectNoA11yViolations(page);await page.getByRole("link",{name:/Private account question/}).click();await page.getByRole("textbox",{name:"Message",exact:true}).fill("Thanks. That helps.");await page.getByRole("button",{name:"Send",exact:true}).click();await expect(page.getByRole("log",{name:"Conversation",exact:true}).getByText("Thanks. That helps.",{exact:true})).toBeVisible();await page.getByRole("main").getByRole("link",{name:"Back",exact:true}).click();await expect(page.getByText("Replied",{exact:true})).toHaveCount(0);
  });
- test("guest email/login return and office Help handoff preserve existing direct-route policy",async({page,context})=>{
-  await page.goto(`${app}/help`);await expect(page.getByRole("link",{name:"Message us",exact:true})).toHaveAttribute("href","mailto:hello@trademarketplace.nz");await page.goto(`${app}/support/new`);await expect(page).toHaveURL(/\/login\?next=%2Fsupport%2Fnew/);await context.addCookies(await sessionCookies({id:office,email:`${office}@example.test`},secret,app!,"http://127.0.0.1:54510"));await page.goto(`${app}/help`);await page.getByRole("link",{name:"Message us",exact:true}).click();await expect(page).toHaveURL(`${app}/admin/support`);await page.goto(`${app}/support/new`);await expect(page).toHaveURL(`${app}/admin`);
+ test("guest email/login return and direct office visits hand off to the office inbox", async ({ page, context }) => {
+  await page.goto(`${app}/help`);
+  await expect(page.getByRole("link", { name: "Message us", exact: true })).toHaveAttribute("href", "mailto:hello@trademarketplace.nz");
+  const start = "/support/new?returnTo=%2Fhelp";
+  await page.goto(app + start);
+  await expect(page).toHaveURL(`${app}/login?next=${encodeURIComponent(start)}`);
+  await context.addCookies(await sessionCookies({ id: office, email: `${office}@example.test` }, secret, app!, "http://127.0.0.1:54510"));
+  await page.goto(`${app}/help`);
+  await page.getByRole("link", { name: "Message us", exact: true }).click();
+  await expect(page).toHaveURL(`${app}/admin/support`);
+
+  await page.goto(`${app}/help`);
+  await page.goto(app + start);
+  await expect(page).toHaveURL(`${app}/admin/support`);
+  await expect(page.getByRole("heading", { name: "Support inbox", exact: true })).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "Subject", exact: true })).toHaveCount(0);
+  await page.goBack();
+  await expect(page).toHaveURL(`${app}/help`);
  });
 });
