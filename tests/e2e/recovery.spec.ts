@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { expect, test, type Page } from "@playwright/test";
 
 import { expectNoA11yViolations } from "./support/a11y";
@@ -6,7 +7,6 @@ import { VIEWPORTS } from "./support/viewports";
 const previewBase = process.env.E2E_DEV_BASE_URL;
 const preview = (state: string) => new URL(`/dev/components/recovery?state=${state}`, previewBase).href;
 const overflow = (page: Page) => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
-const password = "korimako-gumboot-41";
 
 test.use({ reducedMotion: "reduce" });
 
@@ -119,6 +119,7 @@ test.describe("recovery states and form interactions", () => {
     const confirmation = page.getByLabel("Type it again", { exact: true });
     await page.keyboard.press("Tab");
     await expect(newPassword).toBeFocused();
+    const password = randomUUID();
     await newPassword.fill(password);
     await page.keyboard.press("Tab");
     await expect(page.getByRole("button", { name: "Show new password" })).toBeFocused();
@@ -126,7 +127,7 @@ test.describe("recovery states and form interactions", () => {
     await expect(newPassword).toHaveAttribute("type", "text");
     await page.keyboard.press("Enter");
     await expect(newPassword).toHaveAttribute("type", "password");
-    await confirmation.fill("different-password-42");
+    await confirmation.fill(randomUUID());
     await confirmation.press("Tab");
     await expect(page.getByText("These don’t match.")).toBeVisible();
     await expect(confirmation).toHaveAttribute("aria-invalid", "true");
@@ -156,7 +157,7 @@ test.describe("recovery states and form interactions", () => {
     await page.getByLabel("Type it again", { exact: true }).fill("short");
     await page.getByRole("button", { name: "Save new password" }).click();
     await expect(page.getByLabel("New password", { exact: true })).toBeFocused();
-    await expect(page.getByLabel("New password", { exact: true })).toHaveAccessibleDescription("Use 10+ characters.");
+    await expect(page.getByLabel("New password", { exact: true })).toHaveAccessibleDescription("Use at least 10 characters.");
     await expectNoA11yViolations(page);
   });
 
@@ -167,6 +168,7 @@ test.describe("recovery states and form interactions", () => {
     await expect(page.getByRole("main").getByRole("alert")).toContainText("Couldn’t send the link. Try again.");
     await expect(page.getByRole("textbox", { name: "Email" })).toHaveValue("sarah@example.test");
     await page.goto(preview("save-error"));
+    const password = randomUUID();
     await page.getByLabel("New password", { exact: true }).fill(password);
     await page.getByLabel("Type it again", { exact: true }).fill(password);
     await page.getByRole("button", { name: "Save new password" }).click();
