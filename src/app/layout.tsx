@@ -36,7 +36,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   // The visitor's role, read on the server from their Supabase session and their `profiles` row (signed out →
   // customer palette). Because the attribute is in the server-rendered HTML, the first paint already has the
   // right colours: no flash. Log-in and log-out revalidate the layout so it changes with the next page.
-  const { window, now, phase } = await requestMaintenance();
+  const { window, now, phase } = requestMaintenance();
   const role = phase === "page" ? null : await viewerRole();
 
   // React puts these <link rel="preload"> tags at the top of <head>, before the CSS, so the fonts start downloading

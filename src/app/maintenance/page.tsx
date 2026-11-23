@@ -5,8 +5,8 @@ import { MaintenancePage } from "./view";
 
 export const metadata: Metadata = { title: "Maintenance", robots: { index: false, follow: false } };
 
-export default async function Page() {
-  const { window, phase } = await requestMaintenance();
+export default function Page() {
+  const { window, phase } = requestMaintenance();
   if (!window || phase !== "page") notFound();
   return <MaintenancePage window={window} />;
 }
