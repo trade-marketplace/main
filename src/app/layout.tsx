@@ -48,7 +48,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   return (
     <html lang="en-NZ" data-mode={modeForRole(role)}>
       <body><FocusVisibility /><BrowserPushReceiver /><ConnectionBanner>
-        {window && now < window.from && <ScheduledBanner warnAt={window.warnAt} from={window.from} label={window.label} initiallyVisible={phase === "banner"} />}
+        {window && now < window.until && <ScheduledBanner schedule={window} observedAt={now} />}
         {children}
       </ConnectionBanner></body>
     </html>

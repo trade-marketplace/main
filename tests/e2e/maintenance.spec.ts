@@ -31,3 +31,16 @@ for (const viewport of VIEWPORTS) {
     }
   });
 }
+
+test("an open tab requests the current URL at the start and end of downtime", async ({ page }) => {
+  // Both preview fixtures start an hour before their next boundary.
+  await page.clock.install();
+  for (const state of ["banner", "page"]) {
+    const url = `${preview}/dev/components/maintenance?state=${state}`;
+    await page.goto(url, { waitUntil: "networkidle" });
+    const navigation = page.waitForRequest(request => request.isNavigationRequest() && request.url() === url);
+    const loaded = page.waitForEvent("load");
+    await page.clock.fastForward(3_600_001);
+    await Promise.all([navigation, loaded]);
+  }
+});
