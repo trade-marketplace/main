@@ -6,6 +6,7 @@ import { expect, test } from "@playwright/test";
 import { PEOPLE } from "../../prisma/seed/data.mjs";
 import { sessionChecks, sessionCookies } from "./auth-stub";
 import { OUT } from "./global-setup";
+import { waitForCaptureContent } from "./readiness";
 import { resolvePlan, type PlanEntry } from "./shots";
 
 // Takes every planned screenshot (#90) at 1440 and 390 px, signed in as the shot's demo account, with reduced
@@ -36,7 +37,6 @@ for (const shot of shots) {
         const checksBefore = person ? await sessionChecks(person.id) : 0;
         const page = await context.newPage();
         const response = await page.goto(shot.url, { waitUntil: "load" });
-        await page.evaluate(() => document.fonts.ready.then(() => undefined));
 
         const finalUrl = new URL(page.url());
         const wanted = new URL(shot.url, baseURL);
@@ -53,6 +53,9 @@ for (const shot of shots) {
           await expect(page.locator("html"), `signed in as ${shot.account}`).toHaveAttribute("data-mode", shot.expectMode);
         }
 
+        const readiness = await waitForCaptureContent(page, shot);
+        if (readiness) notes.add(`${viewport.width}px: ${readiness}`);
+        await page.evaluate(() => document.fonts.ready.then(() => undefined));
         const file = `${shot.id}-${viewport.width}.png`;
         await page.screenshot({ path: join(OUT, file), fullPage: true, animations: "disabled", caret: "hide" });
         files[String(viewport.width)] = file;
