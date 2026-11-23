@@ -13,10 +13,12 @@ export const JOB_SUMMARY_SELECT = {
   id: true, jobNumber: true, title: true, category: true, status: true, customerId: true, workerId: true,
   suburb: true, city: true, priceCents: true, asap: true, createdAt: true, updatedAt: true,
   // A job may spend many transitions assigned or on the board after its price was sent.
-  // Keep the two cancellation hops, the latest pricing decision, and one row to detect ties.
+  // Keep the newest occurrence of each relevant transition. Repeated cancel/reinstate cycles
+  // cannot displace its last pricing decision; conflicting origins at the same time stay visible.
   statusHistory: {
     where: { toStatus: { in: ["REVIEW", "QUOTE_BOUNTY", "PRICED", "CANCEL_REVIEW", "CANCELLED"] } },
-    orderBy: { createdAt: "desc" }, take: 4, select: { fromStatus: true, toStatus: true, createdAt: true },
+    distinct: ["fromStatus", "toStatus"], orderBy: { createdAt: "desc" },
+    select: { fromStatus: true, toStatus: true, createdAt: true },
   },
 } satisfies Prisma.JobSelect;
 

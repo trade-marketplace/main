@@ -156,6 +156,24 @@ describe.skipIf(!testDatabaseUrl)("customer waiting commands", () => {
     if (paid) expect(payments.rows).toContainEqual(expect.objectContaining({ kind: "JOB", amountCents: published.detail.priceCents }));
     else expect(payments.rows).toEqual([]);
   });
+  it("keeps a sent price after repeated cancellation requests and reinstatements", async () => {
+    const { customer, job } = await fixture(), office = await person("ADMIN");
+    await priceJob(schema.db, { jobId: job.id, minutes: 90, materialsCents: 500 });
+    await transitionJob(schema.db, effects, { jobId: job.id, transition: "send-price", actor: office });
+    const sent = (await projections(customer, job.id)).detail.priceCents;
+    expect(sent).not.toBeNull();
+    await schema.db.payment.create({ data: { jobId: job.id, kind: "JOB", amountCents: sent!, status: "PAID", paidAt: new Date(), idempotencyKey: randomUUID() } });
+    await transitionJob(schema.db, effects, { jobId: job.id, transition: "mark-paid", actor: { role: "SYSTEM", source: "test" } });
+    for (let attempt = 0; attempt < 3; attempt++) {
+      await transitionJob(schema.db, effects, { jobId: job.id, transition: "cancel", actor: customer, reason: "Please cancel." });
+      await transitionJob(schema.db, effects, { jobId: job.id, transition: "reinstate", actor: office, reason: "Customer kept the appointment." });
+    }
+    await transitionJob(schema.db, effects, { jobId: job.id, transition: "cancel", actor: customer, reason: "Please cancel." });
+    await transitionJob(schema.db, effects, { jobId: job.id, transition: "approve-cancel", actor: office, reason: "Approved." });
+    const { detail, list } = await projections(customer, job.id);
+    expect(detail.priceCents).toBe(sent);
+    expect(list.priceCents).toBe(sent);
+  });
   it("does not treat an older published cycle as publication of a newer REVIEW draft", async () => {
     const { customer, job } = await fixture(), office = await person("ADMIN");
     await priceJob(schema.db, { jobId: job.id, minutes: 60, materialsCents: 0 });
