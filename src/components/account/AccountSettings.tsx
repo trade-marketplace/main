@@ -16,7 +16,7 @@ export function AccountSettings({ role, children, active = "/profile/security", 
     ["Profile", "/profile", "person"],
     ["Security", "/profile/security", "lock"],
     ["Notifications", "/profile/notifications", "notifications"],
-    ...(role === "CUSTOMER" ? [["Addresses", "/profile/addresses", "home"], ["Payments", "/profile/payments", "credit_card"]] : [["Trades & licences", "/profile/trades", "verified"], ["Work area", "/profile/area", "near_me"], ["Bank & tax", "/profile/payroll", "account_balance"]]),
+    ...(role === "CUSTOMER" ? [["Addresses", "/profile/addresses", "home"], ["Payments", "/profile/payments", "credit_card"]] : [["Trades & licences", "/profile/trades", "verified"], ["Work area", "/profile/area", "near_me"], ["Public profile", "/profile/public", "badge"], ["Bank & tax", "/profile/payroll", "account_balance"]]),
     ["Delete account", "/profile/delete", "delete"],
   ];
   const returnPages = ["/profile/area", "/profile/trades", "/profile/payroll", "/profile/notifications"];
