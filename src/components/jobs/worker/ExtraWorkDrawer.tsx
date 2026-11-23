@@ -34,8 +34,8 @@ export async function uploadExtraPhoto(jobId: string, key: string, file: File, p
   if (!result.ok) throw Object.assign(Error(result.error), { result });
   progress(1); return result.path;
 }
-export function ExtraWorkDrawer({ jobId, requestKey, open, onClose, onSent, preview, request = requestVariationAction, upload = uploadExtraPhoto }: {
-  jobId: string; requestKey: string; open: boolean; onClose: () => void; onSent: (id: string, input: Request) => void; preview?: ExtraWorkState;
+export function ExtraWorkDrawer({ jobId, requestKey, open, onClose, onSent, onAlreadyWaiting, preview, request = requestVariationAction, upload = uploadExtraPhoto }: {
+  jobId: string; requestKey: string; open: boolean; onClose: () => void; onAlreadyWaiting: () => void; onSent: (id: string, input: Request) => void; preview?: ExtraWorkState;
 } & ExtraWorkServices) {
   const session = useOptionalSessionExpired(), online = useOnlineStatus(), pending = useRef(false), submitted = useRef<Request | null>(null), urls = useRef(new Set<string>());
   const validExample = preview && !["open", "closed", "empty", "field-errors"].includes(preview);
@@ -74,6 +74,7 @@ export function ExtraWorkDrawer({ jobId, requestKey, open, onClose, onSent, prev
       const result = await request(input);
       if (session?.check(result)) return;
       if (result.ok) { onSent(result.variationId, input); return; }
+      if (result.error === "already-waiting") { onAlreadyWaiting(); return; }
       if (result.error === "photos-pending") setWait(true); else if (result.error === "email-required") setEmailRequired(true); else setError(true);
       // A structured refusal confirms no successful row was returned. Keep the payload for a safe retry.
     } catch { setError(true); }
