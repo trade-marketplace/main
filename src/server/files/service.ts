@@ -30,6 +30,15 @@ const DOCUMENT_PATH = /^(licences|coc|receipts)\/([0-9a-f-]{36})\/[0-9a-f]{32}\.
 // PDFs that run code or launch programs when opened have no place in a licence or certificate.
 const ACTIVE_PDF_CONTENT = /\/(JavaScript|JS|Launch|EmbeddedFile|OpenAction|AA)\b/;
 
+/**
+ * True when a PDF names any active-content key. PDF names may spell any character as `#` and two hex digits
+ * (`/J#61vaScript` is `/JavaScript`), so those are decoded first (#220); otherwise the check is trivially skipped.
+ */
+export function hasActivePdfContent(input: Uint8Array): boolean {
+  const text = Buffer.from(input).toString("latin1");
+  return ACTIVE_PDF_CONTENT.test(text) || ACTIVE_PDF_CONTENT.test(text.replace(/#([0-9A-Fa-f]{2})/g, (_, hex: string) => String.fromCharCode(parseInt(hex, 16))));
+}
+
 type PhotoRow = { id: string; jobId: string; path: string; position: number };
 
 /** The slice of the Prisma client this service uses, so tests can pass a small fake. */
@@ -129,7 +138,7 @@ export function createUploadService({ db, store }: UploadDeps) {
       const kind = checkUpload(input, DOCUMENT_KINDS, MESSAGES.documentType);
       let file: ProcessedFile;
       if (kind === "pdf") {
-        if (ACTIVE_PDF_CONTENT.test(Buffer.from(input).toString("latin1"))) {
+        if (hasActivePdfContent(input)) {
           throw new UploadError("wrong-type", MESSAGES.documentType);
         }
         file = { bytes: Buffer.from(input), contentType: "application/pdf", extension: "pdf" };
