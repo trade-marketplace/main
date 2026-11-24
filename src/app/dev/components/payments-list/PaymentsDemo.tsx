@@ -11,6 +11,8 @@ export function PaymentsDemo({ state, page }: { state: typeof PAYMENT_STATES[num
     { id: "demo-2", kind: "VARIATION", amountCents: 54000, refundedCents: 0, status: "PAID", paidAt: "2026-11-02T00:00:00Z", refundedAt: null, job: { id: "00000000-0000-4000-8000-000000000998", jobNumber: 998, title: "Fix fence palings" } },
     { id: "demo-3", kind: "QUICK_LOOK", amountCents: 12000, refundedCents: state === "with-refund" ? 12000 : state === "part-refund" ? 3000 : 0, status: state === "with-refund" ? "REFUNDED" : state === "part-refund" ? "PARTIALLY_REFUNDED" : "PAID", paidAt: "2026-10-27T00:00:00Z", refundedAt: "2026-10-28T00:00:00Z", job: { id: "00000000-0000-4000-8000-000000000971", jobNumber: 971, title: "Gutter clean" } },
   ];
+  // Two part refunds of the same payment (#565): $10.00 on 28 Oct, then $15.00 on 1 Nov, each on its own row.
+  if (state === "two-refunds") sample[2] = { ...sample[2], refundedCents: 2500, status: "PARTIALLY_REFUNDED", refundedAt: "2026-11-01T00:00:00Z", refunds: [{ fromCents: 0, toCents: 1000, at: "2026-10-28T00:00:00Z" }, { fromCents: 1000, toCents: 2500, at: "2026-11-01T00:00:00Z" }] };
   if (state === "page-2") for (let i = 4; i <= 30; i++) sample.push({ ...sample[0], id: `demo-${i}`, paidAt: new Date(Date.UTC(2026, 10, 5 + i)).toISOString(), job: { ...sample[0].job, jobNumber: 1005 + i, title: `Payment example ${i}` } });
   const data = state === "error" && !recovered ? null : paymentPage(paymentRows(state === "empty" ? [] : sample), state === "page-2" ? page : 1);
   return <PaymentsList data={data} loading={state === "loading"} offline={state === "offline" ? true : undefined} onRetry={() => setRecovered(true)} pageHref={page => `/dev/components/payments-list?state=page-2&page=${page}`} />;
