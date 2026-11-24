@@ -4,8 +4,18 @@ import { VIEWPORTS } from "./support/viewports";
 for (const viewport of VIEWPORTS) {
   test.describe(`Help centre ${viewport.width}px`, () => {
     test.use({ viewport });
-    test("home, article and every review state fit and remain accessible", async ({ page }) => {
-      for (const route of ["/help", "/help?q=pay", "/help?state=no-results", "/help?state=loading", "/help?state=error", "/help/when-do-i-pay", "/help/when-do-i-pay?state=helpful-voted", "/help/when-do-i-pay?state=not-helpful", "/help/when-do-i-pay?state=feedback-error"]) {
+    for (const route of [
+      "/help",
+      "/help?q=pay",
+      "/help?state=no-results",
+      "/help?state=loading",
+      "/help?state=error",
+      "/help/when-do-i-pay",
+      "/help/when-do-i-pay?state=helpful-voted",
+      "/help/when-do-i-pay?state=not-helpful",
+      "/help/when-do-i-pay?state=feedback-error",
+    ]) {
+      test(`${route} fits and is accessible`, async ({ page }) => {
         await page.goto(route); await expect(page.getByRole("searchbox").or(page.getByRole("combobox"))).toBeVisible();
         await page.locator("[data-help-ready=true]").waitFor(); await page.evaluate(() => document.fonts.ready);
         if (route.includes("q=pay")) await expect(page.getByRole("combobox")).toHaveValue("pay");
@@ -17,8 +27,8 @@ for (const viewport of VIEWPORTS) {
         if (route.includes("state=feedback-error")) await expect(page.getByText("Couldn’t save your feedback. Try again.").first()).toBeVisible();
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
         await expectNoA11yViolations(page);
-      }
-    });
+      });
+    }
   });
 }
 test("search suggestions support slash, arrows, Enter, Escape and a real article journey", async ({ page }) => {
