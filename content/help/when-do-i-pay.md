@@ -1,4 +1,4 @@
-<!-- {"title": "When do I pay?", "topic": "Payments", "updated": "2026-11-02", "related": ["how-do-i-pay", "receipts-and-gst", "extra-work", "cancelling-a-job"]} -->
+<!-- {"title": "When do I pay?", "topic": "Payments", "updated": "2026-11-23", "related": ["how-do-i-pay", "receipts-and-gst", "extra-work", "cancelling-a-job"]} -->
 
 You pay when you accept your price, before anyone turns up. That locks in your booking.
 
