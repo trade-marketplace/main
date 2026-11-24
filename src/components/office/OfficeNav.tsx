@@ -21,7 +21,7 @@ import styles from "./office.module.css";
 
 type Props = { viewer: OfficeShellViewer; counts: OfficeCounts; preview?: OfficeNavPreview };
 
-function AccountMenu({ viewer, defaultOpen }: { viewer: OfficeShellViewer; defaultOpen?: boolean }) {
+function AccountMenu({ viewer, align, defaultOpen }: { viewer: OfficeShellViewer; align: "start" | "end"; defaultOpen?: boolean }) {
   const formRef = useRef<HTMLFormElement>(null);
   const name = fullName(viewer.firstName, viewer.lastName);
   return (
@@ -29,7 +29,7 @@ function AccountMenu({ viewer, defaultOpen }: { viewer: OfficeShellViewer; defau
       <Menu
         key={String(defaultOpen)}
         label="Account"
-        align="start"
+        align={align}
         defaultOpen={defaultOpen}
         className={styles.accountMenu}
         trigger={(props) => (
@@ -84,7 +84,7 @@ export function OfficeNav({ viewer, counts, preview }: Props) {
             </li>
           </ul>
         </nav>
-        <div className={styles.sidebarAccount}><AccountMenu viewer={viewer} defaultOpen={preview?.accountOpen} /></div>
+        <div className={styles.sidebarAccount}><AccountMenu viewer={viewer} align="start" defaultOpen={preview?.accountOpen} /></div>
       </aside>
       <header className={styles.mobileHeader}>
         <nav aria-label="Office">
@@ -108,7 +108,7 @@ export function OfficeNav({ viewer, counts, preview }: Props) {
             })}
           </Menu>
         </nav>
-        <AccountMenu viewer={viewer} defaultOpen={preview?.accountOpen} />
+        <AccountMenu viewer={viewer} align="end" defaultOpen={preview?.accountOpen} />
       </header>
     </>
   );

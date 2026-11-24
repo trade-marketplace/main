@@ -88,6 +88,26 @@ describe("decideRoute: wrong role", () => {
   });
 });
 
+describe("private support handoff", () => {
+  const next = "/support/new?returnTo=%2Fhelp%3Fq%3Dpayment";
+
+  it("sends an office bookmark and its post-login return straight to the office inbox", () => {
+    expect(decideRoute("/support/new/", office, next)).toEqual({ action: "redirect", to: "/admin/support" });
+    expect(afterLoginPath("ADMIN", next)).toBe("/admin/support");
+    for (const path of ["/support", "/support/thread-id", "/support/new/nested"]) {
+      expect(decideRoute(path, office)).toEqual({ action: "redirect", to: "/admin" });
+    }
+  });
+
+  it("keeps the support composer and return context for customers, tradies and signed-out visitors", () => {
+    for (const viewer of [customer, tradie]) {
+      expect(decideRoute("/support/new", viewer, next)).toEqual({ action: "allow" });
+      expect(afterLoginPath(viewer.role, next)).toBe(next);
+    }
+    expect(decideRoute("/support/new", null, next)).toEqual({ action: "redirect", to: loginPath(next) });
+  });
+});
+
 describe("decideRoute: right role", () => {
   it("lets both sides open shared pages", () => {
     for (const path of ["/jobs/j1", "/dashboard", "/messages", "/profile", "/profile/security"]) {

@@ -23,12 +23,22 @@ export function WhereDemo({ state, embedded = false }: { state: string; embedded
   const [fields, setFields] = useState<Record<string, string>>(() => state === "invalid" ? whereErrors(draft, NOW) : {});
   const [review, setReview] = useState(state === "review");
   useEffect(() => { if (["results", "loading", "outside"].includes(state)) document.getElementById("job-address")?.focus(); }, [state]);
-  if (state.startsWith("update")) {
+  const bookedMeanwhile = state === "booked-meanwhile";
+  if (state.startsWith("update") || bookedMeanwhile) {
     const Container = embedded ? "section" : "main"; const id = embedded ? undefined : "main";
     if (state === "update-loading") return <Container id={id}><JobWindowsLoading embedded={embedded} /></Container>;
     if (state === "update-load-error") return <Container id={id}><JobWindowsLoadError embedded={embedded} /></Container>;
-    const initial = { id: "8608ab1f-2862-4c44-9490-88f5e17375bd", jobNumber: 1042, title: draft.description, editable: state !== "update-claimed", revision: "preview", schedule: { asap: false, anyTime: false, timeWindows: [{ date: "2026-11-03", timeOfDay: "MORNING" as const }] } };
-    return <Container id={id}><JobWindows embedded={embedded} initial={initial} initialNow={NOW.toISOString()} preview={state.slice(7)} save={async (_id, schedule) => ({ status: "saved", snapshot: { ...initial, schedule } })} /></Container>;
+    const booked = bookedMeanwhile ? { date: "2025-11-06", timeOfDay: "MORNING" as const } : null;
+    const initial = {
+      id: "8608ab1f-2862-4c44-9490-88f5e17375bd", jobNumber: 1042, title: draft.description,
+      editable: state !== "update-claimed", revision: "preview", booked,
+      schedule: { asap: false, anyTime: false, timeWindows: [booked ?? { date: "2026-11-03", timeOfDay: "MORNING" as const }] },
+    };
+    return <Container id={id}>
+      <JobWindows embedded={embedded} initial={initial} initialNow={bookedMeanwhile ? "2025-11-04T00:00:00Z" : NOW.toISOString()}
+        preview={bookedMeanwhile ? state : state.slice(7)} backHref={bookedMeanwhile ? "/dev/components/customer-confirmed?state=booked" : undefined}
+        save={async (_id, schedule) => ({ status: "saved", snapshot: { ...initial, schedule } })} />
+    </Container>;
   }
   const suggestions = state === "outside" ? [outside] : [inside];
   return <WizardFrame step={review ? 3 : 2} saved={state !== "saving"} summary={draft} backHref="/dev/components/post-job-photos?state=full" saveExit={() => router.push("/")}

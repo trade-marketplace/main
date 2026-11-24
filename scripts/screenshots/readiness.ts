@@ -1,5 +1,7 @@
 import { errors, type Page } from "@playwright/test";
 
+import { OFFICE_JOBS_PATH, officeCustomerId } from "@/lib/office-jobs";
+
 import { JOBS } from "../../prisma/seed/data.mjs";
 import type { Shot } from "./shots";
 
@@ -25,6 +27,13 @@ export async function waitForCaptureContent(page: Page, shot: Pick<Shot, "url" |
   const jobId = /^\/jobs\/([^/]+)\/?$/.exec(wanted.pathname)?.[1];
   const job = shot.status === "ASSIGNED" && shot.expectMode === "trade" ? JOBS.find(row => row.id === jobId) : undefined;
 
+  const officeSubpage = shot.expectMode === "office" && wanted.pathname === actual.pathname && /^\/admin\/.+/.test(wanted.pathname);
+  const officeJobs = officeSubpage && wanted.pathname === OFFICE_JOBS_PATH;
+  const customer = officeJobs && officeCustomerId(wanted.searchParams.get("customer") ?? undefined);
+  const todayQueue = page.getByRole("main")
+    .filter({ has: page.getByRole("heading", { level: 1, name: "Today", exact: true }) })
+    .getByRole("group", { name: "Queue totals", exact: true }).first();
+
   try {
     if (intentional) {
       await fallback.waitFor({ state: "visible", timeout });
@@ -37,6 +46,13 @@ export async function waitForCaptureContent(page: Page, shot: Pick<Shot, "url" |
       let destination = page.locator("body").filter({ hasNot: fallback });
       // The streamed worker route's fallback has its own H1. Require the actual seeded job title in the same paint.
       if (job) destination = destination.filter({ has: page.getByRole("heading", { name: job.title, exact: true }) });
+      // The office loading shell renders the Today queue. Only /admin itself owns that screen.
+      if (officeSubpage) destination = destination.filter({ hasNot: todayQueue });
+      // The list and its customer filter must both be visible when the shot requests them.
+      if (officeJobs) {
+        destination = destination.filter({ has: page.getByRole("heading", { level: 1, name: "All jobs", exact: true }) });
+        if (customer) destination = destination.filter({ has: page.getByRole("button", { name: /^Remove customer filter:/ }) });
+      }
       await destination.waitFor({ state: "visible", timeout });
     }
   } catch (error) {
@@ -45,6 +61,10 @@ export async function waitForCaptureContent(page: Page, shot: Pick<Shot, "url" |
     if (gallery) return "component gallery content did not appear before capture";
     if (await fallback.isVisible()) return "still loading at capture";
     if (job) return "assigned job content did not appear before capture";
+    if (officeSubpage && await todayQueue.isVisible()) return "inherited Today queue still visible at capture";
+    if (officeJobs) {
+      return customer ? "All jobs or the requested customer filter did not appear before capture" : "All jobs did not appear before capture";
+    }
     return "content did not settle before capture";
   }
   return null;

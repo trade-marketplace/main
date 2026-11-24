@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { TextLink } from "@/components/TextLink";
+import { bookingWindowLabel } from "@/lib/worker-booking";
 import { Button } from "@/components/Button";
 import { useOptionalSessionExpired } from "@/components/auth/SessionExpired";
 import { OfflineBanner, useOnlineStatus } from "@/components/feedback/OfflineBanner";
@@ -24,7 +26,7 @@ function WindowForm({ initial, initialNow, save = saveJobWindowsAction, preview,
   const [snapshot, setSnapshot] = useState(initial); const [value, setValue] = useState(initial.schedule);
   const [now, setNow] = useState(() => new Date(initialNow));
   const [busy, setBusy] = useState(false); const pending = useRef(false);
-  const [error, setError] = useState(preview === "error"); const [changed, setChanged] = useState(preview === "changed"); const [field, setField] = useState<string>();
+  const [error, setError] = useState(preview === "error"); const [changed, setChanged] = useState(preview === "changed" || preview === "booked-meanwhile"); const [field, setField] = useState<string>();
   const form = useRef<HTMLFormElement>(null); const offline = !online || preview === "offline";
   useEffect(() => {
     if (preview) return;
@@ -54,7 +56,10 @@ function WindowForm({ initial, initialNow, save = saveJobWindowsAction, preview,
     <div className={styles.card}>
       <p className={styles.eyebrow}>TM-{snapshot.jobNumber}</p><Heading className={styles.title}>When do you need it?</Heading><p className={styles.job}>{snapshot.title}</p>
       <OfflineBanner online={preview === "offline" ? false : undefined} sticky={false} />
-      {changed && <Banner tone="info" title="Job updated" />}
+      {snapshot.booked ? (
+        <Banner tone="info" title={`Booked for ${bookingWindowLabel(snapshot.booked)}`} live={changed}
+          action={<TextLink inline href={backHref === "/notifications" ? `/jobs/${snapshot.id}` : backHref}>Back to job</TextLink>} />
+      ) : changed && <Banner tone="info" title="Job updated" live />}
       {error && <Banner tone="alert" title="Couldn’t save." live />}
       <form ref={form} onSubmit={event => void submit(event)} className={styles.form} noValidate>
         <ScheduleFields value={value} now={now} error={field} disabled={!snapshot.editable || busy || preview === "saving"} onChange={next => { setValue(currentSchedule(next, now)); setField(undefined); setChanged(false); }} />

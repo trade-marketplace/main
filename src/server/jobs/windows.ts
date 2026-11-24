@@ -22,10 +22,11 @@ function rawSchedule(job: Row) {
 }
 function snapshot(job: Row, now: Date): JobWindowsSnapshot {
   const raw = rawSchedule(job);
+  const booked = job.bookedDate && job.bookedTime ? { date: job.bookedDate.toISOString().slice(0, 10), timeOfDay: job.bookedTime } : null;
   // A retained booking can survive a return to BOOKABLE. Keep its raw row, not an out-of-range picker value.
-  const editable = canEditJobWindows(job), filterForPicker = job.status === "ASSIGNED" || (editable && Boolean(job.bookedDate && job.bookedTime));
+  const editable = canEditJobWindows(job), filterForPicker = job.status === "ASSIGNED" || (editable && Boolean(booked));
   const schedule = filterForPicker ? { ...raw, timeWindows: raw.timeWindows.filter(window => timeWindowsInRange([window], now)) } : raw;
-  return { id: job.id, jobNumber: job.jobNumber, title: job.title, editable, revision: windowsRevision({ ...raw, booked: job.bookedDate && job.bookedTime ? { date: job.bookedDate.toISOString().slice(0, 10), timeOfDay: job.bookedTime } : null }), schedule };
+  return { id: job.id, jobNumber: job.jobNumber, title: job.title, editable, booked, revision: windowsRevision({ ...raw, booked }), schedule };
 }
 export async function loadJobWindows(db: PrismaClient, viewer: Viewer, id: string, now = new Date()) {
   if (viewer.role !== "CUSTOMER" || !z.uuid().safeParse(id).success) return null;
@@ -45,8 +46,8 @@ export async function saveJobWindows(db: PrismaClient, viewer: Viewer, id: strin
     if (profile?.role !== "CUSTOMER" || !job) return { status: "forbidden" };
     const before = snapshot(job, now), beforeRaw = rawSchedule(job);
     if (!before.editable || before.revision !== revision) return { status: "changed", snapshot: before };
-    if (!schedule.anyTime && job.bookedDate && job.bookedTime) {
-      const booked = { date: job.bookedDate.toISOString().slice(0, 10), timeOfDay: job.bookedTime };
+    if (!schedule.anyTime && before.booked) {
+      const booked = before.booked;
       if (!schedule.timeWindows.some(window => window.date === booked.date && window.timeOfDay === booked.timeOfDay)) schedule.timeWindows.push(booked);
     }
     schedule.timeWindows.sort((a, b) => a.date.localeCompare(b.date) || DAY_PARTS.findIndex(part => part.value === a.timeOfDay) - DAY_PARTS.findIndex(part => part.value === b.timeOfDay));

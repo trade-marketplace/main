@@ -3,6 +3,7 @@ import { expect, test } from "@playwright/test";
 import pg from "pg";
 import { startAuthStub, sessionCookies } from "../../scripts/screenshots/auth-stub";
 import { expectNoA11yViolations } from "./support/a11y";
+import { waitForPageSettled } from "./support/page-settled";
 import { VIEWPORTS } from "./support/viewports";
 
 const preview = process.env.PRICE_READY_PREVIEW_URL || process.env.POSTED_PREVIEW_E2E_URL || "http://127.0.0.1:3101";
@@ -49,6 +50,8 @@ test("payment errors stay inline and Try again preserves the price and page", as
 test("keyboard dialog has optional exclusive reasons, Go back and Esc restore the trigger", async ({ page, context }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`${preview}/dev/components/price-ready`);
+  const title = "Price ready (dev) | Trade Marketplace";
+  await expect(page).toHaveTitle(title);
   await page.getByRole("heading", { name: "Price ready", exact: true }).click();
   await page.keyboard.press("Tab");
   await expect(page.getByRole("button", { name: "Accept & pay", exact: true })).toBeFocused();
@@ -57,6 +60,7 @@ test("keyboard dialog has optional exclusive reasons, Go back and Esc restore th
   await expect(trigger).toBeFocused(); await trigger.press("Enter");
   const dialog = page.getByRole("dialog", { name: "No worries.", exact: true });
   await expect(dialog.getByRole("heading", { name: "No worries.", exact: true })).toBeFocused();
+  await expect(page).toHaveTitle(title);
   await expect(dialog.locator('input:checked')).toHaveCount(0);
   await dialog.getByRole("radio", { name: "Too expensive", exact: true }).check();
   await dialog.getByRole("radio", { name: "Changed my mind", exact: true }).check();
@@ -68,7 +72,9 @@ test("keyboard dialog has optional exclusive reasons, Go back and Esc restore th
   await page.keyboard.press("Escape"); await expect(dialog).not.toBeVisible(); await expect(trigger).toBeFocused();
   await trigger.press("Enter"); await dialog.getByRole("button", { name: "Go back", exact: true }).press("Enter");
   await expect(dialog).not.toBeVisible(); await expect(trigger).toBeFocused();
-  await trigger.press("Enter"); await dialog.getByRole("button", { name: "No thanks", exact: true }).press("Enter");
+  await expect(page).toHaveTitle(title);
+  await trigger.press("Enter");
+  await waitForPageSettled(page, title, () => dialog.getByRole("button", { name: "No thanks", exact: true }).press("Enter"));
   await expect(page.getByRole("heading", { name: "Cancelled", exact: true })).toBeVisible();
   await expectNoA11yViolations(page);
 });

@@ -17,6 +17,8 @@ Decided by Matt (Co-Founder/CEO) on 23 October 2026. These override older wordin
 
 ## Decided since (closed decision issues)
 
+- **Booked calendar times** (Claude for Matt, 23 Nov, #524). In Pacific/Auckland time, Morning is 8 am–12 pm, Afternoon is 12 pm–5 pm and Evening is 5 pm–8 pm.
+
 - **Domain** (#209, Matt): primary **trademarketplace.nz**; **trademarketplace.co.nz** is intended to redirect to it. The primary domain is verified and live on Vercel (connector checked 29 October 2026); the .co.nz purchase/redirect has not been verified. See `docs/SERVICES.md`.
 - **Email, push and SMS** (#63, Matt): **Resend** for email from **hello@trademarketplace.nz**; **Firebase** web push for job alerts and pings. **No SMS at launch** (cost); revisit with more users.
 - **Analytics and cookies** (#234, Matt): privacy-friendly analytics (**Plausible or Fathom**), so the cookie banner informs only, no consent choices.
