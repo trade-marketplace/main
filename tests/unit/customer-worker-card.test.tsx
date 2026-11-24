@@ -27,7 +27,8 @@ describe("customer worker card", () => {
     const expected = CUSTOMER_WORKER_LICENCE_LABELS[trade];
     if (expected) expect(html).toContain(expected); else expect(html).not.toContain("Licensed");
     expect(html).toContain("Jack W"); expect(html).not.toContain("Wilson"); expect(html).toContain("tel:0210000002");
-    expect(html).not.toMatch(/Message Jack|Receipt|calendar|Request to cancel/);
+    expect(html).not.toMatch(/Message Jack|Receipt|Request to cancel/);
+    expect(html).toContain(`href="/jobs/${job.id}/calendar.ics"`);
   });
   it.each([{ status: "PENDING" }, { status: "REJECTED" }, { expires: "2026-11-01" }, { category: "PLUMBING" }, { category: "OTHER" }])("never lends a pending, rejected, expired or other-trade licence: %j", async input => {
     const { db } = database(input);
@@ -60,6 +61,7 @@ describe("customer worker card", () => {
   it("shows the unbooked sentence and degrades an unavailable card to initials, short name and phone", () => {
     const html = renderToStaticMarkup(<ConfirmedPanel job={{ ...job, bookedDate: null, bookedTime: null }} card={card} back="/" online preview />);
     expect(html).toContain("Jack will book one of your times.");
+    expect(html).not.toContain("Add to calendar");
     const unavailable = renderToStaticMarkup(<ConfirmedPanel job={job} card={null} back="/" online preview />);
     expect(unavailable).toContain("Jack W"); expect(unavailable).toContain("Call Jack");
     expect(unavailable).not.toMatch(/Licensed|4\.9|booked in|Job updates|Wilson/);
