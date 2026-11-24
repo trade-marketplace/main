@@ -1,0 +1,16 @@
+.page {
+  display: grid;
+  place-items: center;
+  min-height: 100dvh;
+  padding: var(--trade-space-6) var(--trade-inset-browse);
+  background: var(--trade-paper);
+  color: var(--trade-text);
+  text-align: center;
+}
+.page img { display: block; width: min(200px, 100%); height: auto; margin: 0 auto; }
+.page h1 {
+  margin: var(--trade-space-2) 0 0;
+  font: 900 var(--trade-fs-heading)/var(--trade-lh-heading) var(--trade-font-heading);
+  font-variation-settings: var(--trade-display-axes);
+}
+.page p { margin: var(--trade-space-2) 0 0; font-size: var(--trade-fs-small); }

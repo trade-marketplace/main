@@ -3,6 +3,8 @@ import { unstable_rethrow } from "next/navigation";
 import type { ReactNode } from "react";
 import { preload } from "react-dom";
 
+import { ScheduledBanner } from "@/app/maintenance/scheduled-banner";
+import { requestMaintenance } from "@/app/maintenance/request-state";
 import { FocusVisibility } from "@/components/FocusVisibility";
 import { BrowserPushReceiver } from "@/components/BrowserPushReceiver";
 import { ConnectionBanner } from "@/components/feedback/ConnectionBanner";
@@ -34,7 +36,8 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   // The visitor's role, read on the server from their Supabase session and their `profiles` row (signed out →
   // customer palette). Because the attribute is in the server-rendered HTML, the first paint already has the
   // right colours: no flash. Log-in and log-out revalidate the layout so it changes with the next page.
-  const role = await viewerRole();
+  const { window, now, phase } = requestMaintenance();
+  const role = phase === "page" ? null : await viewerRole();
 
   // React puts these <link rel="preload"> tags at the top of <head>, before the CSS, so the fonts start downloading
   // straight away instead of waiting for the stylesheet to be parsed.
@@ -44,7 +47,10 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
 
   return (
     <html lang="en-NZ" data-mode={modeForRole(role)}>
-      <body><FocusVisibility /><BrowserPushReceiver /><ConnectionBanner>{children}</ConnectionBanner></body>
+      <body><FocusVisibility /><BrowserPushReceiver /><ConnectionBanner>
+        {window && now < window.until && <ScheduledBanner schedule={window} observedAt={now} />}
+        {children}
+      </ConnectionBanner></body>
     </html>
   );
 }
