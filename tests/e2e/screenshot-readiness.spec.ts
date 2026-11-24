@@ -35,6 +35,31 @@ for (const width of [390, 1440]) {
     expect([...pixel]).toEqual([0, 128, 0]);
   });
 
+  test(`${width}px office screenshot waits for All jobs and its requested customer filter`, async ({ page }) => {
+    const url = "/admin/jobs?customer=de000000-0000-4000-8000-000000000001";
+    const shot = { url, expectMode: "office" } as const;
+    await page.setViewportSize({ width, height: 844 });
+    await page.route("http://shots.test/**", route => route.fulfill({
+      contentType: "text/html", body: '<main><h1>Today</h1><div aria-busy="true">Queue totals</div></main>',
+    }));
+    await page.goto(`http://shots.test${url}`);
+    expect(await waitForCaptureContent(page, shot, 100)).toBe("still loading at capture");
+
+    await page.locator("main").evaluate(main => {
+      main.innerHTML = '<h1>Today</h1><section hidden><h1>All jobs</h1><button>Remove customer filter: Sam</button></section>';
+    });
+    const missing = "All jobs or the requested customer filter did not appear before capture";
+    expect(await waitForCaptureContent(page, shot, 100)).toBe(missing);
+    await page.locator("main").evaluate(main => { main.innerHTML = "<h1>All jobs</h1>"; });
+    expect(await waitForCaptureContent(page, shot, 100)).toBe(missing);
+
+    await page.evaluate(() => {
+      setTimeout(() => document.querySelector("main")!.insertAdjacentHTML("beforeend", "<button>Remove customer filter: Sam</button>"), 250);
+    });
+    expect(await waitForCaptureContent(page, shot)).toBeNull();
+    expect(await page.getByRole("button", { name: "Remove customer filter: Sam" }).isVisible()).toBe(true);
+  });
+
   test(`${width}px explicitly requested loading preview keeps its skeleton`, async ({ page }) => {
     const url = "/dev/components/worker-claim?state=loading";
     await page.setViewportSize({ width, height: 844 });
@@ -79,4 +104,21 @@ test("a compound component loading state can show its pending button", async ({ 
   }));
   await page.goto(`http://shots.test${url}`);
   expect(await waitForCaptureContent(page, { url, expectMode: null }, 500)).toBeNull();
+});
+
+test("an unfiltered office jobs screenshot accepts the finished list without a customer chip", async ({ page }) => {
+  const url = "/admin/jobs";
+  await page.route("http://shots.test/**", route => route.fulfill({ contentType: "text/html", body: "<main><h1>All jobs</h1></main>" }));
+  await page.goto(`http://shots.test${url}`);
+  expect(await waitForCaptureContent(page, { url, expectMode: "office" })).toBeNull();
+});
+
+test("the Today queue belongs on the office home but is an inherited fallback on a subpage", async ({ page }) => {
+  const body = '<main><h1>Today</h1><div role="group" aria-label="Queue totals">Jobs</div></main>';
+  await page.route("http://shots.test/**", route => route.fulfill({ contentType: "text/html", body }));
+  await page.goto("http://shots.test/admin/customers");
+  expect(await waitForCaptureContent(page, { url: "/admin/customers", expectMode: "office" }, 100))
+    .toBe("inherited Today queue still visible at capture");
+  await page.goto("http://shots.test/admin");
+  expect(await waitForCaptureContent(page, { url: "/admin", expectMode: "office" })).toBeNull();
 });
