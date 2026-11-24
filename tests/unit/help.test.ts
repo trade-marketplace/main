@@ -37,6 +37,10 @@ describe("repo-owned help articles", () => {
       expect(text, article.slug).not.toMatch(/\b48[\s-]+hours?\b/i);
     }
   });
+  it.each(["checking-and-signing-off", "when-do-i-pay"])("dates %s at least as recently as its published sign-off revision", async slug => {
+    const article = (await loadHelpArticles()).find(article => article.slug === slug);
+    expect(Date.parse(article?.updated ?? "")).toBeGreaterThanOrEqual(Date.parse("2026-11-23"));
+  });
   it("keeps the payment explanation and says workers, not tradies, where it means everyone", async () => {
     const article = (await loadHelpArticles()).find(a => a.slug === input.slug)!;
     expect(article.topic).toBe("Payments");

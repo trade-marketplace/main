@@ -28,13 +28,21 @@ import { myWorkReturn } from "@/lib/my-work";
 
 type Props = { job: WorkspaceView; preview?: WorkspaceState; embedded?: boolean; send?: (id: string, kind: JobUpdateKind, lateMinutes?: number) => Promise<JobUpdateResult | AuthFailure>; myWorkHref?: string; extras?: WorkerExtra[]; extraPreview?: ExtraWorkState; extraServices?: ExtraWorkServices; releasePreview?: ReleasePreview; releaseAction?: ReleaseAction };
 const extraReason = "Extra work sent. Waiting on the customer’s OK.";
+const alreadyWaiting = "Extra work is already waiting.";
+const noExtras: WorkerExtra[] = [];
 export function Workspace(props: Props) {
-  return <ToastProvider initial={props.extraPreview === "sent" ? { message: "Sent for pricing." } : props.preview === "sent" ? { message: `Sent to ${props.job.customer.firstName}.` } : undefined}><WorkspaceContent {...props} /></ToastProvider>;
+  return <ToastProvider initial={props.extraPreview === "already-waiting" ? { message: alreadyWaiting } : props.extraPreview === "sent" ? { message: "Sent for pricing." } : props.preview === "sent" ? { message: `Sent to ${props.job.customer.firstName}.` } : undefined}><WorkspaceContent {...props} /></ToastProvider>;
 }
-function WorkspaceContent({ job, preview, embedded, send = sendJobUpdateAction, myWorkHref: suppliedReturn, extras: suppliedExtras = [], extraPreview, extraServices, releasePreview, releaseAction }: Props) {
+function WorkspaceContent({ job, preview, embedded, send = sendJobUpdateAction, myWorkHref: suppliedReturn, extras: suppliedExtras = noExtras, extraPreview, extraServices, releasePreview, releaseAction }: Props) {
   const myWorkHref = myWorkReturn(suppliedReturn) ?? "/dashboard";
   const router = useRouter();
   const [extras, setExtras] = useState(suppliedExtras), [drawer, setDrawer] = useState(Boolean(extraPreview && ["open", "uploading", "upload-error", "field-errors", "sending", "try-later", "email-required", "error", "offline"].includes(extraPreview))), [requestKey, setRequestKey] = useState("16000000-0000-4000-8000-000000000001");
+  // App Router refresh preserves client state. Adopt the server's list when another tab has sent a request.
+  const [lastSuppliedExtras, setLastSuppliedExtras] = useState(suppliedExtras);
+  if (lastSuppliedExtras !== suppliedExtras) {
+    setLastSuppliedExtras(suppliedExtras);
+    setExtras(suppliedExtras);
+  }
   const extraWorkOpen = job.extraWorkOpen || extras.some(extra => extra.status === "REQUESTED" || extra.status === "PRICED");
   useEffect(() => {
     if (extraPreview || !extras.some(extra => extra.status === "REQUESTED" || extra.status === "PRICED")) return;
@@ -80,7 +88,7 @@ function WorkspaceContent({ job, preview, embedded, send = sendJobUpdateAction, 
   const finish = active && (extraWorkOpen ? <Button disabled={extraReason} icon="task_alt">Finish job</Button> : <Button href={finishHref} variant={booked ? "primary" : "secondary"} icon="task_alt">Finish job</Button>);
   return <section className={styles.canvas} data-mode="trade" aria-label={embedded ? `Workspace ${extraPreview ?? preview}` : undefined}><div className={styles.page}>
     {!embedded && <nav aria-label="Breadcrumb" className={styles.breadcrumb}><TextLink href={myWorkHref}>My work</TextLink><Icon name="chevron_right" size="sm" decorative /><span>{job.title}</span></nav>}
-    <header className={styles.header}><div>{embedded ? <h3 className={styles.title}>{heading}</h3> : <h1 className={styles.title}>{heading}</h1>}<p className={styles.meta}>{jobNumber}{claim && ` · ${claim}`}{job.earnCents !== null && <> · <b>Earn {formatCents(job.earnCents)}</b></>}</p></div><div className={styles.finish} style={{ display: "flex", flexWrap: "wrap", gap: "var(--trade-space-3)" }}>{active && <Button variant="secondary" icon="add" disabled={extraWorkOpen ? "Extra work is already waiting." : offline} onClick={() => { setRequestKey(crypto.randomUUID()); setDrawer(true); }}>Extra work</Button>}{finish}</div></header>
+    <header className={styles.header}><div>{embedded ? <h3 className={styles.title}>{heading}</h3> : <h1 className={styles.title}>{heading}</h1>}<p className={styles.meta}>{jobNumber}{claim && ` · ${claim}`}{job.earnCents !== null && <> · <b>Earn {formatCents(job.earnCents)}</b></>}</p></div><div className={styles.finish} style={{ display: "flex", flexWrap: "wrap", gap: "var(--trade-space-3)" }}>{active && <Button variant="secondary" icon="add" disabled={extraWorkOpen ? alreadyWaiting : offline} onClick={() => { setRequestKey(crypto.randomUUID()); setDrawer(true); }}>Extra work</Button>}{finish}</div></header>
     <OfflineBanner online={preview === "offline" ? false : undefined} sticky={false} />
     {extraWorkOpen && active && <Banner tone="info">{extraReason}</Banner>}
     {job.status === "SUBMITTED" && <Banner tone="info">Sent for sign-off.{job.signOffDeadline && <> <span>{signOffHours(job.signOffDeadline, clock ?? undefined)}h left</span></>}</Banner>}
@@ -93,13 +101,17 @@ function WorkspaceContent({ job, preview, embedded, send = sendJobUpdateAction, 
       </div>
       <div className={styles.middle}>
         {extras.map((extra, index) => <ExtraWorkCard key={extra.id} extra={extra} customerFirstName={job.customer.firstName} label={region(extras.length > 1 ? `Extra work ${index + 1}` : "Extra work")} />)}
-        <section className={styles.card} aria-label={region("Time")}>{booked ? <><h2 className={styles.cardTitle}>Booked: {new Intl.DateTimeFormat("en-NZ", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(`${job.bookedDate}T00:00:00Z`))} · {DAY_PARTS.find(part => part.value === job.bookedTime)?.label}</h2>{active && <TextLink href={bookHref}>Change</TextLink>}</> : <>{active ? <Button href={bookHref} icon="event">Book a time</Button> : <p>No time booked</p>}</>}</section>
+        <section className={styles.card} aria-label={region("Time")}>{booked ? <><h2 className={styles.cardTitle}>Booked: {new Intl.DateTimeFormat("en-NZ", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(`${job.bookedDate}T00:00:00Z`))} · {DAY_PARTS.find(part => part.value === job.bookedTime)?.label}</h2><TextLink href={`/jobs/${job.id}/calendar.ics`} download>Add to calendar</TextLink>{active && <TextLink href={bookHref}>Change</TextLink>}</> : <>{active ? <Button href={bookHref} icon="event">Book a time</Button> : <p>No time booked</p>}</>}</section>
         {active && <section className={styles.card} aria-label={embedded ? region("Updates") : undefined} aria-labelledby={embedded ? undefined : `${id}-updates`}><h2 id={`${id}-updates`} className={styles.cardTitle}>Updates</h2>{error && <Banner tone="alert" live action={<Button variant="tertiary" disabled={offline || sending} onClick={() => last && void update(last.kind, last.lateMinutes)}>Try again</Button>}>Couldn’t send this update. Try again.</Banner>}{wait > 0 && <Banner tone="alert" live>Too many tries. {tryAgainText(wait)}</Banner>}<div className={styles.updates}><Button variant="secondary" loading={busy === "on-my-way" || preview === "sending"} disabled={offline || sending} onClick={() => void update("on-my-way")} icon="local_shipping">I’m on my way</Button><Menu defaultOpen={preview === "late-menu"} align="start" trigger={props => <Button variant="secondary" disabled={offline || sending} loading={busy === "running-late"} icon="schedule" {...props}>Running late</Button>}>{[15, 30, 60].map(minutes => <MenuItem key={minutes} onSelect={() => void update("running-late", minutes)} disabled={offline || sending}>{minutes} min</MenuItem>)}</Menu><TextLink href={bookHref}>Need to reschedule</TextLink><Button variant="secondary" disabled={offline || sending} loading={busy === "customer-not-home"} onClick={() => void update("customer-not-home")} icon="door_front">Customer not home</Button></div><div className={styles.release}><ReleaseJob jobId={job.id} customerFirstName={job.customer.firstName} bookedDate={job.bookedDate} online={!offline} preview={releasePreview} action={releaseAction} doneHref={myWorkHref ?? "/dashboard"} /></div></section>}
         <section className={styles.card} aria-label={region("Job details")}><h2 className={styles.cardTitle}>The job</h2><p>{job.description}</p></section>
       </div>
       {tracker && <aside className={styles.card} aria-label={region("Job progress")}><Tracker {...tracker} /></aside>}
     </div>
-    <ExtraWorkDrawer key={requestKey} jobId={job.id} requestKey={requestKey} open={drawer} onClose={() => setDrawer(false)} preview={extraPreview} {...extraServices} onSent={(id, input) => {
+    <ExtraWorkDrawer key={requestKey} jobId={job.id} requestKey={requestKey} open={drawer} onClose={() => setDrawer(false)} preview={extraPreview} {...extraServices} onAlreadyWaiting={() => {
+      setDrawer(false);
+      toast.show({ message: alreadyWaiting });
+      router.refresh();
+    }} onSent={(id, input) => {
       setExtras(previous => [{ id, status: "REQUESTED" as const, description: input.description, requestedMinutes: Math.round(input.hours * 60), minutes: null, workerEarnsCents: null, photoCount: input.photoPaths.length, createdAt: new Date().toISOString() }, ...previous].slice(0, 5)); setDrawer(false); toast.show({ message: "Sent for pricing." });
     }} />
   </div></section>;

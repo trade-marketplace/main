@@ -11,7 +11,7 @@ export type MyWorkJob = {
   earnCents: number | null; openProblems: number; openExtraWork: number; payout: "Queued" | "Paid";
 };
 export type MyWorkData = { columns: Record<MyWorkColumn, MyWorkJob[]>; counts: Record<MyWorkColumn, number>; jobsOn: number; autoReleaseHours: number };
-export type MyQuote = { id: string; jobId: string; title: string; suburb: string; sentAt: string; outcome: "Priced" | "Taken by you" | "Not taken" | "Waiting"; canOpen: boolean };
+export type MyQuote = { id: string; jobId: string; title: string; estimateHours: number; earnCents: number | null; outcome: "Priced" | "Taken by you" | "Not taken" | "Waiting"; canOpen: boolean };
 export type MyQuotesData = { rows: MyQuote[]; total: number };
 type Search = Record<string, string | string[] | undefined>;
 export function parseMyWorkQuery(input: Search): MyWorkQuery {
@@ -23,6 +23,8 @@ export function myWorkHref(query: MyWorkQuery): string {
   if (query.column !== "to-book") params.set("column", query.column);
   return `/dashboard${params.size ? `?${params}` : ""}`;
 }
+export const QUOTE_HISTORY_PATH = myWorkHref({ tab: "quotes", column: "to-book" });
+
 /** Null leaves the pre-existing customer dashboard return parser in charge. */
 export function myWorkReturn(value: unknown): string | null {
   if (typeof value !== "string" || value.length > 2048 || !value.startsWith("/dashboard")) return null;

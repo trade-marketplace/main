@@ -16,6 +16,7 @@ for (const width of [320, 390, 768, 1024, 1440]) test(`extra work states at ${wi
     expect((await page.goto(`${preview}/dev/components/request-extra-work?state=${state}`))?.status()).toBe(200);
     if (["open", "uploading", "upload-error", "field-errors", "sending", "try-later", "email-required", "error", "offline"].includes(state)) await expect(page.getByRole("dialog", { name: "Extra work", exact: true })).toBeVisible();
     if (["sent", "priced", "already-waiting"].includes(state)) await expect(page.getByRole("button", { name: "Extra work", exact: true })).toHaveAttribute("aria-disabled", "true");
+    if (state === "already-waiting") await expect(page.getByRole("status").filter({ hasText: "Extra work is already waiting." })).toBeVisible();
     if (state === "email-required") await expect(page.getByRole("dialog", { name: "Extra work", exact: true })).toContainText("Confirm your email to continue.");
     if (state === "declined") await expect(page.getByRole("region", { name: "Extra work", exact: true })).toContainText("Sarah said no to the extra work. Finish the original job only.");
     if (state === "priced" || state === "approved") await expect(page.getByRole("region", { name: "Extra work", exact: true })).toContainText("Earn +$64.00");
@@ -101,10 +102,24 @@ test.describe("actual assigned job and private staged photos", () => {
   test("real signed upload is processed, request persists after reload, and My work / Back returns", async ({ page }) => {
     await page.goto(`${app}/login?next=${encodeURIComponent(`/jobs/${jobId}`)}`); await page.getByLabel("Email", { exact: true }).fill(SECURITY_TRADIE.email); await page.getByLabel("Password", { exact: true }).fill(SECURITY_PASSWORD); await page.getByRole("button", { name: "Log in", exact: true }).click();
     await expect(page.getByRole("heading", { name: "Actual extra work", exact: true })).toBeVisible();
-    await page.getByRole("button", { name: "Extra work", exact: true }).press("Enter"); await page.getByLabel("What needs doing?", { exact: false }).fill("Move a second table upstairs."); await page.getByLabel("Extra hours", { exact: false }).fill("0.5");
-    await page.locator('input[type="file"]').setInputFiles({ name: "extra.jpg", mimeType: "image/jpeg", buffer: readFileSync("public/images/examples/switch.jpg") });
-    const send = page.getByRole("button", { name: "Send for pricing", exact: true }); await expect(send).not.toHaveAttribute("aria-disabled", "true"); await send.press("Enter"); await expect(page.getByRole("dialog")).toHaveCount(0);
+    const otherTab = await page.context().newPage();
+    await otherTab.goto(`${app}/jobs/${jobId}`);
+    for (const [tab, description] of [[page, "Move a second table upstairs."], [otherTab, "Move an extra chair upstairs."]] as const) {
+      await tab.getByRole("button", { name: "Extra work", exact: true }).press("Enter");
+      await tab.getByLabel("What needs doing?", { exact: false }).fill(description);
+      await tab.getByLabel("Extra hours", { exact: false }).fill("0.5");
+      await tab.locator('input[type="file"]').setInputFiles({ name: "extra.jpg", mimeType: "image/jpeg", buffer: readFileSync("public/images/examples/switch.jpg") });
+      await expect(tab.getByRole("button", { name: "Send for pricing", exact: true })).not.toHaveAttribute("aria-disabled", "true");
+    }
+    await page.getByRole("button", { name: "Send for pricing", exact: true }).press("Enter");
+    await expect(page.getByRole("dialog")).toHaveCount(0);
     await expect(page.getByRole("region", { name: "Extra work", exact: true })).toContainText("Extra work sent. We’re pricing it.");
+    await otherTab.getByRole("button", { name: "Send for pricing", exact: true }).press("Enter");
+    await expect(otherTab.getByRole("dialog")).toHaveCount(0);
+    await expect(otherTab.getByRole("status").filter({ hasText: "Extra work is already waiting." })).toBeVisible();
+    await expect(otherTab.getByRole("region", { name: "Extra work", exact: true })).toContainText("Move a second table upstairs.");
+    await expect(otherTab.getByRole("button", { name: "Extra work", exact: true })).toHaveAttribute("aria-disabled", "true");
+    await otherTab.close();
     const rows = (await db.query("SELECT id,status,request_key FROM variations WHERE job_id=$1", [jobId])).rows; expect(rows).toHaveLength(1); expect(rows[0].status).toBe("REQUESTED");
     const photos = (await db.query("SELECT path,ready FROM variation_photos WHERE variation_id=$1", [rows[0].id])).rows; expect(photos).toHaveLength(1); expect(photos[0].ready).toBe(true); expect(objects.get(`photos/${photos[0].path}`)?.subarray(0, 4).toString()).toBe("RIFF");
     expect([...objects.keys()].filter(key => key.startsWith("variation-uploads/"))).toHaveLength(0);

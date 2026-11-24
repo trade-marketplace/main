@@ -96,6 +96,9 @@ const ALLOW: RouteDecision = { action: "allow" };
  * come back to the same page afterwards.
  */
 export function decideRoute(pathname: string, viewer: RouteViewer, pathWithSearch = pathname): RouteDecision {
+  if (viewer?.role === "ADMIN" && normalise(pathname) === "/support/new") {
+    return { action: "redirect", to: "/admin/support" };
+  }
   const access = routeAccess(pathname);
   switch (access.kind) {
     case "public":
@@ -143,5 +146,6 @@ export function afterLoginPath(role: Role, next: string | null | undefined): str
   const safe = safeNextPath(next);
   if (!safe) return homeForRole(role);
   const pathname = new URL(safe, "http://same.invalid").pathname;
-  return decideRoute(pathname, { role }).action === "allow" ? safe : homeForRole(role);
+  const decision = decideRoute(pathname, { role });
+  return decision.action === "allow" ? safe : decision.to;
 }

@@ -83,8 +83,17 @@ describe.skipIf(!testDatabaseUrl)("worker booking database", () => {
     const book = (db = schema.db) => bookJobWindow(db, f.worker, f.job.id, one, worker.revision, now);
     const earlier = first === "customer" ? save(firstDb) : book(firstDb); await entered;
     const later = first === "customer" ? book() : save(); release();
-    expect((await earlier).status).toBe(first === "customer" ? "saved" : "booked"); expect((await later).status).toBe("changed");
-    const after = await load(f); if (after.booked) expect(after.windows).toContainEqual(after.booked);
+    expect((await earlier).status).toBe(first === "customer" ? "saved" : "booked");
+    const result = await later;
+    if (first === "worker") {
+      expect(result).toMatchObject({ status: "changed", snapshot: { booked: one, schedule: { timeWindows: [one, two] } } });
+      expect(await loadJobWindows(schema.db, f.customer, f.job.id, now)).toMatchObject({ booked: one, schedule: { timeWindows: [one, two] } });
+    } else {
+      expect(result).toMatchObject({ status: "changed", snapshot: { booked: null, windows: [two] } });
+      const refreshed = await load(f);
+      expect(await bookJobWindow(schema.db, f.worker, f.job.id, two, refreshed.revision, now)).toMatchObject({ status: "booked", window: two });
+      expect(await loadJobWindows(schema.db, f.customer, f.job.id, now)).toMatchObject({ booked: two, schedule: { timeWindows: [two] } });
+    }
   });
   it("customer cannot remove the booked window and its restoration sends no added-times notice", async () => {
     const f = await fixture(); await bookJobWindow(schema.db, f.worker, f.job.id, one, (await load(f)).revision, now);

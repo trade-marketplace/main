@@ -24,7 +24,7 @@ export function previewWork(state: MyWorkState): MyWorkData {
 }
 export function previewQuotes(empty = false): MyQuotesData {
   return { total: empty ? 0 : 5, rows: empty ? [] : (["Waiting", "Taken by you", "Priced", "Not taken", "Waiting"] as const).map((outcome, index) => ({
-    id: id(100 + index), jobId: id(index + 1), title: ["Outdoor lights", "Sub wiring", "New socket", "Kitchen tap", "Garden fence"][index], suburb: "Windsor", sentAt: "2026-11-09T02:00:00Z", outcome,
+    id: id(100 + index), jobId: id(index + 1), title: ["Outdoor lights", "Sub wiring", "New socket", "Kitchen tap", "Garden fence"][index], estimateHours: [1.5, 4, 2, 3.5, 0.5][index], earnCents: outcome === "Taken by you" ? 25920 : null, outcome,
     canOpen: outcome === "Waiting" || outcome === "Taken by you",
   })) };
 }

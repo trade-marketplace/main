@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import { changeWaitingJob } from "@/server/jobs/customer-waiting";
 import { waitingJobRevision } from "@/lib/customer-job-waiting";
 import { priceJob } from "@/server/pricing/price-job";
+import { listCustomerPayments } from "@/server/account/payments-list";
+import { listCustomerJobs } from "@/server/customer-jobs";
 import { loadCustomerJobPage } from "@/server/jobs/customer-page";
 import { customerJobListView, JOB_LIST_SELECT } from "@/server/views";
 import { transitionJob } from "@/server/jobs/status-machine";
@@ -120,6 +122,18 @@ describe.skipIf(!testDatabaseUrl)("customer waiting commands", () => {
     expect(await schema.db.job.findUniqueOrThrow({ where: { id: job.id } })).toMatchObject({ status: "CANCELLED", priceCents: draft.priceCents });
     expect(await schema.db.jobPricing.count({ where: { jobId: job.id } })).toBe(1);
   });
+  it.each(["REVIEW", "QUOTE_BOUNTY"] as const)("keeps an unpaid %s draft off My jobs and Payments after cancellation", async status => {
+    const { customer, job } = await fixture(), office = await person("ADMIN");
+    await priceJob(schema.db, { jobId: job.id, minutes: 90, materialsCents: 12345 });
+    if (status === "QUOTE_BOUNTY") await transitionJob(schema.db, effects, { jobId: job.id, transition: "send-to-bounty", actor: office });
+    await transitionJob(schema.db, effects, { jobId: job.id, transition: "cancel", actor: customer });
+    const result = await projections(customer, job.id);
+    expect(result.detail).toMatchObject({ status: "CANCELLED", priceCents: null, gstCents: null });
+    expect(result.row.priceCents).not.toBeNull();
+    const jobs = await listCustomerJobs(schema.db, customer, { tab: "cancelled", q: "", page: 1 });
+    expect(jobs.rows).toContainEqual(expect.objectContaining({ id: job.id, priceCents: null, gstCents: null }));
+    expect((await listCustomerPayments(schema.db, customer, 1)).rows).toEqual([]);
+  });
   it.each([false, true])("preserves a published price through cancellation (paid=%s)", async paid => {
     const { customer, job } = await fixture(), office = await person("ADMIN");
     await priceJob(schema.db, { jobId: job.id, minutes: 60, materialsCents: 0 });
@@ -136,6 +150,29 @@ describe.skipIf(!testDatabaseUrl)("customer waiting commands", () => {
     if (paid) await transitionJob(schema.db, effects, { jobId: job.id, transition: "approve-cancel", actor: office, reason: "Approved cancellation." });
     const final = await projections(customer, job.id);
     for (const value of [final.detail, final.list]) expect(value).toMatchObject({ status: "CANCELLED", priceCents: published.detail.priceCents, gstCents: published.detail.gstCents });
+    const jobs = await listCustomerJobs(schema.db, customer, { tab: "cancelled", q: "", page: 1 });
+    expect(jobs.rows).toContainEqual(expect.objectContaining({ id: job.id, priceCents: published.detail.priceCents }));
+    const payments = await listCustomerPayments(schema.db, customer, 1);
+    if (paid) expect(payments.rows).toContainEqual(expect.objectContaining({ kind: "JOB", amountCents: published.detail.priceCents }));
+    else expect(payments.rows).toEqual([]);
+  });
+  it("keeps a sent price after repeated cancellation requests and reinstatements", async () => {
+    const { customer, job } = await fixture(), office = await person("ADMIN");
+    await priceJob(schema.db, { jobId: job.id, minutes: 90, materialsCents: 500 });
+    await transitionJob(schema.db, effects, { jobId: job.id, transition: "send-price", actor: office });
+    const sent = (await projections(customer, job.id)).detail.priceCents;
+    expect(sent).not.toBeNull();
+    await schema.db.payment.create({ data: { jobId: job.id, kind: "JOB", amountCents: sent!, status: "PAID", paidAt: new Date(), idempotencyKey: randomUUID() } });
+    await transitionJob(schema.db, effects, { jobId: job.id, transition: "mark-paid", actor: { role: "SYSTEM", source: "test" } });
+    for (let attempt = 0; attempt < 3; attempt++) {
+      await transitionJob(schema.db, effects, { jobId: job.id, transition: "cancel", actor: customer, reason: "Please cancel." });
+      await transitionJob(schema.db, effects, { jobId: job.id, transition: "reinstate", actor: office, reason: "Customer kept the appointment." });
+    }
+    await transitionJob(schema.db, effects, { jobId: job.id, transition: "cancel", actor: customer, reason: "Please cancel." });
+    await transitionJob(schema.db, effects, { jobId: job.id, transition: "approve-cancel", actor: office, reason: "Approved." });
+    const { detail, list } = await projections(customer, job.id);
+    expect(detail.priceCents).toBe(sent);
+    expect(list.priceCents).toBe(sent);
   });
   it("does not treat an older published cycle as publication of a newer REVIEW draft", async () => {
     const { customer, job } = await fixture(), office = await person("ADMIN");

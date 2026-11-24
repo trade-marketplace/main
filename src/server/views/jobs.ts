@@ -12,10 +12,13 @@ const PERSON_SELECT = { id: true, firstName: true, lastName: true, phone: true, 
 export const JOB_SUMMARY_SELECT = {
   id: true, jobNumber: true, title: true, category: true, status: true, customerId: true, workerId: true,
   suburb: true, city: true, priceCents: true, asap: true, createdAt: true, updatedAt: true,
-  // Bounded cancellation provenance: two possible hops plus one row to detect timestamp ambiguity.
-  // Never serialize these internal rows; UUID order is not event chronology.
+  // A job may spend many transitions assigned or on the board after its price was sent.
+  // Keep the newest occurrence of each relevant transition. Repeated cancel/reinstate cycles
+  // cannot displace its last pricing decision; conflicting origins at the same time stay visible.
   statusHistory: {
-    orderBy: { createdAt: "desc" }, take: 3, select: { fromStatus: true, toStatus: true, createdAt: true },
+    where: { toStatus: { in: ["REVIEW", "QUOTE_BOUNTY", "PRICED", "CANCEL_REVIEW", "CANCELLED"] } },
+    distinct: ["fromStatus", "toStatus"], orderBy: { createdAt: "desc" },
+    select: { fromStatus: true, toStatus: true, createdAt: true },
   },
 } satisfies Prisma.JobSelect;
 
@@ -72,19 +75,26 @@ function shortPerson(person: Person | null | undefined, phone: boolean) {
 
 const PRICE_PUBLIC_STATUSES: readonly JobStatus[] = ["PRICED", "BOOKABLE", "ASSIGNED", "SUBMITTED", "COMPLETED"];
 function customerPricePublished(job: JobSummarySource): boolean {
-  if (PRICE_PUBLIC_STATUSES.includes(job.status)) return true;
-  if (job.status !== "CANCELLED" && job.status !== "CANCEL_REVIEW") return false;
-  // Cancellation is not publication (#498). An older PRICED cycle followed by REVIEW must not
-  // publish a newer office draft. Missing, tied or discontinuous provenance fails closed.
+  if (job.status === "PRICED") return true;
+  if (job.status === "REVIEW" || job.status === "QUOTE_BOUNTY") return false;
   const history = job.statusHistory ?? [];
+  const pricingDecisions = history.filter(event =>
+    event.toStatus === "PRICED" || event.toStatus === "REVIEW" || event.toStatus === "QUOTE_BOUNTY");
+  const [latest, earlier] = pricingDecisions;
+  const sent = latest?.toStatus === "PRICED" &&
+    (!earlier || earlier.createdAt.getTime() < latest.createdAt.getTime());
+  if (PRICE_PUBLIC_STATUSES.includes(job.status)) return sent;
+  // An older sent price cannot publish a newer draft. Missing or ambiguous cancellation
+  // provenance also stays private, even if the job was once PRICED.
   let expected: JobStatus = job.status;
   for (let index = 0; index < 2; index++) {
     const event = history[index], previous = history[index + 1];
     if (!event || event.toStatus !== expected || event.fromStatus == null) return false;
     const time = event.createdAt.getTime(), previousTime = previous?.createdAt.getTime();
     if (!Number.isFinite(time) || (previousTime !== undefined && (!Number.isFinite(previousTime) || previousTime >= time))) return false;
-    // A unique direct public→cancel row proves publication; older unrelated ties are irrelevant.
-    if (PRICE_PUBLIC_STATUSES.includes(event.fromStatus)) return true;
+    // Leaving PRICED is direct evidence of publication, including older histories without an entry row.
+    if (event.fromStatus === "PRICED") return true;
+    if (PRICE_PUBLIC_STATUSES.includes(event.fromStatus)) return sent;
     if ((event.fromStatus !== "CANCEL_REVIEW" && event.fromStatus !== "CANCELLED") || !previous || previous.toStatus !== event.fromStatus) return false;
     expected = event.fromStatus;
   }

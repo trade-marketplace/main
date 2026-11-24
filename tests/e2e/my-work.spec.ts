@@ -21,6 +21,10 @@ for (const viewport of VIEWPORTS) test(`all My work states fit and pass axe at $
     if (state === "on-hold") await expect(page.getByText("On hold", { exact: true }).filter({ visible: true }).first()).toBeVisible();
     if (state === "paused") await expect(page.getByText("Paused", { exact: true }).filter({ visible: true }).first()).toBeVisible();
     if (state === "queued-and-paid") { await expect(page.getByText("Queued", { exact: true }).filter({ visible: true }).first()).toBeVisible(); await expect(page.getByText("Paid", { exact: true }).filter({ visible: true }).first()).toBeVisible(); }
+    if (state === "quotes" || state === "quotes-mixed") {
+      await expect(page.getByText("Earn $259.20", { exact: true }).filter({ visible: true })).toBeVisible();
+      await expect(page.getByText("1.5 h", { exact: true }).filter({ visible: true })).toBeVisible();
+    }
     if (state === "quotes-empty") await expect(page.getByRole("heading", { name: "No quotes yet.", exact: true })).toBeVisible();
     if (state === "error") await expect(page.getByRole("button", { name: "Try again", exact: true })).toBeVisible();
     if (state === "loading") await expect(page.getByRole("status").filter({ hasText: "Loading your work" })).toHaveCount(1);
@@ -109,6 +113,25 @@ test.describe("real My work journeys", () => {
     await page.getByRole("heading", { name: title("booked"), exact: true }).locator("..").click(); await expect(page.getByRole("heading", { name: title("booked"), exact: true }).first()).toBeVisible();
     await page.getByRole("main").getByRole("link", { name: "My work", exact: true }).click(); await expect(page).toHaveURL(`${app}/dashboard?column=on-now`);
     await expect(page.getByRole("tab", { name: /^On now/ })).toHaveAttribute("aria-selected", "true"); await expectNoA11yViolations(page);
+  });
+  test("Earnings opens quote history, Back returns, and the old address permanently redirects", async ({ page }) => {
+    await login(page);
+    await page.goto(`${app}/earnings`);
+    const history = page.getByRole("link", { name: "Quote history", exact: true });
+    await history.press("Enter");
+    await expect(page).toHaveURL(`${app}/dashboard?tab=quotes`);
+    await expect(page.getByRole("tab", { name: /^Quotes/ })).toHaveAttribute("aria-selected", "true");
+    await page.goBack();
+    await expect(page).toHaveURL(`${app}/earnings`);
+    await expect(history).toBeVisible();
+
+    const oldPath = `${app}/earnings/estimates?column=done&from=%2Fearnings`;
+    const redirect = await page.request.get(oldPath, { maxRedirects: 0 });
+    expect(redirect.status()).toBe(308);
+    expect(new URL(redirect.headers().location, app).href).toBe(`${app}/dashboard?tab=quotes`);
+    await page.goto(oldPath);
+    await expect(page).toHaveURL(`${app}/dashboard?tab=quotes`);
+    await expect(page.getByRole("tab", { name: /^Quotes/ })).toHaveAttribute("aria-selected", "true");
   });
   test("readable quote history returns to its same Quotes tab", async ({ page }) => {
     await login(page); await page.goto(`${app}/dashboard?tab=quotes`);
