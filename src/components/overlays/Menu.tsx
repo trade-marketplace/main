@@ -107,8 +107,6 @@ export function Menu({ trigger, children, header, align = "end", label, defaultO
   // Focus the first (or last) item once it opens, and keep the panel on screen.
   useLayoutEffect(() => {
     if (!open) return;
-    const list = items();
-    (startAt === "last" ? list.at(-1) : list[0])?.focus();
     const panel = panelRef.current;
     if (!panel) return;
     panel.style.removeProperty("--menu-shift");
@@ -121,6 +119,9 @@ export function Menu({ trigger, children, header, align = "end", label, defaultO
     if (triggerBox && box.bottom > window.innerHeight && triggerBox.top > window.innerHeight - triggerBox.bottom) {
       panel.setAttribute("data-up", "true");
     }
+    // Focusing an item while it is still below the viewport can scroll the page before placement is measured.
+    const list = items();
+    (startAt === "last" ? list.at(-1) : list[0])?.focus();
   }, [open, startAt]);
 
   // Async results can remove the focused Retry/Mark all read item. Keep keyboard focus in the open menu.

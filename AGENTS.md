@@ -1,7 +1,7 @@
 # Rules for everyone working on this repo (humans and AI agents)
 
-Trade Marketplace is built by two founders, Matt (design, product) and William (engineering), plus several AI agents
-(Claude, ChatGPT/Codex and others) working at the same time. These rules let everyone work independently without
+Trade Marketplace is built by Matt (founder: product, design and, since William left in November 2026, engineering
+review too), plus several AI agents (Claude, ChatGPT/Codex and others) working at the same time. These rules let everyone work independently without
 overwriting each other. **Every agent reads this whole file before touching anything.**
 
 ## 1. Only work from an issue
@@ -46,8 +46,10 @@ that claims to be done is worse than none.
 ## 4. Stay in your lane
 
 - Only change the files your issue needs. Don't reformat, rename or "tidy" unrelated code.
-- These need **William's** review: the database schema and migrations, pricing maths, payments, auth/sessions,
-  anything touching money or security.
+- These need **Matt's** review and a written OK on the PR: the database schema and migrations, pricing maths,
+  payments, auth/sessions, anything touching money or security. A PR with a database migration stays a **draft**
+  with "Needs Matt's OK: database migration" at the top until Matt says yes on it: merging runs the migration on the
+  live database.
 - These need **Matt's** review: brand tokens, fonts, logo, illustrations, copy/wording on screens, anything that
   changes how a screen looks compared with the mockup.
 - Never commit secrets, `.env` files, databases, uploads or real customer data.
@@ -104,4 +106,5 @@ issue says to ("port X from the old repo"), and when you do, re-check it against
 - **No test evidence in the repo.** No screenshots, mockup pairs, logs, `checks.json`, word counts or QA folders
   (`docs/qa/`, `docs/reviews/`, `output/`…). The Screenshots bot keeps pictures on the never-merged `pr-screenshots`
   branch. Write how you tested it as a few lines of text in the PR description.
-- A founder approves before merge: William for code, Matt for screens. Agents never merge their own PRs.
+- Matt approves before merge, for code and screens. Agents never merge their own PRs unless Matt has said so for that
+  work.

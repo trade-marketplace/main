@@ -5,12 +5,13 @@ import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { messageSchema, problemSchema, redactContactDetails, type MessagesData, type MessageResult } from "@/lib/problem-threads";
 import type { Viewer } from "@/server/auth/viewer";
 import { createNotify } from "@/server/notifications/notify";
-import { consumeForUser, type RateLimitDecision } from "@/server/rate-limit";
+import { consumeForUser, prismaRateLimitStore, type RateLimitDecision } from "@/server/rate-limit";
 import { createSupabaseFileStore, PHOTO_BUCKET, SIGNED_URL_SECONDS, type InspectableFileStore } from "@/server/files/storage";
 import { createAudit } from "@/server/audit/audit";
 import { isClaimedJob, JOB_SUMMARY_SELECT, jobThreadContextView } from "@/server/views";
+import { lockJobWindows } from "@/server/jobs/window-lock";
 import { lockSupportPhoto } from "./photo-cleanup";
-import { persistSupportMessage } from "./persist";
+import { createSupportMessage, lockMessageReceipt } from "./persist";
 import { ProblemThreadError } from "./errors";
 export { ProblemThreadError } from "./errors";
 
@@ -38,8 +39,7 @@ export async function requireJobAccess(db: Pick<PrismaClient, "profile" | "job">
 async function requireThread(tx: Tx, actor: Actor, id: string, lockJob = true) {
   const thread = await tx.supportThread.findUnique({ where: { id }, select: { id: true, jobId: true, jobParticipants: true, status: true } });
   if (!thread?.jobParticipants || !thread.jobId) throw new ProblemThreadError("forbidden");
-  // A row write provides the same job lock the office helper uses, without an unqualified raw table name.
-  if (lockJob) await tx.job.updateMany({ where: { id: thread.jobId }, data: { updatedAt: new Date() } });
+  if (lockJob) await lockJobWindows(tx, thread.jobId);
   const job = await requireJobAccess(tx, actor, thread.jobId);
   return { thread, job };
 }
@@ -75,43 +75,57 @@ async function deliver(db: Tx, threadId: string, messageId: string, job: { id: s
 async function command(db: PrismaClient, actor: Actor, raw: unknown, opening: boolean, threadId: string | null, deps: Deps): Promise<MessageResult> {
   const parsed = opening ? problemSchema.safeParse(raw) : messageSchema.safeParse(raw);
   if (!parsed.success) return { ok: false, error: "invalid" };
-  const rate = await (deps.rateLimit ?? ((id) => consumeForUser("message", id)))(actor.userId);
-  if (!rate.allowed) return { ok: false, error: "try-later", retryAfter: rate.retryAfter };
+  const data = parsed.data;
+  const openingInput = opening ? problemSchema.parse(raw) : null;
   try {
-    const outcome = await db.$transaction(async tx => {
-      const data = parsed.data;
+    return await db.$transaction(async (tx): Promise<MessageResult> => {
       let thread;
       let job;
-      if (opening) {
-        const input = problemSchema.parse(raw);
-        await tx.job.updateMany({ where: { id: input.jobId }, data: { updatedAt: new Date() } });
-        job = await requireJobAccess(tx, actor, input.jobId);
+      if (openingInput) {
+        await lockJobWindows(tx, openingInput.jobId);
+        job = await requireJobAccess(tx, actor, openingInput.jobId);
         // The customer/worker must initiate a support request; this is not a general direct-message endpoint.
         if (actor.userId !== job.customerId && actor.userId !== job.workerId) throw new ProblemThreadError("forbidden");
-        const existing = await tx.supportThread.findFirst({ where: { jobId: job.id, jobParticipants: true, status: "OPEN" } });
-        await requireSupportPhotosReady(tx, data.photoPaths, actor, job.id, deps);
-        thread = existing ?? await tx.supportThread.create({ data: { userId: job.customerId, jobId: job.id, jobParticipants: true, subject: input.reason } });
-        if (!existing) await createAudit(tx)(actor, "support_thread.opened", { type: "support_threads", id: thread.id }, null, { jobId: job.id });
       } else {
         if (!threadId || !/^[0-9a-f-]{36}$/i.test(threadId)) throw new ProblemThreadError("forbidden");
         ({ thread, job } = await requireThread(tx, actor, threadId));
-        if (thread.status !== "OPEN") throw new ProblemThreadError("closed");
-        await requireSupportPhotosReady(tx, data.photoPaths, actor, job.id, deps);
       }
-      const saved = await persistSupportMessage(tx, actor.userId, thread.id, data);
-      if (!saved.created) return { threadId: thread.id, messageId: saved.messageId, job };
-      await createAudit(tx)(actor, "support_thread.message_sent", { type: "support_threads", id: thread.id }, null, { messageId: saved.messageId, photoCount: data.photoPaths.length });
-      // Launch notifications are durable IN_APP rows: save them atomically with the message. A failure rolls
-      // everything back, returning the existing retryable error so the composer keeps the complete draft.
-      await (deps.notify ?? ((...args) => deliver(tx, ...args)))(thread.id, saved.messageId, job, actor.userId);
-      return { threadId: thread.id, messageId: saved.messageId, job };
+
+      const target = openingInput ? { jobId: job.id } : { threadId: threadId! };
+      const prior = await lockMessageReceipt(tx, actor.userId, target, data);
+      if (prior) return { ok: true, threadId: prior.threadId };
+      // Serialize the allowance with the immutable request key using this transaction's own connection.
+      const rate = deps.rateLimit ? await deps.rateLimit(actor.userId)
+        : await consumeForUser("message", actor.userId, { store: prismaRateLimitStore(tx) });
+      if (!rate.allowed) return { ok: false, error: "try-later", retryAfter: rate.retryAfter };
+      if (thread && thread.status !== "OPEN") return { ok: false, error: "closed" };
+      // Failed attempts still count. Roll back the message, audit and notifications together if delivery fails.
+      await tx.$executeRaw`SAVEPOINT shared_message_write`;
+      try {
+        await requireSupportPhotosReady(tx, data.photoPaths, actor, job.id, deps);
+        if (openingInput) thread = await tx.supportThread.findFirst({ where: { jobId: job.id, jobParticipants: true, status: "OPEN" } });
+        if (!thread) {
+          thread = await tx.supportThread.create({ data: { userId: job.customerId, jobId: job.id, jobParticipants: true, subject: openingInput!.reason } });
+          await createAudit(tx)(actor, "support_thread.opened", { type: "support_threads", id: thread.id }, null, { jobId: job.id });
+        }
+        const messageId = await createSupportMessage(tx, actor.userId, thread.id, data);
+        await createAudit(tx)(actor, "support_thread.message_sent", { type: "support_threads", id: thread.id }, null, { messageId, photoCount: data.photoPaths.length });
+        await (deps.notify ?? ((...args) => deliver(tx, ...args)))(thread.id, messageId, job, actor.userId);
+        return { ok: true, threadId: thread.id };
+      } catch (error) {
+        await tx.$executeRaw`ROLLBACK TO SAVEPOINT shared_message_write`;
+        return commandError(error);
+      }
     }, { timeout: 30_000 });
-    return { ok: true, threadId: outcome.threadId };
   } catch (error) {
-    if (error instanceof ProblemThreadError) return { ok: false, error: error.code };
-    console.error("Support message could not be saved.");
-    return { ok: false, error: "unavailable" };
+    return commandError(error);
   }
+}
+
+function commandError(error: unknown): MessageResult {
+  if (error instanceof ProblemThreadError) return { ok: false, error: error.code };
+  console.error("Support message could not be saved.");
+  return { ok: false, error: "unavailable" };
 }
 export function openProblemThread(db: PrismaClient, actor: Actor, raw: unknown, deps: Deps = {}) { return command(db, actor, raw, true, null, deps); }
 export function sendProblemMessage(db: PrismaClient, actor: Actor, threadId: string, raw: unknown, deps: Deps = {}) { return command(db, actor, raw, false, threadId, deps); }

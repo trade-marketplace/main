@@ -49,3 +49,18 @@
 .heading { margin: var(--trade-space-8) 0 var(--trade-space-3); font-size: var(--trade-fs-section); }
 .list { margin: 0; padding-left: var(--trade-space-5); display: grid; gap: var(--trade-space-2); max-width: var(--trade-read-max); }
 .filler { max-width: var(--trade-read-max); color: var(--trade-text-2); }
+
+/* Use normal page flow so focusing a menu item below the viewport can really scroll the document. */
+.bottomMenu {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.bottomMenu h1 { padding: var(--trade-space-4); }
+.bottomMenuBar {
+  display: flex;
+  justify-content: flex-end;
+  padding: var(--trade-space-2) var(--trade-inset-browse);
+  background: var(--trade-forest);
+}

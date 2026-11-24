@@ -76,7 +76,10 @@ async function expectOpen(page: Page, state: (typeof OPEN_STATES)[number]) {
   if (state.what === "dialog[open]") {
     await expect(page.getByRole(state.id === "confirm" ? "alertdialog" : "dialog", { name: state.name })).toBeVisible();
   } else if (state.what === "[role=menu]") {
-    await expect(page.getByRole("menu", { name: state.name })).toBeVisible();
+    const menu = page.getByRole("menu", { name: state.name });
+    await expect(menu).toBeVisible();
+    // The server-rendered menu is visible before hydration positions it and focuses its first item.
+    await expect(menu.getByRole("menuitem").first()).toBeFocused();
   } else {
     await expect(page.getByRole("status").filter({ hasText: state.name }).first()).toBeVisible();
   }
@@ -112,14 +115,15 @@ test.describe("/dev/components/overlays on the dev server", () => {
   }
 
   for (const mode of ["trade", "office"] as const) {
-    test(`a dialog, a menu and a toast have no accessibility violations in ${mode} mode`, async ({ page }) => {
-      await page.setViewportSize({ width: 390, height: 844 });
-      for (const id of ["dialog", "menu", "toast"]) {
+    for (const id of ["dialog", "menu", "toast"]) {
+      test(`the ${id} has no accessibility violations in ${mode} mode`, async ({ page }) => {
+        await page.setViewportSize({ width: 390, height: 844 });
         await page.goto(url(`?mode=${mode}&open=${id}`));
         await expectOpen(page, OPEN_STATES.find((s) => s.id === id)!);
+        await settled(page);
         await expectNoA11yViolations(page);
-      }
-    });
+      });
+    }
   }
 
   test("a dialog: focus goes to its title, Tab stays inside, Esc closes, focus comes back", async ({ page }) => {

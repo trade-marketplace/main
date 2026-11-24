@@ -136,7 +136,16 @@
   --trade-ease-in-out: cubic-bezier(.65, 0, .35, 1);
 }
 
-/* ---- Modes: set ONE attribute on <html>. Nothing else changes. ---------- */
+/* ---- Modes: set data-mode on the page or on a nested region. ------------ */
+[data-mode="customer"] {
+  --trade-action: var(--trade-leaf);        /* primary buttons, valid ticks  */
+  --trade-on-action: var(--trade-forest);   /* label on action fill 6.9:1    */
+  --trade-signature: var(--trade-lime);     /* hero CTA, save, bolt, stars   */
+  --trade-on-signature: var(--trade-forest);/* 9.6:1                          */
+  --trade-link: #326c20;                    /* 6.4:1 on white                 */
+  --trade-tint: rgb(108 189 69 / 12%);      /* selected chip / row            */
+  --trade-tint-strong: rgb(166 215 84 / 30%);
+}
 [data-mode="trade"] {
   --trade-action: var(--trade-hivis);        /* Forest label 6.5:1 */
   --trade-on-action: var(--trade-forest);
