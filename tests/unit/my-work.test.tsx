@@ -59,6 +59,9 @@ describe("My work next moves and safe navigation", () => {
   it("keeps restricted quote history visible but noninteractive", () => {
     const quotes = previewQuotes();
     const html = renderToStaticMarkup(<MyQuotes data={quotes} query={{ ...query, tab: "quotes" }} />);
+    expect(html).toContain("Your estimate");
+    expect(html).toContain("1.5 h");
+    expect(html).toContain("Earn $259.20");
     for (const row of quotes.rows) {
       expect(html).toContain(row.title);
       if (row.canOpen) expect(html).toContain(`/jobs/${row.jobId}?from=%2Fdashboard%3Ftab%3Dquotes`);

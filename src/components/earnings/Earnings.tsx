@@ -19,6 +19,7 @@ import { EmptyState, ErrorState, LoadingRegion, Skeleton } from "@/components/fe
 import { Banner } from "@/components/overlays/Banner";
 import { Drawer } from "@/components/overlays/Drawer";
 import { Pill } from "@/components/status/Pill";
+import { QUOTE_HISTORY_PATH } from "@/lib/my-work";
 import { TextLink } from "@/components/TextLink";
 import {
   barHeights,
@@ -78,6 +79,7 @@ function Head({ statement, disabled }: { statement?: string; disabled?: boolean 
   return (
     <div className={styles.head}>
       <h1 className={styles.title}>Earnings</h1>
+      <TextLink href={QUOTE_HISTORY_PATH}>Quote history</TextLink>
       {statement && (
         <a
           className={buttonClasses({ variant: "secondary", size: "sm", width: "auto" })}
