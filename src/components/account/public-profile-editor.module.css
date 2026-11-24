@@ -1,0 +1,10 @@
+.columns { display: grid; align-items: start; gap: var(--trade-space-5); min-width: 0; }
+.photo { display: flex; gap: var(--trade-space-4); align-items: center; }
+.fields { display: grid; gap: var(--trade-space-3); margin-top: var(--trade-space-5); min-width: 0; }
+.count { text-align: end; color: var(--trade-text-2); font-size: var(--trade-fs-caption); }
+.fields > [role="status"]:empty { display: none; }
+.preview { display: grid; justify-items: stretch; gap: var(--trade-space-3); min-width: 0; }
+.preview > h2 { margin: 0; font-size: var(--trade-fs-subheading); }
+.preview > section { --trade-signature: var(--trade-lime); --trade-action: var(--trade-leaf); }
+.preview > p { margin: 0; color: var(--trade-text-2); font-size: var(--trade-fs-small); }
+@media (min-width: 768px) { .columns { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
