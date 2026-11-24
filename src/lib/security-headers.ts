@@ -13,8 +13,9 @@ export const SECURITY_HEADERS: readonly SecurityHeader[] = [
   { key: "Content-Security-Policy", value: CONTENT_SECURITY_POLICY },
   // Older browsers that don't read frame-ancestors.
   { key: "X-Frame-Options", value: "DENY" },
-  // Two years, every subdomain. Browsers ignore it on plain-HTTP local development.
-  { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" },
+  // One year, this host only (Matt, via Claude, 24 Nov): browsers remember it, so subdomains are left out until every
+  // *.trademarketplace.nz address is known to serve HTTPS. Browsers ignore it on plain-HTTP local development.
+  { key: "Strict-Transport-Security", value: "max-age=31536000" },
   { key: "X-Content-Type-Options", value: "nosniff" },
   // Other sites see only our origin, never a job id, `next` path or token in the URL.
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },

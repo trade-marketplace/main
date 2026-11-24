@@ -30,7 +30,7 @@ describe("security headers", () => {
 
   it("keeps browsers on HTTPS, stops type sniffing and trims referrers", () => {
     const headers = byName(SECURITY_HEADERS);
-    expect(headers["strict-transport-security"]).toMatch(/^max-age=(\d+); includeSubDomains$/);
+    expect(headers["strict-transport-security"]).toMatch(/^max-age=(\d+)$/);
     expect(Number(/max-age=(\d+)/.exec(headers["strict-transport-security"])![1])).toBeGreaterThanOrEqual(31_536_000);
     expect(headers["x-content-type-options"]).toBe("nosniff");
     expect(headers["referrer-policy"]).toBe("strict-origin-when-cross-origin");
