@@ -1,17 +1,17 @@
 import { DataTable, TableItem, type Column } from "@/components/data/DataTable";
 import { EmptyState } from "@/components/feedback/EmptyState";
 import { Pill } from "@/components/status/Pill";
+import { formatCents } from "@/lib/earnings";
 import { boardJobHref } from "@/lib/job-board";
 import { myWorkHref, type MyQuote, type MyQuotesData, type MyWorkQuery } from "@/lib/my-work";
 
-const sentDay = new Intl.DateTimeFormat("en-NZ", { timeZone: "Pacific/Auckland", day: "numeric", month: "short" });
 export function MyQuotes({ data, query }: { data: MyQuotesData; query: MyWorkQuery }) {
   const columns: Column<MyQuote>[] = [
     { key: "job", header: "Job", primary: true, cell: row => row.canOpen
       ? <TableItem title={row.title} href={boardJobHref(row.jobId, myWorkHref(query))} />
       : <span data-plain-quote style={{ display: "contents" }}><TableItem title={row.title} /></span> },
-    { key: "suburb", header: "Suburb", cell: row => row.suburb },
-    { key: "sent", header: "Sent", cell: row => <time dateTime={row.sentAt}>{sentDay.format(new Date(row.sentAt))}</time> },
+    { key: "estimate", header: "Your estimate", cell: row => `${row.estimateHours} h` },
+    { key: "earn", header: "Earn", cell: row => row.earnCents === null ? null : `Earn ${formatCents(row.earnCents)}` },
     { key: "outcome", header: "Outcome", cell: row => <Pill kind={row.outcome === "Taken by you" ? "good" : "waiting"}>{row.outcome}</Pill> },
   ];
   // Some past quotes no longer pass the existing job read boundary. Keep the history,

@@ -45,6 +45,7 @@ export function ConfirmedPanel({ job, card, back, online, preview = false, windo
     <div className={styles.person}>
       <span ref={avatar} onErrorCapture={event => { if (event.target instanceof HTMLImageElement && card?.avatarUrl) setFailedAvatar(card.avatarUrl); }}><Avatar name={name} src={src} size="lg" decorative /></span>
       <div className={styles.identity}><h3 className={styles.name}>{name}</h3>
+        <TextLink href={`/tradies/${worker.id}`}>See profile</TextLink>
         {card?.rating && card.rating.count > 0 && <p className={styles.rating}><Icon name="star" fill decorative size="sm" />{card.rating.average.toFixed(1)} ({card.rating.count})</p>}
         {licence && <p className={styles.licence}><Icon name="verified" fill decorative size="sm" />{licence}</p>}
       </div>

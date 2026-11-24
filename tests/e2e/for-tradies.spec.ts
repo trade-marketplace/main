@@ -22,7 +22,10 @@ for (const viewport of VIEWPORTS) {
 
     test("clicks through signup and returns, with the mobile menu dismissed", async ({ page }) => {
       await page.goto("/for-tradies");
+      // The loading page has its own header. Wait for the final page and its hydrated menu.
+      await expect(page.getByRole("heading", { name: "Rates unavailable", exact: true })).toBeVisible();
       if (viewport.width < 1024) {
+        await expect(page.getByRole("banner")).toHaveAttribute("data-solid", "false");
         await page.getByRole("button", { name: "Menu", exact: true }).click();
         await page.getByRole("navigation", { name: "Menu", exact: true }).getByRole("link", { name: "For tradies" }).click();
         await expect(page.getByRole("button", { name: "Menu", exact: true })).toHaveAttribute("aria-expanded", "false");
@@ -52,8 +55,10 @@ for (const viewport of VIEWPORTS) {
   test(`hero buttons match, headline fits and the hero clears its buttons at ${viewport.width}px`, async ({ page }) => {
     await page.setViewportSize(viewport);
     await page.goto("/for-tradies");
+    await expect(page.getByRole("heading", { name: "Rates unavailable", exact: true })).toBeVisible();
     await page.evaluate(() => document.fonts.ready);
-    const hero = page.locator("[data-site-hero]");
+    const hero = page.getByRole("main").locator("[data-site-hero]:visible");
+    await expect(hero).toHaveCount(1);
     const join = hero.getByRole("link", { name: "Start earning", exact: true });
     const how = hero.getByRole("link", { name: "How it works", exact: true });
     const look = (el: HTMLElement) => { const s = getComputedStyle(el); return { height: el.getBoundingClientRect().height, size: s.fontSize, family: s.fontFamily, weight: s.fontWeight }; };

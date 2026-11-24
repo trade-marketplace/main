@@ -131,7 +131,11 @@ describe.skipIf(!testDatabaseUrl)("My work owner-scoped PostgreSQL reads", () =>
     const foreign = await schema.db.estimate.create({ data: { jobId: waiting.id, workerId: other.userId, minutes: 120 } });
     const data = await loadMyQuotes(schema.db, me);
     expect(data.total).toBe(4);
-    for (const [row, outcome, canOpen] of [[waiting, "Waiting", true], [priced, "Priced", false], [taken, "Taken by you", true], [lost, "Not taken", false]] as const) expect(data.rows.find(item => item.jobId === row.id)).toMatchObject({ outcome, canOpen });
+    const pay = await schema.db.jobPricing.findUniqueOrThrow({ where: { jobId: taken.id } });
+    for (const [row, outcome, canOpen, earnCents] of [
+      [waiting, "Waiting", true, null], [priced, "Priced", false, null],
+      [taken, "Taken by you", true, pay.workerGrossCents + pay.holidayPayCents], [lost, "Not taken", false, null],
+    ] as const) expect(data.rows.find(item => item.jobId === row.id)).toMatchObject({ outcome, canOpen, earnCents, estimateHours: 1.5 });
     expect(JSON.stringify(data)).not.toMatch(/0211234567|Private quote note|customerId|workerId|priceCents|materialsCents|minutes|margin/); expect(JSON.stringify(data)).not.toContain(foreign.id);
     await expect(loadMyQuotes(schema.db, customer)).rejects.toMatchObject({ digest: expect.stringContaining("404") });
   });
@@ -142,12 +146,13 @@ describe.skipIf(!testDatabaseUrl)("My work owner-scoped PostgreSQL reads", () =>
     await schema.db.estimate.create({data:{jobId:row.id,workerId:other.userId,minutes:150,note:"Private other quote note"}});
     await schema.db.job.update({where:{id:row.id},data:{status:"BOOKABLE",workerId:null}});
     const claimable=await loadMyQuotes(schema.db,me);
-    const visible={id:quote.id,jobId:row.id,title:"Safe quote history",suburb:"Windsor",sentAt:quote.createdAt.toISOString()};
-    expect(claimable).toEqual({total:1,rows:[{...visible,outcome:"Priced",canOpen:true}]});
+    const visible={id:quote.id,jobId:row.id,title:"Safe quote history",estimateHours:1.5};
+    const pay=await schema.db.jobPricing.findUniqueOrThrow({where:{jobId:row.id}});
+    expect(claimable).toEqual({total:1,rows:[{...visible,outcome:"Priced",canOpen:true,earnCents:pay.workerGrossCents + pay.holidayPayCents}]});
     await schema.db.job.update({where:{id:row.id},data:{status:"ASSIGNED",workerId:other.userId}});
     const taken=await loadMyQuotes(schema.db,me);
-    expect(taken).toEqual({total:1,rows:[{...visible,outcome:"Not taken",canOpen:false}]});
-    const keys=["id","jobId","title","suburb","sentAt","outcome","canOpen"].sort();
+    expect(taken).toEqual({total:1,rows:[{...visible,outcome:"Not taken",canOpen:false,earnCents:null}]});
+    const keys=["id","jobId","title","estimateHours","earnCents","outcome","canOpen"].sort();
     for(const data of[claimable,taken]){
       expect(Object.keys(data.rows[0]).sort()).toEqual(keys);
       const payload=JSON.stringify(data);expect(payload).not.toMatch(/Private street|Private description|Private own quote note|Private other quote note|customerId|workerId|priceCents|materialsCents|minutes|margin/);

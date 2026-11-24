@@ -21,6 +21,24 @@ test("/dev/components/office-shell is a 404 in production", async ({ page }) => 
   expect(response?.status()).toBe(404);
 });
 
+test("the default-open account menu fits the viewport before hydration", async ({ browser }) => {
+  const context = await browser.newContext({ javaScriptEnabled: false, reducedMotion: "reduce" });
+  try {
+    const page = await context.newPage();
+    const preview = devUrl || process.env.POSTED_PREVIEW_E2E_URL || "http://127.0.0.1:3101";
+    for (const { width, height } of VIEWPORTS) {
+      await page.setViewportSize({ width, height });
+      await page.goto(new URL("/dev/components/office-shell?account=open&name=long", preview).href);
+      const menu = page.getByRole("menu", { name: "Account", exact: true });
+      await expect(menu).toHaveCount(1);
+      await expect(menu.locator("..")).toBeInViewport({ ratio: 1 });
+      await noOverflow(page);
+    }
+  } finally {
+    await context.close();
+  }
+});
+
 test.describe("/dev/components/office-shell", () => {
   test.skip(!devUrl, "set E2E_DEV_BASE_URL to a running npx next dev server");
 

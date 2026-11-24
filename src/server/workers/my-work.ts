@@ -5,7 +5,7 @@ import { MY_WORK_COLUMNS, myWorkColumn, quoteOutcome, type MyQuotesData, type My
 import { redactContactDetails } from "@/lib/problem-threads";
 import { payoutTotal } from "@/lib/earnings";
 import { calculatePayout } from "@/server/payouts/calculate";
-import { canReadJob, workerHasPrivateAccess, workerJobListView, type JobViewer } from "@/server/views";
+import { workerJobListView, type JobViewer } from "@/server/views";
 
 const SELECT = {
   id: true, jobNumber: true, title: true, suburb: true, status: true, workerId: true, customerId: true,
@@ -65,9 +65,19 @@ export async function loadMyQuotes(db: Pick<PrismaClient, "estimate">, viewer: J
   if (viewer.role !== "TRADIE" || !viewer.userId) notFound();
   const [rows, total] = await Promise.all([
     db.estimate.findMany({ where: { workerId: viewer.userId }, take: 50, orderBy: [{ createdAt: "desc" }, { id: "asc" }], select: {
-      id: true, createdAt: true, job: { select: { id: true, title: true, suburb: true, status: true, workerId: true, customerId: true } },
+      id: true, minutes: true, job: { select: {
+        id: true, jobNumber: true, title: true, category: true, suburb: true, city: true,
+        status: true, workerId: true, customerId: true, asap: true, createdAt: true, updatedAt: true,
+        pricing: { select: { workerGrossCents: true, holidayPayCents: true } },
+      } },
     } }), db.estimate.count({ where: { workerId: viewer.userId } }),
   ]);
-  return { total, rows: rows.map(row => ({ id: row.id, jobId: row.job.id, title: redactContactDetails(row.job.title, workerHasPrivateAccess(viewer, row.job)), suburb: row.job.suburb, sentAt: row.createdAt.toISOString(),
-    outcome: quoteOutcome(row.job.status, row.job.workerId, viewer.userId), canOpen: canReadJob(viewer, row.job) })) };
+  return { total, rows: rows.map(({ id, minutes, job }) => {
+    const visible = workerJobListView(viewer, job);
+    return {
+      id, jobId: job.id, title: visible?.title ?? redactContactDetails(job.title, false),
+      estimateHours: minutes / 60, earnCents: visible?.earnCents ?? null,
+      outcome: quoteOutcome(job.status, job.workerId, viewer.userId), canOpen: visible !== null,
+    };
+  }) };
 }

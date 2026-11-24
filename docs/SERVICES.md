@@ -84,6 +84,7 @@ Used for (DECISIONS.md #58–#61):
 | `RATE_LIMIT_SECRET` | server only (scrambles rate-limit keys, #111) | **yes** |
 | `RESEND_API_KEY` | server only (Contact form email, #215) | **yes** |
 | `CONTACT_INBOX_EMAIL` | server only (where Contact messages go) | no |
+| `MAINTENANCE_FROM` / `MAINTENANCE_UNTIL` | server only, optional ISO 8601 timestamps with timezone. The banner appears 24 hours before the window. Pages return HTTP 503 during the window. Visitors see Pacific/Auckland times. | no |
 | `SCHEDULER_SECRET` | server only (`/api/scheduler/run`; same value in Supabase Vault, see `docs/server/scheduler.md`) | **yes** |
 | `DATABASE_URL` (pooled) / `DIRECT_URL` | server, migrations | **yes** |
 | `STRIPE_SECRET_KEY` | server only (`sk_test_…` / `rk_test_…`; #151) | **yes** |

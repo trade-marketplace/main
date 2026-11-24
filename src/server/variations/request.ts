@@ -20,13 +20,15 @@ export async function requestVariation(db: PrismaClient, actor: VariationActor, 
   try {
     return await requestCommand(db, actor, raw, requestKey);
   } catch (error) {
-    if (error instanceof EmailRequired) return { ok: false, error: "email-required" } as const;
+    if (error instanceof RequestRefusal) return { ok: false, error: error.reason } as const;
     throw error;
   }
 }
 
-/** Thrown inside the transaction so it rolls back; only this worker command can refuse with it. */
-class EmailRequired extends Error {}
+/** Request-only refusals roll back the job lock write without widening the errors from pricing and decisions. */
+class RequestRefusal extends Error {
+  constructor(readonly reason: "email-required" | "already-waiting") { super(reason); }
+}
 
 function requestCommand(db: PrismaClient, actor: VariationActor, raw: RequestVariationInput, requestKey: string) {
   return command(db, async tx => {
@@ -44,8 +46,13 @@ function requestCommand(db: PrismaClient, actor: VariationActor, raw: RequestVar
     // New extra work is taking more of the job (DECISIONS.md, #353): our own email proof, re-read under the job lock.
     // A retry of a request already made above still gets its committed answer.
     const worker = await tx.profile.findUnique({ where: { id: actor.userId }, select: { email: true, emailVerifiedAt: true } });
-    if (!emailOwnershipProved(worker)) throw new EmailRequired();
+    if (!emailOwnershipProved(worker)) throw new RequestRefusal("email-required");
     inProgress(job.status);
+    const waiting = await tx.variation.findFirst({
+      where: { jobId: job.id, status: { in: ["REQUESTED", "PRICED"] } },
+      select: { id: true },
+    });
+    if (waiting) throw new RequestRefusal("already-waiting");
     const photos = await tx.variationPhoto.findMany({ where: { path: { in: raw.photoPaths }, jobId: job.id, uploadedById: actor.userId, requestKey, ready: true, deleting: false, variationId: null } });
     if (photos.length !== raw.photoPaths.length) return refuse("photos-pending");
     const variation = await tx.variation.create({ data: { jobId: job.id, requestKey, description: raw.description.trim(), requestedMinutes: Math.round(raw.hours * 60), requestedById: actor.userId } });

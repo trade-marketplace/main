@@ -38,6 +38,12 @@ describe.skipIf(!testDatabaseUrl)("extra work request → frozen price → verif
     const input = { jobId: job.id, requestKey, description: "Replace the second cracked switch", hours: 0.5, photoPaths: [path] };
     return { customer, worker, office, job, input, path };
   }
+  async function nextInput(f: Awaited<ReturnType<typeof fixture>>) {
+    const requestKey = randomUUID();
+    const path = f.path.replace(/[^/]+$/, `${randomUUID().replaceAll("-", "")}.webp`);
+    await db().variationPhoto.create({ data: { path, jobId: f.job.id, uploadedById: f.worker.userId, requestKey, ready: true } });
+    return { ...f.input, requestKey, photoPaths: [path] };
+  }
   async function requested() {
     const f = await fixture(); const result = await requestVariation(db(), f.worker, f.input);
     if (!result.ok) throw new Error(result.error);
@@ -79,11 +85,29 @@ describe.skipIf(!testDatabaseUrl)("extra work request → frozen price → verif
     const [first, second] = await Promise.all([requestVariation(db(), f.worker, f.input), requestVariation(db(), f.worker, { ...f.input, requestKey: f.input.requestKey.toUpperCase() })]);
     expect(first).toEqual(second); expect(first.ok).toBe(true);
     expect(await requestVariation(db(), f.worker, { ...f.input, description: "A changed request with the same key" })).toMatchObject({ error: "changed" });
-    const key = randomUUID(); const path = f.path.replace(/[^/]+$/, `${randomUUID().replaceAll("-", "")}.webp`);
-    await db().variationPhoto.create({ data: { path, jobId: f.job.id, uploadedById: f.worker.userId, requestKey: key, ready: true } });
-    expect(await requestVariation(db(), f.worker, { ...f.input, requestKey: key, photoPaths: [path] })).toMatchObject({ ok: true });
-    expect(await db().variation.count({ where: { jobId: f.job.id } })).toBe(2);
-    expect(await db().auditLog.count({ where: { action: "variation.requested", recordId: { in: (await db().variation.findMany({ where: { jobId: f.job.id } })).map(v => v.id) } } })).toBe(2);
+    expect(await requestVariation(db(), f.worker, await nextInput(f))).toEqual({ ok: false, error: "already-waiting" });
+    expect(await db().variation.count({ where: { jobId: f.job.id } })).toBe(1);
+  });
+
+  it("serializes different keys under the job lock and permits the losing request after a decline", async () => {
+    const f = await fixture();
+    const inputs = [f.input, await nextInput(f)];
+    const results = await Promise.all(inputs.map(input => requestVariation(db(), f.worker, input)));
+    const winner = results.findIndex(result => result.ok);
+    expect(winner).toBeGreaterThanOrEqual(0);
+    const refused = inputs[1 - winner];
+    expect(results[1 - winner]).toEqual({ ok: false, error: "already-waiting" });
+    const [variation] = await db().variation.findMany({ where: { jobId: f.job.id } });
+    expect(await db().variation.count({ where: { jobId: f.job.id } })).toBe(1);
+    expect(variation.requestKey).toBe(inputs[winner].requestKey);
+    expect(await db().variationPhoto.findUnique({ where: { path: refused.photoPaths[0] } })).toMatchObject({ variationId: null });
+    expect(await db().auditLog.count({ where: { action: "variation.requested", recordId: variation.id } })).toBe(1);
+    expect(await db().notification.count({ where: { type: "variation.requested", userId: f.office.userId, payload: { path: ["jobId"], equals: f.job.id } } })).toBe(1);
+    expect(await priceVariation(db(), f.office, variation.id, 0)).toMatchObject({ ok: true });
+    expect(await requestVariation(db(), f.worker, inputs[winner])).toEqual(results[winner]);
+    expect(await requestVariation(db(), f.worker, refused)).toEqual({ ok: false, error: "already-waiting" });
+    expect(await declineVariation(db(), f.customer, variation.id, 1, provider().api)).toMatchObject({ ok: true });
+    expect(await requestVariation(db(), f.worker, refused)).toMatchObject({ ok: true });
   });
 
   it("uses frozen rates without another minimum and notifies again for each office revision", async () => {
@@ -139,6 +163,7 @@ describe.skipIf(!testDatabaseUrl)("extra work request → frozen price → verif
     expect(await db().auditLog.count({ where: { action: "variation.approved", recordId: f.id, actorId: null } })).toBe(1);
     expect(await db().job.findUnique({ where: { id: f.job.id } })).toMatchObject({ status: "ASSIGNED" });
     expect(await api.create).toHaveBeenCalledTimes(1);
+    expect(await requestVariation(db(), f.worker, await nextInput(f))).toMatchObject({ ok: true });
   });
 
   it("refuses stale/foreign decisions and cancels the old checkout before repricing or declining", async () => {

@@ -385,12 +385,18 @@ test.describe("/dev/components/overlays on the dev server", () => {
   test("with reduced motion, overlays open and close without animating", async ({ browser }) => {
     const context = await browser.newContext({ reducedMotion: "reduce" });
     const page = await context.newPage();
+    await page.clock.install({ time: new Date("2026-01-01T00:00:00Z") });
     await page.goto(url());
-    await page.getByRole("button", { name: "Review extra work" }).click();
-    expect(await modal(page).evaluate((el) => getComputedStyle(el).animationName)).toBe("none");
+    const opener = page.getByRole("button", { name: "Review extra work" });
+    await opener.click();
+    await expect(modal(page)).toHaveCSS("animation-name", "none");
+
+    // Give React a timer turn to unmount, while keeping the normal 150ms exit timer out of reach.
+    await page.clock.pauseAt(new Date("2026-01-01T01:00:00Z"));
     await page.keyboard.press("Escape");
-    // Gone straight away: no 150ms exit to wait for.
-    expect(await page.locator("dialog").count()).toBe(0);
+    await page.clock.runFor(1);
+    await expect(page.locator("dialog")).toHaveCount(0);
+    await expect(opener).toBeFocused();
     await context.close();
   });
 

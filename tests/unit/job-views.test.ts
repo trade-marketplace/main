@@ -17,8 +17,22 @@ const keys = (value: unknown): string[] => value && typeof value === "object" ? 
 describe("job projections for every status", () => {
   it.each(STATUSES)("snapshots every role at %s", status => {
     const job = exampleJob({ status, workerId: CLAIMED.includes(status) || status === "CANCELLED" ? VIEWERS.worker.userId : null });
+    if (!["REVIEW", "QUOTE_BOUNTY"].includes(status)) {
+      job.statusHistory.push({ fromStatus: "REVIEW", toStatus: "PRICED", createdAt: new Date("2026-11-01") });
+    }
     expect({ customer: customerJobView(VIEWERS.customer, job), worker: workerJobView(VIEWERS.worker, job),
       otherWorker: workerJobView({ ...VIEWERS.worker, userId: "other-worker" }, job), office: officeJobView(VIEWERS.office, job), public: publicJobView() }).toMatchSnapshot();
+  });
+
+  it("requires actual publication history before exposing a cancelled job's total and GST", () => {
+    const cancelled = { fromStatus: "ASSIGNED", toStatus: "CANCELLED", createdAt: new Date("2026-11-07") } as const;
+    const sent = { fromStatus: "REVIEW", toStatus: "PRICED", createdAt: new Date("2026-11-01") } as const;
+    for (const published of [false, true]) {
+      const row = exampleJob({ status: "CANCELLED", statusHistory: published ? [cancelled, sent] : [cancelled] });
+      const expected = { priceCents: published ? 37200 : null, gstCents: published ? 4852 : null };
+      expect(customerJobView(VIEWERS.customer, row)).toMatchObject(expected);
+      expect(customerJobsView(VIEWERS.customer, [row])).toEqual([expect.objectContaining(expected)]);
+    }
   });
 
   it.each(STATUSES)("never serializes estimates, worker pay, averages or margins to customers at %s", status => {

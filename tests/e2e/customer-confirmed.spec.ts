@@ -124,6 +124,38 @@ test.describe("real customer confirmed job", () => {
       }); } finally { await client.$disconnect(); }
     `, jobId, type, JSON.stringify(payload), worker.id, customer.id], { cwd: process.cwd(), env: process.env });
   };
+  test("a customer saving stale times sees the tradie's booking and can return to the job", async ({ page, context, browser }) => {
+    await context.addCookies(await sessionCookies(customer, secret, app!, "http://127.0.0.1:54510"));
+    const id = await create(true);
+    const jobPath = `/jobs/${id}?from=%2Fdashboard%3Fq%3Dconfirmed%26page%3D2`;
+    await page.goto(`${app}/jobs/${id}/windows?from=${encodeURIComponent(jobPath)}`);
+    await page.getByRole("checkbox", { name: "ASAP: today if possible" }).check();
+
+    const tradie = await browser.newContext();
+    try {
+      await tradie.addCookies(await sessionCookies(worker, secret, app!, "http://127.0.0.1:54510"));
+      const booking = await tradie.newPage();
+      await booking.goto(`${app}/jobs/${id}/book`);
+      const morning = booking.getByRole("radio", { name: "Morning", exact: true }).first();
+      await morning.check();
+      const button = booking.getByRole("button", { name: /^Book .+ · Morning$/ });
+      const label = (await button.innerText()).slice("Book ".length);
+      await button.click();
+      await expect(booking).toHaveURL(`${app}/jobs/${id}`);
+
+      await page.getByRole("button", { name: "Save changes" }).press("Enter");
+      await expect(page.getByRole("status").filter({ hasText: `Booked for ${label}` })).toBeVisible();
+      await expect(page.getByRole("checkbox", { name: "ASAP: today if possible" })).not.toBeChecked();
+      const back = page.getByRole("link", { name: "Back to job", exact: true });
+      await expect(back).toHaveAttribute("href", jobPath);
+      await back.press("Enter");
+      await expect(page).toHaveURL(`${app}${jobPath}`);
+      await expect(page.getByText(/Jack’s booked in/)).toBeVisible();
+      await page.goto(`${app}/jobs/${id}/windows`);
+      await expect(page.getByText(`Booked for ${label}`, { exact: true })).toBeVisible();
+      await expect(page.getByRole("link", { name: "Back to job", exact: true })).toHaveAttribute("href", `/jobs/${id}`);
+    } finally { await tradie.close(); }
+  });
   test("owned updates refresh without a revision change; assigned Add times saves choices and preserves its return", async ({ page, context }) => {
     test.setTimeout(60_000);
     await context.addCookies(await sessionCookies(customer, secret, app!, "http://127.0.0.1:54510"));

@@ -56,20 +56,33 @@ describe("rate limits (#111)", () => {
 
   it("deletes finished windows", async () => {
     const { deps, store, clock } = setup();
+    const hit = vi.spyOn(store, "hit");
     await consume("signUp", "ip:1.1.1.1", deps);
+    const [key, originalWindow] = hit.mock.calls[0];
+    expect(await store.count(key, originalWindow)).toBe(1);
     const purge = vi.spyOn(store, "purge");
     clock.now = T0 + 3 * 60 * 60_000;
     await consume("signUp", "ip:1.1.1.1", deps);
     await new Promise((resolve) => setImmediate(resolve));
-    expect(purge).toHaveBeenCalled();
-    expect(await store.count("anything", new Date(T0))).toBe(0);
+    expect(purge).toHaveBeenCalledWith(new Date(clock.now));
+    expect(await store.count(key, originalWindow)).toBe(0);
+  });
+
+  it("runs cleanup on a fresh store even if another store just purged", async () => {
+    const first = setup();
+    const second = setup();
+    const purge = vi.spyOn(second.store, "purge");
+    await consume("signUp", "ip:1.1.1.1", first.deps);
+    await consume("signUp", "ip:1.1.1.1", second.deps);
+    expect(purge).toHaveBeenCalledWith(new Date(T0));
   });
 
   it("never blocks real people when counting breaks", async () => {
     const broken: RateLimitStore = { hit: async () => { throw new Error("db down"); }, count: async () => { throw new Error("db down"); }, purge: async () => {} };
+    const deps = { store: broken, now: () => T0 };
     const log = vi.spyOn(console, "error").mockImplementation(() => {});
-    expect(await consume("signUp", "ip:1.1.1.1", { store: broken })).toEqual({ allowed: true });
-    expect(await check("logInFailures", "ip:1.1.1.1", { store: broken })).toEqual({ allowed: true });
+    expect(await consume("signUp", "ip:1.1.1.1", deps)).toEqual({ allowed: true });
+    expect(await check("logInFailures", "ip:1.1.1.1", deps)).toEqual({ allowed: true });
     expect(log).toHaveBeenCalledWith("Rate limit could not be checked.");
     log.mockRestore();
   });

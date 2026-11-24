@@ -8,7 +8,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
   const params = await searchParams; const state = typeof params.state === "string" ? params.state : "empty";
   if (state === "editor-states") return <main id="main" data-mode="customer" className={styles.gallery}>
     <h1>When do you need it?</h1>
-    {["update", "update-error", "update-loading", "update-load-error", "update-changed", "update-offline", "update-claimed", "update-saving"].map(name => <section key={name}>
+    {["update", "update-error", "update-loading", "update-load-error", "update-changed", "booked-meanwhile", "update-offline", "update-claimed", "update-saving"].map(name => <section key={name}>
       <h2 className={styles.state}>{name}</h2><WhereDemo state={name} embedded />
     </section>)}
   </main>;

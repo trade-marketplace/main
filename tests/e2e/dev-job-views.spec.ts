@@ -50,8 +50,10 @@ test.describe("job data view previews", () => {
     await expect(page.getByText("Hidden until claimed").first()).toBeVisible();
     const customer = nav.getByRole("link", { name: "customer", exact: true });
     await customer.focus(); await customer.press("Enter");
-    await expect(page.getByText("$372.00", { exact: true })).toBeVisible();
+    // This assigned sample has no PRICED history. The customer should still see their job without its unproven total.
+    await expect(page.getByText("$372.00", { exact: true })).toHaveCount(0);
     await page.getByText("View serialized data", { exact: true }).click();
+    await expect(page.locator("pre")).toContainText(/"priceCents":\s*null/);
     await expect(page.locator("pre")).not.toContainText("margin");
     await expect(page.locator("pre")).not.toContainText("estimates");
     await nav.getByRole("link", { name: "error", exact: true }).click();
