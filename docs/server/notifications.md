@@ -63,6 +63,7 @@ require a product decision. No SMS at launch (DECISIONS.md #63).
 | `job.cancel_requested` | IN_APP | Office cancellation review needed |
 | `job.cancelled` | IN_APP | Job cancelled |
 | `job.reinstated` | IN_APP | Office reinstated job |
+| `problem_report.resolved` | IN_APP | Office resolved a problem report |
 | `job.status_overridden` | IN_APP | Office changed status |
 | `payout.queued` | IN_APP | Worker payout queued |
 | `payout.paid` | IN_APP | Worker payout paid |

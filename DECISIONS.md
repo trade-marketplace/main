@@ -55,6 +55,17 @@ Decided by Matt (Co-Founder/CEO) on 23 October 2026. These override older wordin
 - **Extra work, one at a time** (Claude for Matt, 12 Nov, #550, #548, #539): a job has at most one extra-work request waiting on the office or the customer. The office is told when a customer declines. A customer who hasn't answered priced extra work after 24 hours gets one reminder per price.
 - **Handing a job back** (Claude for Matt, 16 Nov, #147): a tradie who can't make a job they claimed uses "Can’t make it" on the job, picks a reason (Sick or hurt · Emergency · Double-booked · The job is bigger than it looked · Something else) and can add a note. The job goes straight back on the board for other tradies, the booked time is cleared, and the customer is told we’re finding someone else; their offered times stay. Their unsent finish-up draft is removed. The office is told when the job was booked for today or tomorrow, or when it is the tradie’s second hand-back in 30 days; nothing is paused automatically. A job with extra work waiting or approved can’t be handed back this way: the tradie messages the office. Once it is sent for sign-off it can’t be handed back.
 - **Payroll export** (Claude for Matt, 16 Nov, #166): until a payroll provider is chosen (#65), **Export payroll CSV** on `/admin/payouts` makes a plain CSV for whoever runs payroll, one row per payout: tradie name, email, job number, hours (minutes ÷ 60), rate, gross, holiday pay, total and the payout id. **Never an IRD number, bank account or tax code**: those stay in the encrypted payroll details. Exporting marks those payouts Exported in the same transaction that builds the file, so a payout goes to payroll once. A tradie whose payroll details aren't complete is listed as a blocker and left out; their payouts stay queued for a later export. **Mark batch paid**, after payroll has paid, marks that batch Paid and tells each tradie once. Neither moves money, and tradies see "Queued" until the batch is marked paid.
+- **Cancellations, disputes and part payouts** (Claude for Matt, 25 Nov, #172): the office decides a paid job's
+  cancellation request on `/admin/disputes/[jobId]`: **Cancel and refund** (a full refund gives back what's left on
+  every payment; a part refund is an amount from one payment), **Cancel, no refund**, or **Keep the job going** (back
+  to where it was). A problem report is **Resolved** with a note and, if needed, a part refund; that closes it and the
+  48-hour sign-off timer carries on from when the tradie sent the job (it isn't restarted). Every decision needs a note
+  for the timeline, and the customer and tradie are told in the app. The refund happens in Stripe first; the job only
+  changes once Stripe has made it and it's recorded, so a refund Stripe refuses changes nothing. **When the tradie
+  already did part of the work**, either cancel can also pay them for the hours the office agrees: a normal payout
+  row, queued for the next payroll export like any other, worked out the usual way (agreed hours × the job's frozen
+  hourly rate, plus holiday pay), never more than the job's priced time plus approved extra work, and only one payout
+  per tradie per job. Materials aren't part of it. No database change.
 
 ### Homepage implementation (#211, Matt, 29 Oct)
 
