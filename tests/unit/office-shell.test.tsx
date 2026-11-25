@@ -20,6 +20,7 @@ vi.mock("next/navigation", async (importOriginal) => ({
   ...(await importOriginal<typeof import("next/navigation")>()),
   useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }),
 }));
+vi.mock("@/app/admin/notifications/actions", () => ({ countOfficeNotifications: vi.fn() }));
 vi.mock("@/server/auth/guard", () => ({ requireRole: vi.fn() }));
 vi.mock("@/server/office-shell", () => ({ getOfficeShellViewer: vi.fn() }));
 vi.mock("@/server/office/queues", () => ({ getOfficeQueueStats: vi.fn() }));
