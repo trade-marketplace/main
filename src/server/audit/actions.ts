@@ -61,6 +61,9 @@ export const AUDIT_ACTIONS = {
   "job.price_expired": { record: "jobs" },
   "job.cancelled": { record: "jobs", reason: "required" },
   "job.cancel_declined": { record: "jobs", reason: "required" },
+  // The office decided a cancellation request (#172, F06): cancelled (with or without a refund), or kept going.
+  "job.cancel_approved": { record: "jobs", reason: "required" },
+  "job.reinstated": { record: "jobs", reason: "required" },
   "job.reassigned": { record: "jobs", reason: "required" },
   "job.unassigned": { record: "jobs", reason: "required" },
   "job.status_changed": { record: "jobs" },

@@ -12,6 +12,7 @@ import { JOB_SUMMARY_SELECT, officeJobListView } from "@/server/views/jobs";
 import type { JobViewer } from "@/server/views/access";
 import { officeQueueJobView } from "@/server/views/office-queues";
 import { variationPricingHref } from "@/lib/office-variation";
+import { disputeHref } from "@/lib/office-disputes";
 import { PRICE_SLOW_AFTER_HOURS, UNCLAIMED_AFTER_HOURS } from "@/server/scheduler/rules";
 
 export type QueueDatabase = Pick<PrismaClient, "job" | "jobStatusHistory" | "variation" | "completionEvidence" | "problemReport" | "workerProfile" | "supportThread" | "settings" | "auditLog">;
@@ -152,7 +153,8 @@ export async function readOfficeQueues(db: QueueDatabase, viewer: JobViewer, que
     rows = entries.flatMap(entry => {
       const job = jobs.find(row => row.id === entry.jobId); if (!job || !entry._max.createdAt) return [];
       const row = rowView(viewer, job, job.id, entry._max.createdAt, query.tab, now, reasons.find(item => item.recordId === job.id && item.createdAt >= entry._max.createdAt!)?.reason ?? "—", current.autoReleaseHours);
-      return row ? [row] : [];
+      // A cancellation request opens its case (#172, F06), where the office decides it.
+      return row ? [query.tab === "cancel" ? { ...row, href: disputeHref(job.id) } : row] : [];
     });
   }
   // Do not turn an inconsistent read or a legacy row missing its required history into a reassuring all-clear.

@@ -79,7 +79,7 @@ export function OfficeQueues({ query, data, loading = false, offline = false, ba
         <span className={styles.detail}><span className={styles.desktopLabel}>{kpi?.detail ?? "—"}</span><span className={styles.phoneLabel}>{kpi && kpi.count > 0 ? queue.phoneDetail : "—"}</span></span>
       </button>; })}
     </div>
-    {data && <nav className={styles.related} aria-label="Other work"><Link href="/admin/jobs?status=customer">Waiting on customer ({data.waitingCustomer})</Link>{data.problemCount > 0 && !query.q && <Link href="#queue-problems">Problems ({data.problemCount})</Link>}</nav>}
+    {data && <nav className={styles.related} aria-label="Other work"><Link href="/admin/jobs?status=customer">Waiting on customer ({data.waitingCustomer})</Link><Link href="/admin/disputes">Cancellations &amp; disputes</Link>{data.problemCount > 0 && !query.q && <Link href="#queue-problems">Problems ({data.problemCount})</Link>}</nav>}
     <div aria-disabled={!online || undefined} className={styles.tabset}>
       <Tabs label="Queues" value={query.tab} items={QUEUES.map(queue => ({ value: queue.key, label: queue.label, count: data?.kpis[queue.key].count }))} onChange={selectQueue}>
         <DataTable caption={query.q ? "Search results" : selected.label} columns={columns} rows={data?.rows ?? []} rowId={row => row.id} rowLabel={row => row.title}

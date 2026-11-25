@@ -30,6 +30,7 @@ import {
   parseMoneyToCents,
 } from "@/lib/office-job";
 import { OFFICE_JOBS_PATH } from "@/lib/office-jobs";
+import { disputeHref } from "@/lib/office-disputes";
 import type { OfficeProblemReportState, OfficeProblemReturn } from "@/lib/office-problem";
 import type { OfficeSupportReturn } from "@/lib/office-support";
 import { ProblemReportCard } from "./ProblemReportCard";
@@ -113,6 +114,9 @@ export function JobAdmin({ job, submit, initialDialog = null, initialMenuOpen = 
         <div className={styles.headActions}>
           {(["REVIEW", "QUOTE_BOUNTY"] as const).some(status => status === job.status) && (
             <Button href={`/admin/jobs/${job.id}/price`} size="sm" width="auto">Price it</Button>
+          )}
+          {job.status === "CANCEL_REVIEW" && (
+            <Button href={disputeHref(job.id)} size="sm" width="auto">Open case</Button>
           )}
           <Menu
             defaultOpen={initialMenuOpen}

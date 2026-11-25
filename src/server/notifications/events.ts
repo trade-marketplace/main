@@ -9,6 +9,7 @@ type EventRule = { readonly channels: readonly NotificationChannel[]; readonly d
 export const NOTIFICATION_EVENTS = {
   "job.evidence_flagged": { channels: ["IN_APP"], description: "The office sent finished-job evidence back to the tradie." },
   "problem_report.created": { channels: ["IN_APP"], description: "A customer reported a problem with a job." },
+  "problem_report.resolved": { channels: ["IN_APP"], description: "The office resolved a problem report on the job." },
   "message.received": { channels: ["IN_APP"], description: "A job support message arrived." },
   "job.posted": { channels: ["IN_APP"], description: "A job was posted." },
   "job.details_updated": { channels: ["IN_APP"], description: "The customer changed a job’s details after a quote." },
