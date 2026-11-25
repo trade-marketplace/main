@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const fakes = vi.hoisted(() => ({ authorize: vi.fn(), deps: vi.fn(), change: vi.fn(), revalidate: vi.fn(), signOut: vi.fn() }));
+const fakes = vi.hoisted(() => ({ authorize: vi.fn(), deps: vi.fn(), change: vi.fn(), revalidate: vi.fn(), signOut: vi.fn(), check: vi.fn(), consume: vi.fn() }));
+vi.mock("@/server/rate-limit", () => ({ checkForClient: fakes.check, consumeForClient: fakes.consume }));
 vi.mock("@/server/supabase", () => ({ createSupabaseServerClient: async () => ({ auth: { signOut: fakes.signOut } }) }));
 vi.mock("@/server/auth/guard", async (original) => {
   const real = await original<typeof import("@/server/auth/guard")>();
@@ -18,6 +19,8 @@ beforeEach(() => {
   fakes.deps.mockResolvedValue({ auth: "fake" });
   fakes.change.mockResolvedValue({ ok: true, status: "password-changed" });
   fakes.signOut.mockResolvedValue({ error: null });
+  fakes.check.mockResolvedValue({ allowed: true });
+  fakes.consume.mockResolvedValue({ allowed: true });
 });
 
 describe("security server action", () => {
@@ -56,5 +59,22 @@ describe("security server action", () => {
     fakes.change.mockResolvedValue({ ok: false, error: "wrong-password" });
     expect(await securityAction("password", null, new FormData())).toEqual({ ok: false, error: "wrong-password" });
     expect(fakes.revalidate).not.toHaveBeenCalled();
+  });
+  it("counts a wrong current password towards this connection's log-in limit (#220)", async () => {
+    fakes.change.mockResolvedValue({ ok: false, error: "wrong-password", fields: { currentPassword: "That’s not your current password." } });
+    expect(await securityAction("email", null, new FormData())).toMatchObject({ ok: false, error: "wrong-password" });
+    expect(fakes.check).toHaveBeenCalledWith("logInFailures");
+    expect(fakes.consume).toHaveBeenCalledWith("logInFailures");
+  });
+  it("does not count a right password or any other failure", async () => {
+    await securityAction("password", null, new FormData());
+    fakes.change.mockResolvedValue({ ok: false, error: "email-taken" });
+    await securityAction("email", null, new FormData());
+    expect(fakes.consume).not.toHaveBeenCalled();
+  });
+  it("stops guessing once the limit is used up, before the password is checked", async () => {
+    fakes.check.mockResolvedValue({ allowed: false, retryAfter: 600 });
+    expect(await securityAction("sessions", null, new FormData())).toEqual({ ok: false, error: "try-later" });
+    expect(fakes.deps).not.toHaveBeenCalled(); expect(fakes.change).not.toHaveBeenCalled();
   });
 });

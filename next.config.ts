@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 
+import { SECURITY_HEADERS } from "./src/lib/security-headers";
 import { EnvError, parseEnv } from "./src/server/env";
 
 // Fail fast, before anything starts, if an environment variable is set up wrong.
@@ -19,6 +20,10 @@ const nextConfig: NextConfig = {
   logging: { serverFunctions: false },
   // The pure G05 renderer reads this immutable file when the actual creation transaction freezes its message.
   outputFileTracingIncludes: { "/*": ["./src/styles/tokens.css", "./public/firebase-messaging-worker.js"] },
+  // Clickjacking, sniffing, referrer and HTTPS headers on every response (#220, src/lib/security-headers.ts).
+  async headers() {
+    return [{ source: "/:path*", headers: [...SECURITY_HEADERS] }];
+  },
 };
 
 export default nextConfig;

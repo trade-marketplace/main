@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { canViewJobFiles } from "@/server/files/access";
 import { detectFileKind } from "@/server/files/file-type";
 import { MAX_UPLOAD_BYTES } from "@/server/files/images";
-import { createUploadService, type UploadDb } from "@/server/files/service";
+import { createUploadService, hasActivePdfContent, type UploadDb } from "@/server/files/service";
 import type { FileStore } from "@/server/files/storage";
 
 // A fake iPhone decoder: real HEVC decoding is the library's job, ours is the wiring around it.
@@ -252,6 +252,17 @@ describe("documents", () => {
     await expect(service.addDocument(tradie, "coc", Buffer.from("%PDF-1.4\n<< /JavaScript (app.alert(1)) >>"))).rejects.toMatchObject({ code: "wrong-type" });
     await expect(service.addDocument(tradie, "coc", new Uint8Array())).rejects.toMatchObject({ code: "empty" });
     await expect(service.addDocument(tradie, "coc", Buffer.concat([pdf, Buffer.alloc(MAX_UPLOAD_BYTES)]))).rejects.toMatchObject({ code: "too-large" });
+  });
+
+  it("sees active content spelled with #-escaped PDF names (#220)", async () => {
+    const { service, files } = fakes();
+    for (const hidden of ["/J#61vaScript", "/#4A#53", "/Open#41ction", "/L#61unch", "/#41A", "/Embedded#46ile"]) {
+      await expect(service.addDocument(tradie, "coc", Buffer.from(`%PDF-1.4\n1 0 obj << ${hidden} (app.alert(1)) >> endobj`))).rejects.toMatchObject({ code: "wrong-type" });
+    }
+    expect(files.size).toBe(0);
+    expect(hasActivePdfContent(pdf)).toBe(false);
+    // A plain # in text (a licence number) is not a name escape of anything active.
+    expect(hasActivePdfContent(Buffer.from("%PDF-1.4\n(Licence #12345 #4A) Tj"))).toBe(false);
   });
 
   it("is for workers only", async () => {
