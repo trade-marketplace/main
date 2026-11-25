@@ -2,6 +2,8 @@
 // pretend server. Flags: ?state=default|unpaid|no-tradie|cancelled|long-text|loading|error
 // · ?dialog=reassign|refund|price|status|cancel|message · ?menu=open · ?failure=1 (the dialog shows an error).
 // · ?problem=ready|loading|error|offline|photo-error|empty|resolved shows the selected report independently.
+// · Materials (#512): ?state=materials-auto|materials-check|materials-decided|materials-sent|materials-not-reported|
+//   materials-receipt-error, and ?materials=approve|change opens that dialog (with ?failure=1, its error).
 // Development only: in a production build this page is a 404. Names, prices and times are examples.
 import type { Metadata, Viewport } from "next";
 
@@ -42,6 +44,7 @@ export default async function OfficeJobPreview({ searchParams }: { searchParams:
         menuOpen={one(query.menu) === "open"}
         failure={one(query.failure) === "1" ? "Couldn’t save that. Nothing was changed. Try again." : null}
         problem={one(query.problem)}
+        materialsDialog={one(query.materials) === "approve" ? "approve" : one(query.materials) === "change" ? "change" : null}
       />}
     </OfficeShellView>
   );

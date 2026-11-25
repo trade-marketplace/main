@@ -2,7 +2,11 @@
 // mockup (pages.html w-o-job: TM-1005, Sub wiring, Sarah Thompson to Jack Wilson).
 import type { OfficeJobView, TimelineEntry } from "@/lib/office-job";
 
-export const PREVIEW_STATES = ["default", "photos", "unpaid", "no-estimates", "bounty", "no-tradie", "cancelled", "long-text", "loading", "error"] as const;
+export const PREVIEW_STATES = ["default", "photos", "unpaid", "no-estimates", "bounty", "no-tradie", "cancelled", "long-text",
+  // The Materials card (#512) on a non-electrical job: within budget, over budget to check, checked, sent to payroll,
+  // not reported yet, and a receipt that couldn't be loaded.
+  "materials-auto", "materials-check", "materials-decided", "materials-sent", "materials-not-reported", "materials-receipt-error",
+  "loading", "error"] as const;
 export type PreviewState = (typeof PREVIEW_STATES)[number];
 
 export function isPreviewState(value: string | undefined): value is PreviewState {
@@ -127,7 +131,58 @@ export function previewJob(state: PreviewState): OfficeJobView {
           ...TIMELINE.slice(3),
         ],
       };
+    case "materials-auto":
+    case "materials-check":
+    case "materials-decided":
+    case "materials-sent":
+    case "materials-not-reported":
+    case "materials-receipt-error":
+      return materialsJob(base, state);
     default:
       return base;
+  }
+}
+
+/** A plumbing job whose tradie bought the materials (#512). The budget, spend and reason are examples. */
+function materialsJob(base: OfficeJobView, state: PreviewState): OfficeJobView {
+  const job: OfficeJobView = {
+    ...base,
+    number: "TM-1012",
+    title: "Replace hot water cylinder valves",
+    trade: "Plumbing",
+    status: "COMPLETED",
+    money: { ...base.money, extraWorkCents: 0, payroll: { label: "Queued", kind: "good" } },
+    payments: base.payments.slice(0, 1),
+    timeline: [
+      entry("m1", "customer", "Sarah", "Signed off", "11:20 today"),
+      entry("m2", "tradie", "Jack", "Sent for sign-off", "Tue 16:02"),
+      entry("m3", "tradie", "Jack", "Materials reported", "Tue 16:02", "The merchant was out of the 15 mm valve, so I fitted the 20 mm kit with adaptors."),
+      ...TIMELINE.slice(3),
+    ],
+  };
+  const receipt = { url: "/images/examples/board.jpg" };
+  const over = { budgetCents: 12000, spentCents: 14650, receipt, reason: "The merchant was out of the 15 mm valve, so I fitted the 20 mm kit with adaptors." };
+  switch (state) {
+    case "materials-auto":
+      return { ...job, materials: { budgetCents: 12000, spentCents: 9840, receipt, reason: null, state: "auto", repaidCents: 9840, decision: null, sent: false, canDecide: false } };
+    case "materials-not-reported":
+      return { ...job, status: "ASSIGNED", money: { ...job.money, payroll: { label: "After sign-off", kind: "waiting" } }, materials: { budgetCents: 12000, spentCents: null, receipt: null, reason: null, state: "not-reported", repaidCents: 0, decision: null, sent: false, canDecide: false } };
+    case "materials-receipt-error":
+      return { ...job, materials: { ...over, receipt: { url: null }, state: "to-check", repaidCents: 0, decision: null, sent: false, canDecide: true } };
+    case "materials-check":
+      return { ...job, materials: { ...over, state: "to-check", repaidCents: 0, decision: null, sent: false, canDecide: true } };
+    case "materials-decided":
+    case "materials-sent": {
+      const decision = { kind: "changed" as const, repaidCents: 13500, by: "Matt", at: "2026-11-02T00:40:00.000Z", when: "11:40 today", note: "Adaptors were needed; the extra fittings were for another job." };
+      const sent = state === "materials-sent";
+      return {
+        ...job,
+        money: { ...job.money, payroll: sent ? { label: "Sent to payroll", kind: "info" } : job.money.payroll },
+        timeline: [entry("m0", "office", "Matt", "Materials amount changed to $135.00", "11:40 today", decision.note), ...job.timeline],
+        materials: { ...over, state: "decided", repaidCents: 13500, decision, sent, canDecide: !sent },
+      };
+    }
+    default:
+      return job;
   }
 }

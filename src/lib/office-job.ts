@@ -2,6 +2,7 @@
 // and the rules for each action. Pure and safe on server and browser: no database, no secrets. The reads are in
 // src/server/office/job.ts, the changes in src/server/office/job-mutations.ts. Docs: docs/components/office-job.md.
 import { type JobStatus, JOB_STATUSES, statusPill } from "@/lib/job-status";
+import type { OfficeMaterialsView } from "@/lib/office/materials";
 
 export const OFFICE_JOB_PATH = "/admin/jobs";
 
@@ -96,6 +97,8 @@ export type OfficeJobView = {
   timeline: TimelineEntry[];
   /** Tradies who could take the job over (reassign). */
   reassignOptions: PersonView[];
+  /** The Materials card (#512): non-electrical jobs with a materials budget or spend. Missing or null: no card. */
+  materials?: OfficeMaterialsView | null;
 };
 
 // ---------------------------------------------------------------- What the office can do
@@ -391,6 +394,14 @@ export function timelineTitle({ action, before, after, names }: TimelineFacts): 
       return "Payout sent to payroll";
     case "payout.paid":
       return "Payout paid";
+    case "materials.approved": {
+      const repaid = num(after?.repaidCents);
+      return repaid === null ? "Materials spend approved" : `Materials spend approved ${money(repaid)}`;
+    }
+    case "materials.amount_changed": {
+      const repaid = num(after?.repaidCents);
+      return repaid === null ? "Materials amount changed" : `Materials amount changed to ${money(repaid)}`;
+    }
     default: {
       const words = action.replace(/^[a-z_]+\./, "").replace(/_/g, " ");
       return words.charAt(0).toUpperCase() + words.slice(1);

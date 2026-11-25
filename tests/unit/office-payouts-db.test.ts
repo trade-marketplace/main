@@ -89,13 +89,13 @@ describe.skipIf(!testDatabaseUrl)("payroll export and mark paid (database)", () 
 
     const lines = csvLines(result.csv);
     expect(result.csv.startsWith(CSV_BOM)).toBe(true);
-    expect(lines[0]).toBe("Tradie,Email,Job number,Hours,Rate (NZD per hour),Gross (NZD),Holiday pay (NZD),Total (NZD),Payout id");
+    expect(lines[0]).toBe("Tradie,Email,Job number,Hours,Rate (NZD per hour),Gross (NZD),Holiday pay (NZD),Materials (NZD),Total (NZD),Payout id");
     expect(lines).toHaveLength(4);
     const jackRow = lines.find((line) => line.includes(payouts[0].id))!;
     const job = await schema.db.job.findUniqueOrThrow({ where: { id: payouts[0].jobId } });
-    expect(jackRow).toBe(`Jack Wilson,${jack}@example.nz,TM-${job.jobNumber},2,38.00,76.00,6.08,82.08,${payouts[0].id}`);
+    expect(jackRow).toBe(`Jack Wilson,${jack}@example.nz,TM-${job.jobNumber},2,38.00,76.00,6.08,0.00,82.08,${payouts[0].id}`);
     expect(lines[1].startsWith("Aroha Ngata,")).toBe(true); // grouped by tradie
-    expect(lines.find((line) => line.includes(payouts[1].id))).toContain(",1.5,38.00,57.00,4.56,61.56,");
+    expect(lines.find((line) => line.includes(payouts[1].id))).toContain(",1.5,38.00,57.00,4.56,0.00,61.56,");
 
     const audits = await auditFor(payouts.map((p) => p.id), "payout.exported");
     expect(audits).toHaveLength(3);

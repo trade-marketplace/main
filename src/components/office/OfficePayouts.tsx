@@ -23,6 +23,7 @@ import {
   dayLabel,
   holidayShare,
   hoursLabel,
+  MATERIALS_BLOCKER,
   money,
   paydayLabel,
   plural,
@@ -72,8 +73,18 @@ function saveFile(csv: string, filename: string) {
   window.setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
-export function exportedNotice(batch: PayoutBatch, heldBack: number, href: string): Notice {
-  const held = heldBack > 0 ? ` ${plural(heldBack, "payout", "payouts")} held back for missing payroll details.` : "";
+/** What is held back, after an export: missing payroll details, materials to check, or both (#512). */
+function heldText(heldBack: number, materialsHeld = 0): string {
+  const details = heldBack - materialsHeld;
+  const parts = [
+    details > 0 ? `${plural(details, "payout", "payouts")} held back for missing payroll details.` : "",
+    materialsHeld > 0 ? `${plural(materialsHeld, "payout", "payouts")} held back for materials to check.` : "",
+  ].filter(Boolean);
+  return parts.length ? ` ${parts.join(" ")}` : "";
+}
+
+export function exportedNotice(batch: PayoutBatch, heldBack: number, href: string, materialsHeld = 0): Notice {
+  const held = heldText(heldBack, materialsHeld);
   return {
     tone: "good",
     text: `Exported ${plural(batch.count, "payout", "payouts")} · ${money(batch.totalCents)} for ${paydayLabel(batch.payday)}.${held}`,
@@ -119,10 +130,13 @@ export function OfficePayouts({
       if (!("status" in reply)) return setNotice({ tone: "alert", text: "Only the office can export payroll." });
       if (reply.status === "exported") {
         saveFile(reply.csv, reply.filename);
-        setNotice(exportedNotice(reply.batch, reply.heldBack, downloadHref(reply.batch.key)));
+        setNotice(exportedNotice(reply.batch, reply.heldBack, downloadHref(reply.batch.key), reply.materialsHeld));
         reload();
       } else if (reply.status === "nothing") {
-        setNotice({ tone: "info", text: reply.heldBack ? "Nothing to export. Everyone queued is missing payroll details." : "Nothing to export. Nothing is queued." });
+        const text = !reply.heldBack ? "Nothing to export. Nothing is queued."
+          : reply.materialsHeld ? "Nothing to export. Everything queued is held back."
+          : "Nothing to export. Everyone queued is missing payroll details.";
+        setNotice({ tone: "info", text });
         reload();
       } else if (reply.status === "forbidden") setNotice({ tone: "alert", text: "Only the office can export payroll." });
       else setNotice({ tone: "alert", text: EXPORT_FAILED });
@@ -178,6 +192,7 @@ export function OfficePayouts({
     { key: "signedOff", header: "Signed off", nowrap: true, optional: true, cell: (row) => <time dateTime={row.signedOffAt}>{dayLabel(row.signedOffAt)}</time> },
     { key: "hours", header: "Hours", align: "end", nowrap: true, optional: true, cell: (row) => hoursLabel(row.minutes) },
     { key: "holiday", header: "Holiday pay", align: "end", nowrap: true, optional: true, cell: (row) => money(row.holidayPayCents) },
+    { key: "materials", header: "Materials", align: "end", nowrap: true, optional: true, cell: (row) => (row.materialsCents > 0 ? money(row.materialsCents) : "—") },
     { key: "total", header: "Total", align: "end", nowrap: true, cell: (row) => money(row.totalCents) },
     {
       key: "status",
@@ -227,6 +242,18 @@ export function OfficePayouts({
       <OfflineBanner online={state === "offline" ? false : undefined} sticky={false} onRetry={reload} />
       <Banner tone="info">These are payroll records. Marking paid doesn’t move money. Pay through payroll first, then mark the batch paid.</Banner>
       {notice && <Banner tone={notice.tone} live action={notice.action} onDismiss={() => setNotice(null)}>{notice.text}</Banner>}
+      {data && data.materials.payouts > 0 && (
+        <Banner tone="alert" title={`${MATERIALS_BLOCKER}.`}>
+          {plural(data.materials.payouts, "payout is", "payouts are")} held back until the receipt is checked:{" "}
+          {data.materials.jobs.map((job, index) => (
+            <span key={job.jobId}>
+              {index > 0 && ", "}
+              <TextLink inline href={`/admin/jobs/${job.jobId}`} aria-label={`Check materials on ${job.jobNumber}`}>{job.jobNumber}</TextLink>
+            </span>
+          ))}
+          .
+        </Banner>
+      )}
 
       {data === null && !loading ? (
         <ErrorState title="Can’t load payouts" message="Check your connection and try again." onRetry={reload} retrying={pending} headingLevel={2} />

@@ -406,6 +406,12 @@ function PayrollDrawer({ payroll, onClose }: { payroll: Payroll | null; onClose:
                     <dt>Holiday pay</dt>
                     <dd>{line.holidayPay}</dd>
                   </div>
+                  {line.materials && (
+                    <div>
+                      <dt>Materials</dt>
+                      <dd>{line.materials}</dd>
+                    </div>
+                  )}
                   <div className={styles.factTotal}>
                     <dt>Total</dt>
                     <dd>{line.total}</dd>

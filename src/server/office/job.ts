@@ -8,6 +8,7 @@ import type { JobStatus, Prisma, PrismaClient, Trade } from "@/generated/prisma/
 import { TRADE_LABELS } from "@/lib/office-jobs";
 import { JOB_SUMMARY_SELECT, officeJobListView, type JobViewer } from "@/server/views";
 import { createSupabaseFileStore, PHOTO_BUCKET, SIGNED_URL_SECONDS } from "@/server/files/storage";
+import { officeMaterialsView, signReceipt } from "@/server/office/materials";
 import {
   fullName,
   jobNumber,
@@ -45,6 +46,9 @@ const SELECT = {
   payments: { select: { id: true, kind: true, status: true, amountCents: true, refundedCents: true }, orderBy: { createdAt: "asc" } },
   variations: { select: { id: true, status: true, priceCents: true } },
   payouts: { select: { id: true, workerId: true, status: true } },
+  // The Materials card (#512).
+  materials: { select: { budgetCents: true, spentCents: true, receiptPath: true } },
+  evidence: { select: { submittedAt: true } },
   statusHistory: {
     select: { id: true, fromStatus: true, toStatus: true, changedById: true, createdAt: true },
     orderBy: { createdAt: "desc" },
@@ -82,7 +86,7 @@ const REFUNDABLE_STATUSES = ["PAID", "PARTIALLY_REFUNDED"] as const;
 const PAYMENT_LABELS = { JOB: "Job", VARIATION: "Extra work", QUICK_LOOK: "Quick look" } as const;
 
 /** Reads one job for the office. Null when there is no such job (or the id isn't a uuid). */
-export async function getOfficeJob(db: OfficeJobDatabase, viewer: JobViewer, id: string, now: Date = new Date(), signPhoto = (path: string) => createSupabaseFileStore().signedUrl(PHOTO_BUCKET, path, SIGNED_URL_SECONDS)): Promise<OfficeJobView | null> {
+export async function getOfficeJob(db: OfficeJobDatabase, viewer: JobViewer, id: string, now: Date = new Date(), signPhoto = (path: string) => createSupabaseFileStore().signedUrl(PHOTO_BUCKET, path, SIGNED_URL_SECONDS), signDocument: (path: string) => Promise<string> = signReceipt): Promise<OfficeJobView | null> {
   if (!viewer.userId || viewer.role !== "ADMIN") return null;
   const job = await db.job.findUnique({ where: { id }, select: SELECT });
   if (!job) return null;
@@ -100,6 +104,8 @@ export async function getOfficeJob(db: OfficeJobDatabase, viewer: JobViewer, id:
           ...(paymentIds.length ? [{ recordType: "payments", recordId: { in: paymentIds } }] : []),
           ...(variationIds.length ? [{ recordType: "variations", recordId: { in: variationIds } }] : []),
           ...(payoutIds.length ? [{ recordType: "payouts", recordId: { in: payoutIds } }] : []),
+          // The office's materials decisions (#512), with their notes.
+          { recordType: "job_materials", recordId: job.id },
         ],
       },
       select: { id: true, actorId: true, actorRole: true, action: true, before: true, after: true, reason: true, createdAt: true },
@@ -247,6 +253,7 @@ export async function getOfficeJob(db: OfficeJobDatabase, viewer: JobViewer, id:
     timeline,
     reassignOptions:
       job.workerId && ["ASSIGNED", "SUBMITTED", "CANCEL_REVIEW"].includes(job.status) ? await reassignOptions(db, job, now) : [],
+    materials: await officeMaterialsView(db, job, now, signDocument),
   };
 }
 

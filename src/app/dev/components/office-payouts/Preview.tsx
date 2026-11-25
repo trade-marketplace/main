@@ -4,33 +4,37 @@
 import { useState } from "react";
 
 import { OfficePayouts, exportedNotice, paidNotice } from "@/components/office/OfficePayouts";
-import type { ExportPayrollResult, MarkPaidResult, OfficePayoutsData, PayoutBatch, PayoutsState, QueuedPayoutRow } from "@/lib/office/payouts";
+import { payrollBlockers, type ExportPayrollResult, type MarkPaidResult, type OfficePayoutsData, type PayoutBatch, type PayoutsState, type QueuedPayoutRow } from "@/lib/office/payouts";
 
-const row = (id: number, tradie: string, job: number, title: string, signedOffAt: string, minutes: number, rateCents: number, blockers: QueuedPayoutRow["blockers"] = []): QueuedPayoutRow & { grossCents: number } => {
+const row = (id: number, tradie: string, job: number, title: string, signedOffAt: string, minutes: number, rateCents: number, blockers: QueuedPayoutRow["blockers"] = [], materialsCents = 0): QueuedPayoutRow & { grossCents: number } => {
   const grossCents = Math.round((minutes * rateCents) / 60), holidayPayCents = Math.round(grossCents * 0.08);
-  return { id: `17500000-0000-4000-8000-${String(id).padStart(12, "0")}`, tradie, jobId: `17500000-0000-4000-8000-${String(100 + id).padStart(12, "0")}`, jobNumber: `TM-${job}`, title, signedOffAt, minutes, holidayPayCents, totalCents: grossCents + holidayPayCents, grossCents, blockers };
+  return { id: `17500000-0000-4000-8000-${String(id).padStart(12, "0")}`, tradie, jobId: `17500000-0000-4000-8000-${String(100 + id).padStart(12, "0")}`, jobNumber: `TM-${job}`, title, signedOffAt, minutes, holidayPayCents, materialsCents, totalCents: grossCents + holidayPayCents + materialsCents, grossCents, blockers };
 };
 
 const READY = [
   row(1, "Jack Wilson", 990, "Control panel", "2026-11-02T22:00:00Z", 360, 7000),
   row(2, "Aroha Ngata", 993, "Leaking outdoor tap", "2026-11-03T01:30:00Z", 150, 7000),
-  row(3, "Sam Patel", 995, "Hang two doors", "2026-11-04T03:00:00Z", 240, 3800),
+  // Materials within budget: repaid automatically (#512).
+  row(3, "Sam Patel", 995, "Hang two doors", "2026-11-04T03:00:00Z", 240, 3800, [], 6450),
   row(4, "Jack Wilson", 1001, "Heat pump wiring", "2026-11-05T21:15:00Z", 180, 7000),
 ];
 const BLOCKED = [row(5, "Mere Rāwiri", 998, "Fence palings", "2026-11-01T23:00:00Z", 330, 3800, ["bank"])];
+/** Over-budget materials the office hasn't checked: held back until it does (#512). */
+const MATERIALS = [row(6, "Aroha Ngata", 1004, "Retaining wall", "2026-11-05T02:40:00Z", 420, 3800, ["materials"])];
 
 const PAID: PayoutBatch = { key: "2026-10-30T02:00:00.000Z", payday: "2026-10-30", count: 6, tradies: 3, totalCents: 182_480, status: "PAID", paidAt: "2026-10-31T01:00:00.000Z" };
 const OLDER: PayoutBatch = { key: "2026-10-23T02:00:00.000Z", payday: "2026-10-23", count: 4, tradies: 2, totalCents: 120_960, status: "PAID", paidAt: "2026-10-24T01:00:00.000Z" };
 
 function summary(rows: readonly (QueuedPayoutRow & { grossCents: number })[]): OfficePayoutsData["ready"] {
   const ready = rows.filter((item) => !item.blockers.length);
-  return { count: ready.length, tradies: new Set(ready.map((item) => item.tradie)).size, totalCents: ready.reduce((sum, item) => sum + item.totalCents, 0), grossCents: ready.reduce((sum, item) => sum + item.grossCents, 0), holidayPayCents: ready.reduce((sum, item) => sum + item.holidayPayCents, 0) };
+  return { count: ready.length, tradies: new Set(ready.map((item) => item.tradie)).size, totalCents: ready.reduce((sum, item) => sum + item.totalCents, 0), grossCents: ready.reduce((sum, item) => sum + item.grossCents, 0), holidayPayCents: ready.reduce((sum, item) => sum + item.holidayPayCents, 0), materialsCents: ready.reduce((sum, item) => sum + item.materialsCents, 0) };
 }
 
 function build(rows: readonly (QueuedPayoutRow & { grossCents: number })[], batches: PayoutBatch[]): OfficePayoutsData {
-  const held = rows.filter((item) => item.blockers.length);
+  const held = rows.filter((item) => payrollBlockers(item.blockers).length);
   const names = [...new Set(held.map((item) => item.tradie.replace(/^(\S+)\s+(\S).*$/, "$1 $2")))];
-  return { payday: "2026-11-20", ready: summary(rows), blocked: { tradies: names.length, payouts: held.length, names }, rows: [...rows], batches };
+  const toCheck = rows.filter((item) => item.blockers.includes("materials"));
+  return { payday: "2026-11-20", ready: summary(rows), blocked: { tradies: names.length, payouts: held.length, names }, materials: { payouts: toCheck.length, jobs: toCheck.map((item) => ({ jobId: item.jobId, jobNumber: item.jobNumber })) }, rows: [...rows], batches };
 }
 
 const exportedBatch = (rows: readonly (QueuedPayoutRow & { grossCents: number })[]): PayoutBatch => {
@@ -38,13 +42,14 @@ const exportedBatch = (rows: readonly (QueuedPayoutRow & { grossCents: number })
   return { key: "2026-11-19T02:12:00.000Z", payday: "2026-11-20", count: ready.count, tradies: ready.tradies, totalCents: ready.totalCents, status: "EXPORTED", paidAt: null };
 };
 
-const SAMPLE_CSV = "﻿Tradie,Email,Job number,Hours,Rate (NZD per hour),Gross (NZD),Holiday pay (NZD),Total (NZD),Payout id\r\nJack Wilson,jack@example.test,TM-990,6,70.00,420.00,33.60,453.60,17500000-0000-4000-8000-000000000001\r\n";
+const SAMPLE_CSV = "﻿Tradie,Email,Job number,Hours,Rate (NZD per hour),Gross (NZD),Holiday pay (NZD),Materials (NZD),Total (NZD),Payout id\r\nJack Wilson,jack@example.test,TM-990,6,70.00,420.00,33.60,0.00,453.60,17500000-0000-4000-8000-000000000001\r\n";
 const downloadHref = () => `data:text/csv;charset=utf-8,${encodeURIComponent(SAMPLE_CSV)}`;
 
 function initial(state: PayoutsState): OfficePayoutsData | null {
   if (state === "error" || state === "loading") return null;
   if (state === "nothing-queued") return build([], [PAID, OLDER]);
   if (state === "blockers") return build([...BLOCKED, ...READY], [PAID, OLDER]);
+  if (state === "materials") return build([...BLOCKED, ...READY, ...MATERIALS], [PAID, OLDER]);
   if (state === "exported" || state === "mark-paid") return build(BLOCKED, [exportedBatch([...READY]), PAID, OLDER]);
   if (state === "paid") return build(BLOCKED, [{ ...exportedBatch([...READY]), status: "PAID", paidAt: "2026-11-20T01:00:00.000Z" }, PAID, OLDER]);
   return build(READY, [PAID, OLDER]);
@@ -59,12 +64,12 @@ export function PayoutsPreview({ state }: { state: PayoutsState }) {
   async function exportPayroll(): Promise<ExportPayrollResult> {
     if (!data) return { status: "unavailable" };
     const ready = data.rows.filter((item) => !item.blockers.length);
-    const heldBack = data.rows.length - ready.length;
-    if (!ready.length) return { status: "nothing", heldBack };
+    const heldBack = data.rows.length - ready.length, materialsHeld = data.materials.payouts;
+    if (!ready.length) return { status: "nothing", heldBack, materialsHeld };
     const batch = { key: "2026-11-19T02:12:00.000Z", payday: data.payday, count: ready.length, tradies: data.ready.tradies, totalCents: data.ready.totalCents, status: "EXPORTED" as const, paidAt: null };
     const rest = data.rows.filter((item) => item.blockers.length) as (QueuedPayoutRow & { grossCents: number })[];
     setData(build(rest, [batch, ...data.batches]));
-    return { status: "exported", batch, csv: SAMPLE_CSV, filename: "payroll-2026-11-20-151200.csv", heldBack };
+    return { status: "exported", batch, csv: SAMPLE_CSV, filename: "payroll-2026-11-20-151200.csv", heldBack, materialsHeld };
   }
 
   async function markPaid(key: string): Promise<MarkPaidResult> {

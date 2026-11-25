@@ -30,6 +30,13 @@ export type PayoutRecord = {
   rateCents: number;
   grossCents: number;
   holidayPayCents: number;
+  /**
+   * Materials repaid with this payout (#512): what the tradie spent, up to the budget or as the office approved. A
+   * repayment, not pay, so no holiday pay on it. Missing or 0 when there is nothing to repay.
+   */
+  materialsCents?: number;
+  /** Over-budget materials the office hasn't checked yet: nothing repaid until it has. */
+  materialsHeld?: boolean;
   status: "QUEUED" | "EXPORTED" | "PAID";
   /** When the customer signed the job off and the payout was queued (ISO). */
   createdAt: string;
@@ -50,9 +57,15 @@ export type WaitingJob = {
   submitted: boolean;
 };
 
-/** gross + holiday pay: what the worker earns on a payout, before PAYE (same as `calculatePayout().totalCents`). */
-export const payoutTotal = (payout: Pick<PayoutRecord, "grossCents" | "holidayPayCents">) =>
-  payout.grossCents + payout.holidayPayCents;
+/**
+ * gross + holiday pay + materials repaid: what payroll pays for a payout, the same total as the office's payroll export
+ * (src/server/office/payouts.ts). Without materials it is `calculatePayout().totalCents`.
+ */
+export const payoutTotal = (payout: Pick<PayoutRecord, "grossCents" | "holidayPayCents" | "materialsCents">) =>
+  payout.grossCents + payout.holidayPayCents + (payout.materialsCents ?? 0);
+
+/** On a payout line: the materials repaid, or that they are being checked. */
+export const MATERIALS_CHECKING = "Being checked";
 
 export type PayoutLine = {
   id: string;
@@ -62,6 +75,8 @@ export type PayoutLine = {
   rate: string;
   gross: string;
   holidayPay: string;
+  /** "$85.00", "Being checked", or null when the job repays no materials. */
+  materials: string | null;
   total: string;
   totalCents: number;
   /** "Mon": the day it was signed off. */
@@ -191,6 +206,7 @@ export function payoutLine(payout: PayoutRecord): PayoutLine {
     rate: `${formatCents(payout.rateCents)}/hr`,
     gross: formatCents(payout.grossCents),
     holidayPay: formatCents(payout.holidayPayCents),
+    materials: payout.materialsHeld ? MATERIALS_CHECKING : (payout.materialsCents ?? 0) > 0 ? formatCents(payout.materialsCents as number) : null,
     total: formatCents(totalCents),
     totalCents,
     signedOff: weekdayShort(nzDay(payout.createdAt)),
