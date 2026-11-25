@@ -18,21 +18,21 @@ const office: Viewer = {
 
 function fakeDatabase() {
   return {
-    profile: { findUnique: vi.fn(async () => ({ lastName: "Larsen" }) as { lastName: string | null } | null) },
+    profile: { findUnique: vi.fn(async () => ({ lastName: "Larsen", _count: { notifications: 3 } }) as { lastName: string | null; _count: { notifications: number } } | null) },
   } satisfies OfficeShellDatabase;
 }
 
 afterEach(() => vi.restoreAllMocks());
 
 describe("office shell database reads", () => {
-  it("selects only the person's last name and private avatar path, never the full profile", async () => {
+  it("selects the viewer’s display fields and their own unread count", async () => {
     const db = fakeDatabase();
     expect(await findOfficeShellExtras(office.userId, db)).toEqual({
-      lastName: "Larsen",
+      lastName: "Larsen", unreadNotifications: 3,
     });
     expect(db.profile.findUnique).toHaveBeenCalledExactlyOnceWith({
       where: { id: office.userId },
-      select: { lastName: true, avatarPath: true },
+      select: { lastName: true, avatarPath: true, _count: { select: { notifications: { where: { readAt: null } } } } },
     });
   });
 
@@ -85,6 +85,7 @@ describe("office shell viewer", () => {
       role: "ADMIN",
       firstName: "Matt",
       lastName: "Larsen",
+      unreadNotifications: 3,
       email: "office@example.test",
       avatarUrl: null,
     });
@@ -99,6 +100,7 @@ describe("office shell viewer", () => {
       role: "ADMIN",
       firstName: "Matt",
       lastName: null,
+      unreadNotifications: 0,
       email: "office@example.test",
       avatarUrl: null,
     });
@@ -111,6 +113,7 @@ describe("office shell viewer", () => {
     expect(await loadOfficeShellViewer(office, { findExtras: (id) => findOfficeShellExtras(id, db) })).toMatchObject({
       firstName: "Matt",
       lastName: null,
+      unreadNotifications: 0,
       email: "office@example.test",
     });
     expect(log).toHaveBeenCalledOnce();
@@ -125,7 +128,7 @@ describe("office shell viewer", () => {
 
   it("keeps an absent last name optional", async () => {
     const db = fakeDatabase();
-    db.profile.findUnique.mockResolvedValueOnce({ lastName: null });
+    db.profile.findUnique.mockResolvedValueOnce({ lastName: null, _count: { notifications: 0 } });
     expect(await loadOfficeShellViewer(office, { findExtras: (id) => findOfficeShellExtras(id, db) })).toMatchObject({
       firstName: "Matt",
       lastName: null,
