@@ -1,6 +1,8 @@
 // Office navigation, in sitemap.json navigation.office order (#85).
 import { countText } from "@/components/app/app-links";
 
+export const OFFICE_NOTIFICATIONS_PATH = "/admin/notifications";
+
 export type OfficeCountKey = "queues" | "tradies" | "support";
 export type OfficeCounts = Readonly<Record<OfficeCountKey, number>>;
 export const EMPTY_OFFICE_COUNTS: OfficeCounts = Object.freeze({ queues: 0, tradies: 0, support: 0 });

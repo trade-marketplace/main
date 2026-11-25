@@ -1,23 +1,29 @@
-// The office shell's server data (#85): the signed-in person's display identity. Queue counts are supplied to
+// The office shell's server data (#85): the signed-in person's display identity and unread notification count. Queue counts are supplied to
 // the view by its caller; this frame does not define queue business rules or query jobs, money or support.
 import "server-only";
 
 import { cache } from "react";
 
-import type { OfficeShellViewer } from "@/components/office/OfficeShellView";
+import type { OfficeNavViewer } from "@/components/office/OfficeNav";
 import type { Viewer } from "@/server/auth/viewer";
 import { DatabaseNotConfiguredError, getDb } from "@/server/db";
 import { shellAvatarUrl, type ShellSources } from "@/server/app-shell";
 
-export type OfficeShellExtras = { lastName: string | null; avatarPath?: string | null };
+export type OfficeShellExtras = { lastName: string | null; avatarPath?: string | null; unreadNotifications?: number };
 
 /** A small database boundary: unit tests supply a fake and check the actual queries, without connecting. */
+const displayFields = {
+  lastName: true,
+  avatarPath: true,
+  _count: { select: { notifications: { where: { readAt: null } } } },
+} as const;
+
 export type OfficeShellDatabase = {
   profile: {
     findUnique: (args: {
       where: { id: string };
-      select: { lastName: true; avatarPath: true };
-    }) => Promise<OfficeShellExtras | null>;
+      select: typeof displayFields;
+    }) => Promise<{ lastName: string | null; avatarPath?: string | null; _count: { notifications: number } } | null>;
   };
 };
 
@@ -31,8 +37,12 @@ export async function findOfficeShellExtras(
   userId: string,
   database?: OfficeShellDatabase,
 ): Promise<OfficeShellExtras | null> {
-  const db = database ?? getDb();
-  return db.profile.findUnique({ where: { id: userId }, select: { lastName: true, avatarPath: true } });
+  const db: OfficeShellDatabase = database ?? getDb();
+  const row = await db.profile.findUnique({
+    where: { id: userId },
+    select: displayFields,
+  });
+  return row && { lastName: row.lastName, avatarPath: row.avatarPath, unreadNotifications: row._count.notifications };
 }
 
 /**
@@ -43,7 +53,7 @@ export async function findOfficeShellExtras(
 export async function loadOfficeShellViewer(
   viewer: Viewer | null,
   sources: OfficeShellSources,
-): Promise<OfficeShellViewer | null> {
+): Promise<OfficeNavViewer | null> {
   if (!viewer || viewer.role !== "ADMIN") return null;
   let extras: OfficeShellExtras | null = null;
   try {
@@ -54,6 +64,7 @@ export async function loadOfficeShellViewer(
   }
   return {
     role: "ADMIN",
+    unreadNotifications: extras?.unreadNotifications ?? 0,
     firstName: viewer.firstName,
     lastName: extras?.lastName ?? null,
     avatarUrl: await shellAvatarUrl(viewer.userId, extras?.avatarPath ?? null, sources.avatarUrl),

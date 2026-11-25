@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useRef } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useRef } from "react";
 
+import { countOfficeNotifications } from "@/app/admin/notifications/actions";
 import { NavCount } from "@/components/app/AppNav";
-import { countText, fullName, HELP_PATH } from "@/components/app/app-links";
+import { countLabel, countText, fullName, HELP_PATH } from "@/components/app/app-links";
 import { BoltMark } from "@/components/BoltMark";
 import { Button } from "@/components/Button";
 import { Icon } from "@/components/Icon";
@@ -16,10 +17,12 @@ import { useTabIndicator } from "@/lib/motion/hooks";
 import { logOutAction } from "@/server/auth/actions";
 
 import type { OfficeShellViewer } from "./OfficeShellView";
-import { currentOfficeLink, OFFICE_NAV, officeCountLabel, officeHref, type OfficeCounts, type OfficeNavPreview } from "./office-links";
+import { currentOfficeLink, OFFICE_NAV, OFFICE_NOTIFICATIONS_PATH, officeCountLabel, officeHref, type OfficeCounts, type OfficeNavPreview } from "./office-links";
 import styles from "./office.module.css";
 
-type Props = { viewer: OfficeShellViewer; counts: OfficeCounts; preview?: OfficeNavPreview };
+export type OfficeNavViewer = OfficeShellViewer & { unreadNotifications?: number };
+
+type Props = { viewer: OfficeNavViewer; counts: OfficeCounts; preview?: OfficeNavPreview };
 
 function AccountMenu({ viewer, align, defaultOpen }: { viewer: OfficeShellViewer; align: "start" | "end"; defaultOpen?: boolean }) {
   const formRef = useRef<HTMLFormElement>(null);
@@ -55,6 +58,41 @@ export function OfficeNav({ viewer, counts, preview }: Props) {
   const linksRef = useRef<HTMLUListElement>(null);
   useTabIndicator(linksRef, current?.href, '[aria-current="page"]', "y");
 
+  const unread = viewer.unreadNotifications ?? 0;
+  const router = useRouter();
+  useEffect(() => {
+    if (preview) return;
+    let active = true;
+    let pending = false;
+    async function refreshCount() {
+      if (pending || document.visibilityState !== "visible" || !navigator.onLine) return;
+      pending = true;
+      try {
+        const latest = await countOfficeNotifications();
+        if (active && typeof latest === "number" && latest !== unread) router.refresh();
+      } catch { /* Keep the last confirmed count until the next refresh. */ }
+      finally { pending = false; }
+    }
+    const timer = window.setInterval(refreshCount, 30_000);
+    window.addEventListener("focus", refreshCount);
+    document.addEventListener("visibilitychange", refreshCount);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refreshCount);
+      document.removeEventListener("visibilitychange", refreshCount);
+    };
+  }, [preview, router, unread]);
+  const bell = (
+    <Link href={officeHref(preview, OFFICE_NOTIFICATIONS_PATH)} className={styles.accountButton} style={{ textDecoration: "none" }}
+      aria-label={countLabel("Notifications", unread)}
+      aria-current={(preview?.at ?? pathname) === OFFICE_NOTIFICATIONS_PATH ? "page" : undefined}>
+      <Icon name="notifications" decorative />
+      <span className={styles.accountLabel}>Notifications</span>
+      <NavCount count={unread} className={styles.count} />
+    </Link>
+  );
+
   return (
     <>
       <aside className={styles.sidebar} aria-label="Office sidebar">
@@ -84,7 +122,7 @@ export function OfficeNav({ viewer, counts, preview }: Props) {
             </li>
           </ul>
         </nav>
-        <div className={styles.sidebarAccount}><AccountMenu viewer={viewer} align="start" defaultOpen={preview?.accountOpen} /></div>
+        <div className={styles.sidebarAccount}>{bell}<AccountMenu viewer={viewer} align="start" defaultOpen={preview?.accountOpen} /></div>
       </aside>
       <header className={styles.mobileHeader}>
         <nav aria-label="Office">
@@ -108,6 +146,7 @@ export function OfficeNav({ viewer, counts, preview }: Props) {
             })}
           </Menu>
         </nav>
+        {bell}
         <AccountMenu viewer={viewer} align="end" defaultOpen={preview?.accountOpen} />
       </header>
     </>
