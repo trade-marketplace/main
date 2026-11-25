@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { loadCustomerWorkerCard } from "@/server/jobs/customer-worker-card";
+import { loadCustomerWorkerCard, workerAssignmentGeneration } from "@/server/jobs/customer-worker-card";
+import { lockJobWindows } from "@/server/jobs/window-lock";
 import { notificationId } from "@/server/notifications/notify";
 import { testDatabaseUrl, useTestSchema } from "../support/test-db";
 
@@ -24,12 +25,18 @@ describe.skipIf(!testDatabaseUrl)("owned customer worker-card reads", () => {
     });
     return { customer, worker, job, assignedAt };
   }
-  async function recordUpdate(actorId: string, userId: string, jobId: string, type: string, payload: Record<string, string | number | boolean | null> = {}) {
+  async function recordUpdate(actorId: string, userId: string, jobId: string, type: string, payload: Record<string, string | number | boolean | null> = {}, stamp = false) {
     // Keep these independently committed fixtures outside the excluded boundary millisecond.
     await schema.db.$executeRaw`SELECT pg_sleep(0.002)`;
     return schema.db.$transaction(async tx => {
       const action = type === "job.reschedule_requested" ? "job.times_requested" : type;
-      const audit = await tx.auditLog.create({ data: { actorId, action, recordType: "jobs", recordId: jobId, after: { sent: true } } });
+      if (stamp) {
+        await lockJobWindows(tx, jobId);
+        const job = await tx.job.findUniqueOrThrow({ where: { id: jobId }, select: { workerId: true } });
+        expect(job.workerId).toBe(actorId);
+      }
+      const after = stamp ? { sent: true, workerAssignmentGeneration: await workerAssignmentGeneration(tx, jobId, actorId) } : { sent: true };
+      const audit = await tx.auditLog.create({ data: { actorId, action, recordType: "jobs", recordId: jobId, after } });
       return tx.notification.create({ data: { id: notificationId(`${action}:${audit.id}`, userId), userId, type, payload: { jobId, ...payload } } });
     });
   }
@@ -126,13 +133,45 @@ describe.skipIf(!testDatabaseUrl)("owned customer worker-card reads", () => {
     await recordUpdate(worker.userId, customer.userId, job.id, "job.running_late", { lateMinutes: 30 });
     expect((await loadCustomerWorkerCard(schema.db, customer, job.id, sign))?.updates.map(update => update.type)).toEqual(["job.running_late"]);
   });
-  it("hides ambiguous event history when an office assignment returns to a previous worker", async () => {
+  it("restores only events that name the returning worker's current assignment", async () => {
     const { customer, worker, job } = await fixture(), replacement = await person("TRADIE"), office = await person("ADMIN");
-    for (const [from, to] of [[worker.userId, replacement.userId], [replacement.userId, worker.userId]]) {
-      await schema.db.job.update({ where: { id: job.id }, data: { workerId: to } });
-      await schema.db.auditLog.create({ data: { actorId: office.userId, action: "job.reassigned", recordType: "jobs", recordId: job.id, before: { workerId: from }, after: { workerId: to }, reason: "Fixture returning assignment." } });
-    }
-    await recordUpdate(worker.userId, customer.userId, job.id, "job.reschedule_requested");
+    const update = (type: string, stamp = true) => recordUpdate(worker.userId, customer.userId, job.id, type, {}, stamp);
+    await update("job.reschedule_requested");
+    // Both office writes can have the same audit timestamp. Their immutable entry count is still unambiguous.
+    await schema.db.$transaction(async tx => {
+      for (const [from, to] of [[worker.userId, replacement.userId], [replacement.userId, worker.userId]]) {
+        await tx.job.update({ where: { id: job.id }, data: { workerId: to } });
+        await tx.auditLog.create({ data: { actorId: office.userId, action: "job.reassigned", recordType: "jobs", recordId: job.id, before: { workerId: from }, after: { workerId: to } } });
+      }
+    });
+    await update("job.reschedule_requested", false);
+    await schema.db.notification.create({ data: { userId: customer.userId, type: "job.reschedule_requested", payload: { jobId: job.id, refreshWindows: true } } });
     expect(await loadCustomerWorkerCard(schema.db, customer, job.id, sign)).toMatchObject({ updates: [], askedForTimes: false });
+
+    await update("job.window_booked");
+    const second = await update("job.on_my_way");
+    const third = await update("job.running_late");
+    const fourth = await update("job.reschedule_requested");
+    await schema.db.auditLog.create({ data: { actorId: office.userId, action: "job.status_overridden", recordType: "jobs", recordId: job.id, before: { status: "ASSIGNED", workerId: worker.userId }, after: { status: "SUBMITTED", workerId: worker.userId } } });
+    await schema.db.notification.updateMany({ where: { userId: customer.userId }, data: { readAt: new Date() } });
+    for (let read = 0; read < 2; read++) {
+      const card = await loadCustomerWorkerCard(schema.db, customer, job.id, sign);
+      expect(card?.updates.map(row => row.id)).toEqual([fourth.id, third.id, second.id]);
+      expect(card?.askedForTimes).toBe(true);
+    }
+  });
+  it("can prove a returning claim from clock-timestamp status history without tagging its legacy update", async () => {
+    const { customer, worker, job } = await fixture();
+    await recordUpdate(worker.userId, customer.userId, job.id, "job.reschedule_requested");
+    await schema.db.job.update({ where: { id: job.id }, data: { status: "BOOKABLE", workerId: null } });
+    await schema.db.$transaction(async tx => {
+      await tx.$queryRaw`SELECT set_config('app.actor_id', ${worker.userId}, true)`;
+      await tx.job.update({ where: { id: job.id }, data: { status: "ASSIGNED", workerId: worker.userId } });
+      await tx.auditLog.create({ data: { actorId: worker.userId, action: "job.claimed", recordType: "jobs", recordId: job.id, before: { workerId: null }, after: { workerId: worker.userId } } });
+    });
+    const current = await recordUpdate(worker.userId, customer.userId, job.id, "job.on_my_way");
+    const card = await loadCustomerWorkerCard(schema.db, customer, job.id, sign);
+    expect(card?.updates.map(row => row.id)).toEqual([current.id]);
+    expect(card?.askedForTimes).toBe(false);
   });
 });
