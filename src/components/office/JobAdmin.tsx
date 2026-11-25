@@ -32,6 +32,7 @@ import {
 import { OFFICE_JOBS_PATH } from "@/lib/office-jobs";
 import type { OfficeProblemReportState, OfficeProblemReturn } from "@/lib/office-problem";
 import type { OfficeSupportReturn } from "@/lib/office-support";
+import { JobMaterialsCard, type MaterialsDialog, type SubmitMaterialsDecision } from "./JobMaterialsCard";
 import { ProblemReportCard } from "./ProblemReportCard";
 
 import styles from "./job-admin.module.css";
@@ -55,6 +56,10 @@ export type JobAdminProps = {
   onChanged?: () => void;
   problemReport?: OfficeProblemReportState | null;
   problemReturn?: OfficeProblemReturn | null;
+  /** The Materials card's Approve spend / Change amount (#512). Without it the card shows but offers no decisions. */
+  decideMaterials?: SubmitMaterialsDecision;
+  /** Previews: start with a Materials dialog open. */
+  initialMaterialsDialog?: MaterialsDialog | null;
 };
 
 const DONE: Record<DialogName, string> = {
@@ -66,7 +71,7 @@ const DONE: Record<DialogName, string> = {
   message: "Message sent.",
 };
 
-export function JobAdmin({ job, submit, initialDialog = null, initialMenuOpen = false, initialError = null, onChanged, problemReport, problemReturn, supportReturn }: JobAdminProps) {
+export function JobAdmin({ job, submit, initialDialog = null, initialMenuOpen = false, initialError = null, onChanged, problemReport, problemReturn, supportReturn, decideMaterials, initialMaterialsDialog = null }: JobAdminProps) {
   // The support inbox (from=support) and the Problems queue (from=problems) never apply together.
   const back = supportReturn ?? problemReturn ?? null;
   const router = useRouter();
@@ -90,11 +95,14 @@ export function JobAdmin({ job, submit, initialDialog = null, initialMenuOpen = 
     );
   }
 
-  const finished = (name: DialogName) => {
-    setDialog(null);
-    setDone(DONE[name]);
+  const changed = (message: string) => {
+    setDone(message);
     if (onChanged) onChanged();
     else startTransition(() => router.refresh());
+  };
+  const finished = (name: DialogName) => {
+    setDialog(null);
+    changed(DONE[name]);
   };
 
   return (
@@ -142,6 +150,17 @@ export function JobAdmin({ job, submit, initialDialog = null, initialMenuOpen = 
         <div className={styles.left}>
           {problemReport && <ProblemReportCard value={problemReport} />}
           <MoneyCard job={job} />
+          {job.materials && (
+            <JobMaterialsCard
+              jobId={job.id}
+              materials={decideMaterials ? job.materials : { ...job.materials, canDecide: false }}
+              tradie={job.tradie?.name ?? null}
+              decide={decideMaterials ?? (async () => ({ ok: false, error: "forbidden" }))}
+              onDone={changed}
+              initialDialog={initialMaterialsDialog}
+              initialError={initialError}
+            />
+          )}
           <MessagesCard job={job} onMessage={() => setDialog("message")} />
         </div>
         <TimelineCard job={job} />

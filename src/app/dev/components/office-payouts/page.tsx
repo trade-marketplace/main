@@ -9,7 +9,7 @@ import { PayoutsPreview } from "./Preview";
 
 export const metadata: Metadata = { title: "Office payouts (dev)", robots: { index: false, follow: false } };
 
-// Every state of /admin/payouts (#175): ?state=queued | blockers | nothing-queued | exported | mark-paid | paid |
+// Every state of /admin/payouts (#175): ?state=queued | blockers | materials (#512) | nothing-queued | exported | mark-paid | paid |
 // error | offline | loading, or gallery for error, loading and offline together.
 export default async function Page({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   guardDevPage();

@@ -48,11 +48,12 @@ const batch = (overrides: Partial<PayoutBatch> = {}): PayoutBatch => ({
 
 const DATA: OfficePayoutsData = {
   payday: "2026-11-20",
-  ready: { count: 1, tradies: 1, totalCents: 45_360, grossCents: 42_000, holidayPayCents: 3360 },
+  ready: { count: 1, tradies: 1, totalCents: 45_360, grossCents: 42_000, holidayPayCents: 3360, materialsCents: 0 },
   blocked: { tradies: 1, payouts: 1, names: ["Mere R"] },
+  materials: { payouts: 0, jobs: [] },
   rows: [
-    { id: "p1", tradie: "Jack Wilson", jobId: "j1", jobNumber: "TM-990", title: "Control panel", signedOffAt: "2026-11-02T22:00:00Z", minutes: 360, holidayPayCents: 3360, totalCents: 45_360, blockers: [] },
-    { id: "p2", tradie: "Mere Rāwiri", jobId: "j2", jobNumber: "TM-998", title: "Fence palings", signedOffAt: "2026-11-01T23:00:00Z", minutes: 330, holidayPayCents: 1672, totalCents: 22_572, blockers: ["bank"] },
+    { id: "p1", tradie: "Jack Wilson", jobId: "j1", jobNumber: "TM-990", title: "Control panel", signedOffAt: "2026-11-02T22:00:00Z", minutes: 360, holidayPayCents: 3360, materialsCents: 0, totalCents: 45_360, blockers: [] },
+    { id: "p2", tradie: "Mere Rāwiri", jobId: "j2", jobNumber: "TM-998", title: "Fence palings", signedOffAt: "2026-11-01T23:00:00Z", minutes: 330, holidayPayCents: 1672, materialsCents: 0, totalCents: 22_572, blockers: ["bank"] },
   ],
   batches: [batch(), batch({ key: "2026-10-30T02:00:00.000Z", payday: "2026-10-30", status: "PAID", paidAt: "2026-10-31T01:00:00.000Z" })],
 };
@@ -69,6 +70,8 @@ describe("payout words and numbers", () => {
     expect(blockerLabel(["ird", "taxCode"])).toBe("No IRD number");
     expect(blockerLabel(["taxCode"])).toBe("No tax code");
     expect(blockerLabel(["review"])).toBe("Needs payroll review");
+    // Materials to check comes first: the office can act on it (#512).
+    expect(blockerLabel(["bank", "materials"])).toBe("Materials to check");
   });
 
   it("notes who is held back, briefly", () => {
@@ -97,7 +100,7 @@ describe("payout words and numbers", () => {
 
 describe("payrollCsv", () => {
   const row = (overrides: Partial<PayrollCsvRow> = {}): PayrollCsvRow => ({
-    id: "p1", minutes: 90, rateCents: 3800, grossCents: 5700, holidayPayCents: 456,
+    id: "p1", minutes: 90, rateCents: 3800, grossCents: 5700, holidayPayCents: 456, materialsCents: 0,
     worker: { firstName: "Jack", lastName: "Wilson", email: "jack@example.test" }, job: { jobNumber: 990 }, ...overrides,
   });
 
@@ -105,12 +108,17 @@ describe("payrollCsv", () => {
     const csv = payrollCsv([row({ id: "p2", job: { jobNumber: 995 } }), row({ id: "p3", worker: { firstName: "Aroha", lastName: "Ngata", email: "a@example.test" } }), row()]);
     expect(csv.startsWith(CSV_BOM)).toBe(true);
     expect(csv.slice(1).split("\r\n")).toEqual([
-      "Tradie,Email,Job number,Hours,Rate (NZD per hour),Gross (NZD),Holiday pay (NZD),Total (NZD),Payout id",
-      "Aroha Ngata,a@example.test,TM-990,1.5,38.00,57.00,4.56,61.56,p3",
-      "Jack Wilson,jack@example.test,TM-990,1.5,38.00,57.00,4.56,61.56,p1",
-      "Jack Wilson,jack@example.test,TM-995,1.5,38.00,57.00,4.56,61.56,p2",
+      "Tradie,Email,Job number,Hours,Rate (NZD per hour),Gross (NZD),Holiday pay (NZD),Materials (NZD),Total (NZD),Payout id",
+      "Aroha Ngata,a@example.test,TM-990,1.5,38.00,57.00,4.56,0.00,61.56,p3",
+      "Jack Wilson,jack@example.test,TM-990,1.5,38.00,57.00,4.56,0.00,61.56,p1",
+      "Jack Wilson,jack@example.test,TM-995,1.5,38.00,57.00,4.56,0.00,61.56,p2",
       "",
     ]);
+  });
+
+  it("adds the materials repaid to their own column and to the total (#512)", () => {
+    const csv = payrollCsv([row({ materialsCents: 8_500 })]);
+    expect(csv.slice(1).split("\r\n")[1]).toBe("Jack Wilson,jack@example.test,TM-990,1.5,38.00,57.00,4.56,85.00,146.56,p1");
   });
 
   it("can't be turned into a formula or broken by a comma in a name", () => {
@@ -166,7 +174,7 @@ describe("OfficePayouts HTML", () => {
   });
 
   it("shows Nothing queued with nothing to export", () => {
-    const html = render({ data: { ...DATA, rows: [], ready: { count: 0, tradies: 0, totalCents: 0, grossCents: 0, holidayPayCents: 0 }, blocked: { tradies: 0, payouts: 0, names: [] } } });
+    const html = render({ data: { ...DATA, rows: [], ready: { count: 0, tradies: 0, totalCents: 0, grossCents: 0, holidayPayCents: 0, materialsCents: 0 }, blocked: { tradies: 0, payouts: 0, names: [] } } });
     expect(html).toContain("Nothing queued.");
     expect(html).toContain("Nobody held back");
     expect(html).toContain("Nothing ready to export");

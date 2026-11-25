@@ -96,6 +96,9 @@ export const AUDIT_ACTIONS = {
   // Materials on the trade account.
   "materials.budget_set": { record: "job_materials" },
   "materials.spend_reported": { record: "job_materials" },
+  // The office checked an over-budget spend (#512): `after.repaidCents` is what payroll repays for `after.spentCents`.
+  "materials.approved": { record: "job_materials", reason: "required" },
+  "materials.amount_changed": { record: "job_materials", reason: "required" },
 
   // Office settings: rates, margin, coverage, evidence rules.
   "settings.updated": { record: "settings" },

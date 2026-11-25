@@ -266,6 +266,7 @@ function fakeDb(rows: { payouts?: unknown[]; jobs?: unknown[]; details?: unknown
     payout: { findMany: payoutFindMany, count: payoutCount },
     job: { findMany: jobFindMany },
     payrollDetails: { findUnique: detailsFind },
+    auditLog: { findMany: vi.fn(async () => []) },
   } as unknown as EarningsDatabase;
   return { db, payoutFindMany, payoutCount, jobFindMany, detailsFind };
 }

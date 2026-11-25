@@ -44,6 +44,7 @@ export const NOTIFICATION_EVENTS = {
   "payout.queued": { channels: ["IN_APP"], description: "A worker payout was queued." },
   "payout.details_missing": { channels: ["IN_APP"], description: "Bank and tax details are needed before payroll can pay." },
   "payout.paid": { channels: ["IN_APP"], description: "A worker payout was paid." },
+  "payout.materials_checked": { channels: ["IN_APP"], description: "The office checked an over-budget materials spend." },
   "payout.adjustment_needed": { channels: ["IN_APP"], description: "A job was refunded after its payout went to payroll." },
   "bounty.available": { channels: ["IN_APP"], description: "A quote bounty is available." },
   "job.ready_to_claim": { channels: ["IN_APP"], description: "A job near you is ready to claim." },

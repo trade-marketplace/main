@@ -46,6 +46,7 @@ const COPY: Readonly<Record<string, readonly [string, string]>> = {
   "payout.queued": ["Payout queued", "payments"],
   "payout.details_missing": ["Add bank account & IRD number.", "account_balance"],
   "payout.paid": ["Payout paid", "payments"],
+  "payout.materials_checked": ["Materials checked", "receipt_long"],
   "payout.adjustment_needed": ["Payroll adjustment needed", "payments"],
   "bounty.expired": ["Bounty expired", "timer_off"],
   "job.unclaimed": ["Unclaimed > 48h", "schedule"],

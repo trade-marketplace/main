@@ -43,6 +43,25 @@ test("states show what they should", async ({ page }) => {
   await expect(page.getByText("Fri 20 Nov batch marked paid. 3 tradies told.")).toBeVisible();
 });
 
+test("materials to check (#512): held back with a link to the job, and named after an export", async ({ page }) => {
+  await page.goto(route("materials"));
+  const banner = page.getByText("1 payout is held back until the receipt is checked:", { exact: false });
+  await expect(banner).toBeVisible();
+  await expect(page.getByRole("cell", { name: "Materials to check" }).or(page.getByText("Materials to check", { exact: true })).first()).toBeVisible();
+  // Missing payroll details still counts only Mere; the materials hold is listed on its own.
+  await expect(page.getByText("Mere R · blocks payout")).toBeVisible();
+  await expect(page.getByText("$64.50").first()).toBeVisible();
+
+  const download = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Export payroll CSV" }).click();
+  await download;
+  await expect(page.getByText("1 payout held back for missing payroll details. 1 payout held back for materials to check.", { exact: false })).toBeVisible();
+
+  // The link goes to the job's admin page (signed out here, so through log in, which comes back to it).
+  await page.getByRole("link", { name: "Check materials on TM-1004" }).press("Enter");
+  await expect(page).toHaveURL(/admin(\/|%2F)jobs(\/|%2F)17500000-0000-4000-8000-000000000106/);
+});
+
 test("keyboard: export downloads the CSV, then mark the batch paid through the confirm dialog", async ({ page }) => {
   await page.goto(route("blockers"));
   const download = page.waitForEvent("download");

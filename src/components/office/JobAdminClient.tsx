@@ -1,9 +1,10 @@
 "use client";
-// The job admin view wired to the real server action. (The preview wires pretend ones: JobAdmin takes `submit`.)
+// The job admin view wired to the real server actions. (The preview wires pretend ones: JobAdmin takes `submit`.)
 import { jobAction } from "@/server/office/job-actions";
+import { decideMaterialsAction } from "@/server/office/materials-actions";
 
 import { JobAdmin, type JobAdminProps } from "./JobAdmin";
 
 export function JobAdminClient({ job, initialDialog, problemReport, problemReturn, supportReturn }: Pick<JobAdminProps, "job" | "initialDialog" | "problemReport" | "problemReturn" | "supportReturn">) {
-  return <JobAdmin key={`${job?.id}:${initialDialog ?? ""}`} job={job} initialDialog={initialDialog} problemReport={problemReport} problemReturn={problemReturn} supportReturn={supportReturn} submit={jobAction} />;
+  return <JobAdmin key={`${job?.id}:${initialDialog ?? ""}`} job={job} initialDialog={initialDialog} problemReport={problemReport} problemReturn={problemReturn} supportReturn={supportReturn} submit={jobAction} decideMaterials={decideMaterialsAction} />;
 }

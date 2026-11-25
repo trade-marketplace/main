@@ -14,8 +14,12 @@ export const PAYOUTS_EXPORT_PATH = "/admin/payouts/export";
 /** How many past batches the page lists, newest first. */
 export const PAYOUT_BATCH_LIMIT = 12;
 
-/** What payroll is missing for a tradie (checkPayrollDetails in src/server/payouts/queue-payout.ts). */
-export type PayoutBlocker = "ird" | "bank" | "taxCode" | "review";
+/**
+ * Why a queued payout is held back: what payroll is missing for the tradie (checkPayrollDetails in
+ * src/server/payouts/queue-payout.ts), or "materials" when the job's materials spend is over budget and the office
+ * hasn't checked it yet (#512, src/server/payouts/materials.ts).
+ */
+export type PayoutBlocker = "ird" | "bank" | "taxCode" | "review" | "materials";
 
 /** A queued payout: in the next export, or held back because payroll is missing details. */
 export type QueuedPayoutRow = {
@@ -29,6 +33,9 @@ export type QueuedPayoutRow = {
   signedOffAt: string;
   minutes: number;
   holidayPayCents: number;
+  /** Materials repaid with this payout (#512): 0 when none, or while they are held for checking. */
+  materialsCents: number;
+  /** gross + holiday pay + materials. */
   totalCents: number;
   /** Empty when the payout goes in the next export. */
   blockers: PayoutBlocker[];
@@ -51,10 +58,12 @@ export type PayoutBatch = {
 export type OfficePayoutsData = {
   /** The next payday, "2026-11-21". */
   payday: string;
-  /** Queued payouts the next export sends: count, total, holiday pay and how many tradies. */
-  ready: { count: number; tradies: number; totalCents: number; grossCents: number; holidayPayCents: number };
-  /** Tradies whose queued payouts are held back. */
+  /** Queued payouts the next export sends: count, total (materials included), holiday pay and how many tradies. */
+  ready: { count: number; tradies: number; totalCents: number; grossCents: number; holidayPayCents: number; materialsCents: number };
+  /** Tradies whose queued payouts are held back for missing payroll details. */
   blocked: { tradies: number; payouts: number; names: string[] };
+  /** Jobs whose over-budget materials the office still has to check: their lead's payout is held back (#512). */
+  materials: { payouts: number; jobs: { jobId: string; jobNumber: string }[] };
   /** Every queued payout: ready ones and held ones, oldest sign-off first. */
   rows: QueuedPayoutRow[];
   /** Recent batches, newest first. */
@@ -62,9 +71,10 @@ export type OfficePayoutsData = {
 };
 
 export type ExportPayrollResult =
-  | { status: "exported"; batch: PayoutBatch; csv: string; filename: string; heldBack: number }
+  /** heldBack counts every payout left queued; materialsHeld those of them held for materials to check (#512). */
+  | { status: "exported"; batch: PayoutBatch; csv: string; filename: string; heldBack: number; materialsHeld?: number }
   /** Nothing ready to send (nothing queued, or everyone queued is held back). Nothing changed. */
-  | { status: "nothing"; heldBack: number }
+  | { status: "nothing"; heldBack: number; materialsHeld?: number }
   | { status: "forbidden" | "unavailable" };
 
 export type MarkPaidResult =
@@ -74,7 +84,7 @@ export type MarkPaidResult =
   | { status: "not-found" | "forbidden" | "unavailable" };
 
 /** Preview states for /dev/components/office-payouts. */
-export const PAYOUT_STATES = ["queued", "blockers", "nothing-queued", "exported", "mark-paid", "paid", "error", "offline", "loading"] as const;
+export const PAYOUT_STATES = ["queued", "blockers", "materials", "nothing-queued", "exported", "mark-paid", "paid", "error", "offline", "loading"] as const;
 export type PayoutsState = (typeof PAYOUT_STATES)[number];
 
 // ---- Words and numbers -------------------------------------------------------------------------------------
@@ -106,8 +116,14 @@ export const csvDollars = (cents: number) => (cents / 100).toFixed(2);
 
 export const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
 
-/** The pill on a held-back payout: the first thing payroll is missing. */
+/** The blocker for a payout held until the office checks an over-budget materials receipt (#512). */
+export const MATERIALS_BLOCKER = "Materials to check";
+/** What payroll is missing for a tradie: every blocker but materials. */
+export const payrollBlockers = (blockers: readonly PayoutBlocker[]) => blockers.filter((blocker) => blocker !== "materials");
+
+/** The pill on a held-back payout: materials to check first (the office can act on it), then what payroll is missing. */
 export function blockerLabel(blockers: readonly PayoutBlocker[]): string {
+  if (blockers.includes("materials")) return MATERIALS_BLOCKER;
   if (blockers.includes("bank")) return "No bank details";
   if (blockers.includes("ird")) return "No IRD number";
   if (blockers.includes("taxCode")) return "No tax code";
