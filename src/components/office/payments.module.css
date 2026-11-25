@@ -1,0 +1,32 @@
+/* The office Payments page (#176, F11): no mockup, so it follows All jobs (all-jobs.module.css) and the Payouts KPI
+   row (payouts.module.css). The table, chips, pager, KPI cards and dialog are the kit's. Tokens only. */
+
+.page { display: grid; gap: var(--trade-space-4); min-width: 0; max-width: var(--trade-content-max); }
+
+.head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--trade-space-3); }
+.title {
+  margin: 0;
+  font-family: var(--trade-font-heading);
+  font-weight: 900;
+  font-variation-settings: var(--trade-display-axes);
+  /* The All jobs title size. */
+  font-size: var(--trade-fs-price);
+  line-height: var(--trade-lh-price);
+}
+.head a[aria-disabled] { opacity: 0.5; cursor: not-allowed; }
+
+.filters { min-width: 0; }
+
+.kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--trade-space-3); }
+.kpiSkeleton {
+  display: grid; gap: var(--trade-space-2); padding: var(--trade-space-4);
+  border: 1px solid var(--trade-line); border-radius: var(--trade-radius-card); background: var(--trade-surface);
+}
+
+.person { display: grid; gap: var(--trade-space-1); min-width: 0; }
+.email { color: var(--trade-text-2); font-size: var(--trade-fs-caption); line-height: var(--trade-lh-caption); overflow-wrap: anywhere; }
+.stripe { font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+
+.gallery { display: grid; gap: var(--trade-space-8); }
+
+@media (max-width: 599.98px) { .kpis { grid-template-columns: minmax(0, 1fr); } }

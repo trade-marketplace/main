@@ -25,6 +25,12 @@ for (const viewport of VIEWPORTS) test(`all payment list states at ${viewport.wi
     if (state === "loading") await expect(page.getByRole("table", { name: "Payments", exact: true })).toHaveAttribute("aria-busy", "true");
     if (state === "with-refund") await expect(page.getByText("−$120.00", { exact: true })).toBeVisible();
     if (state === "part-refund") await expect(page.getByText("−$30.00", { exact: true })).toBeVisible();
+    if (state === "two-refunds") {
+      // #565: each part refund on its own row, with its own amount and date.
+      await expect(page.getByRole("row").filter({ hasText: "−$10.00" }).filter({ hasText: "28 Oct" })).toHaveCount(1);
+      await expect(page.getByRole("row").filter({ hasText: "−$15.00" }).filter({ hasText: "1 Nov" })).toHaveCount(1);
+      await expect(page.getByText("−$25.00", { exact: true })).toHaveCount(0);
+    }
     if (state === "page-2") await expect(page.getByText("Showing 26–30 of 30", { exact: true })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), state).toBe(true);
     await expectNoA11yViolations(page);

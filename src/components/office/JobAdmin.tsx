@@ -291,14 +291,26 @@ function TimelineCard({ job }: { job: OfficeJobView }) {
 
 type Fields = Record<string, string>;
 
-type DialogProps = {
-  name: DialogName;
-  job: OfficeJobView;
+/** What the refund dialog reads about a job: all the office Payments page (#176) has for one of its rows. */
+export type RefundDialogJob = Pick<OfficeJobView, "id" | "status" | "payments">;
+
+type DialogCallbacks = {
   submit: SubmitJobAction;
   presetError: string | null;
   onClose: () => void;
   onDone: () => void;
 };
+
+type DialogProps = DialogCallbacks &
+  ({ name: Exclude<DialogName, "refund">; job: OfficeJobView } | { name: "refund"; job: RefundDialogJob });
+
+/**
+ * The job admin's refund dialog on its own (#176): the office Payments page opens it on one row's payment. The same
+ * fields, checks and server action (`jobAction`), so there is only one refund path.
+ */
+export function RefundDialog({ presetError = null, ...props }: Omit<DialogCallbacks, "presetError"> & { job: RefundDialogJob; presetError?: string | null }) {
+  return <ActionDialog {...props} presetError={presetError} name="refund" />;
+}
 
 /** One dialog per action, each with a required note. They open fresh every time (keyed by name). */
 function ActionDialog({ name, job, submit, presetError, onClose, onDone }: DialogProps) {
@@ -503,7 +515,7 @@ function ActionDialog({ name, job, submit, presetError, onClose, onDone }: Dialo
   }
 }
 
-function initialValues(name: DialogName, job: OfficeJobView): Fields {
+function initialValues(name: DialogName, job: Pick<OfficeJobView, "payments"> & Partial<Pick<OfficeJobView, "pricing">>): Fields {
   const base: Fields = { note: "", body: "", workerId: "", to: "", mode: "full", amount: "", paymentId: job.payments[0]?.id ?? "" };
   if (name === "price" && job.pricing) {
     return {
@@ -518,7 +530,7 @@ function initialValues(name: DialogName, job: OfficeJobView): Fields {
 }
 
 /** What the server is sent for each dialog. The server checks it all again. */
-function payloadFor(name: DialogName, job: OfficeJobView, v: Fields): Record<string, unknown> {
+function payloadFor(name: DialogName, job: Pick<OfficeJobView, "id" | "status">, v: Fields): Record<string, unknown> {
   const base = { action: name, jobId: job.id, seenStatus: job.status, note: v.note };
   switch (name) {
     case "reassign":
